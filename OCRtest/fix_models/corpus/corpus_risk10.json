@@ -1,0 +1,178 @@
+{
+ "description": "Корпус риска: блоки, где кандидат ВЕРЕН (CER=0). Проверяет, что новый протокол не портит то, что уже прочитано правильно.",
+ "project": "/Users/gladskikh/Git/LLocr/OCRtest/decision_models/test 2/OCR_TEST_MinerU2.5-Pro.llocr",
+ "gt": "/Users/gladskikh/Git/LLocr/OCRtest/ocr_models/materials/gt.json",
+ "dpi": 300,
+ "blocks": [
+  {
+   "uid": "p02b05",
+   "page": 2,
+   "index": 5,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\mathrm{R} ^ {*} = \\frac {1}{\\alpha_ {1} \\mathrm{R} _ {1}} + \\frac {1}{\\lambda_ {\\mathrm{w}}} \\ln \\frac {\\mathrm{R} _ {2}}{\\mathrm{R} _ {1}} + \\frac {1}{\\alpha_ {2} \\mathrm{R} _ {2}}.\\]",
+   "candidate_wire": "\\[\\mathrm{R} ^ {*} = \\frac{1}{\\alpha_{1} \\mathrm{R} _{1}} + \\frac{1}{\\lambda_{\\mathrm{w}}} \\ln \\frac{\\mathrm{R} _{2}}{\\mathrm{R} _{1}} + \\frac{1}{\\alpha_{2} \\mathrm{R} _{2}}.\\]",
+   "gt": "R^* = \\frac{1}{\\alpha_1 R_1} + \\frac{1}{\\lambda_w} \\ln \\frac{R_2}{R_1} + \\frac{1}{\\alpha_2 R_2}.",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p02b05_equation.png",
+   "crop_size": [
+    990,
+    182
+   ]
+  },
+  {
+   "uid": "p02b13",
+   "page": 2,
+   "index": 13,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\mathrm{Bi} _ {1} = \\frac {\\alpha_ {1} \\mathrm{R} _ {1}}{\\lambda_ {\\mathrm{w}}}, \\mathrm{Bi} _ {2} = \\frac {\\alpha_ {2} \\mathrm{R} _ {2}}{\\lambda_ {\\mathrm{w}}},\\]",
+   "candidate_wire": "\\[\\mathrm{Bi} _{1} = \\frac{\\alpha_{1} \\mathrm{R} _{1}}{\\lambda_{\\mathrm{w}}}, \\mathrm{Bi} _{2} = \\frac{\\alpha_{2} \\mathrm{R} _{2}}{\\lambda_{\\mathrm{w}}},\\]",
+   "gt": "Bi_1 = \\frac{\\alpha_1 R_1}{\\lambda_w}, Bi_2 = \\frac{\\alpha_2 R_2}{\\lambda_w},",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p02b13_equation.png",
+   "crop_size": [
+    742,
+    175
+   ]
+  },
+  {
+   "uid": "p04b34",
+   "page": 4,
+   "index": 34,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[S = \\left( \\begin{array}{c c c} \\tau_ {x x} & \\tau_ {x y} & \\tau_ {x z} \\\\ \\tau_ {y x} & \\tau_ {y y} & \\tau_ {y z} \\\\ \\tau_ {z x} & \\tau_ {z y} & \\tau_ {z z} \\end{array} \\right); \\tag {10}\\]",
+   "candidate_wire": "\\[S = \\left(\\begin{array}{c c c} \\tau_{x x} & \\tau_{x y} & \\tau_{x z} \\\\ \\tau_{y x} & \\tau_{y y} & \\tau_{y z} \\\\ \\tau_{z x} & \\tau_{z y} & \\tau_{z z} \\end{array} \\right); \\tag{10}\\]",
+   "gt": "S = (\\tau_{xx} \\tau_{xy} \\tau_{xz}; \\tau_{yx} \\tau_{yy} \\tau_{yz}; \\tau_{zx} \\tau_{zy} \\tau_{zz}); (10)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p04b34_equation.png",
+   "crop_size": [
+    959,
+    130
+   ]
+  },
+  {
+   "uid": "p05b35",
+   "page": 5,
+   "index": 35,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\left(\\frac {\\partial \\rho}{\\partial p}\\right) _ {T} = \\frac {c _ {p}}{c _ {v}} \\left(\\frac {\\partial \\rho}{\\partial p}\\right) _ {s} = \\frac {\\gamma}{u _ {\\text {sound}} ^ {2}}, \\tag {72}\\]",
+   "candidate_wire": "\\[\\left(\\frac{\\partial \\rho}{\\partial p}\\right) _{T} = \\frac{c _{p}}{c _{v}} \\left(\\frac{\\partial \\rho}{\\partial p}\\right) _{s} = \\frac{\\gamma}{u _{\\text{sound}} ^ {2}}, \\tag{72}\\]",
+   "gt": "(\\frac{\\partial \\rho}{\\partial p})_T = \\frac{c_p}{c_v} (\\frac{\\partial \\rho}{\\partial p})_s = \\frac{\\gamma}{u_{sound}^2}, (72)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p05b35_equation.png",
+   "crop_size": [
+    963,
+    97
+   ]
+  },
+  {
+   "uid": "p08b12",
+   "page": 8,
+   "index": 12,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\frac {\\overline {{u}}}{u _ {e}} = \\frac {1}{k} \\frac {u _ {\\tau}}{u _ {e}} \\ln \\frac {y u _ {e}}{\\nu} + \\frac {u _ {\\tau}}{u _ {e}} \\left(C + \\frac {1}{k} \\ln \\frac {u _ {\\tau}}{u _ {e}}\\right). \\tag {189}\\]",
+   "candidate_wire": "\\[\\frac{\\overline{{u}}}{u _{e}} = \\frac{1}{k} \\frac{u _{\\tau}}{u _{e}} \\ln \\frac{y u _{e}}{\\nu} + \\frac{u _{\\tau}}{u _{e}} \\left(C + \\frac{1}{k} \\ln \\frac{u _{\\tau}}{u _{e}}\\right). \\tag{189}\\]",
+   "gt": "\\frac{\\bar{u}}{u_e} = \\frac{1}{k} \\frac{u_\\tau}{u_e} \\ln \\frac{y u_e}{\\nu} + \\frac{u_\\tau}{u_e}(C + \\frac{1}{k} \\ln \\frac{u_\\tau}{u_e}). (189)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p08b12_equation.png",
+   "crop_size": [
+    961,
+    100
+   ]
+  },
+  {
+   "uid": "p08b06",
+   "page": 8,
+   "index": 6,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[B _ {q} = \\frac {\\dot {q} _ {w}}{\\rho_ {w} c _ {p} u _ {\\tau} T _ {w}} \\tag {187}\\]",
+   "candidate_wire": "\\[B _{q} = \\frac{\\dot{q} _{w}}{\\rho_{w} c _{p} u _{\\tau} T _{w}} \\tag{187}\\]",
+   "gt": "B_q = \\frac{\\dot{q}_w}{\\rho_w c_p u_\\tau T_w} (187)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p08b06_equation.png",
+   "crop_size": [
+    948,
+    106
+   ]
+  },
+  {
+   "uid": "p05b24",
+   "page": 5,
+   "index": 24,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[R = c _ {p} (T) - c _ {v} (T) = \\frac {\\gamma (T) - 1}{\\gamma (T)} c _ {p} (T); \\tag {67}\\]",
+   "candidate_wire": "\\[R = c _{p}(T) - c _{v}(T) = \\frac{\\gamma(T) - 1}{\\gamma(T)} c _{p}(T); \\tag{67}\\]",
+   "gt": "R = c_p(T) − c_v(T) = \\frac{\\gamma(T)−1}{\\gamma(T)} c_p(T); (67)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p05b24_equation.png",
+   "crop_size": [
+    963,
+    89
+   ]
+  },
+  {
+   "uid": "p05b03",
+   "page": 5,
+   "index": 3,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\varphi = 2 \\left[ \\left(\\frac {\\partial u}{\\partial x}\\right) ^ {2} + \\left(\\frac {\\partial v}{\\partial y}\\right) ^ {2} + \\left(\\frac {\\partial w}{\\partial z}\\right) ^ {2} \\right] + \\left(\\frac {\\partial v}{\\partial x} + \\frac {\\partial u}{\\partial y}\\right) ^ {2} +\\]",
+   "candidate_wire": "\\[\\varphi = 2 \\left[\\left(\\frac{\\partial u}{\\partial x}\\right) ^ {2} + \\left(\\frac{\\partial v}{\\partial y}\\right) ^ {2} + \\left(\\frac{\\partial w}{\\partial z}\\right) ^ {2} \\right] + \\left(\\frac{\\partial v}{\\partial x} + \\frac{\\partial u}{\\partial y}\\right) ^ {2} +\\]",
+   "gt": "\\varphi = 2[(\\frac{\\partial u}{\\partial x})^2 + (\\frac{\\partial v}{\\partial y})^2 + (\\frac{\\partial w}{\\partial z})^2] + (\\frac{\\partial v}{\\partial x} + \\frac{\\partial u}{\\partial y})^2 +",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p05b03_equation.png",
+   "crop_size": [
+    881,
+    91
+   ]
+  },
+  {
+   "uid": "p04b07",
+   "page": 4,
+   "index": 7,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[= \\left(\\frac {\\partial h}{\\partial T}\\right) _ {p}; \\quad c _ {v} = \\left(\\frac {\\partial u}{\\partial T}\\right) _ {v}\\]",
+   "candidate_wire": "\\[= \\left(\\frac{\\partial h}{\\partial T}\\right) _{p}; \\quad c _{v} = \\left(\\frac{\\partial u}{\\partial T}\\right) _{v}\\]",
+   "gt": "= (\\frac{\\partial h}{\\partial T})_p; c_v = (\\frac{\\partial u}{\\partial T})_v",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p04b07_equation.png",
+   "crop_size": [
+    429,
+    83
+   ]
+  },
+  {
+   "uid": "p04b16",
+   "page": 4,
+   "index": 16,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\mathrm{w} = \\mathrm{w} (r, t). \\tag {4}\\]",
+   "candidate_wire": "\\[\\mathrm{w} = \\mathrm{w}(r, t). \\tag{4}\\]",
+   "gt": "w=w(r, t). (4)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p04b16_equation.png",
+   "crop_size": [
+    952,
+    44
+   ]
+  }
+ ]
+}

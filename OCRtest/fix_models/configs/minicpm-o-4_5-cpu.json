@@ -1,5 +1,5 @@
 {
-  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11799-metal-macos-arm64/llama-b11799/llama-server",
+  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b12000-metal-macos-arm64/llama-b12000/llama-server",
   "model": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/openbmb__MiniCPM-o-4_5-gguf/MiniCPM-o-4_5-Q4_K_M.gguf",
   "mmproj": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/openbmb__MiniCPM-o-4_5-gguf/MiniCPM-o-4_5-vision-F16.gguf",
   "alias": "llocr-fix",

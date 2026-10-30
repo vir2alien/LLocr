@@ -170,12 +170,14 @@ R_TRANSCRIBE_SYSTEM = TRANSCRIBE_SYSTEM
 
 
 def build_payload(block, model, variant, image_png, system_prompt, type_prompt, extra_parts=None,
-                  candidate=None, with_candidate=True):
+                  candidate=None, with_candidate=True, candidate_part=None):
     """Собирает тело запроса ровно как приложение (ADR 180/181)."""
     prompt_part = {"type": "text", "text": type_prompt}
     image_part = {"type": "image_url", "image_url": {"url": data_url(image_png)}}
     text = block["candidate_wire"] if candidate is None else candidate
     ocr_part = {"type": "text", "text": "OCR candidate:\n<CANDIDATE>\n" + text + "\n</CANDIDATE>"}
+    if candidate_part is not None:
+        ocr_part = candidate_part
 
     if variant["order"] == "candidate_first":
         parts = [ocr_part, image_part, prompt_part] + list(extra_parts or [])

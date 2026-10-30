@@ -1,0 +1,56 @@
+{
+ "model": "gemma-4-12b",
+ "arms": [
+  "fix"
+ ],
+ "rows": [
+  {
+   "arm": "fix",
+   "uid": "p04b28",
+   "verdict": "Fixed",
+   "reason": "",
+   "result": "\\[\\begin{array}{l} \\text{Теплопроводность} \\quad \\lambda \\\\ \\text{Число Прандтля} \\quad \\mathrm{Pr}= \\\\ = \\eta c_p / \\lambda \\end{array}\\]",
+   "reply": "FIX\n\\[\\begin{array}{l} \\text{Теплопроводность} \\quad \\lambda \\\\ \\text{Число Прандтля} \\quad \\mathrm{Pr}= \\\\ = \\eta c_p / \\lambda \\end{array}\\]",
+   "latency_s": 69.381,
+   "completion_tokens": 57,
+   "truncated": false,
+   "own_payload": ""
+  }
+ ],
+ "scored": [
+  {
+   "uid": "p04b28",
+   "gt": "ν=η/ρ Теплопроводность λ Число Прандтля Pr = \\eta c_p / \\lambda",
+   "cer_cand": 0.19047619047619047,
+   "idx_cand": 1.0,
+   "fix": {
+    "verdict": "Fixed",
+    "reply": "FIX\n\\[\\begin{array}{l} \\text{Теплопроводность} \\quad \\lambda \\\\ \\text{Число Прандтля} \\quad \\mathrm{Pr}= \\\\ = \\eta c_p / \\lambda \\end{array}\\]",
+    "result": "\\[\\begin{array}{l} \\text{Теплопроводность} \\quad \\lambda \\\\ \\text{Число Прандтля} \\quad \\mathrm{Pr}= \\\\ = \\eta c_p / \\lambda \\end{array}\\]",
+    "cer": 0.19047619047619047,
+    "idx": 1.0,
+    "latency_s": 69.381,
+    "tokens": 57,
+    "truncated": false,
+    "changed": true,
+    "own_payload": "",
+    "own_cer": null,
+    "own_idx": null
+   }
+  }
+ ],
+ "agg": {
+  "fix": {
+   "cer": 0.19047619047619047,
+   "idx": 1.0,
+   "n": 1,
+   "verdicts": {
+    "Fixed": 1
+   },
+   "own_n": 0,
+   "own_cer": 0.0,
+   "own_idx": 0.0,
+   "lat": 69.381
+  }
+ }
+}

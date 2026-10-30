@@ -102,6 +102,23 @@ FIX_NO_CANDIDATE_SYSTEM = (
     "No explanations, no code fences."
 )
 
+#: Якорь записи: кандидат в запросе есть, но он не кандидат для правки — образец
+#: того, как документ пишет (разделители, макросы, шрифты, теги). Замер риска
+#: (risk_gemma4_12b) показал: без кандидата читатель переписывает 9 из 10 верных
+#: блоков, и виновата в этом не ошибка чтения, а смена записи — "\[ \]" -> "$$ $$",
+#: "\tag{n}" -> "\eqno{n}", "\mathrm{R}" -> "R", "\begin{array}" -> "\begin{pmatrix}".
+#: Читатель не знает записи документа, потому что её не видел.
+NOTATION_SAMPLE_NOTE = (
+    "The block as it was recognized is given below as a sample of how this document writes: its "
+    "delimiters, macros, fonts and tag style. Read the content yourself from the image — where "
+    "the sample and the image disagree, follow the image. Never copy the sample's content, and "
+    "never keep a character of it that the image contradicts."
+)
+
+NOTATION_SAMPLE_LEAD = (
+    "The block as it was recognized (a sample of the document's notation, not the answer):"
+)
+
 #: Тип-подсказка для протокола без кандидата: блока-эталона, на который можно
 #: опереться, нет, поэтому формулировки «как в кандидате» заменены на «как на
 #: картинке».
@@ -126,7 +143,6 @@ NO_CANDIDATE_TYPE = {
 
 #: Разметка вокруг транскрипции, которую модель могла добавить сама.
 LEAD_RE = re.compile(r"^\s*(?:transcription|latex|formula|the transcription)\s*[:\-—]\s*", re.I)
-
 #: Модель, ответившая «OK», может следом дописать свой вариант блока («FIXed block:»).
 #: Гейт такой ответ выбрасывает — а предложенный блок стоит посмотреть отдельно.
 OWN_PAYLOAD_RE = re.compile(
@@ -148,8 +164,9 @@ def own_payload(content):
 #:   candidate     — показывать ли кандидата в сообщении;
 #:   system        — "app" (промпт приложения) или "nocand" (протокол без кандидата);
 #:   type          — "app" (тип-подсказка приложения) или "nocand";
+#:   order         — порядок частей user-сообщения (см. ORDER_* ниже);
 #:   extra_body    — добавка к телу запроса (например, включение мышления);
-#:   server        — серверные параметры (требуют перезапуска сервера).
+#:   server        — серверские параметры (требуют перезапуска сервера).
 FIX_VARIANTS = {
     "v0_app": {"hint": None, "candidate": True, "system": "app", "type": "app",
                "extra_body": {}, "server": {}},
@@ -170,7 +187,42 @@ FIX_VARIANTS = {
                    "extra_body": {"reasoning_budget_tokens": 512,
                                   "chat_template_kwargs": {"enable_thinking": True}},
                    "server": {}},
+    #: Кандидат в запросе есть, но он не кандидат для правки, а образец записи
+    #: документа. Читатель читает содержание по картинке, запись берёт из образца.
+    "read_with_ref": {"hint": None, "candidate": True, "system": "nocand", "type": "nocand",
+                      "sample": True, "extra_body": {}, "server": {}},
 }
+
+#: Ось порядка: где в user-сообщении стоят картинка и кандидат. Приложение
+#: шлёт "тип-подсказка → картинка → кандидат" (order: "app"): картинка уже
+#: впереди кандидата, и якорение всё равно происходит. Остальные порядки
+#: проверяют, в чём именно виноват порядок, а не само присутствие кандидата:
+#:   "img_first"   — картинка первой частью, до тип-подсказки (кандидат, если
+#:                   он есть, последним);
+#:   "cand_first"  — кандидат первым, картинка следом;
+#:   "img_last"    — картинка последней частью, сразу перед ответом.
+#:
+#: Замер (gemma-4-12b, 5 формул, ORDER_AXIS.md): база 0.050, img_first 0.040,
+#: cand_first 0.037, img_last 0.039 — при "кандидата нет" 0.015. Порядок не
+#: рычаг: виновато присутствие кандидата, а не его место. В приложение
+#: перестановка не тащится.
+ORDER_APP = "app"
+ORDER_IMG_FIRST = "img_first"
+ORDER_CAND_FIRST = "cand_first"
+ORDER_IMG_LAST = "img_last"
+
+ORDER_VARIANTS = {
+    "order_img_first": {"hint": None, "candidate": True, "system": "app", "type": "app",
+                        "order": ORDER_IMG_FIRST, "extra_body": {}, "server": {}},
+    "order_cand_first": {"hint": None, "candidate": True, "system": "app", "type": "app",
+                         "order": ORDER_CAND_FIRST, "extra_body": {}, "server": {}},
+    "order_img_last": {"hint": None, "candidate": True, "system": "app", "type": "app",
+                       "order": ORDER_IMG_LAST, "extra_body": {}, "server": {}},
+    "order_img_first_nocand": {"hint": None, "candidate": False, "system": "app", "type": "app",
+                               "order": ORDER_IMG_FIRST, "extra_body": {}, "server": {}},
+}
+
+FIX_VARIANTS.update(ORDER_VARIANTS)
 
 
 def clean_read_reply(text):
@@ -182,6 +234,51 @@ def clean_read_reply(text):
 
 def read_is_review(text):
     return text.strip().upper().startswith("REVIEW")
+
+
+def reorder_parts(payload, order):
+    """Переставляет части user-сообщения: ось порядка.
+
+    Части собираются как в приложении: тип-подсказка, картинка, кандидат.
+    order="app" — как есть; "img_first" — картинка первой частью;
+    "cand_first" — кандидат первым; "img_last" — картинка последней.
+    """
+    if order == ORDER_APP:
+        return payload
+    messages = payload.get("messages") or []
+    parts = None
+    for message in messages:
+        if message.get("role") == "user" and isinstance(message.get("content"), list):
+            parts = message["content"]
+            break
+    if not parts:
+        return payload
+
+    def is_candidate(part):
+        return part.get("type") == "text" and "<CANDIDATE>" in part.get("text", "")
+
+    def is_image(part):
+        return part.get("type") == "image_url"
+
+    candidate = [p for p in parts if is_candidate(p)]
+    image = [p for p in parts if is_image(p)]
+    prompt = [p for p in parts if not is_candidate(p) and not is_image(p)]
+
+    if order == ORDER_IMG_FIRST:
+        ordered = image + prompt + candidate
+    elif order == ORDER_CAND_FIRST:
+        ordered = candidate + image + prompt
+    elif order == ORDER_IMG_LAST:
+        ordered = prompt + candidate + image
+    else:
+        return payload
+
+    for index, message in enumerate(messages):
+        if message.get("role") == "user" and message.get("content") is parts:
+            messages[index] = dict(message, content=ordered)
+            break
+    payload["messages"] = messages
+    return payload
 
 
 def run_arm(client, corpus, model, prompts, arm, cache_dir, timeout_s, refresh, image_spec):
@@ -197,12 +294,16 @@ def run_arm(client, corpus, model, prompts, arm, cache_dir, timeout_s, refresh, 
             type_prompt = RECOGNIZE_USER
             with_candidate = False
             extra_body = {}
+            order = ORDER_APP
+            candidate_part = None
         else:
             spec = FIX_VARIANTS["v0_app" if arm == "fix" else arm]
             if spec["system"] == "app":
                 system_prompt = prompts["system"]
             else:
                 system_prompt = FIX_NO_CANDIDATE_SYSTEM.replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE)
+            if spec.get("sample"):
+                system_prompt = system_prompt + "\n\n" + NOTATION_SAMPLE_NOTE
             hint = spec["hint"]
             if hint:
                 hint = hint.replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE)
@@ -213,9 +314,15 @@ def run_arm(client, corpus, model, prompts, arm, cache_dir, timeout_s, refresh, 
                 type_prompt = NO_CANDIDATE_TYPE.get(label, prompts["type"][label])
             with_candidate = spec["candidate"]
             extra_body = spec["extra_body"]
+            order = spec.get("order", ORDER_APP)
+            candidate_part = None
+            if spec.get("sample"):
+                candidate_part = {"type": "text",
+                                  "text": NOTATION_SAMPLE_LEAD + "\n<RECOGNIZED>\n" + block["candidate_wire"] + "\n</RECOGNIZED>"}
 
         payload = runner.build_payload(block, model, variant, image, system_prompt, type_prompt,
-                                       with_candidate=with_candidate)
+                                       with_candidate=with_candidate, candidate_part=candidate_part)
+        payload = reorder_parts(payload, order)
         if extra_body:
             payload.update(extra_body)
 

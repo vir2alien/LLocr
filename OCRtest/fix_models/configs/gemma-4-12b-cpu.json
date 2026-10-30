@@ -1,5 +1,5 @@
 {
-  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11799-metal-macos-arm64/llama-b11799/llama-server",
+  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b12000-metal-macos-arm64/llama-b12000/llama-server",
   "model": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__gemma-4-12B-it-qat-GGUF/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf",
   "mmproj": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__gemma-4-12B-it-qat-GGUF/mmproj-F16.gguf",
   "alias": "llocr-fix",
