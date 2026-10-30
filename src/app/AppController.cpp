@@ -181,18 +181,22 @@ AppController::AppController(SettingsStore &settings,
             startLayout(pages);
             return;
         }
-        finishMarkupPass(m_markupPassMarkedPages > 0);
+        finishMarkupPass(!m_markupPassMarkedPages.isEmpty());
     });
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_layout, &LayoutController::progressChanged, this, &AppController::layoutProgressChanged);
     connect(&m_layout, &LayoutController::layoutFinished, this, [this](int pageIndex, const QString &rawText) {
-        // The pages the markup pass marked up: a pass that marked none did
-        // nothing, and the stage says so instead of reporting a success.
-        if (m_markupPassDone && !rawText.isEmpty())
-            ++m_markupPassMarkedPages;
-        applyLayout(pageIndex, rawText);
+        // The pages the markup pass really marked up: a reply without boxes
+        // leaves the page without blocks, and a pass that marked no page did
+        // nothing.
+        if (applyLayout(pageIndex, rawText) && m_markupPassDone)
+            m_markupPassMarkedPages.insert(pageIndex);
     });
     connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
+    // The layout role of the request profile is one of the auto pipeline's
+    // gates: the button's state has to follow the role's appearance and
+    // disappearance, and this signal is the only one that announces it.
+    connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, [this]() { emit autoStateChanged(); });
 
     // The auto pipeline (ADR 257): the stages in the order they run and the
     // orchestrator that owns the run. The stage that needs a model says so
@@ -1338,6 +1342,10 @@ QString AppController::autoPipelineBlockedReason() const
     // because without the models the run would not work at all.
     if (!m_availability.layoutModelAvailable() || !m_availability.blockRecognitionModelAvailable())
         return StatusMessage::translate("AutoPipelineController", "No model for the markup or the recognition task").text();
+    // The markup needs the layout role of the request profile: without it the
+    // first stage is passed over and the run does nothing.
+    if (!m_layout.available())
+        return StatusMessage::translate("AutoPipelineController", "The markup model does not support page markup").text();
     return m_autoPipeline->blockedReason();
 }
 
@@ -1379,7 +1387,7 @@ void AppController::stopAutoPipeline()
 void AppController::runMarkupPass(const QList<int> &pages, const std::function<void(bool)> &done)
 {
     m_markupPassDone = done;
-    m_markupPassMarkedPages = 0;
+    m_markupPassMarkedPages.clear();
     startLayout(pages);
 }
 
@@ -1423,10 +1431,11 @@ void AppController::startLayout(const QList<int> &pages)
     // lies the wrong way up.
     const auto start = [this, pages, role, prompt]() {
         // The layout refuses a second pass in silence, and a pass that never
-        // starts never ends: the stage would wait for it forever. The
-        // orientation check is a local pixel analysis, so the layout cannot
-        // be taken between the check above and this call — the guard is the
-        // net under a future that makes the check asynchronous.
+        // starts never ends: the stage would wait for it forever. So the
+        // guard refuses the pass and reports the failure at once. The run
+        // starts on a free document and the orientation check is a local
+        // pixel analysis, so the layout cannot be taken between the check
+        // above and this call — the guard is unreachable today.
         if (m_layout.busy()) {
             finishMarkupPass(false);
             return;
@@ -1438,14 +1447,14 @@ void AppController::startLayout(const QList<int> &pages)
     start();
 }
 
-void AppController::applyLayout(int pageIndex, const QString &rawText)
+bool AppController::applyLayout(int pageIndex, const QString &rawText)
 {
     if (!m_document.isValidIndex(pageIndex) || rawText.isEmpty())
-        return;
+        return false;
 
     const ModelProfiles::Role *role = m_layout.role();
     if (!role || role->parser.isEmpty())
-        return;
+        return false;
 
     ParserOptions options;
     options.modelId = m_layoutRequestProfiles.activeProfileId();
@@ -1458,7 +1467,7 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
         rebuildTextFromBlocks(parsed, *parser);
     }
     if (!parsed.success || parsed.pages.isEmpty())
-        return;
+        return false;
 
     bool hasPositioned = false;
     for (const BoundingBox &box : parsed.pages.first().boxes) {
@@ -1479,7 +1488,7 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
                                           : StatusMessage::translate("AppController", "The model returned no layout blocks for page %1. Reply starts: %2").arg(pageIndex + 1).arg(snippet);
         setStatus(message);
         reportProblem(message, ProblemLog::Warning);
-        return;
+        return false;
     }
 
     const OcrPage &pageData = parsed.pages.first();
@@ -1510,7 +1519,7 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
     if (autoTurn != 0) {
         setStatus(StatusMessage::translate("AppController", "Page %1 lies on its side — turned by %2°, the markup runs again.").arg(pageIndex + 1).arg(autoTurn));
         turnPage(pageIndex, autoTurn, false);
-        return;
+        return true;
     }
 
     m_pageModel.setRecognized(pageIndex, true);
@@ -1532,6 +1541,7 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
         emit editStateChanged();
 
     setStatus(StatusMessage::translate("AppController", "Page %1 marked up: %2 block(s).").arg(pageIndex + 1).arg(blockCount));
+    return true;
 }
 
 void AppController::updateAvailability()

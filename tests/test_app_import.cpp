@@ -42,6 +42,7 @@
 #include "app/VerificationPromptStore.h"
 #include "app/VerificationQueueController.h"
 #include "config/RequestProfileStore.h"
+#include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"
 #include "runtime/LaunchProfileStore.h"
 #include "runtime/ZipWriter.h"
@@ -3271,6 +3272,8 @@ private slots:
         // 1 layout + 2 transcriptions + 2 decision requests.
         QCOMPARE(server.requests(), 5);
         QCOMPARE(server.systemoneRequests(), 2);
+        // The markup stage did its job: the run does not name a failure.
+        QVERIFY2(!m_controller->statusMessage().contains(QStringLiteral("The markup pass failed")), qPrintable(m_controller->statusMessage()));
     }
 
     // A markup pass that fails must end the run: a stage that never reports
@@ -3302,6 +3305,75 @@ private slots:
         // which stage failed.
         QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("The markup pass failed")), qPrintable(m_controller->statusMessage()));
         // The pages stayed unmarked: the pass did nothing.
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 0);
+    }
+
+    // The gate follows the layout role of the request profile: the first
+    // stage is passed over without it, so the button's state has to follow
+    // the role's appearance and disappearance.
+    void theAutoPipelineFollowsTheLayoutRole()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-role-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        QVERIFY(m_controller->autoPipelineAvailable());
+
+        // The layout model of the request profile loses its layout role: the
+        // first stage would be passed over, so the button goes off — and the
+        // pipeline's own signal says so, or the button keeps its old state.
+        QSignalSpy spy(m_controller.get(), &AppController::autoStateChanged);
+        m_layoutRequestProfiles->setModelProfiles({});
+        m_settings->setLayoutRequestProfileId(QStringLiteral("without-a-layout-role"));
+        QVERIFY(!m_controller->autoPipelineAvailable());
+        QVERIFY(spy.count() > 0);
+
+        // The role is back: the button is live again, and the signal says so.
+        const int before = spy.count();
+        m_layoutRequestProfiles->setModelProfiles(ModelProfiles::instance());
+        m_settings->setLayoutRequestProfileId(QStringLiteral("mineru"));
+        QVERIFY(m_controller->autoPipelineAvailable());
+        QVERIFY(spy.count() > before);
+    }
+
+    // A markup reply without boxes leaves the page without blocks: the pass
+    // marked nothing, so it failed — even though the reply was not empty.
+    void theAutoPipelineEndsWhenTheMarkupPassMarksNoPage()
+    {
+        DetTokenChatServer server;
+        server.layoutContent = QStringLiteral("Plain reply without layout tokens");
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-boxless-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        m_controller->startAutoPipeline();
+        QVERIFY(m_controller->autoPipelineRunning());
+
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->autoPipelineRunning(), kImportTimeoutMs);
+        QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("The markup pass failed")), qPrintable(m_controller->statusMessage()));
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
         QCOMPARE(boxes->rowCount(), 0);

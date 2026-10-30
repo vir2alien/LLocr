@@ -449,7 +449,8 @@ private:
     // the user turns it by hand.
     void setPageOrientationProblem(int index, PageOrientationProblem problem);
     void applyPageDeskew(int index, double degrees);
-    void applyLayout(int pageIndex, const QString &rawText);
+    // The layout reply of a page; true when the page got its blocks.
+    bool applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);
     // The markup pass the auto pipeline asks for; done(ok) when the whole
     // pass is over, the second pass of a turned page included.
@@ -573,7 +574,7 @@ private:
     std::function<void(bool)> m_markupPassDone;
     // The pages the pass marked up. A pass that marked none did nothing, and
     // a stage that says nothing is a silent failure (ADR 212).
-    int m_markupPassMarkedPages = 0;
+    QSet<int> m_markupPassMarkedPages;
 
     void notifyPageListGrown();
     void markPageEdited(int index);
