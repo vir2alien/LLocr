@@ -70,13 +70,19 @@ private slots:
     void aSkippedStageIsPassedOver();
     void aFailedStageDoesNotStopTheRun();
     void theRunStopsOnRequest();
+    void theRunWaitsForTheStageToReportItsStop();
     void aStageThatNeverReportsItsStopEndsTheRun();
+    void aSecondStopDoesNotExtendTheGrace();
+    void aNegativeStopGraceIsRejected();
     void aSkippedStageIsNotStopped();
+    void aStopFromTheStateHandlerReachesTheStageThatIsStarting();
     void anEmptyScopeIsRefused();
     void aBusyDocumentIsRefused();
     void aFinishedSignalFromAnotherStageIsIgnored();
     void theRunKeepsTheScopeItCapturedAtTheStart();
     void settingTheStagesTwiceReplacesTheFirstList();
+    void theSameStageSetTwiceReportsOneFailure();
+    void theStagesCannotBeReplacedDuringARun();
     void theProgressComesFromTheRunningStage();
 };
 
@@ -158,6 +164,35 @@ void TestAutoPipeline::theRunStopsOnRequest()
     QVERIFY(!controller.isRunning());
 }
 
+void TestAutoPipeline::theRunWaitsForTheStageToReportItsStop()
+{
+    QStringList log;
+    FakeStage first("markup", "Markup", &log);
+    first.setEndImmediately(false);
+    first.setSilentStop(true);  // the stage winds down and reports later
+    AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
+    controller.setStages({&first});
+    controller.setStopGraceMs(2000);
+    QSignalSpy finishedSpy(&controller, &AutoPipelineController::finished);
+
+    QVERIFY(controller.start());
+    controller.stop();
+    QVERIFY(first.stopped());
+
+    // The event loop turns, but the stage has not reported yet: the run waits
+    // for it instead of giving up at the next tick.
+    QCoreApplication::processEvents();
+    QVERIFY(controller.isRunning());
+    QCOMPARE(finishedSpy.count(), 0);
+
+    // The stage reports — the run ends.
+    first.reportFinished();
+    QCoreApplication::processEvents();
+    QCOMPARE(finishedSpy.count(), 1);
+    QCOMPARE(finishedSpy.first().first().toBool(), false);
+    QVERIFY(!controller.isRunning());
+}
+
 void TestAutoPipeline::aStageThatNeverReportsItsStopEndsTheRun()
 {
     QStringList log;
@@ -180,6 +215,43 @@ void TestAutoPipeline::aStageThatNeverReportsItsStopEndsTheRun()
     QVERIFY(!controller.isRunning());
 }
 
+void TestAutoPipeline::aSecondStopDoesNotExtendTheGrace()
+{
+    QStringList log;
+    FakeStage first("markup", "Markup", &log);
+    first.setEndImmediately(false);
+    first.setSilentStop(true);
+    AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
+    controller.setStages({&first});
+    controller.setStopGraceMs(300);
+    QSignalSpy finishedSpy(&controller, &AutoPipelineController::finished);
+
+    QVERIFY(controller.start());
+    controller.stop();
+    QTest::qWait(200);
+    controller.stop();  // the deadline must not move
+    QTest::qWait(150);
+    QCOMPARE(finishedSpy.count(), 1);
+    QCOMPARE(finishedSpy.first().first().toBool(), false);
+}
+
+void TestAutoPipeline::aNegativeStopGraceIsRejected()
+{
+    QStringList log;
+    FakeStage first("markup", "Markup", &log);
+    first.setEndImmediately(false);
+    first.setSilentStop(true);
+    AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
+    controller.setStages({&first});
+    controller.setStopGraceMs(-1);  // rejected: the grace stays the default
+    QSignalSpy finishedSpy(&controller, &AutoPipelineController::finished);
+
+    QVERIFY(controller.start());
+    controller.stop();
+    QTest::qWait(100);
+    QCOMPARE(finishedSpy.count(), 0);  // the run is still waiting for the stage
+}
+
 void TestAutoPipeline::aSkippedStageIsNotStopped()
 {
     QStringList log;
@@ -198,6 +270,25 @@ void TestAutoPipeline::aSkippedStageIsNotStopped()
     QVERIFY(!second.stopped());  // the skipped stage never ran, so it is not stopped
     QCOMPARE(finishedSpy.count(), 1);
     QCOMPARE(finishedSpy.first().first().toBool(), false);
+}
+
+void TestAutoPipeline::aStopFromTheStateHandlerReachesTheStageThatIsStarting()
+{
+    QStringList log;
+    FakeStage first("markup", "Markup", &log);
+    first.setEndImmediately(false);
+    AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
+    controller.setStages({&first});
+    // The planned QML path: the pipeline's state notification asks to stop.
+    QObject::connect(&controller, &AutoPipelineController::stateChanged, &controller, [&controller]() {
+        if (controller.stageIndex() >= 0)
+            controller.stop();
+    });
+
+    QVERIFY(controller.start());
+    QVERIFY(first.started());  // the stage started
+    QVERIFY(first.stopped());  // and the stop reached it
+    QVERIFY(!controller.isRunning());
 }
 
 void TestAutoPipeline::anEmptyScopeIsRefused()
@@ -289,6 +380,44 @@ void TestAutoPipeline::settingTheStagesTwiceReplacesTheFirstList()
     QCOMPARE(log, QStringList({"recognition"}));
     QCOMPARE(controller.stageIndex(), 0);
     QCOMPARE(finishedSpy.count(), 0);
+}
+
+void TestAutoPipeline::theSameStageSetTwiceReportsOneFailure()
+{
+    QStringList log;
+    FakeStage first("markup", "Markup", &log);
+    first.setEndImmediately(false);
+    FakeStage second("recognition", "Recognition", &log);
+    second.setEndImmediately(false);
+    AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
+    controller.setStages({&first, &second});
+    controller.setStages({&first, &second});  // the same stages once more
+    QSignalSpy statusSpy(&controller, &AutoPipelineController::statusRequested);
+
+    QVERIFY(controller.start());
+    first.fail(StatusMessage::literal("the model refused"));
+    QCOMPARE(statusSpy.count(), 1);  // one failure — one message
+    QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QString("the model refused"));
+    QCOMPARE(log, QStringList({"markup", "recognition"}));
+}
+
+void TestAutoPipeline::theStagesCannotBeReplacedDuringARun()
+{
+    QStringList log;
+    FakeStage first("markup", "Markup", &log);
+    first.setEndImmediately(false);
+    FakeStage second("recognition", "Recognition", &log);
+    second.setEndImmediately(false);
+    FakeStage third("fix", "Fix", &log);
+    AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
+    controller.setStages({&first, &second});
+    QVERIFY(controller.start());
+
+    controller.setStages({&third});  // refused: the live run owns its stages
+    QCOMPARE(controller.stageCount(), 2);
+
+    first.reportFinished();
+    QCOMPARE(log, QStringList({"markup", "recognition"}));
 }
 
 void TestAutoPipeline::theProgressComesFromTheRunningStage()

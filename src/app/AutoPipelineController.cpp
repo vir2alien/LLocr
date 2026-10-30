@@ -90,18 +90,40 @@ bool AutoPipelineController::start()
     return true;
 }
 
+void AutoPipelineController::setStopGraceMs(int milliseconds)
+{
+    // A negative grace would be clamped by Qt to a tick: the run would give
+    // up on the stage at once, which is the opposite of what was asked for.
+    if (milliseconds >= 0)
+        m_stopGraceMs = milliseconds;
+}
+
 void AutoPipelineController::stop()
 {
     if (!m_running)
         return;
     m_stopping = true;
-    if (!m_current) {
-        finish(false);
+    if (m_startingStage) {
+        // A stage transition is in progress: the stage that is starting is
+        // stopped as soon as it starts, so it never works on unattended.
         return;
     }
+    if (m_current) {
+        stopCurrentStage();
+        return;
+    }
+    finish(false);
+}
+
+void AutoPipelineController::stopCurrentStage()
+{
+    if (!m_current)
+        return;
     // The stage aborts the work in flight and reports when it is done; the
-    // grace period is the backstop for a stage that never reports.
-    m_stopTimer.start(m_stopGraceMs);
+    // grace period is the backstop for a stage that never reports. A second
+    // stop must not push the deadline away.
+    if (!m_stopTimer.isActive())
+        m_stopTimer.start(m_stopGraceMs);
     m_current->stop();
 }
 
@@ -114,18 +136,25 @@ void AutoPipelineController::runStage(int index)
         return;
     }
     m_stageIndex = index;
+    m_startingStage = true;
     emit stateChanged();
 
     AutoPipelineStage *stage = m_stages.at(index).data();
     if (!stage) {
         // The stage was destroyed before the run reached it.
+        m_startingStage = false;
+        if (m_stopping)
+            finish(false);
         QTimer::singleShot(0, this, [this, index]() { runStage(index + 1); });
         return;
     }
 
     const QString reason = stage->skipReason(m_scope);
     if (!reason.isEmpty()) {
+        m_startingStage = false;
         m_skips.append(QStringLiteral("%1 — %2").arg(stage->title(), reason));
+        if (m_stopping)
+            finish(false);
         QTimer::singleShot(0, this, [this, index]() { runStage(index + 1); });
         return;
     }
@@ -133,6 +162,9 @@ void AutoPipelineController::runStage(int index)
     m_current = stage;
     emit stateChanged();
     stage->start(m_scope);
+    m_startingStage = false;
+    if (m_stopping && m_running)
+        stopCurrentStage();
 }
 
 void AutoPipelineController::onStageFinished()
@@ -168,6 +200,7 @@ void AutoPipelineController::finish(bool ok)
     m_stopTimer.stop();
     m_running = false;
     m_stopping = false;
+    m_startingStage = false;
     m_current = nullptr;
     m_stageIndex = -1;
     emit stateChanged();

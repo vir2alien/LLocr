@@ -51,7 +51,8 @@ public:
 
     // How long a stopped stage may take to report before the run ends
     // anyway: the stage aborts the work in flight and the run waits for it.
-    void setStopGraceMs(int milliseconds) { m_stopGraceMs = milliseconds; }
+    // A negative value is rejected — the grace never shrinks to a tick.
+    void setStopGraceMs(int milliseconds);
 
 public slots:
     // Starts the run; returns false when it could not start.
@@ -68,6 +69,7 @@ private:
     void runStage(int index);
     void onStageFinished();
     void onStageFailed(const llocr::StatusMessage &message);
+    void stopCurrentStage();
     void finish(bool ok);
     void reportSummary();
 
@@ -82,6 +84,7 @@ private:
     int m_stageIndex = -1;
     bool m_running = false;
     bool m_stopping = false;
+    bool m_startingStage = false;
     QStringList m_skips;
     QStringList m_failures;
 };
