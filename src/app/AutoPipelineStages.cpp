@@ -20,25 +20,14 @@ QString stageText(const QString &key)
     return stageMessage(key).text();
 }
 
-// The id names the stage in the run. The check of the corrected blocks is a
-// stage of its own, not a second run of the first check, so it carries its
-// own id.
-QString verificationStageId(const QString &titleKey)
-{
-    return titleKey == QLatin1String("Verification of the corrected blocks") ? QStringLiteral("recheck") : QStringLiteral("verification");
-}
-
 }  // namespace
 
-AutoMarkupStage::AutoMarkupStage(LayoutController &layout, RunPass runPass, QObject *parent)
-    : AutoPipelineStage(QStringLiteral("markup"), QStringLiteral("Markup"), parent), m_layout(layout), m_runPass(std::move(runPass))
-{
-}
+AutoMarkupStage::AutoMarkupStage(LayoutController &layout, RunPass runPass, QObject *parent) : AutoPipelineStage(QStringLiteral("Markup"), parent), m_layout(layout), m_runPass(std::move(runPass)) {}
 
 QString AutoMarkupStage::skipReason(const AutoPipelineStage::Scope &) const
 {
     if (!m_layout.available())
-        return stageText(QStringLiteral("No model for this task"));
+        return stageText(QStringLiteral("The markup model does not support page markup"));
     return QString();
 }
 
@@ -80,10 +69,15 @@ int AutoMarkupStage::progressTotal() const
 }
 
 AutoRecognitionStage::AutoRecognitionStage(VerificationQueueController &queue, ModelAvailable modelAvailable, QObject *parent)
-    : AutoPipelineStage(QStringLiteral("recognition"), QStringLiteral("Block recognition"), parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
+    : AutoPipelineStage(QStringLiteral("Block recognition"), parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
 {
     connect(&m_queue, &VerificationQueueController::queueFinished, this, [this]() {
         if (!m_running)
+            return;
+        // The signal belongs to the queue, not to this stage: the stage
+        // before this one ends its run while this one has already started
+        // its own. The queue is running again, so the signal is stale.
+        if (m_queue.queueActive())
             return;
         m_running = false;
         emit finished();
@@ -104,8 +98,10 @@ void AutoRecognitionStage::start(const AutoPipelineStage::Scope &pages)
     m_running = true;
     m_queue.recognizeBlocks(m_queue.unrecognizedBlocks(pages));
     if (!m_queue.queueActive()) {
+        // The queue refused the list: the work was not taken, so the stage
+        // failed — a silent success would leave the blocks unrecognized.
         m_running = false;
-        emit finished();
+        emit failed(stageMessage(QStringLiteral("The block recognition did not start: the queue refused the work")));
     }
 }
 
@@ -129,10 +125,15 @@ int AutoRecognitionStage::progressTotal() const
 }
 
 AutoVerificationStage::AutoVerificationStage(VerificationQueueController &queue, ModelAvailable modelAvailable, QString titleKey, QObject *parent)
-    : AutoPipelineStage(verificationStageId(titleKey), titleKey, parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
+    : AutoPipelineStage(titleKey, parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
 {
     connect(&m_queue, &VerificationQueueController::queueFinished, this, [this]() {
         if (!m_running)
+            return;
+        // The signal belongs to the queue, not to this stage: the stage
+        // before this one ends its run while this one has already started
+        // its own. The queue is running again, so the signal is stale.
+        if (m_queue.queueActive())
             return;
         m_running = false;
         emit finished();
@@ -153,8 +154,10 @@ void AutoVerificationStage::start(const AutoPipelineStage::Scope &pages)
     m_running = true;
     m_queue.checkBlocks(m_queue.enabledBlocks(pages));
     if (!m_queue.queueActive()) {
+        // The queue refused the list: the work was not taken, so the stage
+        // failed — a silent success would leave the blocks unjudged.
         m_running = false;
-        emit finished();
+        emit failed(stageMessage(QStringLiteral("The verification did not start: the queue refused the work")));
     }
 }
 
@@ -178,10 +181,15 @@ int AutoVerificationStage::progressTotal() const
 }
 
 AutoFixStage::AutoFixStage(VerificationQueueController &queue, AutoVerificationStage::ModelAvailable modelAvailable, QObject *parent)
-    : AutoPipelineStage(QStringLiteral("fix"), QStringLiteral("Fix"), parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
+    : AutoPipelineStage(QStringLiteral("Fix"), parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
 {
     connect(&m_queue, &VerificationQueueController::queueFinished, this, [this]() {
         if (!m_running)
+            return;
+        // The signal belongs to the queue, not to this stage: the stage
+        // before this one ends its run while this one has already started
+        // its own. The queue is running again, so the signal is stale.
+        if (m_queue.queueActive())
             return;
         m_running = false;
         emit finished();
@@ -202,8 +210,10 @@ void AutoFixStage::start(const AutoPipelineStage::Scope &pages)
     m_running = true;
     m_queue.fixBlocks(m_queue.fixableBlocks(pages));
     if (!m_queue.queueActive()) {
+        // The queue refused the list: the work was not taken, so the stage
+        // failed — a silent success would leave the blocks uncorrected.
         m_running = false;
-        emit finished();
+        emit failed(stageMessage(QStringLiteral("The fix did not start: the queue refused the work")));
     }
 }
 

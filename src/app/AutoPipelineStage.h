@@ -24,9 +24,7 @@ public:
     // work on.
     using Scope = QList<int>;
 
-    AutoPipelineStage(QString id, QString title, QObject *parent = nullptr) : QObject(parent), m_id(std::move(id)), m_title(std::move(title)) {}
-
-    QString id() const { return m_id; }
+    AutoPipelineStage(QString title, QObject *parent = nullptr) : QObject(parent), m_title(std::move(title)) {}
 
     // The title is a translation key: the status line must follow the app's
     // language, and a language switch arrives without a restart.
@@ -50,7 +48,6 @@ signals:
     void failed(const StatusMessage &message);
 
 private:
-    QString m_id;
     QString m_title;
 };
 

@@ -164,6 +164,16 @@
         <source>Added %1 file(s), %2 page(s).</source>
         <translation>Добавлено файлов: %1, страниц: %2</translation>
     </message>
+    <message>
+        <location filename="../../src/app/AppController.cpp" line="+222"/>
+        <source>The automatic pipeline is done.</source>
+        <translation>Автопайплайн завершён.</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>The automatic pipeline was stopped.</source>
+        <translation>Автопайплайн остановлен.</translation>
+    </message>
 </context>
 <context>
     <name>BlockEditPanel</name>
@@ -4589,6 +4599,26 @@
         <location line="+2"/>
         <source>Verification of the corrected blocks</source>
         <translation>Проверка исправленных блоков</translation>
+    </message>
+    <message>
+        <location filename="../../src/app/AutoPipelineStages.cpp" line="+30"/>
+        <source>The markup model does not support page markup</source>
+        <translation>Модель разметки не умеет размечать страницы</translation>
+    </message>
+    <message>
+        <location line="+74"/>
+        <source>The block recognition did not start: the queue refused the work</source>
+        <translation>Распознавание блоков не началось: очередь не приняла работу</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>The verification did not start: the queue refused the work</source>
+        <translation>Проверка не началась: очередь не приняла работу</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>The fix did not start: the queue refused the work</source>
+        <translation>Исправление не началось: очередь не приняла работу</translation>
     </message>
 </context>
 <context>

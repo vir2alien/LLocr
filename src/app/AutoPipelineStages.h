@@ -65,9 +65,8 @@ private:
 // The verification stage: the blocks of the enabled types that have no
 // verdict on their effective layer (ADR 164). The same stage serves the
 // second check — after the fix, the correction layer is the effective one
-// and its blocks have no verdict (ADR 257). The id follows the title key:
-// the check of the corrected blocks is a stage of its own, so it does not
-// carry the id of the first check.
+// and its blocks have no verdict (ADR 257). The two checks differ in their
+// title: the check of the corrected blocks is a stage of its own.
 class AutoVerificationStage : public AutoPipelineStage
 {
     Q_OBJECT

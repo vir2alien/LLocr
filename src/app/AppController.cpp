@@ -215,6 +215,14 @@ AppController::AppController(SettingsStore &settings,
     connect(m_autoPipeline, &AutoPipelineController::stateChanged, this, &AppController::autoStateChanged);
     connect(m_autoPipeline, &AutoPipelineController::stateChanged, this, &AppController::updateAvailability);
     connect(m_autoPipeline, &AutoPipelineController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+    // The run's outcome reaches the user: the button reverts, but the footer
+    // says whether the run finished or was stopped. The caveats of the run
+    // (the skipped stages and the failures) follow the outcome.
+    connect(m_autoPipeline, &AutoPipelineController::finished, this, [this](bool ok) {
+        const StatusMessage outcome = StatusMessage::translate("AppController", ok ? "The automatic pipeline is done." : "The automatic pipeline was stopped.");
+        const StatusMessage &summary = m_autoPipeline->summary();
+        setStatus(summary.isEmpty() ? outcome : StatusMessage::join({outcome, summary}, QStringLiteral(" ")));
+    });
 
     // The stage's progress moves without the pipeline changing its state: the
     // status line reads it live, so the notifier has to follow the progress.

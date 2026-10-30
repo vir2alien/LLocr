@@ -1,8 +1,21 @@
 #include <QCoreApplication>
+#include <QImage>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QtTest>
 
+#include <memory>
+#include <utility>
+
 #include "app/AutoPipelineController.h"
+#include "app/AutoPipelineStages.h"
+#include "app/DocumentModel.h"
+#include "app/VerificationPromptStore.h"
+#include "config/RequestProfileStore.h"
+#include "config/SettingsStore.h"
+#include "runtime/LaunchProfileStore.h"
+#include "runtime/RuntimeController.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
@@ -13,14 +26,14 @@ class FakeStage : public AutoPipelineStage
 {
     Q_OBJECT
 public:
-    FakeStage(QString id, QString title, QStringList *log) : AutoPipelineStage(id, title), m_log(log) {}
+    FakeStage(QString name, QString title, QStringList *log) : AutoPipelineStage(title), m_log(log), m_name(std::move(name)) {}
 
     QString skipReason(const Scope &) const override { return m_skipReason; }
     void start(const Scope &pages) override
     {
         m_started = true;
         m_scope = pages;
-        m_log->append(id());
+        m_log->append(m_name);
         if (m_endImmediately)
             emit finished();
     }
@@ -49,6 +62,7 @@ public:
 
 private:
     QStringList *m_log;
+    QString m_name;
     Scope m_scope;
     QString m_skipReason;
     bool m_endImmediately = true;
@@ -59,13 +73,60 @@ private:
     int m_total = 0;
 };
 
+// The queue and the dependencies it reads, with the layout counted as busy:
+// the queue refuses every list, the state a stage has to survive.
+class BusyQueueFixture
+{
+public:
+    explicit BusyQueueFixture(const QTemporaryDir &dir)
+    {
+        m_settings = std::make_unique<SettingsStore>();
+        m_settings->setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        m_settings->setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        m_launchProfiles = std::make_unique<LaunchProfileStore>(*m_settings);
+        m_checkProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::BlockRecognition);
+        m_fixProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Fix);
+        m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
+        m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
+        m_document = std::make_unique<DocumentModel>();
+        m_queue = std::make_unique<VerificationQueueController>(VerificationQueueController::Deps{
+            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, [] { return true; }, [](int, int) { return QString(); }, {}});
+    }
+
+    VerificationQueueController &queue() { return *m_queue; }
+    DocumentModel &document() { return *m_document; }
+
+private:
+    std::unique_ptr<SettingsStore> m_settings;
+    std::unique_ptr<LaunchProfileStore> m_launchProfiles;
+    std::unique_ptr<RequestProfileStore> m_checkProfiles;
+    std::unique_ptr<RequestProfileStore> m_fixProfiles;
+    std::unique_ptr<RuntimeController> m_runtime;
+    std::unique_ptr<VerificationPromptStore> m_verification;
+    std::unique_ptr<DocumentModel> m_document;
+    std::unique_ptr<VerificationQueueController> m_queue;
+};
+
 }  // namespace
 
 class TestAutoPipeline : public QObject
 {
     Q_OBJECT
 
+private:
+    // Must precede any SettingsStore created by the tests (see the header).
+    TestSettingsIsolation m_settingsIsolation;
+    QTemporaryDir m_dir;
+
 private slots:
+    void initTestCase()
+    {
+        QVERIFY(m_dir.isValid());
+        QImage source(64, 48, QImage::Format_ARGB32);
+        source.fill(Qt::white);
+        QVERIFY(source.save(m_dir.filePath(QStringLiteral("page.png")), "PNG"));
+    }
+
     void theStagesRunInOrder();
     void aSkippedStageIsPassedOver();
     void aFailedStageDoesNotStopTheRun();
@@ -75,7 +136,8 @@ private slots:
     void aSecondStopDoesNotExtendTheGrace();
     void aNegativeStopGraceIsRejected();
     void aSkippedStageIsNotStopped();
-    void aStopFromTheStateHandlerReachesTheStageThatIsStarting();
+    void aStopFromTheStateHandlerKeepsTheStageFromStarting();
+    void aStopDuringTheTransitionKeepsTheNextStageFromStarting();
     void anEmptyScopeIsRefused();
     void aBusyDocumentIsRefused();
     void aFinishedSignalFromAnotherStageIsIgnored();
@@ -84,6 +146,7 @@ private slots:
     void theSameStageSetTwiceReportsOneFailure();
     void theStagesCannotBeReplacedDuringARun();
     void theProgressComesFromTheRunningStage();
+    void aRefusedWorkListIsAFailure();
 };
 
 void TestAutoPipeline::theStagesRunInOrder()
@@ -272,7 +335,7 @@ void TestAutoPipeline::aSkippedStageIsNotStopped()
     QCOMPARE(finishedSpy.first().first().toBool(), false);
 }
 
-void TestAutoPipeline::aStopFromTheStateHandlerReachesTheStageThatIsStarting()
+void TestAutoPipeline::aStopFromTheStateHandlerKeepsTheStageFromStarting()
 {
     QStringList log;
     FakeStage first("markup", "Markup", &log);
@@ -286,8 +349,26 @@ void TestAutoPipeline::aStopFromTheStateHandlerReachesTheStageThatIsStarting()
     });
 
     QVERIFY(controller.start());
-    QVERIFY(first.started());  // the stage started
-    QVERIFY(first.stopped());  // and the stop reached it
+    QVERIFY(!first.started());  // the stop came before the stage began its work
+    QVERIFY(!controller.isRunning());
+}
+
+void TestAutoPipeline::aStopDuringTheTransitionKeepsTheNextStageFromStarting()
+{
+    QStringList log;
+    FakeStage first("markup", "Markup", &log);
+    FakeStage second("recognition", "Recognition", &log);
+    AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
+    controller.setStages({&first, &second});
+    // The stop arrives while the run is moving to the next stage.
+    QObject::connect(&controller, &AutoPipelineController::stateChanged, &controller, [&controller]() {
+        if (controller.stageIndex() == 1)
+            controller.stop();
+    });
+
+    QVERIFY(controller.start());
+    QCOMPARE(log, QStringList({"markup"}));  // the next stage never started
+    QVERIFY(!second.started());
     QVERIFY(!controller.isRunning());
 }
 
@@ -434,6 +515,31 @@ void TestAutoPipeline::theProgressComesFromTheRunningStage()
     QCOMPARE(controller.progressTotal(), 5);
     QCOMPARE(controller.stageIndex(), 0);
     QCOMPARE(controller.stageCount(), 1);
+}
+
+void TestAutoPipeline::aRefusedWorkListIsAFailure()
+{
+    BusyQueueFixture fixture(m_dir);
+    QVERIFY(fixture.document().appendImage(m_dir.filePath(QStringLiteral("page.png"))));
+    fixture.document().page(0).recognized = true;
+    OcrPage page;
+    BoundingBox box;
+    box.label = QStringLiteral("text");
+    page.boxes = {box};
+    fixture.document().page(0).result.pages = {page};
+
+    AutoRecognitionStage stage(fixture.queue(), [] { return true; });
+    QSignalSpy failedSpy(&stage, &AutoPipelineStage::failed);
+    QSignalSpy finishedSpy(&stage, &AutoPipelineStage::finished);
+
+    stage.start({0});
+
+    // The queue refused the list — the layout holds the document. The stage
+    // has to say so: a success would leave the block unrecognized and the run
+    // would look clean.
+    QCOMPARE(finishedSpy.count(), 0);
+    QCOMPARE(failedSpy.count(), 1);
+    QVERIFY(failedSpy.first().first().value<StatusMessage>().text().contains(QStringLiteral("the queue refused the work")));
 }
 
 QTEST_MAIN(TestAutoPipeline)

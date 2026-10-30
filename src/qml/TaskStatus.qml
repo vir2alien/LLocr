@@ -52,5 +52,6 @@ QtObject {
     function running() {
         return Controller.busy || Controller.importing || Controller.checkBusy
                || Controller.layoutBusy || ModelInstaller.taskQueueActive
+               || Controller.autoPipelineRunning
     }
 }

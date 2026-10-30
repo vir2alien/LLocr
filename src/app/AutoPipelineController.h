@@ -49,6 +49,10 @@ public:
     int progressDone() const;
     int progressTotal() const;
 
+    // What the last run skipped and why. The facade joins it with the
+    // outcome, so the user sees both in one line.
+    const StatusMessage &summary() const { return m_summary; }
+
     // How long a stopped stage may take to report before the run ends
     // anyway: the stage aborts the work in flight and the run waits for it.
     // A negative value is rejected — the grace never shrinks to a tick.
@@ -87,6 +91,7 @@ private:
     bool m_startingStage = false;
     QStringList m_skips;
     QStringList m_failures;
+    StatusMessage m_summary;
 };
 
 }  // namespace llocr

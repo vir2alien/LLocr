@@ -3274,6 +3274,83 @@ private slots:
         QCOMPARE(server.systemoneRequests(), 2);
         // The markup stage did its job: the run does not name a failure.
         QVERIFY2(!m_controller->statusMessage().contains(QStringLiteral("The markup pass failed")), qPrintable(m_controller->statusMessage()));
+        // The run's outcome reaches the user: the footer says the pipeline is
+        // done, and the caveats of the run follow it.
+        QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("The automatic pipeline is done.")), qPrintable(m_controller->statusMessage()));
+    }
+
+    // A stopped run says so: the button reverts, but the footer must name
+    // the outcome — a run that stops without a word reads as a run that
+    // never happened.
+    void theAutoPipelineSaysItWasStopped()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-stopped-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        QVERIFY(m_controller->autoPipelineAvailable());
+        m_controller->startAutoPipeline();
+        // The markup pass is in flight: the stop lands on it.
+        m_controller->stopAutoPipeline();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->autoPipelineRunning(), kImportTimeoutMs);
+
+        QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("The automatic pipeline was stopped.")), qPrintable(m_controller->statusMessage()));
+    }
+
+    // The stages are wired to each other: the fix's output feeds the recheck.
+    // The fifth stage must judge the corrected text and not the OCR original —
+    // the wiring is what makes the run a cycle and not five separate passes.
+    void theAutoPipelineFeedsTheFixIntoTheRecheck()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the decision rejects every block
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+        m_settings->setDecisionModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-fix-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        QVERIFY(m_controller->autoPipelineAvailable());
+        m_controller->startAutoPipeline();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->autoPipelineRunning(), kImportTimeoutMs);
+
+        // 1 layout + 2 transcriptions + 2 decisions + 2 fixes + 2 decisions.
+        QCOMPARE(server.requests(), 9);
+        QCOMPARE(server.systemoneRequests(), 4);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+        // The fix reached the block: the correction is there.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("Fixed block text"));
+        // The recheck judged the correction: its verdict is on the correction
+        // layer, while the text layer keeps the verdict of the first check.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedCheckStatusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        // The judged candidate was the corrected text, not the OCR original.
+        QVERIFY(server.systemoneBodies().at(2).contains("Fixed block text"));
+        QVERIFY(!server.systemoneBodies().at(2).contains("1. Introduction"));
     }
 
     // A markup pass that fails must end the run: a stage that never reports

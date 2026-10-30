@@ -83,6 +83,7 @@ bool AutoPipelineController::start()
     m_scope = pages;
     m_skips.clear();
     m_failures.clear();
+    m_summary = StatusMessage();
     m_stopping = false;
     m_running = true;
     emit stateChanged();
@@ -104,8 +105,9 @@ void AutoPipelineController::stop()
         return;
     m_stopping = true;
     if (m_startingStage) {
-        // A stage transition is in progress: the stage that is starting is
-        // stopped as soon as it starts, so it never works on unattended.
+        // A stage transition is in progress: the stop is honoured when the
+        // transition reaches the start of the stage, so the stage never works
+        // on unattended.
         return;
     }
     if (m_current) {
@@ -161,6 +163,13 @@ void AutoPipelineController::runStage(int index)
 
     m_current = stage;
     emit stateChanged();
+    // A stop that arrived during the transition is honoured before the stage
+    // starts: a stage that fires a request and is aborted at once costs a
+    // model call for nothing.
+    if (m_stopping) {
+        finish(false);
+        return;
+    }
     stage->start(m_scope);
     m_startingStage = false;
     if (m_stopping && m_running)
@@ -217,7 +226,8 @@ void AutoPipelineController::reportSummary()
         parts.append(StatusMessage::literal(failure));
     if (parts.isEmpty())
         return;
-    emit statusRequested(StatusMessage::join(parts, QStringLiteral("; ")));
+    m_summary = StatusMessage::join(parts, QStringLiteral("; "));
+    emit statusRequested(m_summary);
 }
 
 }  // namespace llocr
