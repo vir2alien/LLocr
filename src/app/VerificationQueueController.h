@@ -38,6 +38,17 @@ public:
     // CandidateRenderer; a headless test can install a stand-in painter.
     using RenderCandidateFn = std::function<void(const QString &candidateText, const std::function<void(bool ok, const QImage &image, const QString &error)> &)>;
 
+    // One block of the work list: the page and the box on it.
+    struct Task {
+        int page;
+        int box;
+    };
+
+    // Which block types a stage handles. Empty — every type. A stage that
+    // reads only some types (a task assigned to them) narrows the
+    // collection with it (ADR 257).
+    using TypeFilter = std::function<bool(const QString &blockType)>;
+
     struct Deps {
         DocumentModel &document;
         VerificationPromptStore &verification;
@@ -86,6 +97,14 @@ public:
     // for their block-recognition pass.
     bool pageBlocksRecognitionSupported(int pageIndex) const;
 
+    // The work lists, collected over an explicit page set: the blocks the
+    // recognition pass reads (no text yet), the blocks the check judges
+    // (the enabled types and the duplicate suspects) and the blocks that
+    // wait for the fixer.
+    QList<Task> unrecognizedBlocks(const QList<int> &pages, const TypeFilter &filter = {}) const;
+    QList<Task> enabledBlocks(const QList<int> &pages, const TypeFilter &filter = {}) const;
+    QList<Task> fixableBlocks(const QList<int> &pages, const TypeFilter &filter = {}) const;
+
 public slots:
     void checkBlock(int pageIndex, int boxIndex);
     void checkPageEnabledBlocks(int pageIndex);
@@ -108,6 +127,11 @@ public slots:
     void fixBlock(int pageIndex, int boxIndex);
     void fixAllProblemBlocks();
     void fixPagesProblemBlocks(const QList<int> &pages);
+    // The queues over an explicit work list — the stages of the auto
+    // pipeline collect the blocks themselves (ADR 257).
+    void recognizeBlocks(const QList<Task> &tasks);
+    void checkBlocks(const QList<Task> &tasks);
+    void fixBlocks(const QList<Task> &tasks);
     void stop();
 
 signals:
@@ -121,6 +145,9 @@ signals:
     void blockRecognized(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void blockFixed(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void problemReported(const llocr::StatusMessage &message);
+    // The queue ran out of work. The auto pipeline waits for it to move on
+    // to the next stage (ADR 257).
+    void queueFinished();
 
 private:
     enum class Phase {
@@ -129,23 +156,18 @@ private:
         Fix,       ///< the fix protocol corrects the queued blocks
     };
 
-    struct VerifyTask {
-        int page;
-        int box;
-    };
-
-    void startVerifyQueue(const QList<VerifyTask> &tasks);
-    void startRecheckQueue(const QList<VerifyTask> &tasks);
-    void startFixQueue(const QList<VerifyTask> &tasks);
-    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int rejected);
+    void startVerifyQueue(const QList<Task> &tasks);
+    void startRecheckQueue(const QList<Task> &tasks);
+    void startFixQueue(const QList<Task> &tasks);
+    void startOrReportAnswered(const QList<Task> &tasks, int answered, int rejected);
     void startNextVerify();
     void deliverVerdict(const CheckResult &verdict);
     void skipCurrentTask();
     void finishVerifyQueue();
-    void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered, int &rejected) const;
-    void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
-    void collectFixBoxes(int pageIndex, QList<VerifyTask> &out) const;
-    void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;
+    void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered, int &rejected, const TypeFilter &filter = {}) const;
+    void collectProblemBoxes(int pageIndex, QList<Task> &out) const;
+    void collectFixBoxes(int pageIndex, QList<Task> &out, const TypeFilter &filter = {}) const;
+    void collectUnrecognizedBoxes(int pageIndex, QList<Task> &out, const TypeFilter &filter = {}) const;
     double matchThresholdFor(const QString &blockType) const;
 
     Deps m_deps;
@@ -154,7 +176,7 @@ private:
     FixController m_fix;
 
     Phase m_phase = Phase::Decision;
-    QList<VerifyTask> m_verifyQueue;
+    QList<Task> m_verifyQueue;
     int m_verifyPage = -1;
     int m_verifyBoxIndex = -1;
     bool m_verifyQueueActive = false;
