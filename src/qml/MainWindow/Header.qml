@@ -135,29 +135,47 @@ ToolBar {
                 }
             }
 
-            IconToolButton {
-                text: qsTr("Recognize %1 pg.").arg(headerRoot.scopePageCount)
-                iconName: "zap"
+            // The button can be off while its reason must still be readable: a
+            // disabled control gets no hover events, so the pointer handler
+            // lives on a wrapper that stays enabled.
+            Item {
+                id: autoButtonArea
+
+                implicitWidth: autoButton.implicitWidth
+                implicitHeight: autoButton.implicitHeight
                 Layout.fillWidth: true
-                stopMode: Controller.autoPipelineRunning
-                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.autoPipelineAvailable)
-                ToolTip.visible: hovered || !enabled
-                ToolTip.text: {
-                    // The C++ owns the reason and the wording; the button only
-                    // shows it. One read: the reason scans the scope.
-                    const reason = Controller.autoPipelineBlockedReason
-                    return stopMode ? qsTr("Stop the automatic pipeline")
-                                    : (reason.length > 0
-                                       ? reason
-                                       : qsTr("Mark up, recognize, verify and fix the selected pages"))
+                Layout.minimumWidth: autoButton.implicitWidth
+
+                HoverHandler {
+                    id: autoAreaHover
                 }
-                onClicked: {
-                    if (stopMode) {
-                        Controller.stopAutoPipeline()
-                        return
+
+                IconToolButton {
+                    id: autoButton
+
+                    anchors.fill: parent
+                    text: qsTr("Recognize %1 pg.").arg(headerRoot.scopePageCount)
+                    iconName: "zap"
+                    stopMode: Controller.autoPipelineRunning
+                    enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                             && Controller.autoPipelineAvailable)
+                    ToolTip.visible: hovered || autoAreaHover.hovered
+                    ToolTip.text: {
+                        // The C++ owns the reason and the wording; the button only
+                        // shows it. One read: the reason scans the scope.
+                        const reason = Controller.autoPipelineBlockedReason
+                        return stopMode ? qsTr("Stop the automatic pipeline")
+                                        : (reason.length > 0
+                                           ? reason
+                                           : qsTr("Mark up, recognize, verify and fix the selected pages"))
                     }
-                    autoConfirmDialog.requestAutoPipeline()
+                    onClicked: {
+                        if (stopMode) {
+                            Controller.stopAutoPipeline()
+                            return
+                        }
+                        autoConfirmDialog.requestAutoPipeline()
+                    }
                 }
             }
         }
