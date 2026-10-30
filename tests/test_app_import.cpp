@@ -3273,6 +3273,40 @@ private slots:
         QCOMPARE(server.systemoneRequests(), 2);
     }
 
+    // A markup pass that fails must end the run: a stage that never reports
+    // leaves the pipeline hanging, and nothing in the suite waits for it.
+    void theAutoPipelineEndsWhenTheMarkupPassFails()
+    {
+        // No server: the markup request fails, the pages stay unmarked, and
+        // the pass has nothing to show for itself.
+        m_settings->setBaseUrl(QUrl::fromLocalFile(m_dir.filePath(QStringLiteral("no-server"))).toString());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-failed-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        QVERIFY(m_controller->autoPipelineAvailable());
+        m_controller->startAutoPipeline();
+        QVERIFY(m_controller->autoPipelineRunning());
+
+        // The run ends — it does not wait for a pass that never comes.
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->autoPipelineRunning(), kImportTimeoutMs);
+        // The stage reported the failure instead of a success: the run says
+        // which stage failed.
+        QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("The markup pass failed")), qPrintable(m_controller->statusMessage()));
+        // The pages stayed unmarked: the pass did nothing.
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 0);
+    }
+
     // The run must not start while another job holds the document: the queue
     // refuses the list of a stage whose work arrives while the layout runs,
     // and a refused list looks like a stage that did its job.

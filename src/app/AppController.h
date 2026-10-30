@@ -569,9 +569,9 @@ private:
     AutoVerificationStage *m_autoRecheckStage = nullptr;
     // The markup pass the pipeline waits for.
     std::function<void(bool)> m_markupPassDone;
-    // Whether the pass ends well. A failure that meets a busy layout waits
-    // for the layout to be free, so the next stage's work is not refused.
-    bool m_markupPassOk = true;
+    // The pages the pass marked up. A pass that marked none did nothing, and
+    // a stage that says nothing is a silent failure (ADR 212).
+    int m_markupPassMarkedPages = 0;
 
     void notifyPageListGrown();
     void markPageEdited(int index);

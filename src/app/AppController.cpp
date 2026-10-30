@@ -181,11 +181,17 @@ AppController::AppController(SettingsStore &settings,
             startLayout(pages);
             return;
         }
-        finishMarkupPass(m_markupPassOk);
+        finishMarkupPass(m_markupPassMarkedPages > 0);
     });
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_layout, &LayoutController::progressChanged, this, &AppController::layoutProgressChanged);
-    connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
+    connect(&m_layout, &LayoutController::layoutFinished, this, [this](int pageIndex, const QString &rawText) {
+        // The pages the markup pass marked up: a pass that marked none did
+        // nothing, and the stage says so instead of reporting a success.
+        if (m_markupPassDone && !rawText.isEmpty())
+            ++m_markupPassMarkedPages;
+        applyLayout(pageIndex, rawText);
+    });
     connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
 
     // The auto pipeline (ADR 257): the stages in the order they run and the
@@ -1312,39 +1318,42 @@ void AppController::stopLayout()
 
 bool AppController::autoPipelineRunning() const
 {
-    return m_autoPipeline && m_autoPipeline->isRunning();
+    return m_autoPipeline->isRunning();
 }
 
 bool AppController::autoPipelineAvailable() const
 {
-    if (!m_autoPipeline || !m_autoPipeline->canStart())
+    if (!m_autoPipeline->canStart())
         return false;
-    return m_availability.layoutModelAvailable() && m_availability.blockRecognitionModelAvailable();
+    // The gates the stages use: the markup needs the layout role of the
+    // request profile and a model to serve it, the recognition its own model.
+    // The button must not promise a run whose first stage is passed over.
+    return m_layout.available() && m_availability.layoutModelAvailable() && m_availability.blockRecognitionModelAvailable();
 }
 
 int AppController::autoPipelineStageIndex() const
 {
-    return m_autoPipeline ? m_autoPipeline->stageIndex() : -1;
+    return m_autoPipeline->stageIndex();
 }
 
 int AppController::autoPipelineStageCount() const
 {
-    return m_autoPipeline ? m_autoPipeline->stageCount() : 0;
+    return m_autoPipeline->stageCount();
 }
 
 QString AppController::autoPipelineStageTitle() const
 {
-    return m_autoPipeline ? m_autoPipeline->stageTitle() : QString();
+    return m_autoPipeline->stageTitle();
 }
 
 int AppController::autoPipelineProgressDone() const
 {
-    return m_autoPipeline ? m_autoPipeline->progressDone() : 0;
+    return m_autoPipeline->progressDone();
 }
 
 int AppController::autoPipelineProgressTotal() const
 {
-    return m_autoPipeline ? m_autoPipeline->progressTotal() : 0;
+    return m_autoPipeline->progressTotal();
 }
 
 void AppController::startAutoPipeline()
@@ -1360,7 +1369,7 @@ void AppController::stopAutoPipeline()
 void AppController::runMarkupPass(const QList<int> &pages, const std::function<void(bool)> &done)
 {
     m_markupPassDone = done;
-    m_markupPassOk = true;
+    m_markupPassMarkedPages = 0;
     startLayout(pages);
 }
 
@@ -1368,16 +1377,8 @@ void AppController::finishMarkupPass(bool ok)
 {
     if (!m_markupPassDone)
         return;
-    if (!ok && m_layout.busy()) {
-        // Another markup pass holds the layout: the stage may not end yet —
-        // the queue refuses the next stage's work while the layout runs, and
-        // a refused work list looks like a stage that did its job.
-        m_markupPassOk = false;
-        return;
-    }
     const auto done = m_markupPassDone;
     m_markupPassDone = nullptr;
-    m_markupPassOk = true;
     done(ok);
 }
 
@@ -1411,9 +1412,11 @@ void AppController::startLayout(const QList<int> &pages)
     // The markup model reads the page too: the page is turned first when it
     // lies the wrong way up.
     const auto start = [this, pages, role, prompt]() {
-        // The pass may have waited for the orientation check: another markup
-        // pass may have taken the layout in the meantime, and the layout
-        // refuses a second one in silence.
+        // The layout refuses a second pass in silence, and a pass that never
+        // starts never ends: the stage would wait for it forever. The
+        // orientation check is a local pixel analysis, so the layout cannot
+        // be taken between the check above and this call — the guard is the
+        // net under a future that makes the check asynchronous.
         if (m_layout.busy()) {
             finishMarkupPass(false);
             return;
