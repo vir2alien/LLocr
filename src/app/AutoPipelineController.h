@@ -4,8 +4,10 @@
 
 #include <QList>
 #include <QObject>
+#include <QPointer>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 
 #include "app/AutoPipelineStage.h"
 #include "core/StatusMessage.h"
@@ -23,7 +25,9 @@ class AutoPipelineController : public QObject
 
 public:
     struct Deps {
-        // The pages the run works on: the thumbnail selection, empty = all.
+        // The pages the run works on. The provider expands an empty selection
+        // into every page, so an empty list here means there is nothing to
+        // work on.
         std::function<QList<int>()> scopePages;
         // Whether the document can be worked on now (no other job runs).
         std::function<bool()> idle;
@@ -31,7 +35,8 @@ public:
 
     explicit AutoPipelineController(Deps deps, QObject *parent = nullptr);
 
-    // The stages, in the order they run. The controller does not own them.
+    // The stages, in the order they run. The controller does not own them; a
+    // stage destroyed before the run reaches it is passed over.
     void setStages(QList<AutoPipelineStage *> stages);
 
     bool isRunning() const { return m_running; }
@@ -43,6 +48,10 @@ public:
     QString stageTitle() const;
     int progressDone() const;
     int progressTotal() const;
+
+    // How long a stopped stage may take to report before the run ends
+    // anyway: the stage aborts the work in flight and the run waits for it.
+    void setStopGraceMs(int milliseconds) { m_stopGraceMs = milliseconds; }
 
 public slots:
     // Starts the run; returns false when it could not start.
@@ -62,10 +71,14 @@ private:
     void finish(bool ok);
     void reportSummary();
 
+    static constexpr int kStopGraceMs = 2000;
+
     Deps m_deps;
-    QList<AutoPipelineStage *> m_stages;
+    QList<QPointer<AutoPipelineStage>> m_stages;
     AutoPipelineStage::Scope m_scope;
-    AutoPipelineStage *m_current = nullptr;
+    QPointer<AutoPipelineStage> m_current;
+    QTimer m_stopTimer;
+    int m_stopGraceMs = kStopGraceMs;
     int m_stageIndex = -1;
     bool m_running = false;
     bool m_stopping = false;

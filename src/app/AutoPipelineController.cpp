@@ -6,12 +6,29 @@
 
 namespace llocr {
 
-AutoPipelineController::AutoPipelineController(Deps deps, QObject *parent) : QObject(parent), m_deps(std::move(deps)) {}
+AutoPipelineController::AutoPipelineController(Deps deps, QObject *parent) : QObject(parent), m_deps(std::move(deps))
+{
+    m_stopTimer.setSingleShot(true);
+    connect(&m_stopTimer, &QTimer::timeout, this, [this]() {
+        // The stage did not report its stop in time: the run ends anyway.
+        if (m_running && m_stopping)
+            finish(false);
+    });
+}
 
 void AutoPipelineController::setStages(QList<AutoPipelineStage *> stages)
 {
-    m_stages = std::move(stages);
-    for (AutoPipelineStage *stage : m_stages) {
+    if (m_running)
+        return;
+    for (const QPointer<AutoPipelineStage> &stage : m_stages) {
+        if (stage)
+            disconnect(stage.data(), nullptr, this, nullptr);
+    }
+    m_stages.clear();
+    for (AutoPipelineStage *stage : stages) {
+        if (!stage)
+            continue;
+        m_stages.append(stage);
         connect(stage, &AutoPipelineStage::finished, this, &AutoPipelineController::onStageFinished);
         connect(stage, &AutoPipelineStage::failed, this, &AutoPipelineController::onStageFailed);
     }
@@ -54,11 +71,16 @@ bool AutoPipelineController::start()
 {
     if (m_running)
         return false;
-    if (!m_deps.idle() || m_deps.scopePages().isEmpty()) {
-        emit statusRequested(StatusMessage::translate("AutoPipelineController", "The document is busy"));
+    if (!m_deps.idle()) {
+        emit statusRequested(StatusMessage::translate("AutoPipelineController", "Another job is running"));
         return false;
     }
-    m_scope = m_deps.scopePages();
+    const QList<int> pages = m_deps.scopePages();
+    if (pages.isEmpty()) {
+        emit statusRequested(StatusMessage::translate("AutoPipelineController", "No pages to process"));
+        return false;
+    }
+    m_scope = pages;
     m_skips.clear();
     m_failures.clear();
     m_stopping = false;
@@ -77,12 +99,10 @@ void AutoPipelineController::stop()
         finish(false);
         return;
     }
+    // The stage aborts the work in flight and reports when it is done; the
+    // grace period is the backstop for a stage that never reports.
+    m_stopTimer.start(m_stopGraceMs);
     m_current->stop();
-    // A stage that does not report its stop must not leave the run hanging.
-    QTimer::singleShot(0, this, [this]() {
-        if (m_running && m_stopping)
-            finish(false);
-    });
 }
 
 void AutoPipelineController::runStage(int index)
@@ -93,10 +113,15 @@ void AutoPipelineController::runStage(int index)
         finish(true);
         return;
     }
-    AutoPipelineStage *stage = m_stages.at(index);
     m_stageIndex = index;
-    m_current = stage;
     emit stateChanged();
+
+    AutoPipelineStage *stage = m_stages.at(index).data();
+    if (!stage) {
+        // The stage was destroyed before the run reached it.
+        QTimer::singleShot(0, this, [this, index]() { runStage(index + 1); });
+        return;
+    }
 
     const QString reason = stage->skipReason(m_scope);
     if (!reason.isEmpty()) {
@@ -104,14 +129,19 @@ void AutoPipelineController::runStage(int index)
         QTimer::singleShot(0, this, [this, index]() { runStage(index + 1); });
         return;
     }
+
+    m_current = stage;
+    emit stateChanged();
     stage->start(m_scope);
 }
 
 void AutoPipelineController::onStageFinished()
 {
-    if (!m_running || sender() != m_current)
+    if (!m_running || sender() != m_current.data())
         return;
+    m_current = nullptr;
     if (m_stopping) {
+        m_stopTimer.stop();
         finish(false);
         return;
     }
@@ -120,11 +150,13 @@ void AutoPipelineController::onStageFinished()
 
 void AutoPipelineController::onStageFailed(const StatusMessage &message)
 {
-    if (!m_running || sender() != m_current)
+    if (!m_running || sender() != m_current.data())
         return;
+    m_current = nullptr;
     m_failures.append(message.text());
     emit statusRequested(message);
     if (m_stopping) {
+        m_stopTimer.stop();
         finish(false);
         return;
     }
@@ -133,6 +165,7 @@ void AutoPipelineController::onStageFailed(const StatusMessage &message)
 
 void AutoPipelineController::finish(bool ok)
 {
+    m_stopTimer.stop();
     m_running = false;
     m_stopping = false;
     m_current = nullptr;
