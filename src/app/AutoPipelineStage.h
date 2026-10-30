@@ -19,8 +19,9 @@ class AutoPipelineStage : public QObject
     Q_OBJECT
 
 public:
-    // The pages the run works on: the thumbnail selection at the moment the
-    // run started, or every page when the selection is empty.
+    // The pages the run works on. The provider expands an empty selection
+    // into every page, so an empty list here means there is nothing to
+    // work on.
     using Scope = QList<int>;
 
     AutoPipelineStage(QString id, QString title, QObject *parent = nullptr) : QObject(parent), m_id(std::move(id)), m_title(std::move(title)) {}
