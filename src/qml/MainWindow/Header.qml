@@ -139,9 +139,21 @@ ToolBar {
                 text: qsTr("Recognize %1 pg.").arg(headerRoot.scopePageCount)
                 iconName: "zap"
                 Layout.fillWidth: true
-                enabled: false
+                stopMode: Controller.autoPipelineRunning
+                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                         && Controller.autoPipelineAvailable)
                 ToolTip.visible: hovered
-                ToolTip.text: qsTr("Automatic pipelines arrive in a later step")
+                ToolTip.text: stopMode ? qsTr("Stop the automatic pipeline")
+                                       : (Controller.autoPipelineAvailable
+                                          ? qsTr("Mark up, recognize, verify and fix the selected pages")
+                                          : qsTr("The automatic pipeline needs a markup and a recognition model"))
+                onClicked: {
+                    if (stopMode) {
+                        Controller.stopAutoPipeline()
+                        return
+                    }
+                    autoConfirmDialog.requestAutoPipeline()
+                }
             }
         }
 
@@ -506,5 +518,24 @@ ToolBar {
         }
 
         onConfirmed: Controller.layoutScopePages()
+    }
+
+    // The auto pipeline starts with the markup pass, and the markup pass
+    // replaces the pages' blocks (and drops their text) — the same loss the
+    // markup button asks about.
+    InterruptConfirmDialog {
+        id: autoConfirmDialog
+
+        function requestAutoPipeline() {
+            if (!Controller.scopeHasResults) {
+                Controller.startAutoPipeline()
+                return
+            }
+            title = qsTr("Automatic pipeline?")
+            prompt = qsTr("The pipeline replaces the blocks and the text of the selected pages. Continue?")
+            open()
+        }
+
+        onConfirmed: Controller.startAutoPipeline()
     }
 } // ToolBar

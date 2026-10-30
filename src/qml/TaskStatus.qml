@@ -9,6 +9,19 @@ QtObject {
     // message only shows when nothing is running. Shared by the footer and
     // the toolbar's running indicator.
     function text() {
+        if (Controller.autoPipelineRunning) {
+            const stage = Controller.autoPipelineStageTitle
+            const total = Controller.autoPipelineProgressTotal
+            const done = Controller.autoPipelineProgressDone
+            const step = Controller.autoPipelineStageIndex + 1
+            const count = Controller.autoPipelineStageCount
+            // Between the stages the orchestrator has no current stage: the
+            // line shows the step alone until the title arrives.
+            if (stage.length === 0)
+                return qsTr("Auto %1/%2").arg(step).arg(count)
+            const head = qsTr("Auto %1/%2: %3").arg(step).arg(count).arg(stage)
+            return total > 0 ? qsTr("%1 %2 / %3").arg(head).arg(done).arg(total) : head
+        }
         if (ModelInstaller.taskQueueActive)
             return ModelInstaller.statusMessage
                    + (ModelInstaller.taskQueueRemaining > 0

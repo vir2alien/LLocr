@@ -1010,7 +1010,7 @@
     <message>
         <location line="-339"/>
         <source>Automatic pipelines arrive in a later step</source>
-        <translation>Автоматические пайплайны появятся в следующем шаге</translation>
+        <translation type="vanished">Автоматические пайплайны появятся в следующем шаге</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -1219,6 +1219,31 @@
         <location line="+1"/>
         <source>Marking up replaces the recognized blocks and text on the selected pages. Continue?</source>
         <translation>Разметка заменит распознанные блоки и текст на выбранных страницах. Продолжить?</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+146"/>
+        <source>Stop the automatic pipeline</source>
+        <translation>Остановить автопайплайн</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Mark up, recognize, verify and fix the selected pages</source>
+        <translation>Разметить, распознать, проверить и исправить выбранные страницы</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The automatic pipeline needs a markup and a recognition model</source>
+        <translation>Автопайплайну нужны модель разметки и модель распознавания</translation>
+    </message>
+    <message>
+        <location line="+385"/>
+        <source>Automatic pipeline?</source>
+        <translation>Автопайплайн?</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The pipeline replaces the blocks and the text of the selected pages. Continue?</source>
+        <translation>Пайплайн заменит блоки и текст выбранных страниц. Продолжить?</translation>
     </message>
 </context>
 <context>
@@ -3497,7 +3522,7 @@
 <context>
     <name>TaskStatus</name>
     <message>
-        <location filename="../../src/qml/TaskStatus.qml" line="+18"/>
+        <location filename="../../src/qml/TaskStatus.qml" line="+31"/>
         <source>Opening %1 / %2</source>
         <translation>Открытие %1 / %2</translation>
     </message>
@@ -3534,6 +3559,21 @@
             <numerusform>ещё %n в очереди</numerusform>
             <numerusform>ещё %n в очереди</numerusform>
         </translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/TaskStatus.qml" line="+21"/>
+        <source>Auto %1/%2</source>
+        <translation>Авто %1/%2</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Auto %1/%2: %3</source>
+        <translation>Авто %1/%2: %3</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 %2 / %3</source>
+        <translation>%1 %2 / %3</translation>
     </message>
 </context>
 <context>
@@ -4468,6 +4508,77 @@
         <location filename="../../src/runtime/SingleInstanceGuard.cpp" line="+18"/>
         <source>Another LLocr instance is already running; local server operations are disabled.</source>
         <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
+    </message>
+</context>
+<context>
+    <name>AutoPipelineController</name>
+    <message>
+        <location filename="../../src/app/AutoPipelineController.cpp" line="+47"/>
+        <location line="+28"/>
+        <source>Another job is running</source>
+        <translation>Другая работа уже выполняется</translation>
+    </message>
+    <message>
+        <location line="-26"/>
+        <location line="+31"/>
+        <source>No pages to process</source>
+        <translation>Нет страниц для обработки</translation>
+    </message>
+</context>
+<context>
+    <name>AutoPipelineStage</name>
+    <message>
+        <location filename="../../src/app/AutoPipelineStages.cpp" line="+34"/>
+        <source>Markup</source>
+        <translation>Разметка</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <location line="+55"/>
+        <location line="+49"/>
+        <location line="+49"/>
+        <source>No model for this task</source>
+        <translation>Нет модели для этой задачи</translation>
+    </message>
+    <message>
+        <location line="-135"/>
+        <source>The markup pass failed</source>
+        <translation>Разметка не удалась</translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>Block recognition</source>
+        <translation>Распознавание блоков</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Nothing to recognize</source>
+        <translation>Нечего распознавать</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>Nothing to check</source>
+        <translation>Нечего проверять</translation>
+    </message>
+    <message>
+        <location line="+34"/>
+        <source>Fix</source>
+        <translation>Исправление</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Nothing to fix</source>
+        <translation>Нечего исправлять</translation>
+    </message>
+    <message>
+        <location filename="../../src/app/AppController.cpp" line="+196"/>
+        <source>Verification</source>
+        <translation>Проверка</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Verification of the corrected blocks</source>
+        <translation>Проверка исправленных блоков</translation>
     </message>
 </context>
 <context>
