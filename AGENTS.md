@@ -50,6 +50,7 @@
   | `docs/29-external-runtime-tasks-and-secrets.md` | Plan + record: the external runtime gets the same four tasks as the managed one, each with its own endpoint, key and alias (ADR 226); the secrets live in the OS secret store (ADR 227) |
   | `docs/31-minicpm-jev.md`  | Model manual: MiniCPM-OCR Jev — the visual-diff decision (`systemone_visual_diff_v1`, two images, the CandidateRenderer render leg, thresholds pending calibration); Russian mirror in `31-minicpm-jev.ru.md` |
 | `docs/32-orientation-pipeline.md` | The page-orientation correction pipeline: the two-stage pixel check (Sauvola, the skew sweep, periodicity + variation), the auto-straightening, the markup pass's rotation-token vote and the auto-turn with the second pass; Russian mirror in `32-orientation-pipeline.ru.md` |
+| `docs/33-auto-pipeline.md` | The auto mode (ADR 257): the pipeline of stages (markup → recognition → verification → fix → verification of the corrected), the stage contract (`AutoPipelineStage`), the orchestrator (`AutoPipelineController`), the skip/failure semantics and the seam for per-block-type models |
   
   ## Rules for the agent
   

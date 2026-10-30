@@ -901,7 +901,7 @@ class AutoRecognitionStage : public AutoPipelineStage
     Q_OBJECT
 
 public:
-    explicit AutoRecognitionStage(VerificationQueueController &queue, QObject *parent = nullptr);
+    explicit AutoRecognitionStage(VerificationQueueController &queue, ModelAvailable modelAvailable, QObject *parent = nullptr);
 
     QString skipReason(const AutoPipelineStage::Scope &pages) const override;
     void start(const AutoPipelineStage::Scope &pages) override;
@@ -1101,7 +1101,8 @@ int AppController::autoPipelineProgressTotal() const { return m_autoPipeline.pro
         [this](const AutoPipelineStage::Scope &pages, const std::function<void(bool)> &done) {
             runMarkupPass(pages, done);
         }, this);
-    m_autoRecognitionStage = new AutoRecognitionStage(m_verify, this);
+    m_autoRecognitionStage = new AutoRecognitionStage(m_verify,
+        [this]() { return m_availability.blockRecognitionModelAvailable(); }, this);
     m_autoVerificationStage = new AutoVerificationStage(m_verify,
         [this]() { return m_availability.decisionModelAvailable(); },
         QStringLiteral("Verification"), this);
