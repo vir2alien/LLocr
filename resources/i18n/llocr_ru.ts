@@ -1236,14 +1236,19 @@
         <translation>Автопайплайну нужны модель разметки и модель распознавания</translation>
     </message>
     <message>
-        <location line="+385"/>
+        <location line="+389"/>
         <source>Automatic pipeline?</source>
         <translation>Автопайплайн?</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>The pipeline replaces the blocks and the text of the selected pages. Continue?</source>
-        <translation>Пайплайн заменит блоки и текст выбранных страниц. Продолжить?</translation>
+        <source>The pipeline replaces the blocks and the text on every page. Continue?</source>
+        <translation>Пайплайн заменит блоки и текст на всех страницах. Продолжить?</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The pipeline replaces the blocks and the text on the selected pages. Continue?</source>
+        <translation>Пайплайн заменит блоки и текст на выбранных страницах. Продолжить?</translation>
     </message>
 </context>
 <context>
@@ -3561,7 +3566,7 @@
         </translation>
     </message>
     <message>
-        <location filename="../../src/qml/TaskStatus.qml" line="+21"/>
+        <location filename="../../src/qml/TaskStatus.qml" line="+23"/>
         <source>Auto %1/%2</source>
         <translation>Авто %1/%2</translation>
     </message>

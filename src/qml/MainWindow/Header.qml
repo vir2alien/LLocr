@@ -142,7 +142,7 @@ ToolBar {
                 stopMode: Controller.autoPipelineRunning
                 enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
                          && Controller.autoPipelineAvailable)
-                ToolTip.visible: hovered
+                ToolTip.visible: hovered || !enabled
                 ToolTip.text: stopMode ? qsTr("Stop the automatic pipeline")
                                        : (Controller.autoPipelineAvailable
                                           ? qsTr("Mark up, recognize, verify and fix the selected pages")
@@ -531,8 +531,13 @@ ToolBar {
                 Controller.startAutoPipeline()
                 return
             }
+            // An empty selection means the whole document, and the markup pass
+            // wipes the blocks and the text of every page in scope.
+            const n = Controller.selectedPageCount
+            const all = n === 0 || n === Controller.pageCount
             title = qsTr("Automatic pipeline?")
-            prompt = qsTr("The pipeline replaces the blocks and the text of the selected pages. Continue?")
+            prompt = all ? qsTr("The pipeline replaces the blocks and the text on every page. Continue?")
+                         : qsTr("The pipeline replaces the blocks and the text on the selected pages. Continue?")
             open()
         }
 

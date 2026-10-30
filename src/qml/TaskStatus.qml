@@ -13,7 +13,9 @@ QtObject {
             const stage = Controller.autoPipelineStageTitle
             const total = Controller.autoPipelineProgressTotal
             const done = Controller.autoPipelineProgressDone
-            const step = Controller.autoPipelineStageIndex + 1
+            // The run starts before the first stage is assigned: the number
+            // must not fall to zero in that window.
+            const step = Math.max(1, Controller.autoPipelineStageIndex + 1)
             const count = Controller.autoPipelineStageCount
             // Between the stages the orchestrator has no current stage: the
             // line shows the step alone until the title arrives.
