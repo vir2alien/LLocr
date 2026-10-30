@@ -2,15 +2,30 @@
 
 #include "app/LayoutController.h"
 
+#include <QPointer>
+
 #include <utility>
 
 namespace llocr {
 
 namespace {
 
+StatusMessage stageMessage(const QString &key)
+{
+    return StatusMessage::translate("AutoPipelineStage", key);
+}
+
 QString stageText(const QString &key)
 {
-    return StatusMessage::translate("AutoPipelineStage", key).text();
+    return stageMessage(key).text();
+}
+
+// The id names the stage in the run. The check of the corrected blocks is a
+// stage of its own, not a second run of the first check, so it carries its
+// own id.
+QString verificationStageId(const QString &titleKey)
+{
+    return titleKey == QLatin1String("Verification of the corrected blocks") ? QStringLiteral("recheck") : QStringLiteral("verification");
 }
 
 }  // namespace
@@ -30,22 +45,27 @@ QString AutoMarkupStage::skipReason(const AutoPipelineStage::Scope &) const
 void AutoMarkupStage::start(const AutoPipelineStage::Scope &pages)
 {
     m_running = true;
-    m_runPass(pages, [this](bool ok) {
-        if (!m_running)
+    // The stage can be destroyed while the pass is in flight, so the callback
+    // holds a guarded pointer and not the raw one.
+    const QPointer<AutoMarkupStage> self(this);
+    m_runPass(pages, [self](bool ok) {
+        if (!self || !self->m_running)
             return;
-        m_running = false;
+        self->m_running = false;
         if (ok) {
-            emit finished();
+            emit self->finished();
             return;
         }
-        emit failed(StatusMessage::translate("AutoPipelineStage", QStringLiteral("The markup pass failed")));
+        emit self->failed(stageMessage(QStringLiteral("The markup pass failed")));
     });
 }
 
 void AutoMarkupStage::stop()
 {
-    m_layout.stop();
+    if (!m_running)
+        return;
     m_running = false;
+    m_layout.stop();
     emit finished();
 }
 
@@ -58,8 +78,6 @@ int AutoMarkupStage::progressTotal() const
 {
     return m_layout.progressTotal();
 }
-
-AutoRecognitionStage::AutoRecognitionStage(VerificationQueueController &queue, QObject *parent) : AutoRecognitionStage(queue, ModelAvailable{}, parent) {}
 
 AutoRecognitionStage::AutoRecognitionStage(VerificationQueueController &queue, ModelAvailable modelAvailable, QObject *parent)
     : AutoPipelineStage(QStringLiteral("recognition"), QStringLiteral("Block recognition"), parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
@@ -93,8 +111,10 @@ void AutoRecognitionStage::start(const AutoPipelineStage::Scope &pages)
 
 void AutoRecognitionStage::stop()
 {
-    m_queue.stop();
+    if (!m_running)
+        return;
     m_running = false;
+    m_queue.stop();
     emit finished();
 }
 
@@ -109,7 +129,7 @@ int AutoRecognitionStage::progressTotal() const
 }
 
 AutoVerificationStage::AutoVerificationStage(VerificationQueueController &queue, ModelAvailable modelAvailable, QString titleKey, QObject *parent)
-    : AutoPipelineStage(QStringLiteral("verification"), std::move(titleKey), parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
+    : AutoPipelineStage(verificationStageId(titleKey), titleKey, parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
 {
     connect(&m_queue, &VerificationQueueController::queueFinished, this, [this]() {
         if (!m_running)
@@ -140,8 +160,10 @@ void AutoVerificationStage::start(const AutoPipelineStage::Scope &pages)
 
 void AutoVerificationStage::stop()
 {
-    m_queue.stop();
+    if (!m_running)
+        return;
     m_running = false;
+    m_queue.stop();
     emit finished();
 }
 
@@ -187,8 +209,10 @@ void AutoFixStage::start(const AutoPipelineStage::Scope &pages)
 
 void AutoFixStage::stop()
 {
-    m_queue.stop();
+    if (!m_running)
+        return;
     m_running = false;
+    m_queue.stop();
     emit finished();
 }
 
