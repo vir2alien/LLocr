@@ -68,9 +68,9 @@
         "formula": "equation"
       },
       "matchThresholdByBlock": {
-        "text": 0.5,
-        "equation": 0.5,
-        "table": 0.5
+        "text": 0.92,
+        "equation": 0.87,
+        "table": 0.4
       },
       "launch": [
         {
@@ -99,7 +99,7 @@
         }
       ],
       "request": [],
-      "_note": "The visual-diff decision (docs/31): the app sends the crop, the candidate rendered back into an image, and the candidate text; the task wording is baked into the model's prompt, so the request profile stays empty and the profile ships no question texts. The noul head answers P(candidate is consistent) in one pass — Ok above the threshold, Mismatch below. The threshold 0.5 is the upstream service default; recalibrate per block type on a run with archive/decision-text/scripts/decision-calibrate.py before trusting the split."
+      "_note": "The visual-diff decision (docs/31): the app sends the crop, the candidate rendered back into an image, and the candidate text; the task wording is baked into the model's prompt, so the request profile stays empty and the profile ships no question texts. The noul head answers P(candidate is consistent) in one pass — Ok above the threshold, Mismatch below. The thresholds are measured on the OCR_TEST corpus (177 blocks, MinerU2.5-Pro recognition, the app's own CandidateRenderer renders, llama.cpp b11946) — the knee of the per-type FN/FP(t) curve, one caught error for at most one false alarm (OCRtest/decision_models/test 2/iteration8); the run's report also records that the render leg rejects every table (all p < 0.02), so the table value is the edge of the measured region and tables keep landing on Mismatch."
     }
   }
 }

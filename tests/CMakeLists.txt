@@ -494,6 +494,22 @@ qt_add_resources(test_candidate_renderer "candidate_renderer_preview_res"
 )
 add_test(NAME test_candidate_renderer COMMAND test_candidate_renderer)
 
+# Helper, not a test: dumps the app's own candidate renders of a .llocr
+# project for the decision-eval stand (the visual-diff threshold calibration,
+# docs/31 §6, ADR 184).
+qt_add_executable(candidate_render_dump candidate_render_dump.cpp)
+
+target_link_libraries(candidate_render_dump PRIVATE
+    Qt6::WebEngineQuick
+    llocr_app
+)
+
+qt_add_resources(candidate_render_dump "candidate_render_dump_preview_res"
+    PREFIX "/preview"
+    BASE "${CMAKE_SOURCE_DIR}/resources/preview"
+    FILES ${TEST_CANDIDATE_PREVIEW_FILES}
+)
+
 # ---- Shared HTTP policy (ADR 108) -----------------------------------------
 qt_add_executable(test_http_client test_http_client.cpp)
 

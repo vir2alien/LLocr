@@ -246,17 +246,26 @@ URLs.
 
 ## 6. Thresholds
 
-The profile ships the upstream service default **0.5** — one value, with
-`blockAliases` mapping `formula` → `equation` and per-block entries for the
-three trained categories (text/equation/table). The upstream docs are
-explicit that scores are not bitwise reproducible and that the render
-environment shifts the absolute values, so **do not trust the split until a
-run through `archive/decision-text/scripts/decision-eval/score-project.py` +
-`archive/decision-text/scripts/decision-calibrate.py` recalibrates the
-per-block thresholds on
-this app's own renders** (the ADR 184 rule: a threshold is measured against
-the request that ships). Empty/unreadable crops are not Jev's questions —
-there are no `emptyThreshold`/`readableThreshold` values to ship.
+The thresholds are **measured** on the OCR_TEST corpus (177 blocks inside the
+check scope, MinerU2.5-Pro recognition, candidate renders by this app's own
+`CandidateRenderer`, llama.cpp b11946; the run and the report live in
+`OCRtest/decision_models/test 2/iteration8`; the ADR 184 rule — a threshold is
+measured against the request that ships). A type's threshold is the knee of its
+FN/FP(t) curve: the last step where one caught error costs at most one false
+alarm:
+
+- **text 0.92**, **equation 0.87**, **table 0.4**, base (types without an
+  entry) 0.5.
+- On the corpus: **FN 10 (13.7 %) / FP 41 (39.4 %)** against FN 29 / FP 15 at
+  the old 0.5; d3-mini scored FN 12 / FP 22 on the same corpus.
+- The residual FNs are print homoglyphs (и/н, и/И, Π/II, ρ/p, г/r), integrals
+  (∯→∬, ∭→∬∬) and lost overbars/punctuation — out of a visual diff's reach.
+- **Tables are rejected outright** (all p < 0.02 at any threshold): the
+  markdown-grid render is out of the model's distribution. The `table` entry
+  is the edge of the measured region; every table keeps landing on Mismatch.
+
+Empty/unreadable crops are not Jev's questions — there are no
+`emptyThreshold`/`readableThreshold` values to ship.
 
 ## 7. Settings in the app
 
@@ -277,11 +286,12 @@ there are no `emptyThreshold`/`readableThreshold` values to ship.
   or a seal is out of distribution.
 - The candidate text rides the wire verbatim (the training data kept
   whitespace); the app does not strip or normalize it.
-- **The threshold is upstream's, not a measurement of this app.** 0.5 is the
-  upstream service's default, and upstream says about its own llama.cpp path
-  that the score scale can only be established by comparing the same inputs
-  against a known backend. The calibration run of §6 has not been made for
-  this app yet.
+- **The thresholds hold for this app's render pipeline and corpus.** They are
+  measured (§6), but the measurement rides on the OCR_TEST corpus and on the
+  app's own renderer: documents whose typography differs sharply from the
+  render (typewriter-style scans) push even correct text down the scale and
+  land on Mismatch — the FP tail the thresholds cannot remove. A corpus with
+  another recognition (or a changed renderer) needs a re-run.
 - **The memory block of the profile is derived, not measured** (docs/27 §6
   marks the row `minicpm-jev` as derived), and its vision term is a
   **one-image** budget while a request always carries two images. Rerun
