@@ -73,12 +73,12 @@ private:
     int m_total = 0;
 };
 
-// The queue and the dependencies it reads, with the layout counted as busy:
-// the queue refuses every list, the state a stage has to survive.
-class BusyQueueFixture
+// The queue and the dependencies it reads. The layout can be counted as busy:
+// the queue then refuses every list, the state a stage has to survive.
+class QueueFixture
 {
 public:
-    explicit BusyQueueFixture(const QTemporaryDir &dir)
+    explicit QueueFixture(const QTemporaryDir &dir, bool layoutBusy = true)
     {
         m_settings = std::make_unique<SettingsStore>();
         m_settings->setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
@@ -89,8 +89,9 @@ public:
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_document = std::make_unique<DocumentModel>();
+        const std::function<bool()> layoutIsBusy = [layoutBusy] { return layoutBusy; };
         m_queue = std::make_unique<VerificationQueueController>(VerificationQueueController::Deps{
-            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, [] { return true; }, [](int, int) { return QString(); }, {}});
+            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, layoutIsBusy, [](int, int) { return QString(); }, {}});
     }
 
     VerificationQueueController &queue() { return *m_queue; }
@@ -147,6 +148,7 @@ private slots:
     void theStagesCannotBeReplacedDuringARun();
     void theProgressComesFromTheRunningStage();
     void aRefusedWorkListIsAFailure();
+    void aStoppedQueueEndsTheRun();
 };
 
 void TestAutoPipeline::theStagesRunInOrder()
@@ -519,7 +521,7 @@ void TestAutoPipeline::theProgressComesFromTheRunningStage()
 
 void TestAutoPipeline::aRefusedWorkListIsAFailure()
 {
-    BusyQueueFixture fixture(m_dir);
+    QueueFixture fixture(m_dir);
     QVERIFY(fixture.document().appendImage(m_dir.filePath(QStringLiteral("page.png"))));
     fixture.document().page(0).recognized = true;
     OcrPage page;
@@ -540,6 +542,35 @@ void TestAutoPipeline::aRefusedWorkListIsAFailure()
     QCOMPARE(finishedSpy.count(), 0);
     QCOMPARE(failedSpy.count(), 1);
     QVERIFY(failedSpy.first().first().value<StatusMessage>().text().contains(QStringLiteral("the queue refused the work")));
+}
+
+// The queue stopped from outside the run — the toolbar's stop button, pressed
+// while the auto run owns the queue. The stage waits for a work list that is
+// gone: without the queue's word the run would wait for it forever.
+void TestAutoPipeline::aStoppedQueueEndsTheRun()
+{
+    QueueFixture fixture(m_dir, false);
+    QVERIFY(fixture.document().appendImage(m_dir.filePath(QStringLiteral("page.png"))));
+    fixture.document().page(0).recognized = true;
+    OcrPage page;
+    BoundingBox box;
+    box.label = QStringLiteral("text");
+    page.boxes = {box};
+    fixture.document().page(0).result.pages = {page};
+
+    AutoRecognitionStage stage(fixture.queue(), [] { return true; });
+    AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
+    controller.setStages({&stage});
+    QSignalSpy finishedSpy(&controller, &AutoPipelineController::finished);
+
+    QVERIFY(controller.start());
+    QVERIFY(fixture.queue().queueActive());  // the stage's work list was taken
+
+    fixture.queue().stop();  // the queue is stopped from outside the run
+
+    // The stage heard it and reported: the run moves on and ends.
+    QTRY_COMPARE_WITH_TIMEOUT(finishedSpy.count(), 1, 2000);
+    QVERIFY(!controller.isRunning());
 }
 
 QTEST_MAIN(TestAutoPipeline)

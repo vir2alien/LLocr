@@ -42,13 +42,17 @@ QtObject {
         if (Controller.layoutBusy)
             return qsTr("Markup %1 / %2").arg(Controller.layoutProgressDone)
                                           .arg(Controller.layoutProgressTotal)
+        // The run's line: the outcome of the last run and the caveats it
+        // carried. It outranks the "check finished" line of the manual flow —
+        // that line belongs to a check the user started.
+        if (Controller.autoPipelineMessage.length > 0)
+            return Controller.autoPipelineMessage
         if (Controller.checkFinished)
             return qsTr("Check finished")
         return Controller.statusMessage
     }
 
-    // The toolbar's running indicator folds the recognition stage (which has
-    // no done/total counters) into the same line.
+    // The footer's spinner follows the same tasks the status line names.
     function running() {
         return Controller.busy || Controller.importing || Controller.checkBusy
                || Controller.layoutBusy || ModelInstaller.taskQueueActive

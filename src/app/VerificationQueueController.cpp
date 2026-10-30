@@ -295,6 +295,9 @@ void VerificationQueueController::stop()
         m_verifyPage = -1;
         m_verifyBoxIndex = -1;
         emit stateChanged();
+        // The waiter has to hear it: a stage that waits for the queue would
+        // wait for a work list that is gone (ADR 257).
+        emit queueFinished();
     }
     if (m_decision.busy())
         m_decision.stop();

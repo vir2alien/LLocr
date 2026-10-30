@@ -3277,6 +3277,10 @@ private slots:
         // The run's outcome reaches the user: the footer says the pipeline is
         // done, and the caveats of the run follow it.
         QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("The automatic pipeline is done.")), qPrintable(m_controller->statusMessage()));
+        // The footer reads the run's line from its own channel: the shared
+        // status message belongs to every task, and the check that follows the
+        // run would shadow the outcome.
+        QVERIFY2(m_controller->autoPipelineMessage().contains(QStringLiteral("The automatic pipeline is done.")), qPrintable(m_controller->autoPipelineMessage()));
     }
 
     // A stopped run says so: the button reverts, but the footer must name
@@ -3306,6 +3310,41 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->autoPipelineRunning(), kImportTimeoutMs);
 
         QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("The automatic pipeline was stopped.")), qPrintable(m_controller->statusMessage()));
+    }
+
+    // The run's line does not outlive the next task: a check that starts after
+    // the run takes the footer line, so the manual flow's own line is not
+    // shadowed by the outcome of the run.
+    void theAutoPipelineLineGivesWayToTheNextCheck()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+        // No decision model: the verification stage is passed over and the
+        // blocks keep no verdict, so the check below has work to do.
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-line-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        QVERIFY(m_controller->autoPipelineAvailable());
+        m_controller->startAutoPipeline();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->autoPipelineRunning(), kImportTimeoutMs);
+
+        // The run has something to say: its outcome and the stage it passed
+        // over.
+        QVERIFY(!m_controller->autoPipelineMessage().isEmpty());
+
+        // The manual check starts: the queue takes the footer line.
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(m_controller->autoPipelineMessage().isEmpty(), kImportTimeoutMs);
     }
 
     // The stages are wired to each other: the fix's output feeds the recheck.

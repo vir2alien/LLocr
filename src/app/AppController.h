@@ -156,6 +156,10 @@ class AppController : public QObject
     Q_PROPERTY(QString autoPipelineStageTitle READ autoPipelineStageTitle NOTIFY autoStateChanged)
     Q_PROPERTY(int autoPipelineProgressDone READ autoPipelineProgressDone NOTIFY autoStateChanged)
     Q_PROPERTY(int autoPipelineProgressTotal READ autoPipelineProgressTotal NOTIFY autoStateChanged)
+    // The run's line: the outcome and the caveats of the run. The footer
+    // reads it from its own channel — the shared status message belongs to
+    // every task, and the check that follows the run would shadow it.
+    Q_PROPERTY(QString autoPipelineMessage READ autoPipelineMessage NOTIFY autoPipelineMessageChanged)
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters NOTIFY retranslateRequested)
 
@@ -291,6 +295,7 @@ public:
     QString autoPipelineStageTitle() const;
     int autoPipelineProgressDone() const;
     int autoPipelineProgressTotal() const;
+    QString autoPipelineMessage() const { return m_autoPipelineMessage.text(); }
 
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
     QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
@@ -332,6 +337,9 @@ signals:
     void layoutAvailableChanged();
     // The auto pipeline (ADR 257): the run started, moved on or ended.
     void autoStateChanged();
+    // The run's line changed: the outcome arrived or another task took the
+    // footer line.
+    void autoPipelineMessageChanged();
 
     void selectedBoxChanged();
     void blockTextRangeChanged();
@@ -432,6 +440,9 @@ private:
     void recordImportedFile(const std::shared_ptr<ImportState> &state, int pagesBefore, const QString &error);
     void finishImport(const ImportState &state);
     void setStatus(const StatusMessage &message);
+    // The run's line for the footer: the outcome of the last run and the
+    // caveats it carried.
+    void setAutoPipelineMessage(const StatusMessage &message);
     bool reportProblem(const StatusMessage &message, ProblemLog::Severity severity = ProblemLog::Warning);
     void notifyDocumentChanged();
     void notifyPageChanged();
@@ -536,8 +547,9 @@ private:
     mutable QString m_previewCacheText;
     mutable QString m_previewCacheResult;
     PageEditStore m_editStore;
-    StatusMessage m_statusMessage;     ///< stored untranslated, rendered on read
-    ProblemLog *m_problems = nullptr;  ///< not owned; the full diagnostic texts live here
+    StatusMessage m_statusMessage;        ///< stored untranslated, rendered on read
+    StatusMessage m_autoPipelineMessage;  ///< the run's outcome and its caveats
+    ProblemLog *m_problems = nullptr;     ///< not owned; the full diagnostic texts live here
     ExportController m_export;
     mutable QReadWriteLock m_documentLock;
     ProjectController m_project;

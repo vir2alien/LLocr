@@ -257,12 +257,8 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 BusyIndicator {
-                    running: Controller.busy || Controller.importing
-                                                 || Controller.checkBusy
-                                                 || Controller.layoutBusy
-                                                 || Controller.projectBusy
-                                                 || ModelInstaller.taskQueueActive
-                                                 || Runtime.busyState === Runtime.StartingRuntime
+                    running: TaskStatus.running() || Controller.projectBusy
+                             || Runtime.busyState === Runtime.StartingRuntime
                     visible: running
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28

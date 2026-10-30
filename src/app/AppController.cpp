@@ -144,6 +144,12 @@ AppController::AppController(SettingsStore &settings,
     // re-announce it to the QML bindings.
     connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::busyChanged);
     connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::updateAvailability);
+    // A new check run takes the footer line: the outcome of the last run is
+    // over, and the check that follows it must not read as a finished run.
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, [this]() {
+        if (m_verify.queueActive())
+            setAutoPipelineMessage(StatusMessage());
+    });
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::verificationStarted, this, &AppController::applyVerificationStarted);
     connect(&m_verify, &VerificationQueueController::blockVerified, this, &AppController::applyVerdictToBox);
@@ -221,7 +227,12 @@ AppController::AppController(SettingsStore &settings,
     connect(m_autoPipeline, &AutoPipelineController::finished, this, [this](bool ok) {
         const StatusMessage outcome = StatusMessage::translate("AppController", ok ? "The automatic pipeline is done." : "The automatic pipeline was stopped.");
         const StatusMessage &summary = m_autoPipeline->summary();
-        setStatus(summary.isEmpty() ? outcome : StatusMessage::join({outcome, summary}, QStringLiteral(" ")));
+        const StatusMessage message = summary.isEmpty() ? outcome : StatusMessage::join({outcome, summary}, QStringLiteral(" "));
+        setStatus(message);
+        // The footer reads the run's line from its own channel: the shared
+        // status message belongs to every task, and the check that follows
+        // the run would shadow the outcome.
+        setAutoPipelineMessage(message);
     });
 
     // The stage's progress moves without the pipeline changing its state: the
@@ -1809,10 +1820,20 @@ void AppController::setPageTextEditorFocused(bool focused)
 
 void AppController::setStatus(const StatusMessage &message)
 {
+    // Another task took the line: the run's outcome is over.
+    setAutoPipelineMessage(StatusMessage());
     if (m_statusMessage == message)
         return;
     m_statusMessage = message;
     emit statusChanged();
+}
+
+void AppController::setAutoPipelineMessage(const StatusMessage &message)
+{
+    if (m_autoPipelineMessage == message)
+        return;
+    m_autoPipelineMessage = message;
+    emit autoPipelineMessageChanged();
 }
 
 void AppController::retranslate()
@@ -1822,6 +1843,7 @@ void AppController::retranslate()
     // The stage titles are translation keys, rendered on demand: the header
     // has to read them again in the new language.
     emit autoStateChanged();
+    emit autoPipelineMessageChanged();
 }
 
 void AppController::markPageEdited(int index)
