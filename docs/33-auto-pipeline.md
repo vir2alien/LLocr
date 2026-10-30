@@ -40,9 +40,8 @@ class AutoPipelineStage : public QObject
 public:
     using Scope = QList<int>;
 
-    AutoPipelineStage(QString id, QString title, QObject *parent = nullptr);
+    AutoPipelineStage(QString title, QObject *parent = nullptr);
 
-    QString id() const;
     QString title() const;
 
     // Пусто — этап может идти; иначе — почему он пропускается.
