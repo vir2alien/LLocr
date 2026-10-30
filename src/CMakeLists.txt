@@ -273,6 +273,8 @@ qt_add_library(llocr_app STATIC
     app/AutoPipelineStage.h
     app/AutoPipelineController.h
     app/AutoPipelineController.cpp
+    app/AutoPipelineStages.h
+    app/AutoPipelineStages.cpp
     app/BlockInspector.h
     app/BlockInspector.cpp
     app/ProjectController.h

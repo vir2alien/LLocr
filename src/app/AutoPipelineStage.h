@@ -26,7 +26,10 @@ public:
     AutoPipelineStage(QString id, QString title, QObject *parent = nullptr) : QObject(parent), m_id(std::move(id)), m_title(std::move(title)) {}
 
     QString id() const { return m_id; }
-    QString title() const { return m_title; }
+
+    // The title is a translation key: the status line must follow the app's
+    // language, and a language switch arrives without a restart.
+    QString title() const { return StatusMessage::translate("AutoPipelineStage", m_title).text(); }
 
     // Empty when the stage can run; otherwise why it is skipped — no model
     // for the task, nothing to recognize. The reason reaches the status line.
