@@ -4529,6 +4529,11 @@
         <source>No model for the markup or the recognition task</source>
         <translation>Нет модели для разметки или распознавания</translation>
     </message>
+    <message>
+        <location filename="../../src/app/AppController.cpp" line="+8"/>
+        <source>The markup model does not support page markup</source>
+        <translation>Модель разметки не умеет размечать страницы</translation>
+    </message>
 </context>
 <context>
     <name>AutoPipelineStage</name>
