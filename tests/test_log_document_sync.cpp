@@ -117,6 +117,40 @@ private slots:
         sync.apply({QStringLiteral("a"), QStringLiteral("b"), QStringLiteral("c")}, 0, QString());
         QCOMPARE(plain(fresh), QStringLiteral("a\nb\nc"));
     }
+
+    // A hidden window pauses the mirror: flushes are dropped on the floor and
+    // resume rebuilds from the owner's full current list in one pass.
+    void pauseStopsFlushesAndResumeRebuilds()
+    {
+        QTextDocument doc;
+        LogDocumentSync sync;
+        sync.attach(&doc);
+        sync.apply({QStringLiteral("a"), QStringLiteral("b")}, 0, QString());
+        QCOMPARE(plain(doc), QStringLiteral("a\nb"));
+
+        sync.setPaused(true);
+        sync.apply({QStringLiteral("c"), QStringLiteral("d")}, 2, QString());
+        QCOMPARE(plain(doc), QStringLiteral("a\nb"));
+
+        sync.setPaused(false);
+        sync.apply({QStringLiteral("c"), QStringLiteral("d")}, 2, QString());
+        QCOMPARE(plain(doc), QStringLiteral("c\nd"));
+    }
+
+    // Pause survives nothing: a pause/resume cycle with no flush in between
+    // still forces the rebuild.
+    void resumeForcesRebuildWithoutFlushes()
+    {
+        QTextDocument doc;
+        LogDocumentSync sync;
+        sync.attach(&doc);
+        sync.apply({QStringLiteral("a")}, 0, QString());
+
+        sync.setPaused(true);
+        sync.setPaused(false);
+        sync.apply({QStringLiteral("a"), QStringLiteral("b")}, 0, QString());
+        QCOMPARE(plain(doc), QStringLiteral("a\nb"));
+    }
 };
 
 QTEST_GUILESS_MAIN(TestLogDocumentSync)

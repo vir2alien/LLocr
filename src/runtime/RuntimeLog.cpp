@@ -132,6 +132,19 @@ void RuntimeLog::attachLogView(QQuickTextDocument *view)
     flushToView();
 }
 
+void RuntimeLog::setLogViewVisible(bool visible)
+{
+    if (m_viewVisible == visible)
+        return;
+    m_viewVisible = visible;
+    if (visible) {
+        m_sync.setPaused(false);
+        flushToView();
+        return;
+    }
+    m_sync.setPaused(true);
+}
+
 void RuntimeLog::flushToView()
 {
     if (externalMode())

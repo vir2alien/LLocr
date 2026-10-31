@@ -36,6 +36,10 @@ public:
     Q_INVOKABLE void clearServerLog();
     Q_INVOKABLE void openServerLogFolder();
     Q_INVOKABLE void attachLogView(QQuickTextDocument *view);
+    // The log window reports its visibility: while hidden the mirror stops
+    // absorbing flushes, and showing it catches the document up in one
+    // rebuild. The ring buffer and the log file run regardless.
+    Q_INVOKABLE void setLogViewVisible(bool visible);
 
     void setServer(LlamaServerProcess *server);
 
@@ -55,6 +59,7 @@ private:
     QTimer m_flushTimer;
     QStringList m_lines;
     int m_pendingDropped = 0;
+    bool m_viewVisible = false;
     LogDocumentSync m_sync;
 };
 

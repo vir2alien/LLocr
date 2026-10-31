@@ -27,6 +27,7 @@ ApplicationWindow {
     }
 
     onVisibleChanged: {
+        RuntimeLog.setLogViewVisible(visible)
         if (visible) {
             logScroll.autoScroll = true
             logScroll.scrollToBottom()

@@ -22,7 +22,7 @@ void LogDocumentSync::attach(QTextDocument *doc)
 void LogDocumentSync::apply(const QStringList &lines, int dropped, const QString &header, bool forceFull)
 {
     QTextDocument *doc = m_doc.data();
-    if (!doc)
+    if (!doc || m_paused)
         return;
     if (forceFull || m_pendingFull) {
         m_pendingFull = false;
@@ -88,6 +88,18 @@ void LogDocumentSync::apply(const QStringList &lines, int dropped, const QString
         ++m_docLines;
     }
     m_inDoc = lines.size();
+}
+
+void LogDocumentSync::setPaused(bool paused)
+{
+    if (m_paused == paused)
+        return;
+    m_paused = paused;
+    // Every flush while paused was skipped: the counters describe a document
+    // the current list has moved past, so the first apply after resuming
+    // rebuilds from the full state.
+    if (!paused)
+        m_pendingFull = true;
 }
 
 void LogDocumentSync::rebuild(QTextDocument &doc, const QStringList &lines, const QString &header)

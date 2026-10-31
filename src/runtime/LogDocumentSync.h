@@ -21,6 +21,9 @@ public:
     // off its front since the previous apply; `header` ("" = none) is kept as
     // the first document line and replaced in place when it changes.
     void apply(const QStringList &lines, int dropped, const QString &header, bool forceFull = false);
+    // While paused apply() is a no-op (a hidden window must not pay for
+    // QTextDocument work); resuming marks the mirror stale.
+    void setPaused(bool paused);
 
 private:
     void rebuild(QTextDocument &doc, const QStringList &lines, const QString &header);
@@ -31,6 +34,7 @@ private:
     bool m_hasHeader = false;
     QString m_headerText;
     bool m_pendingFull = false;
+    bool m_paused = false;
 };
 
 }  // namespace llocr
