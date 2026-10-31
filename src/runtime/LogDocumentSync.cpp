@@ -1,6 +1,5 @@
 #include "runtime/LogDocumentSync.h"
 
-#include <QTextBlock>
 #include <QTextCursor>
 #include <QTextDocument>
 
@@ -104,22 +103,20 @@ void LogDocumentSync::setPaused(bool paused)
 
 void LogDocumentSync::rebuild(QTextDocument &doc, const QStringList &lines, const QString &header)
 {
-    QTextCursor cur(&doc);
-    cur.select(QTextCursor::Document);
-    cur.removeSelectedText();
-    m_docLines = 0;
+    // One replacement, one contentsChanged: the attached QQuickTextEdit
+    // re-lays-out the whole document per contentsChanged, so per-line cursor
+    // inserts cost a full layout each — seconds on a saturated ring, right in
+    // the handler that opens the window.
+    QString text = lines.join(QLatin1Char('\n'));
+    if (!header.isEmpty())
+        text = text.isEmpty() ? header : header + QLatin1Char('\n') + text;
+    doc.setPlainText(text);
+    m_docLines = lines.size();
     m_hasHeader = false;
     m_headerText.clear();
     if (!header.isEmpty()) {
-        cur.insertText(header);
         m_hasHeader = true;
         m_headerText = header;
-        m_docLines = 1;
-    }
-    for (const QString &line : lines) {
-        if (m_docLines > 0)
-            cur.insertBlock();
-        cur.insertText(line);
         ++m_docLines;
     }
     m_inDoc = lines.size();

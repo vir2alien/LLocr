@@ -151,6 +151,27 @@ private slots:
         sync.apply({QStringLiteral("a"), QStringLiteral("b")}, 0, QString());
         QCOMPARE(plain(doc), QStringLiteral("a\nb"));
     }
+
+    // The rebuild must replace the document's content in one step: the
+    // attached QQuickTextEdit re-lays-out the whole document per
+    // contentsChanged, so per-line cursor inserts cost a full layout each —
+    // seconds on a saturated ring with the window opening on the GUI thread.
+    void rebuildFiresContentsChangedOnce()
+    {
+        QTextDocument doc;
+        LogDocumentSync sync;
+        sync.attach(&doc);
+
+        int changes = 0;
+        QObject::connect(&doc, &QTextDocument::contentsChanged, [&changes]() { ++changes; });
+
+        QStringList lines;
+        for (int i = 0; i < 2000; ++i)
+            lines.append(QStringLiteral("line %1").arg(i));
+        sync.apply(lines, 0, QStringLiteral("header"));
+        QCOMPARE(changes, 1);
+        QCOMPARE(doc.blockCount(), lines.size() + 1);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestLogDocumentSync)
