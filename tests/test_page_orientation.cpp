@@ -7,6 +7,7 @@
 
 #include <cmath>
 
+#include "app/OrientationController.h"
 #include "app/PageOrientation.h"
 #include "app/PageRotation.h"
 #include "textpage.h"
@@ -31,6 +32,13 @@ QImage rotateBy(const QImage &page, double degrees)
     painter.drawImage(0, 0, page);
     painter.end();
     return turned;
+}
+
+QImage blankPage()
+{
+    QImage blank(800, 1000, QImage::Format_Grayscale8);
+    blank.fill(255);
+    return blank;
 }
 
 }  // namespace
@@ -126,9 +134,7 @@ private slots:
 
     void aBlankPageSaysNothing()
     {
-        QImage blank(800, 1000, QImage::Format_Grayscale8);
-        blank.fill(255);
-        const OrientationVerdict verdict = detectPageOrientation(blank);
+        const OrientationVerdict verdict = detectPageOrientation(blankPage());
         QVERIFY(!verdict.textLike);
         QVERIFY(!verdict.axisKnown);
     }
@@ -151,6 +157,91 @@ private slots:
         const OrientationVerdict verdict = detectPageOrientation(QImage());
         QVERIFY(!verdict.textLike);
         QVERIFY(!verdict.axisKnown);
+    }
+
+    // The check runs away from the caller's thread: the verdicts of one run
+    // arrive only after its last page, the collections follow the page order
+    // of the scope, and the signal order is the fixed one — skewed, sideways,
+    // unclear, noText, finished.
+    void theFindingsArriveInPageOrderInTheFixedSignalOrder()
+    {
+        OrientationController controller;
+        QStringList order;
+        QList<int> skewedPages;
+        QList<int> sidewaysPages;
+        QList<int> unclearPages;
+        QList<int> noTextPages;
+        int finishedCount = 0;
+        connect(&controller, &OrientationController::skewed, [&](int index, double) {
+            order << QStringLiteral("skewed");
+            skewedPages.append(index);
+        });
+        connect(&controller, &OrientationController::sideways, [&](int index) {
+            order << QStringLiteral("sideways");
+            sidewaysPages.append(index);
+        });
+        connect(&controller, &OrientationController::unclear, [&](int index) {
+            order << QStringLiteral("unclear");
+            unclearPages.append(index);
+        });
+        connect(&controller, &OrientationController::noText, [&](int index) {
+            order << QStringLiteral("noText");
+            noTextPages.append(index);
+        });
+        connect(&controller, &OrientationController::finished, [&] { ++finishedCount; });
+
+        // The scope is shuffled on purpose: 0 and 1 lie on their side, 2 is a
+        // picture the check cannot read, 3 is blank, 4 is skewed.
+        controller.check({2, 1, 4, 3, 0}, [](int index) {
+            if (index == 0 || index == 1)
+                return rotateImage(syntheticTextPage(), 90);
+            if (index == 2)
+                return QImage();
+            if (index == 3)
+                return blankPage();
+            return rotateBy(syntheticTextPage(), 3.0);
+        });
+
+        QTRY_COMPARE(finishedCount, 1);
+        QCOMPARE(order, (QStringList{QStringLiteral("skewed"), QStringLiteral("sideways"), QStringLiteral("sideways"), QStringLiteral("unclear"), QStringLiteral("noText")}));
+        QCOMPARE(skewedPages, (QList<int>{4}));
+        QCOMPARE(sidewaysPages, (QList<int>{1, 0}));
+        QCOMPARE(unclearPages, (QList<int>{2}));
+        QCOMPARE(noTextPages, (QList<int>{3}));
+    }
+
+    void anEmptyScopeFinishesWithNothingElse()
+    {
+        OrientationController controller;
+        QStringList order;
+        connect(&controller, &OrientationController::skewed, [&](int, double) { order << QStringLiteral("skewed"); });
+        connect(&controller, &OrientationController::sideways, [&](int) { order << QStringLiteral("sideways"); });
+        connect(&controller, &OrientationController::unclear, [&](int) { order << QStringLiteral("unclear"); });
+        connect(&controller, &OrientationController::noText, [&](int) { order << QStringLiteral("noText"); });
+        connect(&controller, &OrientationController::finished, [&] { order << QStringLiteral("finished"); });
+
+        controller.check({}, [](int) { return QImage(); });
+
+        QTRY_COMPARE(order.size(), 1);
+        QCOMPARE(order, (QStringList{QStringLiteral("finished")}));
+    }
+
+    // A check started while another is still running replaces it: the run in
+    // flight reports nothing at all, neither its findings nor its completion.
+    void aSecondCheckSupersedesTheRunningOne()
+    {
+        OrientationController controller;
+        QList<int> sidewaysPages;
+        int finishedCount = 0;
+        connect(&controller, &OrientationController::sideways, [&](int index) { sidewaysPages.append(index); });
+        connect(&controller, &OrientationController::finished, [&] { ++finishedCount; });
+
+        controller.check({0}, [](int) { return rotateImage(syntheticTextPage(), 90); });
+        controller.check({0}, [](int) { return syntheticTextPage(); });
+
+        QTRY_COMPARE(finishedCount, 1);
+        QVERIFY(sidewaysPages.isEmpty());
+        QCOMPARE(finishedCount, 1);
     }
 
     // The corpus of the project: ten real pages (equations, tables and prose)

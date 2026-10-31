@@ -15,11 +15,13 @@
 #include <QFutureWatcher>
 #include <QGuiApplication>
 #include <QMutex>
+#include <QPointer>
 #include <QQuickTextDocument>
 #include <QReadWriteLock>
 #include <QRegularExpression>
 #include <QStringView>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QThread>
 #include <QTimer>
 #include <QVariant>
 
@@ -1450,11 +1452,9 @@ void AppController::startLayout(const QList<int> &pages)
     // lies the wrong way up.
     const auto start = [this, pages, role, prompt]() {
         // The layout refuses a second pass in silence, and a pass that never
-        // starts never ends: the stage would wait for it forever. So the
-        // guard refuses the pass and reports the failure at once. The run
-        // starts on a free document and the orientation check is a local
-        // pixel analysis, so the layout cannot be taken between the check
-        // above and this call — the guard is unreachable today.
+        // starts never ends: the stage would wait for it forever. Whatever
+        // took the layout meanwhile, the guard refuses the pass and reports
+        // the failure at once instead of waiting on it.
         if (m_layout.busy()) {
             finishMarkupPass(false);
             return;
@@ -1463,6 +1463,11 @@ void AppController::startLayout(const QList<int> &pages)
     };
     if (runAfterOrientationCheck(pages, start))
         return;
+    // The pass starts at once, so nothing waits for the orientation check
+    // any more: a check still in flight carries the continuation of a pass
+    // this one replaced, and its finished() must find nothing to start —
+    // reporting that refusal would abort the pass that is running.
+    m_pendingRun = nullptr;
     start();
 }
 
@@ -2032,7 +2037,15 @@ bool AppController::runAfterOrientationCheck(const QList<int> &pages, const std:
         return false;
 
     m_pendingRun = run;
-    m_orientation.check(unchecked, [this](int index) { return pageImage(index); });
+    // The provider is called on the worker for the whole check, and the
+    // controller can be destroyed meanwhile (app quit mid-run), so the lambda
+    // holds a guarded pointer and not the raw one.
+    const QPointer<AppController> self(this);
+    m_orientation.check(unchecked, [self](int index) {
+        if (!self)
+            return QImage();
+        return self->pageImage(index);
+    });
     return true;
 }
 

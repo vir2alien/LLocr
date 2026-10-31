@@ -28,6 +28,10 @@ public:
 
     explicit OrientationController(QObject *parent = nullptr);
 
+    // Starts the check on a worker and returns at once; the findings arrive
+    // through the signals on the thread the controller lives on, one run's
+    // verdicts only after its last page. A check started while another is
+    // still running replaces it: only the newest one reports.
     void check(const QList<int> &pages, const ImageProvider &provider);
 
 signals:
@@ -44,12 +48,16 @@ signals:
     void finished();
 
 private:
-    void complete();
+    struct Findings {
+        QList<int> sideways;
+        QList<int> unclear;
+        QList<int> noText;
+        QList<QPair<int, double>> skewed;
+    };
 
-    QList<int> m_sideways;               // The pages that lie on their side.
-    QList<int> m_unclear;                // The pages the picture could not read.
-    QList<int> m_noText;                 // The pages that carry no text at all.
-    QList<QPair<int, double>> m_skewed;  // The pages and the corrections the check measured.
+    void complete(const Findings &findings);
+
+    quint64 m_runGeneration = 0;
 };
 
 }  // namespace llocr

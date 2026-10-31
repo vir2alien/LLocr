@@ -440,8 +440,13 @@ private:
 // selection recognizes every page.
 void recognizePage(AppController &controller)
 {
+    QSignalSpy pass(&controller, &AppController::layoutStateChanged);
     controller.layoutScopePages();
-    QTRY_VERIFY_WITH_TIMEOUT(!controller.layoutBusy(), kImportTimeoutMs);
+    // The orientation check runs on a worker and the markup starts only when
+    // it reports back, so «not busy» alone is already true before the pass
+    // begins: a busy transition plus a settled busy flag is what says the
+    // pass actually ran.
+    QTRY_VERIFY_WITH_TIMEOUT(pass.count() > 0 && !controller.layoutBusy(), kImportTimeoutMs);
     controller.recognizeScopeBlocks();
     QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
 }
@@ -3105,8 +3110,9 @@ private slots:
 
         // Marking up again changes nothing: the page is upright, the check
         // does not mark it, the vote has no sideways page to act on.
+        QSignalSpy secondPass(&controller, &AppController::layoutStateChanged);
         controller.layoutCurrentPage();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.layoutBusy(), kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(secondPass.count() > 0 && !controller.layoutBusy(), kImportTimeoutMs);
         QCOMPARE(controller.currentPageRotation(), 90);
         QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::None));
     }
@@ -3140,8 +3146,9 @@ private slots:
         // The markup pass runs on the sideways page — the pixel check reads the
         // axis first; with the automatic turn off the vote degrades to the
         // one-click suggestion: the mark and the advised direction stay.
+        QSignalSpy pass(&controller, &AppController::layoutStateChanged);
         controller.layoutCurrentPage();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.layoutBusy(), kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(pass.count() > 0 && !controller.layoutBusy(), kImportTimeoutMs);
         QCOMPARE(controller.currentPageSuggestedTurn(), 90);
         QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::Sideways));
 
@@ -3281,6 +3288,58 @@ private slots:
         // status message belongs to every task, and the check that follows the
         // run would shadow the outcome.
         QVERIFY2(m_controller->autoPipelineMessage().contains(QStringLiteral("The automatic pipeline is done.")), qPrintable(m_controller->autoPipelineMessage()));
+    }
+
+    // The check runs on a worker and the document is live while it runs: a
+    // pass whose scope carries nothing for the check starts at once. When the
+    // earlier check then reports back, its stale continuation must find the
+    // slot empty — reporting the refusal to the awaiting stage would abort
+    // the pass that is running («The markup pass failed» while its own
+    // request is on the wire).
+    void theCheckReportingBackDoesNotAbortAPassThatStartedAtOnce()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+        m_settings->setDecisionModelName(QStringLiteral("check-test"));
+        m_settings->setOrientationCheckEnabled(true);
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("check-window-raster.png"));
+        QVERIFY(page.save(raster));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        // The check goes to the worker and the window opens: the layout has
+        // not started, nothing is busy.
+        controller.layoutCurrentPage();
+        QVERIFY(!controller.layoutBusy());
+        // The user turns the page by hand in the window: the run below then
+        // carries nothing for the check to read.
+        controller.rotatePage(90);
+        controller.rotatePage(-90);
+
+        controller.startAutoPipeline();
+        QVERIFY(controller.autoPipelineRunning());
+        // The run's markup starts at once — its scope is all user-oriented.
+        QVERIFY(controller.layoutBusy());
+
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.autoPipelineRunning(), kImportTimeoutMs);
+        QVERIFY2(!controller.statusMessage().contains(QStringLiteral("The markup pass failed")), qPrintable(controller.statusMessage()));
+        // The pass did its work: the blocks carry the transcribed text.
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), QStringLiteral("1. Introduction"));
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), QStringLiteral("Second block text"));
+        QCOMPARE(server.requests(), 5);
+        QCOMPARE(server.systemoneRequests(), 2);
     }
 
     // A stopped run says so: the button reverts, but the footer must name
