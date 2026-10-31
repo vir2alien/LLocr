@@ -480,8 +480,9 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
     // The decision model speaks the visual diff (docs/31): the task wording
     // is baked into the model's own prompt, the server rejects a request that
     // sends texts, so no request profile exists and the role names none. The
-    // thresholds stay per model: minicpm-jev's split is the upstream default
-    // 0.5, carried per block type.
+    // thresholds stay per model, measured per block type (docs/31, ADR 184);
+    // the flat 0.5 stands behind the split for a type the measurement did
+    // not cover.
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("decision"))) {
         const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("decision"));
         QVERIFY2(role, qPrintable(id));
@@ -493,9 +494,9 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
     QVERIFY(jev);
     QCOMPARE(jev->matchThreshold, 0.5);
     QCOMPARE(jev->blockMatchThresholds.size(), 3);
-    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("text")), 0.5);
-    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("equation")), 0.5);
-    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("table")), 0.5);
+    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("text")), 0.92);
+    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("equation")), 0.87);
+    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("table")), 0.4);
 
     // The OCR models keep their own prompts inline — only the two shared tasks
     // moved.
