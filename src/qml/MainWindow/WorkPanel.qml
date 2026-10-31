@@ -20,8 +20,17 @@ Rectangle {
     Timer {
         id: previewDebounce
         interval: 250
-        onTriggered:
-            root.previewMarkdown = Controller.resolveImagesForPreview(textArea.text)
+        onTriggered: {
+            if (root.previewActive)
+                Controller.requestPreviewMarkdown(textArea.text)
+        }
+    }
+
+    Connections {
+        target: Controller
+        function onPreviewMarkdownReady(markdown) {
+            root.previewMarkdown = markdown
+        }
     }
     LLOLabel {
         anchors.centerIn: parent

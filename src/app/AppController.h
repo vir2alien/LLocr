@@ -332,6 +332,7 @@ signals:
     void configChanged();
     void pageImageReady(int index);
     void previewRenderingChanged();
+    void previewMarkdownReady(const QString &markdown);
     void layoutStateChanged();
     void layoutProgressChanged();
     void layoutAvailableChanged();
@@ -376,7 +377,10 @@ public slots:
     // Adds an empty block with the rectangle the user drew on the page (the
     // coordinates are relative to the page, ADR 189).
     Q_INVOKABLE bool addBlockAt(const QString &type, qreal x, qreal y, qreal width, qreal height);
-    Q_INVOKABLE QString resolveImagesForPreview(const QString &markdown);
+    // Encodes the page's crop images into the preview markdown off the GUI
+    // thread; the answer comes back through previewMarkdownReady, the latest
+    // request wins.
+    Q_INVOKABLE void requestPreviewMarkdown(const QString &markdown);
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();
     // The user confirms the block by hand (ADR 185): the layer in view is
@@ -475,6 +479,10 @@ private:
     QString pageText(int index) const;
     QString rebuildPageText(const OcrPage &page) const;
     void updateBoxesForCurrent();
+    // Walks the markdown and inlines every image://ocr/crop reference as a
+    // base64 PNG. Runs on a worker; croppedImage copies the crops out under
+    // the document lock.
+    QString encodePreviewMarkdown(int pageIndex, const QString &markdown);
 
     // The verification queue's result sources (ADR 164): a decision verdict
     // lands on the effective layer, a block-recognition reply is an OCR
@@ -546,6 +554,7 @@ private:
     mutable int m_previewCacheCropRevision = -1;
     mutable QString m_previewCacheText;
     mutable QString m_previewCacheResult;
+    quint64 m_previewMarkdownGeneration = 0;  ///< the request an in-flight preview encode belongs to; a newer request drops it
     PageEditStore m_editStore;
     StatusMessage m_statusMessage;        ///< stored untranslated, rendered on read
     StatusMessage m_autoPipelineMessage;  ///< the run's outcome and its caveats

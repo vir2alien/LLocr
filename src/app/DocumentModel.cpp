@@ -497,6 +497,17 @@ QImage DocumentModel::decodeSourceCopy(const DocumentPage &page, QString *error)
     QImageReader reader(page.sourcePath);
     reader.setAutoTransform(true);
     reader.setAllocationLimit(kMaxDecodeBytes);
+    // A render request names the size the decoded page must have; the
+    // thumbnail one is the only strictly smaller one, and decoding straight
+    // at it keeps a 100 MP scan from passing through memory in full. The
+    // full-resolution decode of recognition and preview carries no smaller
+    // size and reads the source as it is.
+    const QSize source = reader.size();
+    if (!source.isEmpty() && !page.pixelSize.isEmpty()) {
+        const QSize scaled = source.scaled(page.pixelSize, Qt::KeepAspectRatio);
+        if (scaled.width() < source.width() && scaled.height() < source.height())
+            reader.setScaledSize(scaled);
+    }
     QImage image = reader.read();
     if (image.isNull()) {
         if (error) {

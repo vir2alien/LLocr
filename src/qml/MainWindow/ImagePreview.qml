@@ -228,6 +228,9 @@ Item {
             source: Controller.hasImage
                     ? "image://ocr/current?" + Controller.imageRevision
                     : ""
+            // The provider's requestImage runs on an image-loader worker, not
+            // on the GUI thread — previewImage() keys its behavior on that.
+            asynchronous: true
             cache: false
 
             transformOrigin: Item.TopLeft

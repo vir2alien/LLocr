@@ -4,10 +4,13 @@
 
 namespace llocr {
 
-// The provider is called from a worker thread: the thumbnails load
-// asynchronously. What it touches is therefore guarded — the thumbnail cache
-// by its own mutex, the document by the document lock — and the rendering
-// uses the document handles of the calling thread (ADR 209).
+// Every consumer of this provider is an asynchronous QML Image, so
+// requestImage runs on an image-loader worker — for the thumbnails and for
+// the page preview alike. What it touches is therefore guarded — the
+// thumbnail and preview caches by their own mutexes, the document by the
+// document lock — and the rendering uses the document handles of the calling
+// thread (ADR 209); the full preview render itself starts on the GUI thread,
+// where previewImage queues it from a worker.
 OcrImageProvider::OcrImageProvider(AppController *controller) : QQuickImageProvider(QQuickImageProvider::Image), m_controller(controller) {}
 
 QImage OcrImageProvider::requestImage(const QString &id, QSize *size, const QSize &requestedSize)

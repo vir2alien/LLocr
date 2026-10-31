@@ -588,6 +588,15 @@ QImage AppController::previewImage(int index)
         }
     }
 
+    // The image provider calls in from an image-loader worker; the watcher
+    // and the previewRenderingChanged signal below are GUI-thread property.
+    // The queued start lands after the event loop turn, and the provider
+    // serves the thumbnail fallback meanwhile.
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, [this, index]() { previewImage(index); }, Qt::QueuedConnection);
+        return {};
+    }
+
     DocumentModel::RenderRequest request;
     {
         QReadLocker locker(&m_documentLock);
@@ -2057,11 +2066,45 @@ void AppController::notifyPageChanged()
     emit editStateChanged();
 }
 
-QString AppController::resolveImagesForPreview(const QString &markdown)
+void AppController::requestPreviewMarkdown(const QString &markdown)
 {
-    if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown)
-        return m_previewCacheResult;
+    if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown) {
+        emit previewMarkdownReady(m_previewCacheResult);
+        return;
+    }
 
+    const int page = m_currentPage;
+    const int imageRevision = m_imageRevision;
+    const int cropRevision = m_cropRevision;
+    const quint64 generation = ++m_previewMarkdownGeneration;
+
+    auto *watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher, markdown, imageRevision, cropRevision, generation]() {
+        const QString result = watcher->result();
+        watcher->deleteLater();
+        if (generation != m_previewMarkdownGeneration)
+            return;
+        // The result was encoded against the revisions the request saw; the
+        // cache must answer for them only, or a document change mid-flight
+        // would serve stale crops as fresh.
+        m_previewCacheRevision = imageRevision;
+        m_previewCacheCropRevision = cropRevision;
+        m_previewCacheText = markdown;
+        m_previewCacheResult = result;
+        emit previewMarkdownReady(result);
+    });
+    // The worker can outlive the controller (app quit mid-encode), so the
+    // lambda holds a guarded pointer and not the raw one.
+    const QPointer<AppController> self(this);
+    watcher->setFuture(QtConcurrent::run([self, page, markdown]() {
+        if (!self)
+            return QString();
+        return self->encodePreviewMarkdown(page, markdown);
+    }));
+}
+
+QString AppController::encodePreviewMarkdown(int pageIndex, const QString &markdown)
+{
     static const QRegularExpression re(QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)\))"));
 
     QString result;
@@ -2075,7 +2118,7 @@ QString AppController::resolveImagesForPreview(const QString &markdown)
         result += markdownView.sliced(last, start - last);
 
         const int boxIndex = m.captured(2).toInt();
-        const QImage img = croppedImage(m_currentPage, boxIndex);
+        const QImage img = croppedImage(pageIndex, boxIndex);
         if (!img.isNull()) {
             QByteArray bytes;
             QBuffer buffer(&bytes);
@@ -2091,10 +2134,6 @@ QString AppController::resolveImagesForPreview(const QString &markdown)
         last = m.capturedEnd();
     }
     result += markdownView.sliced(last);
-    m_previewCacheRevision = m_imageRevision;
-    m_previewCacheCropRevision = m_cropRevision;
-    m_previewCacheText = markdown;
-    m_previewCacheResult = result;
     return result;
 }
 
