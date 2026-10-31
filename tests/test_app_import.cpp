@@ -1285,6 +1285,69 @@ private slots:
         QVERIFY(!controller.currentPageEdited());
     }
 
+    // While a run is active the page-text tail is coalesced: a two-block
+    // recognition flushes once, in the turn of its last block — the text of
+    // both blocks is there the moment the queue reports them. A coalescing
+    // window that fires mid-run on a loaded machine adds one more flush;
+    // an uncoalesced tail would rebuild on the queue's eight steps for two
+    // blocks.
+    void recognitionRunCoalescesThePageTextTail()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        QSignalSpy pass(&controller, &AppController::layoutStateChanged);
+        controller.layoutScopePages();
+        QTRY_VERIFY_WITH_TIMEOUT(pass.count() > 0 && !controller.layoutBusy(), kImportTimeoutMs);
+
+        QSignalSpy results(&controller, &AppController::resultChanged);
+        controller.recognizeScopeBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+
+        QVERIFY2(controller.resultText().contains(QStringLiteral("1. Introduction")), qPrintable(controller.resultText()));
+        QVERIFY2(controller.resultText().contains(QStringLiteral("Second block text")), qPrintable(controller.resultText()));
+        QVERIFY2(results.count() >= 1 && results.count() <= 2, qPrintable(QStringLiteral("coalesced rebuilds: %1").arg(results.count())));
+    }
+
+    // The availability rescan shares the page-text coalescing window: the
+    // flags refresh when the drained work list flushes and at the idle
+    // transition; a loaded machine can fire the window twice mid-run (before
+    // the first block lands and between the blocks), hence the bound. The
+    // old per-step path refreshed on every queue step — eight for two blocks
+    // — because each block bumps the cropRevision in the fingerprint.
+    void recognitionRunCoalescesTheAvailabilityRescan()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        QSignalSpy pass(&controller, &AppController::layoutStateChanged);
+        controller.layoutScopePages();
+        QTRY_VERIFY_WITH_TIMEOUT(pass.count() > 0 && !controller.layoutBusy(), kImportTimeoutMs);
+
+        QSignalSpy availability(&controller, &AppController::availabilityChanged);
+        controller.recognizeScopeBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+
+        QVERIFY2(controller.resultText().contains(QStringLiteral("1. Introduction")), qPrintable(controller.resultText()));
+        QVERIFY2(controller.resultText().contains(QStringLiteral("Second block text")), qPrintable(controller.resultText()));
+        QVERIFY(controller.actionsIdle());
+        QVERIFY2(availability.count() >= 2 && availability.count() <= 4, qPrintable(QStringLiteral("availability refreshes: %1").arg(availability.count())));
+    }
+
     // A removal changes the blocks, not the text the user wrote by hand.
     void removalKeepsTheUsersOwnText()
     {

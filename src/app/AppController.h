@@ -10,6 +10,7 @@
 #include <QObject>
 #include <QReadWriteLock>
 #include <QSet>
+#include <QTimer>
 #include <QUrl>
 #include <QVariant>
 
@@ -495,6 +496,17 @@ private:
     // The effective text of the page changed structurally: rebuild it, rebase
     // the edit baseline and refresh the views.
     void applyPageTextChanged(int pageIndex);
+    // The pipeline-driven form of the above: while a run is active the rebuild
+    // and its signal fan-out are coalesced into one flush per trailing-edge
+    // window (plus a guaranteed flush when the run ends); without a run it is
+    // the synchronous call. Manual edits never schedule.
+    void schedulePageTextChanged(int pageIndex);
+    void flushPageTextChanges();
+    void flushPageTextChangesWhenIdle();
+    // The availability rescan shares that window: only the queue's per-step
+    // stateChanged defers it (the toolbar must re-gate synchronously outside
+    // a run); the idle flush above settles the flags with the run's outcome.
+    void scheduleAvailabilityRefresh();
     // Runs one transition on the box under the document lock and mirrors the
     // resulting two-layer state to the box model; false when the page or the
     // box is gone.
@@ -567,6 +579,8 @@ private:
     int m_pageSelectionRevision = 0;
     int m_verificationFilterRevision = 0;
     mutable QString m_parserIdKey;
+    QTimer m_pageTextCoalesceTimer;
+    QList<int> m_pendingPageTextPages;
 
     LruImageCache m_previewCache{kPreviewCacheBudgetBytes};
     mutable QMutex m_previewMutex;

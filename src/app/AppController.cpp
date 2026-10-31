@@ -36,6 +36,12 @@
 #include "core/StatusMessage.h"
 #include "models/OcrModel.h"
 
+namespace {
+
+constexpr int kPageTextCoalesceWindowMs = 300;
+
+}  // namespace
+
 namespace llocr {
 
 AppController::AppController(SettingsStore &settings,
@@ -145,7 +151,9 @@ AppController::AppController(SettingsStore &settings,
     // busy() is the layout pass or the queue running: both state changes must
     // re-announce it to the QML bindings.
     connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::busyChanged);
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::updateAvailability);
+    // The queue's stateChanged fires per request and the rescan it drives is
+    // O(pages×blocks) — it rides the coalescing window while a run is active.
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::scheduleAvailabilityRefresh);
     // A new check run takes the footer line: the outcome of the last run is
     // over, and the check that follows it must not read as a finished run.
     connect(&m_verify, &VerificationQueueController::stateChanged, this, [this]() {
@@ -158,6 +166,16 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_verify, &VerificationQueueController::blockRecognized, this, &AppController::applyRecognitionToBox);
     connect(&m_verify, &VerificationQueueController::blockFixed, this, &AppController::applyFixToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
+
+    // The queue's per-block tail (page-text rebuild + its signal fan-out) and
+    // the availability rescan are coalesced while a run is active; the run's
+    // own state changes carry the guaranteed flush.
+    m_pageTextCoalesceTimer.setSingleShot(true);
+    m_pageTextCoalesceTimer.setInterval(kPageTextCoalesceWindowMs);
+    connect(&m_pageTextCoalesceTimer, &QTimer::timeout, this, &AppController::flushPageTextChanges);
+    connect(&m_pageTextCoalesceTimer, &QTimer::timeout, this, &AppController::updateAvailability);
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
+    connect(&m_layout, &LayoutController::busyChanged, this, &AppController::flushPageTextChangesWhenIdle);
 
     connect(&m_availability, &AvailabilityPresenter::changed, this, &AppController::availabilityChanged);
     // The pipeline's availability is read off the matrix: the models, the
@@ -1701,7 +1719,7 @@ void AppController::applyRecognitionToBox(int pageIndex, int boxIndex, const Che
     refreshRecognitionModeAfterBlockText(pageIndex);
     if (!textChanged)
         return;
-    applyPageTextChanged(pageIndex);
+    schedulePageTextChanged(pageIndex);
 }
 
 void AppController::applyFixToBox(int pageIndex, int boxIndex, const CheckResult &result)
@@ -1743,7 +1761,7 @@ void AppController::applyFixToBox(int pageIndex, int boxIndex, const CheckResult
     });
     if (!applied || !textChanged)
         return;
-    applyPageTextChanged(pageIndex);
+    schedulePageTextChanged(pageIndex);
 }
 
 void AppController::applyPageTextChanged(int pageIndex)
@@ -1786,8 +1804,64 @@ void AppController::applyPageTextChanged(int pageIndex)
     emit editStateChanged();
 }
 
+void AppController::schedulePageTextChanged(int pageIndex)
+{
+    if (!m_pendingPageTextPages.contains(pageIndex))
+        m_pendingPageTextPages.append(pageIndex);
+    if (!busy()) {
+        flushPageTextChanges();
+        return;
+    }
+    // Trailing-edge throttle: the timer is restarted only once it has fired,
+    // so a steady stream of blocks still refreshes the page once per window.
+    if (!m_pageTextCoalesceTimer.isActive())
+        m_pageTextCoalesceTimer.start();
+}
+
+void AppController::flushPageTextChanges()
+{
+    m_pageTextCoalesceTimer.stop();
+    if (m_pendingPageTextPages.isEmpty())
+        return;
+    const QList<int> pages = m_pendingPageTextPages;
+    m_pendingPageTextPages.clear();
+    for (const int pageIndex : pages)
+        applyPageTextChanged(pageIndex);
+}
+
+void AppController::flushPageTextChangesWhenIdle()
+{
+    // The queue reports its last block while still active — the idle
+    // transition lands one event-loop turn later, which a reader of the page
+    // text must not have to wait for. A work list that just drained flushes
+    // in the turn of its last block.
+    if (m_verify.queueActive() && m_verify.progressTotal() > 0 && m_verify.progressDone() >= m_verify.progressTotal()) {
+        flushPageTextChanges();
+        updateAvailability();
+        return;
+    }
+    if (!busy()) {
+        flushPageTextChanges();
+        updateAvailability();
+    }
+}
+
+void AppController::scheduleAvailabilityRefresh()
+{
+    if (!busy()) {
+        updateAvailability();
+        return;
+    }
+    // Trailing-edge throttle, the same window as the page-text tail.
+    if (!m_pageTextCoalesceTimer.isActive())
+        m_pageTextCoalesceTimer.start();
+}
+
 bool AppController::exportPages(const QUrl &fileUrl, int scope, int fromPage, int toPage)
 {
+    // An export can start while a run is active (the toolbar gates it on the
+    // queue only): the pages must not be collected from a coalesced text.
+    flushPageTextChanges();
     return m_export.exportPages(fileUrl, scope, m_currentPage, fromPage, toPage);
 }
 
@@ -1879,6 +1953,10 @@ void AppController::notifyPageListGrown()
 
 void AppController::notifyDocumentChanged()
 {
+    // A structural change reindexes pages: a pending rebuild would write into
+    // whatever page now holds the index.
+    m_pendingPageTextPages.clear();
+    m_pageTextCoalesceTimer.stop();
     ++m_previewGeneration;
     {
         QMutexLocker locker(&m_previewMutex);
