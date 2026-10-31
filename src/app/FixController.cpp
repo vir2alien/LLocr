@@ -76,7 +76,8 @@ QList<RequestParameter> FixController::requestParameters() const
     return m_requestProfiles.activeProfile().parameters;
 }
 
-void FixController::fixBlock(const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt, const QString &blockType, int maxOutput)
+void FixController::fixBlock(
+    const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt, const QString &blockType, int maxOutput, CheckRequest::FixProtocol protocol)
 {
     if (busy() || image.isNull())
         return;
@@ -85,8 +86,8 @@ void FixController::fixBlock(const QImage &image, const QString &recognizedText,
 
     beginRequest(
         ConnectionRole::Fix,
-        StatusMessage::translate(trContext(), "Stopped before the fix started."),
-        [this, image, recognizedText, systemPrompt, typePrompt, blockType, maxOutput](const ResolvedConnection &conn) {
+        StatusMessage::translate(trContext(), protocol == CheckRequest::FixProtocol::ReadBlock ? "Stopped before the read started." : "Stopped before the fix started."),
+        [this, image, recognizedText, systemPrompt, typePrompt, blockType, maxOutput, protocol](const ResolvedConnection &conn) {
             CheckRequest request;
             request.image = image;
             request.systemPrompt = systemPrompt;
@@ -95,6 +96,7 @@ void FixController::fixBlock(const QImage &image, const QString &recognizedText,
             request.blockType = blockType;
             request.modelId = conn.modelId;
             request.parameters = requestParameters();
+            request.fixProtocol = protocol;
             // The per-block budget overrides the profile's max_tokens only
             // where the profile ships a per-block entry; a user-edited value
             // stays untouched for the other types.

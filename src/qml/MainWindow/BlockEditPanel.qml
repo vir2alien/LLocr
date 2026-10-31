@@ -119,12 +119,15 @@ Rectangle {
     }
 
     // The state of the block in the header: what the pipeline did with it.
-    readonly property string overallStatus: effectiveStatus === 5 ? qsTr("Approved")
+    readonly property string overallStatus: root.readDamaged ? qsTr("Could not read the block")
+                                          : effectiveStatus === 5 ? qsTr("Approved")
                                           : effectiveStatus === 6 ? qsTr("Manually modified")
                                           : effectiveStatus === 1 ? qsTr("Verified")
                                           : effectiveStatus === 3 ? qsTr("Damaged")
                                           : effectiveStatus === 4 ? qsTr("Mismatch")
                                           : effectiveStatus === 7 ? qsTr("Invalid syntax")
+                                          : root.readApplied ? qsTr("Read")
+                                          : root.readConfirmed ? qsTr("Read")
                                           : correctionInView ? qsTr("Corrected")
                                           : root.markupOnly ? qsTr("Markup")
                                           : qsTr("Recognized")
@@ -134,6 +137,11 @@ Rectangle {
     // says so.
     readonly property bool fixNotNeeded: Controller.selectedBlockFixStatus === 1 && !correctionStored
     readonly property bool fixDamaged: Controller.selectedBlockFixStatus === 3
+    // The reader's outcomes (ADR 260): the block was written from the image,
+    // so the panel says what the reader read — not what the fixer corrected.
+    readonly property bool readConfirmed: Controller.selectedBlockFixStatus === 4 && !correctionStored
+    readonly property bool readApplied: Controller.selectedBlockFixStatus === 5
+    readonly property bool readDamaged: Controller.selectedBlockFixStatus === 6
 
     // The text of a layer as HTML: the fragments the correction changed are
     // tinted, the rest is the plain text (ADR 186).
@@ -225,6 +233,13 @@ Rectangle {
                 text: qsTr("No correction required")
                 color: Theme.textMuted
             }
+            LLOLabel {
+                // The reader confirmed the text (ADR 260): the block was read
+                // from the image and it says what the text says.
+                visible: root.readConfirmed
+                text: qsTr("Read: the text matches the image")
+                color: Theme.textMuted
+            }
             Item {
                 Layout.fillWidth: true
             }
@@ -240,7 +255,7 @@ Rectangle {
                 ToolTip.text: qsTr("Highlight what the correction changed")
             }
             LLOButton {
-                visible: root.correctionStored || root.fixDamaged
+                visible: root.correctionStored || root.fixDamaged || root.readDamaged
                 text: qsTr("Reset correction")
                 subtle: true
                 enabled: !Controller.checkBusy && !Controller.busy
@@ -295,7 +310,7 @@ Rectangle {
             id: correctionCard
             Layout.fillWidth: true
             visible: root.isTextBlock && root.correctionStored
-            title: qsTr("Corrected text (AI)")
+            title: root.readApplied ? qsTr("Read text (AI)") : qsTr("Corrected text (AI)")
             badgeText: root.statusWord(Controller.selectedBlockCorrectedCheckStatus)
             badgeScore: root.layerScore(Controller.selectedBlockCorrectedConfidence, Controller.selectedBlockCorrectedCheckStatus)
             badgeColor: root.dotColor(Controller.selectedBlockCorrectedCheckStatus)

@@ -27,6 +27,7 @@ public:
         QHash<QString, int> blockMaxOutput;  // maxOutputByBlock, keyed like blockPrompts (fix task)
         bool isDefault = false;              // the role's recommended model, replacing the first-in-catalog fallback
         QString systemPrompt;                // check-role override of the shared verifier system prompt
+        QString systemPromptNoSample;        // the read task's prompt for a block with no recognized text (ADR 260)
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
@@ -130,6 +131,10 @@ public:
     static constexpr const char *kResourceDir = ":/profiles/models";
     static constexpr const char *kPromptResourceDir = ":/profiles/requests";
 
+    // The prompt profile of the read task (ADR 259): the reader's system
+    // prompt and its per-block prompts, shared by every model that reads.
+    static constexpr const char *kReadPromptProfileId = "read-requests";
+
     static QList<Profile> loadFrom(const QString &directory, QString &error);
     static QList<Profile> loadBuiltIn(QString &error);
 
@@ -164,6 +169,11 @@ public:
     static QList<RequestParameter> requestFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type);
+
+    // The same lookup on a prompt profile's own role: the read task's prompts
+    // are shared by every model (ADR 259), so they are read without one.
+    static QString blockPromptForRole(const Role &role, const QString &type);
+    static int maxOutputForBlockRole(const Role &role, const QString &blockType);
 
     static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 

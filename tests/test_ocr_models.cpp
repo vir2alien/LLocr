@@ -176,6 +176,41 @@ private slots:
         }
     }
 
+    // ADR 259: the read protocol is the action's choice, so no model is bound
+    // to it — but the protocol a fix role declares must be one the app knows.
+    void fixRolesDeclareAKnownProtocol()
+    {
+        const QStringList known = {QStringLiteral("full_block"), QStringLiteral("read_block")};
+        for (const ModelProfiles::Profile &profile : ModelProfiles::instance()) {
+            const ModelProfiles::Role *role = ModelProfiles::roleFor(profile, QStringLiteral("fix"));
+            if (!role)
+                continue;
+            QVERIFY2(known.contains(role->protocol), qPrintable(QStringLiteral("%1 declares the protocol %2").arg(profile.id, role->protocol)));
+        }
+    }
+
+    // The read task's prompts are one profile shared by every model: the
+    // system prompt, a prompt per block type and a budget per block type.
+    void readPromptProfileIsSharedAndComplete()
+    {
+        const ModelProfiles::PromptProfile *read = ModelProfiles::promptProfile(QString::fromLatin1(ModelProfiles::kReadPromptProfileId));
+        QVERIFY(read);
+        QVERIFY(!read->prompts.systemPrompt.isEmpty());
+        QVERIFY2(read->prompts.systemPrompt.contains(QStringLiteral("{{LANGUAGE}}")), qPrintable(read->prompts.systemPrompt));
+
+        // Every block type the fix task knows has a reader's prompt.
+        const ModelProfiles::PromptProfile *fix = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
+        QVERIFY(fix);
+        for (const QString &type : fix->prompts.blockPrompts.keys()) {
+            QVERIFY2(!ModelProfiles::blockPromptForRole(read->prompts, type).isEmpty(), qPrintable(type));
+            QVERIFY(ModelProfiles::maxOutputForBlockRole(read->prompts, type) > 0);
+        }
+
+        // The reader answers the whole block, so the equation's budget is the
+        // reader's own — the fix task's budget was measured for a correction.
+        QVERIFY(ModelProfiles::maxOutputForBlockRole(read->prompts, QStringLiteral("equation")) > ModelProfiles::maxOutputForBlockRole(fix->prompts, QStringLiteral("equation")));
+    }
+
     // The model contract lives in resources/profiles/models/<id>.json: a
     // model is added as data, so the tests read the shipped file rather than a
     // C++ subclass.

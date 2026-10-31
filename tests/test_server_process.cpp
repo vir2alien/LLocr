@@ -26,6 +26,7 @@ private slots:
     void restartAfterGracefulStopSurvivesStaleKillTimer();
     void reportsTensorLoadPercent();
     void benignWarningNoiseIsFiltered();
+    void samplerDumpIsFiltered();
 };
 
 // Helper that builds a server pointed at the mock binary. Timers/network need
@@ -213,6 +214,31 @@ void TestServerProcess::benignWarningNoiseIsFiltered()
     QFile f(logFile);
     QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
     QVERIFY(!f.readAll().contains("non-consecutive token position"));
+}
+
+void TestServerProcess::samplerDumpIsFiltered()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    // --samplers emits llama.cpp's per-request dump: the sampler chain and the
+    // whole sampling configuration (including the samplers that are off).
+    // The wrapper must keep it out of the ring and the log file, and the line
+    // that closes the block must still get through.
+    QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--samplers"), QStringLiteral("2")}, 60000, true, dir, logFile));
+    QVERIFY(m->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(static_cast<int>(m->ringBuffer().filter(QStringLiteral("total time")).size()) >= 2, 12000);
+    QVERIFY(m->ringBuffer().filter(QStringLiteral("sampler chain")).isEmpty());
+    QVERIFY(m->ringBuffer().filter(QStringLiteral("sampler params")).isEmpty());
+    QVERIFY(m->ringBuffer().filter(QStringLiteral("dry_multiplier")).isEmpty());
+    m->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
+    QFile f(logFile);
+    QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QByteArray content = f.readAll();
+    QVERIFY(!content.contains("sampler chain"));
+    QVERIFY(!content.contains("sampler params"));
+    QVERIFY(!content.contains("dry_multiplier"));
+    QVERIFY(content.contains("total time"));
 }
 
 QTEST_MAIN(TestServerProcess)

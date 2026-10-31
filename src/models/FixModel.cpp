@@ -154,7 +154,7 @@ QFuture<CheckResult> FixModel::exchange(const CheckRequest &request, const Conne
                                         [request, rawBody](const QByteArray &body) {
                                             if (rawBody)
                                                 *rawBody = body;
-                                            return parseResponse(body, request.recognizedText, request.blockType);
+                                            return parseResponse(body, request.recognizedText, request.blockType, request.fixProtocol);
                                         },
                                         QCoreApplication::translate("FixModel", "Failed to encode the block image"));
 }
@@ -164,24 +164,36 @@ QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteAr
     // Fix protocol (ADR 163): the candidate travels as its own user-message
     // part, framed by <CANDIDATE>; the system message carries the shared
     // contract; the parts follow the order the model's fix role trains.
+    // The read protocol (ADR 259) frames the same text as <RECOGNIZED> and
+    // names it a sample of the document's notation: the reader writes the
+    // block from the image, the recognized text is not the answer.
     const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("fix"));
     const bool promptFirst = role && role->promptBeforeImage;
 
     const QJsonObject typePromptPart = textPart(request.typePrompt);
     const QJsonObject image = imagePart(imageDataUrl);
-    const QJsonObject ocrPart = textPart(QStringLiteral("OCR candidate:\n<CANDIDATE>\n%1\n</CANDIDATE>").arg(request.recognizedText));
+    const bool readProtocol = request.fixProtocol == CheckRequest::FixProtocol::ReadBlock;
+    // A block with no recognized text has no sample of the document's notation
+    // to show: the reader gets the image alone (ADR 260).
+    const bool sampleSent = !readProtocol || !request.recognizedText.isEmpty();
+    const QJsonObject ocrPart =
+        !sampleSent    ? QJsonObject()
+        : readProtocol ? textPart(QStringLiteral("The block as it was recognized (a sample of the document's notation, not the answer):\n<RECOGNIZED>\n%1\n</RECOGNIZED>").arg(request.recognizedText))
+                       : textPart(QStringLiteral("OCR candidate:\n<CANDIDATE>\n%1\n</CANDIDATE>").arg(request.recognizedText));
 
     QJsonArray content;
     if (promptFirst) {
         if (!request.typePrompt.isEmpty())
             content.append(typePromptPart);
-        content.append(ocrPart);
+        if (sampleSent)
+            content.append(ocrPart);
         content.append(image);
     } else {
         if (!request.typePrompt.isEmpty())
             content.append(typePromptPart);
         content.append(image);
-        content.append(ocrPart);
+        if (sampleSent)
+            content.append(ocrPart);
     }
 
     QJsonArray messages;
@@ -192,21 +204,27 @@ QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteAr
     return QJsonDocument(buildRoot(request, std::move(messages))).toJson(QJsonDocument::Compact);
 }
 
-CheckResult FixModel::parseResponse(const QByteArray &responseData, const QString &candidate, const QString &blockType)
+CheckResult FixModel::parseResponse(const QByteArray &responseData, const QString &candidate, const QString &blockType, CheckRequest::FixProtocol protocol)
 {
+    const bool readProtocol = protocol == CheckRequest::FixProtocol::ReadBlock;
+    // The reader answers FIX / REVIEW: it has no verdict on the candidate, it
+    // writes the block from the image.
+    const QString scheme = readProtocol ? QStringLiteral("FIX/REVIEW") : QStringLiteral("OK/FIX/REVIEW");
+
     QString content;
     CheckResult error;
     if (!replyContent(responseData, &content, &error))
         return error;
 
     if (content.isEmpty())
-        return CheckResult::makeError(StatusMessage::translate("FixModel", "The model returned no corrected text: %1").arg(missingAnswerReason(responseData)));
+        return CheckResult::makeError(
+            StatusMessage::translate("FixModel", readProtocol ? "The model returned no block text: %1" : "The model returned no corrected text: %1").arg(missingAnswerReason(responseData)));
 
     const QString cleaned = stripOuterCodeFence(stripControlTokens(content));
     const QString trimmed = cleaned.trimmed();
     const QString upper = trimmed.toUpper();
 
-    if (upper.startsWith(QStringLiteral("OK"))) {
+    if (!readProtocol && upper.startsWith(QStringLiteral("OK"))) {
         CheckResult ok;
         ok.status = CheckStatus::Ok;
         // Recognition is already correct — do not touch the original text.
@@ -216,6 +234,10 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
     if (upper.startsWith(QStringLiteral("REVIEW"))) {
         CheckResult review;
         review.status = CheckStatus::Review;
+        // The reader's own words: the fixer and the reader answer the same
+        // scheme, but they speak about different things (ADR 260).
+        if (readProtocol)
+            review.notes = StatusMessage::translate("FixModel", "The block could not be read: the crop is cut, covered or blurred.");
         return review;
     }
 
@@ -230,6 +252,8 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
             // not a protocol error.
             CheckResult review;
             review.status = CheckStatus::Review;
+            if (readProtocol)
+                review.notes = StatusMessage::translate("FixModel", "The block could not be read: the model wrote no text.");
             return review;
         }
         if (replyCutByBudget(responseData)) {
@@ -245,14 +269,20 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
         if (outcome.status == CheckStatus::Fixed)
             result.text = outcome.text;
         result.notes = outcome.downgradeReason;
+        // The gate's reason is the fixer's: it speaks about a candidate and a
+        // correction. The reader has no candidate — it writes the block from
+        // the image — so it explains the same outcome in its own words
+        // (ADR 260).
+        if (readProtocol && outcome.status == CheckStatus::Ok)
+            result.notes = StatusMessage::translate("FixModel", "The block was read: the text matches the image, so the block text is kept.");
         return result;
     }
 
-    // Anything outside the OK / FIX / REVIEW scheme is a deviation, not a
-    // protocol error: the block goes to human eyes.
+    // Anything outside the scheme is a deviation, not a protocol error: the
+    // block goes to human eyes.
     CheckResult review;
     review.status = CheckStatus::Review;
-    review.notes = StatusMessage::translate("FixModel", "The reply does not follow the OK/FIX/REVIEW scheme: %1").arg(cleaned.left(120));
+    review.notes = StatusMessage::translate("FixModel", "The reply does not follow the %1 scheme: %2").arg(scheme, cleaned.left(120));
     return review;
 }
 

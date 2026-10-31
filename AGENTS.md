@@ -457,7 +457,29 @@
     The budgets are the protocol's own rule, so they live in the **request
     profile** (`fix-requests.json`), one copy for all four fix models; a model
     profile may still ship its own entry for a block type and it wins. The
-    fix models may also **think first**: the mode is the request parameter
+    **read** protocol (ADR 259, ADR 260) is the same task with another
+    contract: the «Перечитать» button sends the recognized text as a *sample
+    of the document's notation* (`<RECOGNIZED>`) instead of a candidate, and
+    the model writes the block from the image (`FIX` with the whole block, or
+    `REVIEW`; `OK` is outside the scheme and lands on Review with the reason).
+    A block with no recognized text has no sample: the reader gets the image
+    alone, with the prompt minus the sample paragraph (`systemPromptNoSample`).
+    The protocol is the **action's** choice, not the model's: the request
+    carries it (`CheckRequest::fixProtocol`), the model's `roles.fix.protocol`
+    is not read, and the reader's prompts live in their own shared profile
+    (`read-requests.json`). The gate and the layers are the same ones, so a
+    read that reproduces the text keeps the block's bytes and drops the stale
+    `Mismatch`; the reader's own outcomes are separate statuses (`Read`,
+    `ReadFixed`, `ReadDamaged`), so the panel never shows the fixer's words
+    for a read — the reader's reason is its own («Прочитано: текст совпадает
+    с картинкой», «Не удалось прочитать блок: кроп обрезан, закрыт или
+    размыт»), and the read run reports its outcome («Прочитано блоков:
+    переписано — %1, подтверждено — %2, не прочитано — %3»). The reader's
+    state speaks for the block in the frame (ADR 261): green — the block was
+    read (the reader compared the text with the image, so it *is* a
+    verification), red — it could not be read; the fixer's states stay out of
+    the frame (ADR 240: the fixer is not a verifier).
+    The fix models may also **think first**: the mode is the request parameter
     `reasoning_budget_tokens` with the four steps off / low 512 / med 1024 /
     high 1536 (ADR 193). The model profile says whether the model can think at
     all (`reasoning: true`), the request profile holds the steps, the budget
@@ -577,7 +599,7 @@
     button stays disabled until the automatic pipelines land), «Разметка»
     (Разметить / Распознать блоки), «Распознать» (С разметкой / Без
     разметки — the ADR 167 three-mode picker dissolved into explicit
-    buttons) and «Верификация» (Проверить / Исправить) — all acting on the
+    buttons) and «Верификация» (Проверить / Перечитать / Исправить) — all acting on the
     **thumbnail selection** (Ctrl/Cmd+click toggles, «Выбрать все» in the
     column header; «Исправить» lights `Theme.accentAttention` with a `(N)`
     badge of `scopedPendingFixCount` — the blocks that still wait for the
@@ -586,13 +608,25 @@
     back into it). «Проверить» runs the decision pass
     only (`checkScopeEnabledBlocks()`) — verify and fix are separate buttons
     in the manual pipeline; the automatic check/fix switches are gone
-    (ADR 178).
+    (ADR 178). «Перечитать» (the magnifier over a page) sits in the same row
+    as «Проверить» — the group keeps its three rows, so the menu does not grow
+    with every new action. It takes **every text block of the selected pages**
+    (`scopedReadBlockCount`, shown as a `(N)` badge) — except the blocks the
+    user owns (hand-written or confirmed by hand): the fix model writes the
+    block from the image, and a block nobody recognized yet has no sample —
+    the reader gets the image alone. The button is active as soon as the
+    blocks appeared. The model is the one chosen in the settings for fixing a block,
+    and the answer lands in the same layers (ADR 259, ADR 260). The run ends
+    with its own tally in the status line («Прочитано блоков: переписано — N,
+    подтверждено — M, не прочитано — K»), so a read that only confirmed the
+    blocks is not mistaken for a run that did nothing (ADR 261).
     While anything runs the pipeline buttons go inactive and the started
     action's button turns into the stop control — a black square inside a
     spinning ring; the mapping is by flags/phases (`layoutBusy` → «Разметить»,
     `busy` + the last-used page-recognition button, `checkBusy` +
-    `checkDecisionPhase`/`checkRecheckPhase`/`checkFixPhase` → «Проверить» /
-    «Распознать блоки» / «Исправить»), so a run started elsewhere still shows
+    `checkDecisionPhase`/`checkRecheckPhase`/`checkFixPhase`/`checkReadPhase` →
+    «Проверить» /
+    «Распознать блоки» / «Исправить» / «Перечитать»), so a run started elsewhere still shows
     its stop on the matching button. The model-download queue has no toolbar
     stop — it is cancelled where it starts (Models window, wizard). The
     progress text stays in the footer (the `TaskStatus` singleton). On the

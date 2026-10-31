@@ -22,6 +22,9 @@ private slots:
     void emptyReplyIsReviewed();
     void noChangesWordIsReviewed();
     void latexSpacingIsEquivalent();
+    // The tag written the other way and the doubled group are carrier markup
+    // too: the reader rewrites them without changing the formula.
+    void eqnoAndDoubledGroupAreEquivalent();
     void codeWhitespaceIsACorrection();
 };
 
@@ -108,6 +111,26 @@ void TestFixDiffGate::latexSpacingIsEquivalent()
     // spacing churn, the candidate is kept.
     const Outcome outcome = fixBlock(QStringLiteral("\\tag {3} x = y"), QStringLiteral("\\tag{3} x = y"), QStringLiteral("equation"));
     QCOMPARE(outcome.status, CheckStatus::Ok);
+}
+
+void TestFixDiffGate::eqnoAndDoubledGroupAreEquivalent()
+{
+    // \eqno{n} is the tag written the other way: the number moves inside the
+    // parentheses, exactly as \tag{n} does.
+    const Outcome eqno = fixBlock(QStringLiteral("x = y \\tag{3}"), QStringLiteral("x = y \\eqno{3}"), QStringLiteral("equation"));
+    QCOMPARE(eqno.status, CheckStatus::Ok);
+
+    const Outcome eqnoParens = fixBlock(QStringLiteral("x = y \\tag{3}"), QStringLiteral("x = y \\eqno(3)"), QStringLiteral("equation"));
+    QCOMPARE(eqnoParens.status, CheckStatus::Ok);
+
+    // A doubled group is a wrapper around a group: "{{x}}" renders as "{x}".
+    const Outcome doubled = fixBlock(QStringLiteral("\\frac{{x}}{2}"), QStringLiteral("\\frac{x}{2}"), QStringLiteral("equation"));
+    QCOMPARE(doubled.status, CheckStatus::Ok);
+
+    // The carrier does not swallow the content around it.
+    const Outcome content = fixBlock(QStringLiteral("\\frac{{x}}{2}"), QStringLiteral("\\frac{{y}}{2}"), QStringLiteral("equation"));
+    QCOMPARE(content.status, CheckStatus::Fixed);
+    QCOMPARE(content.text, QStringLiteral("\\frac{{y}}{2}"));
 }
 
 void TestFixDiffGate::codeWhitespaceIsACorrection()

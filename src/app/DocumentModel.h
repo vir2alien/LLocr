@@ -49,6 +49,13 @@ PageRecognitionMode recognitionModeAfterBlockText(PageRecognitionMode mode, cons
 // queue picks up, so the toolbar badge matches its work.
 int pendingFixCount(const OcrPage &page);
 
+// The blocks the reader takes (ADR 260): every text block of the page — with
+// a text or without one. The image placeholders are never read: there is
+// nothing to write, and a block the user owns (hand-written or confirmed by
+// hand) is not the model's to rewrite. The same set the read queue picks up,
+// so the toolbar badge matches its work.
+QList<int> readableBoxes(const OcrPage &page);
+
 }  // namespace PageStatus
 
 struct DocumentPage {

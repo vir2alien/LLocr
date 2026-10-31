@@ -79,6 +79,7 @@ public:
     bool decisionPhase() const { return m_phase == Phase::Decision; }
     bool recheckPhase() const { return m_phase == Phase::Recheck; }
     bool fixPhase() const { return m_phase == Phase::Fix; }
+    bool readPhase() const { return m_phase == Phase::Read; }
     int progressDone() const { return m_verifyDone; }
     int progressTotal() const { return m_verifyTotal; }
     QString errorMessage() const { return m_checkError.text(); }
@@ -127,6 +128,12 @@ public slots:
     void fixBlock(int pageIndex, int boxIndex);
     void fixAllProblemBlocks();
     void fixPagesProblemBlocks(const QList<int> &pages);
+    // The read task (ADR 259): the same work list as the fix — the blocks that
+    // wait for a remedy — but the model writes the block from the image
+    // instead of correcting the recognized text. The single block form takes
+    // any block with text.
+    void readBlock(int pageIndex, int boxIndex);
+    void readScopeBlocks(const QList<int> &pages);
     // The queues over an explicit work list — the stages of the auto
     // pipeline collect the blocks themselves (ADR 257).
     void recognizeBlocks(const QList<Task> &tasks);
@@ -138,12 +145,14 @@ signals:
     void stateChanged();
     void statusRequested(const llocr::StatusMessage &message);
     // One signal per result source: the decision verdict (blockVerified), the
-    // block-recognition transcription (blockRecognized) and the fix outcome
-    // (blockFixed) drive different box transitions (ADR 164).
+    // block-recognition transcription (blockRecognized), the fix outcome
+    // (blockFixed) and the read outcome (blockRead) drive different box
+    // transitions (ADR 164, ADR 260).
     void verificationStarted(int pageIndex, int boxIndex);
     void blockVerified(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void blockRecognized(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void blockFixed(int pageIndex, int boxIndex, const llocr::CheckResult &result);
+    void blockRead(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void problemReported(const llocr::StatusMessage &message);
     // The queue ran out of work. The auto pipeline waits for it to move on
     // to the next stage (ADR 257).
@@ -154,11 +163,14 @@ private:
         Decision,  ///< the decision model judges every queued block
         Recheck,   ///< the block-recognition role re-runs the queued blocks
         Fix,       ///< the fix protocol corrects the queued blocks
+        Read,      ///< the read protocol writes the queued blocks from the image
     };
 
     void startVerifyQueue(const QList<Task> &tasks);
     void startRecheckQueue(const QList<Task> &tasks);
     void startFixQueue(const QList<Task> &tasks);
+    void startReadQueue(const QList<Task> &tasks);
+    void startRemedyQueue(const QList<Task> &tasks, Phase phase);
     void startOrReportAnswered(const QList<Task> &tasks, int answered, int rejected);
     void startNextVerify();
     void deliverVerdict(const CheckResult &verdict);
@@ -167,6 +179,7 @@ private:
     void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered, int &rejected, const TypeFilter &filter = {}) const;
     void collectProblemBoxes(int pageIndex, QList<Task> &out) const;
     void collectFixBoxes(int pageIndex, QList<Task> &out, const TypeFilter &filter = {}) const;
+    void collectReadBoxes(int pageIndex, QList<Task> &out) const;
     void collectUnrecognizedBoxes(int pageIndex, QList<Task> &out, const TypeFilter &filter = {}) const;
     double matchThresholdFor(const QString &blockType) const;
 
@@ -183,6 +196,12 @@ private:
     bool m_checkFinished = false;
     int m_verifyTotal = 0;
     int m_verifyDone = 0;
+    // What the read run did with the blocks it read: the reader's answers are
+    // the run's output, and the run says how many blocks it rewrote, how many
+    // it confirmed and how many it could not read (ADR 261).
+    int m_readRewritten = 0;
+    int m_readConfirmed = 0;
+    int m_readUnreadable = 0;
     double m_matchThreshold = 0.5;
     const ModelProfiles::Role *m_decisionRole = nullptr;  // resolved per run: the per-block thresholds live on the role
     QString m_judgedType;                                 // the block type of the verdict in flight

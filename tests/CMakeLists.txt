@@ -29,9 +29,11 @@ set(LLOCR_MODEL_PROFILE_FILES
 
 # The request profile: the shared request texts of the fix task (ADR 182). A
 # model profile names the prompt profile it takes its texts from, so a test
-# that reads a model contract needs this too.
+# that reads a model contract needs this too. The read task has its own
+# profile (ADR 259): its prompts are shared by every model.
 set(LLOCR_REQUEST_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/requests/fix-requests.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/requests/read-requests.json"
 )
 
 # The shipped profiles a test reads: the model profiles and the request

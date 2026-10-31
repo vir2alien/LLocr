@@ -257,6 +257,11 @@ public:
 };
 }  // namespace
 
+// The reader's system prompt opens with this (the read profile's own words):
+// the mock server recognizes the reader's request by it — the sample-carrying
+// one and the bare image alike (ADR 260).
+const QByteArray kReadPromptMarker = QByteArrayLiteral("You produce the corrected text of one block");
+
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
 // fixed reply, so the real recognition pipeline produces real blocks.
 // Used to drive the AppController-level block-removal contract end to end.
@@ -264,8 +269,9 @@ public:
 // prompt carries "Layout Detection:"), the block-recognition transcription
 // (identified by its system message), the decision model's /v1/systemone
 // (probability is configurable — below the 0.5 default threshold every block
-// mismatches), and the fix protocol (a request carrying a <CANDIDATE>
-// payload — the reply is the configurable OK / FIX / REVIEW answer).
+// mismatches), the fix protocol (a request carrying a <CANDIDATE> payload —
+// the reply is the configurable OK / FIX / REVIEW answer) and the read
+// protocol (the reader's system prompt — the reply is the reader's block).
 // Request counting is what makes "this block was not asked again" observable.
 class DetTokenChatServer : public QObject
 {
@@ -288,6 +294,33 @@ public:
     // (the decision candidate) reads.
     const QList<QByteArray> &systemoneBodies() const { return m_systemoneBodies; }
 
+    // The read requests (ADR 259): the chat calls that carry the reader's
+    // prompt — the recognized text as a sample of the document's notation, or
+    // the bare image when the block has no text yet.
+    QList<QByteArray> readRequests() const
+    {
+        QList<QByteArray> out;
+        for (const QByteArray &request : m_chatRequests)
+            if (request.contains(kReadPromptMarker))
+                out.append(request);
+        return out;
+    }
+
+    // The read protocol's sample (ADR 259): the recognized text between the
+    // <RECOGNIZED> markers; the wire is JSON, so the newlines around it are
+    // the two-character `\n` sequences.
+    static QString recognizedSampleOf(const QByteArray &request)
+    {
+        const QByteArray begin = "<RECOGNIZED>\\n";
+        const QByteArray end = "\\n</RECOGNIZED>";
+        const int at = request.indexOf(begin);
+        if (at < 0)
+            return {};
+        const int from = at + begin.size();
+        const int to = request.indexOf(end, from);
+        return to < 0 ? QString() : QString::fromUtf8(request.mid(from, to - from));
+    }
+
     qreal systemoneProbability = 0.97;
     bool systemoneBroken = false;  // reply without an "answers" object → every judge fails
     QString transcription = QStringLiteral("Re-recognized block text");
@@ -301,6 +334,10 @@ public:
     // fixReplies overrides per candidate.
     QString fixReply = QStringLiteral("FIX\nFixed block text");
     QHash<QString, QString> fixReplies;
+    // The read protocol's reply (ADR 259): a request carrying a <RECOGNIZED>
+    // sample. The reader writes the block from the image, so the answer is the
+    // whole block and nothing else.
+    QString readReply = QStringLiteral("FIX\nRead block text");
     // The layout reply (the "\nLayout Detection:" prompt): the markup-shaped
     // block lines the layout parser reads. The default pair mirrors the
     // transcription sequence: a title block over a text block, both large
@@ -410,10 +447,15 @@ private:
                           .toJson(QJsonDocument::Compact);
         } else {
             // Chat completions: the layout markup for the markup prompt, the
-            // fix protocol answer for a candidate-carrying request, the block
-            // transcription otherwise; the model streams newlines as the two
-            // characters `\n`.
-            const QString content = request.contains("<CANDIDATE>") ? fixAnswer(request) : request.contains("Layout Detection:") && !layoutContent.isEmpty() ? layoutContent : nextTranscription();
+            // read protocol answer for the reader's request (the
+            // sample-carrying one and the bare image alike), the fix protocol
+            // answer for a candidate-carrying request, the block transcription
+            // otherwise; the model streams newlines as the two characters
+            // `\n`.
+            const QString content = request.contains(kReadPromptMarker)                                 ? readReply
+                                    : request.contains("<CANDIDATE>")                                   ? fixAnswer(request)
+                                    : request.contains("Layout Detection:") && !layoutContent.isEmpty() ? layoutContent
+                                                                                                        : nextTranscription();
             body = QJsonDocument(QJsonObject{
                                      {"id", "cmpl-test"},
                                      {"object", "chat.completion"},
@@ -2341,6 +2383,110 @@ private slots:
         // The re-recognition is a different remedy: the decision model still
         // rejects the blocks, so the OCR model may read them again.
         QVERIFY(m_controller->allProblemRecognitionSupported());
+    }
+
+    // The read task (ADR 259): the same work list as the fix, but the model
+    // writes the block from the image. The wire carries the recognized text as
+    // a sample of the document's notation, and the answer lands in the
+    // correction layer — the place the fixer's answer lands.
+    void readEntriesCarryTheRecognizedSample()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("read-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        recognizePage(*m_controller);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const int correctedRole = BoxListModel::CorrectedRole;
+        const int fixStatusRole = BoxListModel::FixStatusRole;
+
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+
+        // The re-read takes every text block of the selected pages (ADR 260) —
+        // not only the blocks that wait for a remedy.
+        QCOMPARE(m_controller->scopedReadBlockCount(), 2);
+        m_controller->readScopeBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+
+        // The wire carried the recognized text as a sample of the notation,
+        // not as the candidate under correction.
+        const QList<QByteArray> reads = server.readRequests();
+        QCOMPARE(reads.size(), 2);
+        QVERIFY2(reads.first().contains("<RECOGNIZED>"), reads.first().constData());
+        QVERIFY2(!reads.first().contains("<CANDIDATE>"), reads.first().constData());
+        QCOMPARE(DetTokenChatServer::recognizedSampleOf(reads.first()), QStringLiteral("1. Introduction"));
+
+        // The reader's answer lands in the correction layer, and the block
+        // carries the reader's status — not the fixer's.
+        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("Read block text"));
+        QCOMPARE(boxes->data(boxes->index(0), fixStatusRole).toInt(), int(BoxFixStatus::ReadFixed));
+        // The reader answered both blocks, so nothing waits for a remedy.
+        QCOMPARE(m_controller->scopedPendingFixCount(), 0);
+        // The run says what it did: without the count a read that only
+        // confirmed the blocks looks like a run that did nothing (ADR 261).
+        QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("Blocks read")), qPrintable(m_controller->statusMessage()));
+        QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("2 rewritten")), qPrintable(m_controller->statusMessage()));
+    }
+
+    // A block nobody recognized yet has no sample of the document's notation:
+    // the reader gets the image alone and writes the block (ADR 260).
+    void readWritesTheBlocksNobodyRecognized()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("read-markup-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        // The markup only: the blocks exist and carry no text.
+        QSignalSpy pass(&*m_controller, &AppController::layoutStateChanged);
+        m_controller->layoutScopePages();
+        QTRY_VERIFY_WITH_TIMEOUT(pass.count() > 0 && !m_controller->layoutBusy(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        // The button counts the blocks it would read — the marked ones are
+        // there from the markup.
+        QCOMPARE(m_controller->scopedReadBlockCount(), 2);
+
+        m_controller->readScopeBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+
+        // The reader got the image alone: there was no text to sample.
+        const QList<QByteArray> reads = server.readRequests();
+        QCOMPARE(reads.size(), 2);
+        QVERIFY2(!reads.first().contains("<RECOGNIZED>"), reads.first().constData());
+        QVERIFY2(!reads.first().contains("<CANDIDATE>"), reads.first().constData());
+
+        // The reader's block landed in the correction layer, with the reader's
+        // own status.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("Read block text"));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::FixStatusRole).toInt(), int(BoxFixStatus::ReadFixed));
     }
 
     // Moving a block empties it (ADR 241): the text was recognized for the

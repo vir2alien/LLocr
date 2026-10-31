@@ -442,10 +442,12 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
 
-    // One request profile, the fix task's; the decision speaks the visual
-    // diff (docs/31) and carries no texts at all.
-    QCOMPARE(ModelProfiles::promptProfiles().size(), 1);
+    // Two request profiles: the fix task's and the read task's (ADR 259,
+    // ADR 260 — the reader's texts are shared by every model); the decision
+    // speaks the visual diff and carries no texts at all.
+    QCOMPARE(ModelProfiles::promptProfiles().size(), 2);
     QVERIFY(ModelProfiles::promptProfile(QStringLiteral("fix-requests")));
+    QVERIFY(ModelProfiles::promptProfile(QString::fromLatin1(ModelProfiles::kReadPromptProfileId)));
     QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("decision-requests")));
     QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("no-such-profile")));
 

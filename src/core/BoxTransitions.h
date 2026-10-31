@@ -27,6 +27,11 @@ bool correctionSelected(const BoundingBox &box);
 // decision model rejected goes back to it.
 bool needsFix(const BoundingBox &box);
 
+// The remedy has answered this block: the fixer confirmed the text or could
+// not read it, and so did the reader (ADR 260). Such a block waits for the
+// operator, not for another run.
+bool remedyAnswered(BoxFixStatus status);
+
 // What the user reads, verifies and exports: the correction when the layer is
 // selected, else the OCR text.
 QString effectiveText(const BoundingBox &box);
@@ -75,6 +80,15 @@ void verdictApplied(BoundingBox &box, const CheckResult &result);
 void fixApplied(BoundingBox &box, const QString &text);
 void fixConfirmedOriginal(BoundingBox &box);
 void fixMarkedUnreadable(BoundingBox &box);
+
+// The read protocol's outcomes (ADR 260): the reader writes the block from the
+// image, so its answer says what it read — the panel words it apart from the
+// fixer's. The transitions are the fixer's: the reader is not a verifier
+// either (ADR 240), and a block it read waits for the operator, not for the
+// fixer.
+void readApplied(BoundingBox &box, const QString &text);
+void readConfirmedOriginal(BoundingBox &box);
+void readMarkedUnreadable(BoundingBox &box);
 
 // «Отменить исправление»: the block rolls back to the text layer's state.
 void correctionReverted(BoundingBox &box);

@@ -148,6 +148,20 @@ int AvailabilityPresenter::scopedPendingFixCount() const
     return total;
 }
 
+int AvailabilityPresenter::scopedReadBlockCount() const
+{
+    int total = 0;
+    for (const int pageIndex : scopePages()) {
+        if (!m_deps.document.isValidIndex(pageIndex))
+            continue;
+        const DocumentPage &page = m_deps.document.page(pageIndex);
+        if (!page.recognized || page.result.pages.isEmpty())
+            continue;
+        total += PageStatus::readableBoxes(page.result.pages.first()).size();
+    }
+    return total;
+}
+
 bool AvailabilityPresenter::scopeHasResults() const
 {
     for (const int pageIndex : scopePages()) {

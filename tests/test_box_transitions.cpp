@@ -154,6 +154,37 @@ private slots:
         QCOMPARE(BoxTransitions::effectiveCheckStatus(damaged), BoxCheckStatus::Review);
     }
 
+    // The reader's outcomes (ADR 260): the same transitions as the fixer's,
+    // but the block says what the reader read — the panel words it apart from
+    // the fixer's.
+    void theReadOutcomesAndTheirVerdicts()
+    {
+        BoundingBox read = recognizedBox();
+        read.checkStatus = BoxCheckStatus::Mismatch;
+        BoxTransitions::readApplied(read, QStringLiteral("read text"));
+        QCOMPARE(read.correctedText, QStringLiteral("read text"));
+        QCOMPARE(read.correctedCheckStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(read.fixStatus, BoxFixStatus::ReadFixed);
+        QVERIFY(read.useCorrectedText);
+        // The block was answered: it does not wait for the fixer.
+        QVERIFY(!BoxTransitions::needsFix(read));
+
+        BoundingBox confirmed = recognizedBox();
+        confirmed.checkStatus = BoxCheckStatus::Mismatch;
+        BoxTransitions::readConfirmedOriginal(confirmed);
+        QCOMPARE(confirmed.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(confirmed.fixStatus, BoxFixStatus::Read);
+        QVERIFY(!BoxTransitions::needsFix(confirmed));
+
+        BoundingBox damaged = correctedBox();
+        BoxTransitions::readMarkedUnreadable(damaged);
+        QCOMPARE(damaged.correctedCheckStatus, BoxCheckStatus::Review);
+        QCOMPARE(damaged.fixStatus, BoxFixStatus::ReadDamaged);
+        // The reader could not read it either: the block waits for the
+        // operator, not for the fixer.
+        QVERIFY(!BoxTransitions::needsFix(damaged));
+    }
+
     // A fix that answers «no correction needed» drops the stale verdict: the
     // fixer is not a verifier (ADR 240), so the block goes back to the gray
     // «recognized» state and the corrected layer is not created at all.

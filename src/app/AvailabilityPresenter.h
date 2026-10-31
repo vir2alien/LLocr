@@ -65,6 +65,9 @@ public:
     int currentPageVerification() const;
     int selectedPageCount() const;
     int scopedPendingFixCount() const;
+    // The blocks the reader would take (ADR 260): every text block of the
+    // selected pages, with a text or without one.
+    int scopedReadBlockCount() const;
     bool scopeHasResults() const;
     bool scopeVerificationSupported() const;
     bool scopeBlocksRecognitionSupported() const;

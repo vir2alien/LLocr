@@ -5,6 +5,7 @@
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
 #include "core/BoxTransitions.h"
+#include "core/CheckRequest.h"
 #include "core/ModelProfiles.h"
 #include "parsers/BlockStyle.h"
 
@@ -62,7 +63,30 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
         }
         const int page = m_verifyPage;
         const int box = m_verifyBoxIndex;
-        emit blockFixed(page, box, result);
+        // The reader has its own outcomes (ADR 260): the block was written
+        // from the image, not corrected.
+        if (m_phase == Phase::Read) {
+            // What the reader did with the block: the run's output is the
+            // count of rewritten, confirmed and unreadable blocks (ADR 261).
+            switch (result.status) {
+            case CheckStatus::Fixed:
+                ++m_readRewritten;
+                break;
+            case CheckStatus::Ok:
+                ++m_readConfirmed;
+                break;
+            case CheckStatus::Review:
+                ++m_readUnreadable;
+                break;
+            case CheckStatus::Failed:
+            case CheckStatus::Recognized:
+            case CheckStatus::Mismatch:
+                break;
+            }
+            emit blockRead(page, box, result);
+        } else {
+            emit blockFixed(page, box, result);
+        }
         ++m_verifyDone;
         emit stateChanged();
         QTimer::singleShot(0, this, [this]() { startNextVerify(); });
@@ -242,6 +266,21 @@ void VerificationQueueController::collectFixBoxes(int pageIndex, QList<Task> &ou
         if (BoxTransitions::needsFix(page.boxes.at(i)))
             out.append({pageIndex, i});
     }
+}
+
+// The blocks the reader takes (ADR 260): every text block of the page — with
+// a text or without one. The reader writes the block from the image, so a
+// block nobody recognized yet is a block it can write.
+void VerificationQueueController::collectReadBoxes(int pageIndex, QList<Task> &out) const
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return;
+    const DocumentPage &docPage = m_deps.document.page(pageIndex);
+    if (!docPage.recognized || docPage.result.pages.isEmpty())
+        return;
+    const OcrPage &page = docPage.result.pages.first();
+    for (const int box : PageStatus::readableBoxes(page))
+        out.append({pageIndex, box});
 }
 
 // The layout pass creates text blocks with no text; a legacy project may
@@ -462,6 +501,24 @@ void VerificationQueueController::fixPagesProblemBlocks(const QList<int> &pages)
     startFixQueue(tasks);
 }
 
+void VerificationQueueController::readBlock(int pageIndex, int boxIndex)
+{
+    if (!m_deps.document.isValidIndex(pageIndex) || !m_deps.document.page(pageIndex).recognized) {
+        return;
+    }
+    startReadQueue({{pageIndex, boxIndex}});
+}
+
+void VerificationQueueController::readScopeBlocks(const QList<int> &pages)
+{
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
+        return;
+    QList<Task> tasks;
+    for (const int p : pages)
+        collectReadBoxes(p, tasks);
+    startReadQueue(tasks);
+}
+
 void VerificationQueueController::recognizeBlocks(const QList<Task> &tasks)
 {
     startRecheckQueue(tasks);
@@ -500,6 +557,18 @@ void VerificationQueueController::startRecheckQueue(const QList<Task> &tasks)
 
 void VerificationQueueController::startFixQueue(const QList<Task> &tasks)
 {
+    startRemedyQueue(tasks, Phase::Fix);
+}
+
+void VerificationQueueController::startReadQueue(const QList<Task> &tasks)
+{
+    startRemedyQueue(tasks, Phase::Read);
+}
+
+// The fix and the read are the same remedy over the same work list: the
+// blocks that wait for a hand. Only the protocol differs.
+void VerificationQueueController::startRemedyQueue(const QList<Task> &tasks, Phase phase)
+{
     if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
     if (tasks.isEmpty())
@@ -507,12 +576,15 @@ void VerificationQueueController::startFixQueue(const QList<Task> &tasks)
 
     m_checkError = StatusMessage();
     m_checkFinished = false;
-    m_phase = Phase::Fix;
+    m_phase = phase;
     m_verifyQueue = tasks;
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     m_verifyTotal = tasks.size();
     m_verifyDone = 0;
+    m_readRewritten = 0;
+    m_readConfirmed = 0;
+    m_readUnreadable = 0;
     m_verifyQueueActive = true;
     emit stateChanged();
 
@@ -594,6 +666,29 @@ void VerificationQueueController::startNextVerify()
         return;
     }
 
+    if (m_phase == Phase::Read) {
+        // The reader's prompts are the same for every model (ADR 259): the
+        // protocol is the action's choice, not the model's.
+        const ModelProfiles::PromptProfile *readProfile = ModelProfiles::promptProfile(QString::fromLatin1(ModelProfiles::kReadPromptProfileId));
+        if (!readProfile) {
+            m_checkError =
+                StatusMessage::translate("VerificationQueueController", "The read prompts (%1) are missing: the block was not sent.").arg(QString::fromLatin1(ModelProfiles::kReadPromptProfileId));
+            emit problemReported(m_checkError);
+            skipCurrentTask();
+            return;
+        }
+        // A block with no recognized text has no sample of the document's
+        // notation: the reader gets the prompt without the sample paragraph
+        // and the image alone (ADR 260).
+        const bool hasSample = !text.isEmpty();
+        QString systemPrompt = hasSample ? readProfile->prompts.systemPrompt : readProfile->prompts.systemPromptNoSample;
+        systemPrompt.replace(QStringLiteral("{{LANGUAGE}}"), kDocumentLanguage);
+        const QString userPrompt = ModelProfiles::blockPromptForRole(readProfile->prompts, box.label);
+        const int maxOutput = ModelProfiles::maxOutputForBlockRole(readProfile->prompts, box.label);
+        m_fix.fixBlock(crop, text, systemPrompt, userPrompt, box.label, maxOutput, CheckRequest::FixProtocol::ReadBlock);
+        return;
+    }
+
     if (m_phase == Phase::Fix) {
         // The fix protocol judges the block's current text; without one there
         // is no candidate to confirm or correct — the task is skipped.
@@ -667,6 +762,13 @@ void VerificationQueueController::finishVerifyQueue()
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     m_checkFinished = true;
+    // The read run says what it did: the reader's answers are the run's
+    // output, and without the count a run that only confirmed the blocks
+    // looks like a run that did nothing (ADR 261).
+    if (m_phase == Phase::Read && m_verifyTotal > 0) {
+        emit statusRequested(
+            StatusMessage::translate("VerificationQueueController", "Blocks read: %1 rewritten, %2 confirmed, %3 unreadable.").arg(m_readRewritten).arg(m_readConfirmed).arg(m_readUnreadable));
+    }
     emit stateChanged();
     emit queueFinished();
 }

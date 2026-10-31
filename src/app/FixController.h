@@ -17,6 +17,10 @@ class RequestProfileStore;
 // Drives one fix request (ADR 163): resolves the fix-model connection and
 // asks it to confirm, correct or reject the block's current text. The queue
 // that feeds it lives in VerificationQueueController.
+//
+// The read protocol (ADR 259) is the same request with another contract: the
+// model writes the block from the image and the recognized text travels only
+// as a sample of the document's notation.
 class FixController : public ModelRequestController
 {
     Q_OBJECT
@@ -24,7 +28,13 @@ class FixController : public ModelRequestController
 public:
     explicit FixController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent = nullptr);
 
-    void fixBlock(const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt, const QString &blockType, int maxOutput);
+    void fixBlock(const QImage &image,
+                  const QString &recognizedText,
+                  const QString &systemPrompt,
+                  const QString &typePrompt,
+                  const QString &blockType,
+                  int maxOutput,
+                  CheckRequest::FixProtocol protocol = CheckRequest::FixProtocol::FullBlock);
 
 signals:
     void fixFinished(const CheckResult &result);

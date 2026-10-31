@@ -293,6 +293,23 @@ void LlamaServerProcess::appendLine(const QString &line)
     // is pure noise.
     if (line.contains(QStringLiteral("non-consecutive token position")))
         return;
+    // llama.cpp prints the whole sampling configuration for every request at
+    // trace level, and the server runs at verbosity 4 to keep the memory
+    // breakdown (ADR 250). The dump lists the server's own defaults for the
+    // samplers the app never turns on ("?dry"), so it reads like a set of
+    // settings in force; the app sets the sampling itself, and the block only
+    // repeats it (ADR 262).
+    if (m_samplerParamsBlock) {
+        if (line.startsWith(u'\t') || line.startsWith(u' '))
+            return;
+        m_samplerParamsBlock = false;
+    }
+    if (line.contains(QStringLiteral("sampler chain:")))
+        return;
+    if (line.contains(QStringLiteral("sampler params:"))) {
+        m_samplerParamsBlock = true;
+        return;
+    }
     m_ring.append(line);
     if (m_ring.size() > m_ringMaxLines)
         m_ring.remove(0, m_ring.size() - m_ringMaxLines);

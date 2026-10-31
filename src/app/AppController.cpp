@@ -165,6 +165,7 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_verify, &VerificationQueueController::blockVerified, this, &AppController::applyVerdictToBox);
     connect(&m_verify, &VerificationQueueController::blockRecognized, this, &AppController::applyRecognitionToBox);
     connect(&m_verify, &VerificationQueueController::blockFixed, this, &AppController::applyFixToBox);
+    connect(&m_verify, &VerificationQueueController::blockRead, this, &AppController::applyReadToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
 
     // The queue's per-block tail (page-text rebuild + its signal fan-out) and
@@ -1309,6 +1310,11 @@ void AppController::fixScopeProblemBlocks()
     m_verify.fixPagesProblemBlocks(scopePages());
 }
 
+void AppController::readScopeBlocks()
+{
+    m_verify.readScopeBlocks(scopePages());
+}
+
 void AppController::stopCheck()
 {
     m_verify.stop();
@@ -1341,6 +1347,13 @@ void AppController::fixSelectedBlock()
     if (m_inspector.selectedBoxIndex() < 0)
         return;
     m_verify.fixBlock(m_currentPage, m_inspector.selectedBoxIndex());
+}
+
+void AppController::readSelectedBlock()
+{
+    if (m_inspector.selectedBoxIndex() < 0)
+        return;
+    m_verify.readBlock(m_currentPage, m_inspector.selectedBoxIndex());
 }
 
 void AppController::fixAllProblemBlocks()
@@ -1724,6 +1737,18 @@ void AppController::applyRecognitionToBox(int pageIndex, int boxIndex, const Che
 
 void AppController::applyFixToBox(int pageIndex, int boxIndex, const CheckResult &result)
 {
+    applyRemedyToBox(pageIndex, boxIndex, result, CheckRequest::FixProtocol::FullBlock);
+}
+
+void AppController::applyReadToBox(int pageIndex, int boxIndex, const CheckResult &result)
+{
+    applyRemedyToBox(pageIndex, boxIndex, result, CheckRequest::FixProtocol::ReadBlock);
+}
+
+// The fix and the read land the same way: the correction layer takes the
+// model's block, and the block's status says which protocol answered (ADR 260).
+void AppController::applyRemedyToBox(int pageIndex, int boxIndex, const CheckResult &result, CheckRequest::FixProtocol protocol)
+{
     // A failed request is not a fix: the block keeps its marks (and any
     // previous correction) until a later run retries it.
     if (result.status == CheckStatus::Failed)
@@ -1734,23 +1759,33 @@ void AppController::applyFixToBox(int pageIndex, int boxIndex, const CheckResult
     if (!result.notes.isEmpty())
         setStatus(result.notes);
 
+    const bool read = protocol == CheckRequest::FixProtocol::ReadBlock;
     bool textChanged = false;
-    const bool applied = applyBoxTransition(pageIndex, boxIndex, [&result, &textChanged](BoundingBox &box) {
+    const bool applied = applyBoxTransition(pageIndex, boxIndex, [&result, &textChanged, read](BoundingBox &box) {
         const QString before = BoxTransitions::effectiveText(box);
         switch (result.status) {
         case CheckStatus::Ok:
             // The candidate is confirmed: it becomes the correction layer's
             // duplicate of the text (the fix can be reverted, an Ok verdict
             // cannot be told from an absent one).
-            BoxTransitions::fixConfirmedOriginal(box);
+            if (read)
+                BoxTransitions::readConfirmedOriginal(box);
+            else
+                BoxTransitions::fixConfirmedOriginal(box);
             break;
         case CheckStatus::Fixed:
-            BoxTransitions::fixApplied(box, result.text);
+            if (read)
+                BoxTransitions::readApplied(box, result.text);
+            else
+                BoxTransitions::fixApplied(box, result.text);
             break;
         case CheckStatus::Review:
             // The model refuses to judge: the block is marked damaged on the
             // correction layer, any previous correction stops being effective.
-            BoxTransitions::fixMarkedUnreadable(box);
+            if (read)
+                BoxTransitions::readMarkedUnreadable(box);
+            else
+                BoxTransitions::fixMarkedUnreadable(box);
             break;
         case CheckStatus::Failed:
         case CheckStatus::Recognized:

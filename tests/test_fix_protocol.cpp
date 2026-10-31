@@ -15,7 +15,10 @@ class ExposedFixModel : public FixModel
 {
 public:
     QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
-    CheckResult parse(const QByteArray &responseData, const QString &candidate = {}, const QString &blockType = {}) { return parseResponse(responseData, candidate, blockType); }
+    CheckResult parse(const QByteArray &responseData, const QString &candidate = {}, const QString &blockType = {}, CheckRequest::FixProtocol protocol = CheckRequest::FixProtocol::FullBlock)
+    {
+        return parseResponse(responseData, candidate, blockType, protocol);
+    }
 };
 
 QByteArray chatReply(const QString &content)
@@ -39,6 +42,14 @@ CheckRequest fixRequest()
     request.blockType = QStringLiteral("text");
     request.modelId = QStringLiteral("qwen3.5-9b");
     request.task = CheckRequest::Task::Fix;
+    return request;
+}
+
+// The read task: the same request with the protocol the action chose.
+CheckRequest readRequest()
+{
+    CheckRequest request = fixRequest();
+    request.fixProtocol = CheckRequest::FixProtocol::ReadBlock;
     return request;
 }
 
@@ -80,6 +91,20 @@ private slots:
     void emptyCandidateStillTravelsFramed();
     // The reasoning budget rides the request and switches the thinking on.
     void reasoningBudgetTurnsTheThinkingOn();
+    // The read protocol (ADR 259): the recognized text travels as a sample of
+    // the document's notation, not as the candidate.
+    void readRequestBodyCarriesTheRecognizedSample();
+    // A block nobody recognized has no sample of the document's notation: the
+    // reader gets the image alone.
+    void readWithoutATextSendsTheImageAlone();
+    // The reader has no verdict on the candidate: OK is outside its scheme.
+    void readSchemeHasNoOk();
+    void readFixCarriesTheBlock();
+    void readReviewIsReviewed();
+    // A block the reader reproduces as it is confirms the candidate.
+    void readEquivalentBlockConfirmsWithoutText();
+    void readReviewSpeaksInTheReadersWords();
+    void readTruncatedReplyIsReviewed();
 };
 
 void TestFixProtocol::fixCarriesTheCompleteBlock()
@@ -281,6 +306,105 @@ void TestFixProtocol::reasoningBudgetTurnsTheThinkingOn()
     QCOMPARE(body.value("reasoning_budget_tokens").toDouble(), 0.0);
     QCOMPARE(body.value("chat_template_kwargs").toObject().value("enable_thinking").toBool(), false);
     QCOMPARE(body.value("max_tokens").toDouble(), 2048.0);
+}
+
+void TestFixProtocol::readRequestBodyCarriesTheRecognizedSample()
+{
+    // The reader takes the recognized text as a sample of how this document
+    // writes, not as the answer: the framing and the wording say so.
+    ExposedFixModel model;
+    const QJsonObject body = QJsonDocument::fromJson(model.build(readRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+    const QJsonArray content = body.value("messages").toArray().at(1).toObject().value("content").toArray();
+    QCOMPARE(content.size(), 3);
+    const QString sample = content.at(2).toObject().value("text").toString();
+    QVERIFY2(sample.contains(QStringLiteral("<RECOGNIZED>")), qPrintable(sample));
+    QVERIFY2(sample.contains(QStringLiteral("</RECOGNIZED>")), qPrintable(sample));
+    QVERIFY2(sample.contains(QStringLiteral("The candidate text")), qPrintable(sample));
+    QVERIFY2(sample.contains(QStringLiteral("a sample of the document's notation")), qPrintable(sample));
+    QVERIFY2(!sample.contains(QStringLiteral("<CANDIDATE>")), qPrintable(sample));
+}
+
+void TestFixProtocol::readWithoutATextSendsTheImageAlone()
+{
+    // A block nobody recognized yet has no sample of the document's notation
+    // to show: the reader gets the image alone (ADR 260).
+    ExposedFixModel model;
+    CheckRequest request = readRequest();
+    request.recognizedText.clear();
+    const QJsonObject body = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+    const QJsonArray content = body.value("messages").toArray().at(1).toObject().value("content").toArray();
+    // The type prompt and the image — no sample.
+    QCOMPARE(content.size(), 2);
+    const QByteArray wire = QJsonDocument(content).toJson();
+    QVERIFY2(!wire.contains("<RECOGNIZED>"), wire.constData());
+}
+
+void TestFixProtocol::readSchemeHasNoOk()
+{
+    // The reader writes the block from the image; it has no verdict on the
+    // candidate, so OK is outside its scheme (ADR 259).
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QStringLiteral("OK")), QStringLiteral("The candidate text"), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+    QCOMPARE(result.status, CheckStatus::Review);
+    QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
+    QVERIFY2(result.notes.text().contains(QStringLiteral("FIX/REVIEW")), qPrintable(result.notes.text()));
+}
+
+void TestFixProtocol::readFixCarriesTheBlock()
+{
+    ExposedFixModel model;
+    const CheckResult result = model.parse(
+        chatReply(QStringLiteral("FIX\nКоэффициент k = 0,35 подтверждён.")), QStringLiteral("Коэффициент k = 0,85 подтверждён."), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+    QCOMPARE(result.status, CheckStatus::Fixed);
+    QCOMPARE(result.text, QStringLiteral("Коэффициент k = 0,35 подтверждён."));
+}
+
+void TestFixProtocol::readReviewIsReviewed()
+{
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QStringLiteral("REVIEW")), QStringLiteral("The candidate text"), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+    QCOMPARE(result.status, CheckStatus::Review);
+    QVERIFY(result.text.isEmpty());
+}
+
+void TestFixProtocol::readEquivalentBlockConfirmsWithoutText()
+{
+    // The gate judges the read block against the current text: a block that
+    // says the same thing confirms the candidate and keeps its bytes.
+    ExposedFixModel model;
+    const CheckResult result = model.parse(
+        chatReply(QStringLiteral("FIX\nКоэффициент k = 0,85 подтверждён.")), QStringLiteral("Коэффициент k = 0,85 подтверждён."), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+    QCOMPARE(result.status, CheckStatus::Ok);
+    QVERIFY(result.text.isEmpty());
+    // The reader explains the outcome in its own words: the fixer's note
+    // speaks about a candidate and a correction (ADR 260).
+    QVERIFY(!result.notes.text().isEmpty());
+    QVERIFY(!result.notes.text().contains(QStringLiteral("candidate"), Qt::CaseInsensitive));
+    QVERIFY(result.notes.text().contains(QStringLiteral("read"), Qt::CaseInsensitive));
+}
+
+void TestFixProtocol::readReviewSpeaksInTheReadersWords()
+{
+    // A block the reader could not read is the reader's own outcome: the
+    // panel and the status line must not borrow the fixer's words.
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QStringLiteral("REVIEW")), QStringLiteral("Коэффициент k = 0,85 подтверждён."), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+    QCOMPARE(result.status, CheckStatus::Review);
+    QVERIFY(!result.notes.text().isEmpty());
+    QVERIFY(result.notes.text().contains(QStringLiteral("read"), Qt::CaseInsensitive));
+}
+
+void TestFixProtocol::readTruncatedReplyIsReviewed()
+{
+    // The reader's answer is the whole block: a cut one is a fragment.
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReplyCut(QStringLiteral("FIX\nВ 2026 году коэффициент k = 0,35 был подтв")),
+                                           QStringLiteral("В 2026 году коэффициент k = 0,85 был подтверждён."),
+                                           QStringLiteral("text"),
+                                           CheckRequest::FixProtocol::ReadBlock);
+    QCOMPARE(result.status, CheckStatus::Review);
+    QVERIFY(result.text.isEmpty());
+    QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
 }
 
 QTEST_MAIN(TestFixProtocol)

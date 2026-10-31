@@ -14,6 +14,9 @@
 //   --hello N           print N "llama_model_loader: loading" lines at startup
 //   --warn N            print N find_slot "non-consecutive token position"
 //                       warnings (the llama.cpp #28166 noise the app filters)
+//   --samplers N        print N llama.cpp sampler dumps (the chain and the
+//                       whole sampling configuration — the per-request noise
+//                       the app filters)
 //
 // Environment:
 //   LLOCR_MOCK_MARKER            append one "invoke" line per spawn
@@ -61,6 +64,7 @@ int main(int argc, char *argv[])
     int helloLines = 0;
     int progressLines = 0;
     int warnLines = 0;
+    int samplerDumps = 0;
 
     QStringList args = app.arguments().mid(1);
     for (int i = 0; i < args.size(); ++i) {
@@ -86,6 +90,8 @@ int main(int argc, char *argv[])
             progressLines = value().toInt();
         else if (a == QStringLiteral("--warn"))
             warnLines = value().toInt();
+        else if (a == QStringLiteral("--samplers"))
+            samplerDumps = value().toInt();
     }
 
     // The probe runs `--version` / `--help`; keep them quick and truthful.
@@ -129,6 +135,21 @@ int main(int argc, char *argv[])
     if (warnLines > 0) {
         for (int i = 0; i < warnLines; ++i)
             printf("W find_slot: non-consecutive token position %d after %d for sequence 0 with %u new tokens\n", 965 + i, 964 + i, 512);
+        fflush(stdout);
+    }
+    // llama.cpp prints the sampler chain and the whole sampling configuration
+    // for every request at trace level; the parameters of the samplers the app
+    // never turns on come with it.
+    if (samplerDumps > 0) {
+        for (int i = 0; i < samplerDumps; ++i) {
+            printf("I slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> greedy \n");
+            printf("I slot launch_slot_: id  0 | task -1 | sampler params: \n");
+            printf("\trepeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000\n");
+            printf("\tdry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 64\n");
+            printf("\ttop_k = 64, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.000\n");
+            printf("\tmirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000, adaptive_target = -1.000, adaptive_decay = 0.900\n");
+            printf("I slot print_timing: id  0 | task %d | total time = 100 ms\n", i);
+        }
         fflush(stdout);
     }
     if (delayStartMs > 0)

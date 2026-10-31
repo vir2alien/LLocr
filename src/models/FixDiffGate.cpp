@@ -115,9 +115,18 @@ QString normalizeForMatch(const QString &text, bool isCode)
 // is churn, never a correction.
 QString mathNormalize(const QString &text)
 {
-    static const QRegularExpression tag(QStringLiteral("\\tag\\s*\\{([^}]*)\\}"));
+    static const QRegularExpression tag(QStringLiteral("\\\\tag\\s*\\{([^}]*)\\}"));
     QString out = text;
     out.replace(tag, QStringLiteral("(\\1)"));
+    // \eqno{n} is the same tag written the other way: the number moves inside
+    // the parentheses, exactly as \tag{n} does.
+    static const QRegularExpression eqnoBraces(QStringLiteral("\\\\eqno\\s*\\{([^}]*)\\}"));
+    static const QRegularExpression eqnoParens(QStringLiteral("\\\\eqno\\s*\\(([^)]*)\\)"));
+    out.replace(eqnoBraces, QStringLiteral("(\\1)"));
+    out.replace(eqnoParens, QStringLiteral("(\\1)"));
+    // A doubled group is a wrapper around a group: "{{x}}" renders as "{x}".
+    static const QRegularExpression doubledGroup(QStringLiteral("\\{\\{([^{}]*)\\}\\}"));
+    out.replace(doubledGroup, QStringLiteral("{\\1}"));
     // x_{1} and x_1 render identically for a single-token script.
     static const QRegularExpression script(QStringLiteral("([_^])\\s*\\{([^{}\\s]+)\\}"));
     out.replace(script, QStringLiteral("\\1\\2"));

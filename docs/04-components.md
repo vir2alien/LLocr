@@ -37,7 +37,16 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   («Проверить всё», `checkAllEnabledBlocks`) — the queue asks only the blocks
   that have no answer yet, so a re-recognition only verifies the newly
   recognized blocks. Fixing is a separate action («Исправить», ADR 178): the
-  rejected blocks go to the fix model in their own run. In Managed mode the
+  rejected blocks go to the fix model in their own run. Re-reading is a third
+  action («Перечитать», ADR 259, ADR 260): the fix model writes the block from
+  the image and the recognized text travels only as a sample of the document's
+  notation — a block nobody recognized yet has no sample, and the reader gets
+  the image alone. The protocol is the action's choice
+  (`CheckRequest::fixProtocol`), not the model's. The reader's outcome is
+  visible: its state speaks for the block in the frame (green — read, red —
+  unreadable), it explains itself in the reader's words, and the run ends with
+  its tally («Прочитано блоков: переписано — N, подтверждено — M, не прочитано
+  — K», ADR 261). In Managed mode the
   server switches from the OCR to the check model automatically (ADR 74), in
   External mode the check just starts (ADR 91).
   The serial check queue (task list, progress, stop) lives in

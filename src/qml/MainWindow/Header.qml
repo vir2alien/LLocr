@@ -230,22 +230,51 @@ ToolBar {
         ToolGroup {
             title: qsTr("Verification")
 
-            IconToolButton {
-                text: qsTr("Verify")
-                iconName: "circle-check"
+            // The verify and the re-read share a row: the group stays three
+            // rows tall (the caption, this row, the fix), and the menu does
+            // not grow with every new action.
+            RowLayout {
+                spacing: 4
                 Layout.fillWidth: true
-                stopMode: Controller.checkBusy && Controller.checkDecisionPhase
-                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.scopeVerificationSupported && Controller.decisionModelAvailable)
-                ToolTip.visible: hovered
-                ToolTip.text: stopMode ? qsTr("Stop the verification")
-                                       : qsTr("Verify the recognized blocks without fixing them")
-                onClicked: {
-                    if (stopMode) {
-                        Controller.stopCheck()
-                        return
+
+                IconToolButton {
+                    text: qsTr("Verify")
+                    iconName: "circle-check"
+                    Layout.fillWidth: true
+                    stopMode: Controller.checkBusy && Controller.checkDecisionPhase
+                    enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                             && Controller.scopeVerificationSupported && Controller.decisionModelAvailable)
+                    ToolTip.visible: hovered
+                    ToolTip.text: stopMode ? qsTr("Stop the verification")
+                                           : qsTr("Verify the recognized blocks without fixing them")
+                    onClicked: {
+                        if (stopMode) {
+                            Controller.stopCheck()
+                            return
+                        }
+                        Controller.checkScopeEnabledBlocks()
                     }
-                    Controller.checkScopeEnabledBlocks()
+                }
+
+                IconToolButton {
+                    text: Controller.scopedReadBlockCount > 0
+                          ? qsTr("Re-read") + " (" + Controller.scopedReadBlockCount + ")"
+                          : qsTr("Re-read")
+                    iconName: "file-search"
+                    Layout.fillWidth: true
+                    stopMode: Controller.checkBusy && Controller.checkReadPhase
+                    enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                             && Controller.fixModelAvailable && Controller.scopedReadBlockCount > 0)
+                    ToolTip.visible: hovered
+                    ToolTip.text: stopMode ? qsTr("Stop the re-reading")
+                                           : qsTr("Read the blocks of the selected pages from the image")
+                    onClicked: {
+                        if (stopMode) {
+                            Controller.stopCheck()
+                            return
+                        }
+                        Controller.readScopeBlocks()
+                    }
                 }
             }
 

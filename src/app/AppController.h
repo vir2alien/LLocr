@@ -31,6 +31,7 @@
 #include "app/VerificationPromptStore.h"
 #include "app/VerificationQueueController.h"
 #include "config/SettingsStore.h"
+#include "core/CheckRequest.h"
 #include "core/CheckResult.h"
 #include "core/OcrResult.h"
 #include "core/StatusMessage.h"
@@ -107,6 +108,7 @@ class AppController : public QObject
     Q_PROPERTY(bool checkDecisionPhase READ checkDecisionPhase NOTIFY checkStateChanged)
     Q_PROPERTY(bool checkRecheckPhase READ checkRecheckPhase NOTIFY checkStateChanged)
     Q_PROPERTY(bool checkFixPhase READ checkFixPhase NOTIFY checkStateChanged)
+    Q_PROPERTY(bool checkReadPhase READ checkReadPhase NOTIFY checkStateChanged)
     Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
     Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY availabilityChanged)
@@ -139,6 +141,9 @@ class AppController : public QObject
     // non-current page re-announces them too.
     Q_PROPERTY(int selectedPageCount READ selectedPageCount NOTIFY availabilityChanged)
     Q_PROPERTY(int scopedPendingFixCount READ scopedPendingFixCount NOTIFY availabilityChanged)
+    // The blocks the reader would take (ADR 260): the text blocks of the
+    // selected pages, with a text or without one.
+    Q_PROPERTY(int scopedReadBlockCount READ scopedReadBlockCount NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeHasResults READ scopeHasResults NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeVerificationSupported READ scopeVerificationSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeBlocksRecognitionSupported READ scopeBlocksRecognitionSupported NOTIFY availabilityChanged)
@@ -261,6 +266,7 @@ public:
     bool checkDecisionPhase() const { return m_verify.decisionPhase(); }
     bool checkRecheckPhase() const { return m_verify.recheckPhase(); }
     bool checkFixPhase() const { return m_verify.fixPhase(); }
+    bool checkReadPhase() const { return m_verify.readPhase(); }
     QString checkErrorMessage() const { return m_verify.errorMessage(); }
     bool pageVerificationSupported() const { return m_availability.pageVerificationSupported(); }
     bool allPageVerificationSupported() const { return m_availability.allPageVerificationSupported(); }
@@ -279,6 +285,7 @@ public:
     int currentPageRotation() const;
     int selectedPageCount() const { return m_availability.selectedPageCount(); }
     int scopedPendingFixCount() const { return m_availability.scopedPendingFixCount(); }
+    int scopedReadBlockCount() const { return m_availability.scopedReadBlockCount(); }
     bool scopeHasResults() const { return m_availability.scopeHasResults(); }
     bool scopeVerificationSupported() const { return m_availability.scopeVerificationSupported(); }
     bool scopeBlocksRecognitionSupported() const { return m_availability.scopeBlocksRecognitionSupported(); }
@@ -410,6 +417,10 @@ public slots:
     Q_INVOKABLE void layoutScopePages();
     Q_INVOKABLE void checkScopeEnabledBlocks();
     Q_INVOKABLE void fixScopeProblemBlocks();
+    // The read task (ADR 259): the same work list as the fix, but the model
+    // writes the block from the image instead of correcting the recognized
+    // text.
+    Q_INVOKABLE void readScopeBlocks();
     Q_INVOKABLE void stopCheck();
     // The auto pipeline (ADR 257): the run over the selected pages.
     Q_INVOKABLE void startAutoPipeline();
@@ -424,6 +435,9 @@ public slots:
     // block of the document through the fix task's OK / FIX / REVIEW protocol.
     Q_INVOKABLE void fixSelectedBlock();
     Q_INVOKABLE void fixAllProblemBlocks();
+    // The read task (ADR 259): the selected block, or the same blocks the fix
+    // takes, read from the image by the fix model.
+    Q_INVOKABLE void readSelectedBlock();
     // Manual page markup through the layout role (TeleOCR-style two-phase
     // models): the reply replaces the page blocks, the text stays empty until
     // each block goes through blockRecognition.
@@ -493,6 +507,12 @@ private:
     void applyVerdictToBox(int pageIndex, int boxIndex, const CheckResult &result);
     void applyRecognitionToBox(int pageIndex, int boxIndex, const CheckResult &result);
     void applyFixToBox(int pageIndex, int boxIndex, const CheckResult &result);
+    // The reader's outcome (ADR 260): the block was written from the image, so
+    // it carries the reader's own status, not the fixer's.
+    void applyReadToBox(int pageIndex, int boxIndex, const CheckResult &result);
+    // The shared body of the two: the correction layer takes the model's block,
+    // and the block's status says which protocol answered (ADR 260).
+    void applyRemedyToBox(int pageIndex, int boxIndex, const CheckResult &result, CheckRequest::FixProtocol protocol);
     // The effective text of the page changed structurally: rebuild it, rebase
     // the edit baseline and refresh the views.
     void applyPageTextChanged(int pageIndex);

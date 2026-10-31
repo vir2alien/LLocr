@@ -123,6 +123,7 @@ private:
     QString m_lineBuffer;
     QStringList m_ring;
     int m_ringMaxLines = 2000;
+    bool m_samplerParamsBlock = false;
 
     QString m_status = QStringLiteral("Idle");
     QString m_lastError;

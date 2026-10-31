@@ -89,6 +89,13 @@ Rectangle {
             onClicked: Controller.fixSelectedBlock()
         }
         MiniButton {
+            visible: miniRoot.isTextBlock
+            iconName: "file-search"
+            tip: qsTr("Re-read block")
+            enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle && Controller.fixModelAvailable
+            onClicked: Controller.readSelectedBlock()
+        }
+        MiniButton {
             iconName: "trash-2"
             tip: qsTr("Delete block")
             enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle

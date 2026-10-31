@@ -279,6 +279,26 @@
         <translation type="unfinished">Не требует исправления</translation>
     </message>
     <message>
+        <location line="+6"/>
+        <source>Read: the text matches the image</source>
+        <translation type="unfinished">Прочитано: текст совпадает с картинкой</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not read the block</source>
+        <translation type="unfinished">Не удалось прочитать блок</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Read</source>
+        <translation type="unfinished">Прочитано</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Read text (AI)</source>
+        <translation type="unfinished">Прочитанный текст (AI)</translation>
+    </message>
+    <message>
         <location line="+10"/>
         <source>Differences</source>
         <translation type="unfinished">Различия</translation>
@@ -345,6 +365,11 @@
         <location line="+8"/>
         <source>Fix block</source>
         <translation>Исправить блок</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Re-read block</source>
+        <translation>Перечитать блок</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -796,6 +821,16 @@
         <source>The thinking budget was cut to %1 tokens to fit the context window.</source>
         <translation>Бюджет размышления урезан до %1 токенов, чтобы поместиться в окно контекста.</translation>
     </message>
+    <message>
+        <location line="+20"/>
+        <source>Stopped before the fix started.</source>
+        <translation>Остановлено до начала исправления.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>Stopped before the read started.</source>
+        <translation>Остановлено до начала чтения.</translation>
+    </message>
 </context>
 <context>
     <name>FixDiffGate</name>
@@ -828,6 +863,11 @@
         <translation>Модель не вернула исправленный текст: %1</translation>
     </message>
     <message>
+        <location line="+44"/>
+        <source>The model returned no block text: %1</source>
+        <translation>Модель не вернула текст блока: %1</translation>
+    </message>
+    <message>
         <location line="+106"/>
         <source>The server ignored the reasoning budget — the answer was requested again without the thinking.</source>
         <translation>Сервер проигнорировал бюджет размышлений — ответ запрошен заново, без размышлений.</translation>
@@ -844,8 +884,23 @@
     </message>
     <message>
         <location line="+16"/>
-        <source>The reply does not follow the OK/FIX/REVIEW scheme: %1</source>
-        <translation>Ответ не соответствует схеме OK/FIX/REVIEW: %1</translation>
+        <source>The reply does not follow the %1 scheme: %2</source>
+        <translation>Ответ не соответствует схеме %1: %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/models/FixModel.cpp" line="+238"/>
+        <source>The block could not be read: the crop is cut, covered or blurred.</source>
+        <translation>Не удалось прочитать блок: кроп обрезан, закрыт или размыт.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The block could not be read: the model wrote no text.</source>
+        <translation>Не удалось прочитать блок: модель не написала текст.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The block was read: the text matches the image, so the block text is kept.</source>
+        <translation>Прочитано: текст совпадает с картинкой, текст блока не изменён.</translation>
     </message>
 </context>
 <context>
@@ -1079,6 +1134,16 @@
         <translation>Исправить блоки, ожидающие исправления, на выбранных страницах</translation>
     </message>
     <message>
+        <location line="+10"/>
+        <source>Re-read</source>
+        <translation>Перечитать</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Read the blocks of the selected pages from the image</source>
+        <translation>Прочитать с картинки блоки выбранных страниц</translation>
+    </message>
+    <message>
         <location line="+15"/>
         <source>Export</source>
         <translation>Экспорт</translation>
@@ -1199,6 +1264,11 @@
         <location line="+21"/>
         <source>Stop the fix</source>
         <translation>Остановить исправление</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Stop the re-reading</source>
+        <translation>Остановить перечитывание</translation>
     </message>
     <message>
         <location line="+21"/>
@@ -3548,6 +3618,11 @@
     </message>
     <message>
         <location line="+2"/>
+        <source>Re-reading %1 / %2</source>
+        <translation>Перечитывание %1 / %2</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>Re-recognizing %1 / %2</source>
         <translation>Распознавание %1 / %2</translation>
     </message>
@@ -3766,12 +3841,22 @@
         <translation>отклонено формул с неверным LaTeX: %1</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>The read prompts (%1) are missing: the block was not sent.</source>
+        <translation>Промпты чтения (%1) отсутствуют: блок не отправлен.</translation>
+    </message>
+    <message>
         <source>No candidate renderer: the visual-diff decision model needs the candidate as an image.</source>
         <translation>Нет рендерера кандидата: модели визуальной сверки кандидат нужен картинкой.</translation>
     </message>
     <message>
         <source>The candidate render failed: %1</source>
         <translation>Не удалось отрисовать кандидата: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/app/VerificationQueueController.cpp" line="+745"/>
+        <source>Blocks read: %1 rewritten, %2 confirmed, %3 unreadable.</source>
+        <translation>Прочитано блоков: переписано — %1, подтверждено — %2, не прочитано — %3.</translation>
     </message>
 </context>
 <context>

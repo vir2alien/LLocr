@@ -102,6 +102,7 @@ namespace {
 void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QString &error, const QString &id, bool requestProfile)
 {
     role.systemPrompt = object.value(QStringLiteral("systemPrompt")).toString();
+    role.systemPromptNoSample = object.value(QStringLiteral("systemPromptNoSample")).toString();
 
     const QJsonObject blockPrompts = object.value(QStringLiteral("blockPrompts")).toObject();
     for (auto prompt = blockPrompts.constBegin(); prompt != blockPrompts.constEnd(); ++prompt) {
@@ -134,6 +135,7 @@ void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QStr
 void applyPromptProfile(ModelProfiles::Role &role, const ModelProfiles::Role &prompts)
 {
     role.systemPrompt = prompts.systemPrompt;
+    role.systemPromptNoSample = prompts.systemPromptNoSample;
     role.blockPrompts = prompts.blockPrompts;
     role.blockAliases = prompts.blockAliases;
     // The shared reply budgets fill the gaps: a model profile that ships its
@@ -602,10 +604,15 @@ QString ModelProfiles::blockPromptFor(const QList<Profile> &profiles, const QStr
     const Role *found = profile ? roleFor(*profile, role) : nullptr;
     if (!found)
         return QString();
-    const QString direct = found->blockPrompts.value(type);
+    return blockPromptForRole(*found, type);
+}
+
+QString ModelProfiles::blockPromptForRole(const Role &role, const QString &type)
+{
+    const QString direct = role.blockPrompts.value(type);
     if (!direct.isEmpty())
         return direct;
-    return found->blockPrompts.value(found->blockAliases.value(type));
+    return role.blockPrompts.value(role.blockAliases.value(type));
 }
 
 QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
@@ -652,9 +659,13 @@ int ModelProfiles::maxOutputForBlock(const QList<Profile> &profiles, const QStri
     const Role *found = profile ? roleFor(*profile, role) : nullptr;
     if (!found)
         return -1;
-    const QString aliasKey = found->blockAliases.value(blockType, blockType);
-    const int byBlock = found->blockMaxOutput.value(aliasKey, -1);
-    return byBlock;
+    return maxOutputForBlockRole(*found, blockType);
+}
+
+int ModelProfiles::maxOutputForBlockRole(const Role &role, const QString &blockType)
+{
+    const QString aliasKey = role.blockAliases.value(blockType, blockType);
+    return role.blockMaxOutput.value(aliasKey, -1);
 }
 
 int ModelProfiles::visionTokensFor(const Profile &profile, const QString &role)

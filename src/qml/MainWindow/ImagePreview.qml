@@ -384,6 +384,7 @@ Item {
                     required property real boxConfidence
                     required property real boxCorrectedConfidence
                     required property bool boxUseCorrectedText
+                    required property int boxFixStatus
 
                     property bool isImage: Controller.boxModel.isImageBox(boxDelegate.index)
                     property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
@@ -400,10 +401,19 @@ Item {
                     // The frame carries the state of the block (ADR 238): no
                     // frame = layout markup only, gray = recognized, red =
                     // verified with an error, green = verified without one.
+                    // The reader's state speaks for the block while it stands
+                    // (ADR 261): the reader compared the text with the image,
+                    // so its answer is a verdict — green when the block was
+                    // read, red when it could not be read. The fixer's states
+                    // stay out: the fixer is not a verifier (ADR 240).
                     readonly property bool hasText: boxText.length > 0 || boxCorrectedText.length > 0
-                    readonly property bool failed: effectiveStatus === 3 || effectiveStatus === 4 || effectiveStatus === 7
-                    readonly property color stateColor: effectiveStatus === 1 || effectiveStatus === 5 || effectiveStatus === 6
-                                                     ? Theme.success
+                    readonly property bool readDamaged: boxFixStatus === 6
+                    readonly property bool readState: boxFixStatus === 4 || boxFixStatus === 5 || boxFixStatus === 6
+                    readonly property bool verified: effectiveStatus === 1 || effectiveStatus === 5 || effectiveStatus === 6
+                    readonly property bool failed: boxDelegate.readDamaged || effectiveStatus === 3 || effectiveStatus === 4 || effectiveStatus === 7
+                    readonly property color stateColor: boxDelegate.readDamaged ? Theme.error
+                                                     : boxDelegate.readState ? Theme.success
+                                                     : boxDelegate.verified ? Theme.success
                                                      : boxDelegate.failed ? Theme.error
                                                      : Theme.nothing
 
@@ -424,7 +434,10 @@ Item {
                     // Keep the selected frame and its mini toolbar on top of the
                     // neighboring blocks.
                     z: isSelected ? 2 : 0
-                    border.color: boxDelegate.hasText ? stateColor : "transparent"
+                    // A block the reader could not read carries a verdict
+                    // without text: the frame is the only sign that the block
+                    // needs a human (ADR 261).
+                    border.color: boxDelegate.hasText || boxDelegate.readDamaged ? stateColor : "transparent"
                     // A block with an error is framed heavier: the eye finds
                     // the problem without reading the colors.
                     border.width: isSelected || boxDelegate.failed ? 2 : 1

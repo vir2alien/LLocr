@@ -79,14 +79,20 @@ bool correctionSelected(const BoundingBox &box)
     return box.useCorrectedText && !box.correctedText.isEmpty();
 }
 
+bool remedyAnswered(BoxFixStatus status)
+{
+    return status == BoxFixStatus::NotNeeded || status == BoxFixStatus::Damaged || status == BoxFixStatus::Read || status == BoxFixStatus::ReadFixed || status == BoxFixStatus::ReadDamaged;
+}
+
 bool needsFix(const BoundingBox &box)
 {
     const BoxCheckStatus status = effectiveCheckStatus(box);
     if (status != BoxCheckStatus::Mismatch && status != BoxCheckStatus::Review)
         return false;
-    // The fixer has answered this candidate: it confirmed the text or it could
-    // not read it. The block waits for the operator now.
-    return box.fixStatus != BoxFixStatus::NotNeeded && box.fixStatus != BoxFixStatus::Damaged;
+    // The remedy has answered this candidate: the fixer confirmed the text or
+    // it could not read it, and so did the reader (ADR 260). The block waits
+    // for the operator now.
+    return !remedyAnswered(box.fixStatus);
 }
 
 QString effectiveText(const BoundingBox &box)
@@ -221,6 +227,24 @@ void fixMarkedUnreadable(BoundingBox &box)
     // The damage belongs to the block: the verdict must show even when the
     // user was reading the text layer.
     box.useCorrectedText = true;
+}
+
+void readApplied(BoundingBox &box, const QString &text)
+{
+    fixApplied(box, text);
+    box.fixStatus = BoxFixStatus::ReadFixed;
+}
+
+void readConfirmedOriginal(BoundingBox &box)
+{
+    fixConfirmedOriginal(box);
+    box.fixStatus = BoxFixStatus::Read;
+}
+
+void readMarkedUnreadable(BoundingBox &box)
+{
+    fixMarkedUnreadable(box);
+    box.fixStatus = BoxFixStatus::ReadDamaged;
 }
 
 void correctionReverted(BoundingBox &box)

@@ -34,6 +34,24 @@ class TestPageStatus : public QObject
     Q_OBJECT
 
 private slots:
+    // The reader's work list (ADR 260): every text block of the page — with a
+    // text or without one — except the blocks the user owns and the image
+    // placeholders.
+    void theReaderTakesEveryTextBlockButNotTheUsers()
+    {
+        BoundingBox text = box(QStringLiteral("text"));
+        BoundingBox empty = box(QStringLiteral("text"));
+        empty.text.clear();
+        BoundingBox picture = box(QStringLiteral("image"));
+        BoundingBox edited = box(QStringLiteral("text"));
+        edited.checkStatus = BoxCheckStatus::Edited;
+        BoundingBox approved = box(QStringLiteral("text"));
+        approved.checkStatus = BoxCheckStatus::Approved;
+
+        const QList<int> readable = PageStatus::readableBoxes(singlePage({text, empty, picture, edited, approved}));
+        QCOMPARE(readable, QList<int>({0, 1}));
+    }
+
     void everySubjectAnsweredMeansClean()
     {
         const auto always = [](const QString &) { return true; };

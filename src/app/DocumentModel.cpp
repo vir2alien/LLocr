@@ -1,6 +1,7 @@
 #include "app/DocumentModel.h"
 
 #include "core/BoxTransitions.h"
+#include "parsers/BlockStyle.h"
 
 #include <cmath>
 #include <exception>
@@ -47,6 +48,24 @@ int PageStatus::pendingFixCount(const OcrPage &page)
         count += BoxTransitions::needsFix(box) ? 1 : 0;
     }
     return count;
+}
+
+QList<int> PageStatus::readableBoxes(const OcrPage &page)
+{
+    QList<int> out;
+    for (int i = 0; i < page.boxes.size(); ++i) {
+        const BoundingBox &box = page.boxes.at(i);
+        // The image placeholders carry no text: there is nothing to read.
+        if (blockStyleForLabel(box.label).style == BlockStyle::ImagePlaceholder)
+            continue;
+        // A block the user owns — hand-written or confirmed by hand — is not
+        // the model's to rewrite (the fix and the recognition skip it too).
+        const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(box);
+        if (status == BoxCheckStatus::Edited || status == BoxCheckStatus::Approved)
+            continue;
+        out.append(i);
+    }
+    return out;
 }
 
 namespace {
