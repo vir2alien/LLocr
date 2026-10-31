@@ -1,6 +1,7 @@
 #include "app/CandidateRenderer.h"
 
 #include <QCoreApplication>
+#include <QFutureWatcher>
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -10,6 +11,7 @@
 #include <QPageSize>
 #include <QPdfDocument>
 #include <QSizeF>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QUrl>
@@ -67,6 +69,29 @@ QImage cutToInk(const QImage &image)
     return image.copy(padded.intersected(image.rect()));
 }
 
+struct RasterResult {
+    enum class Status { Ok, NotOnePage, Failed };
+    Status status = Status::Failed;
+    QImage image;
+};
+
+RasterResult rasterizePdf(const QString &path, int widthPx, int heightPx)
+{
+    QPdfDocument pdf;
+    if (pdf.load(path) != QPdfDocument::Error::None || pdf.pageCount() < 1)
+        return {};
+    // A second page means the content did not fit: the picture would carry
+    // only its head, and the model would judge a candidate that was never
+    // sent (ADR 237).
+    if (pdf.pageCount() > 1)
+        return {RasterResult::Status::NotOnePage, {}};
+    const QSize size(qMin(widthPx * kRasterScale, kMaxRasterSide), qMin((heightPx + kPrintAllowancePx) * kRasterScale, kMaxRasterSide));
+    QImage image = cutToInk(pdf.render(0, size));
+    if (image.isNull())
+        return {};
+    return {RasterResult::Status::Ok, std::move(image)};
+}
+
 }  // namespace
 
 class CandidateRendererPage : public QWebEnginePage
@@ -101,6 +126,7 @@ void CandidateRenderer::render(const QString &text, const ResultCallback &callba
     }
 
     m_busy = true;
+    ++m_renderGeneration;
     m_text = text;
     m_callback = callback;
     m_watchdog->start();
@@ -233,21 +259,33 @@ void CandidateRenderer::startPrint()
 
 void CandidateRenderer::rasterize()
 {
-    QPdfDocument pdf;
-    if (pdf.load(m_pdfPath) != QPdfDocument::Error::None || pdf.pageCount() < 1) {
-        fail(tr("The candidate render could not be rasterized."));
-        return;
-    }
-    // A second page means the content did not fit: the picture would carry
-    // only its head, and the model would judge a candidate that was never
-    // sent (ADR 237).
-    if (pdf.pageCount() > 1) {
-        fail(tr("The candidate render did not fit on one page."));
-        return;
-    }
-    const QSize size(qMin(m_widthPx * kRasterScale, kMaxRasterSide), qMin((m_heightPx + kPrintAllowancePx) * kRasterScale, kMaxRasterSide));
-    const QImage image = cutToInk(pdf.render(0, size));
-    finish(!image.isNull(), image, image.isNull() ? tr("The candidate render could not be rasterized.") : QString());
+    const QString path = m_pdfPath;
+    const int widthPx = m_widthPx;
+    const int heightPx = m_heightPx;
+    const quint64 generation = m_renderGeneration;
+
+    auto *watcher = new QFutureWatcher<RasterResult>(this);
+    connect(watcher, &QFutureWatcher<RasterResult>::finished, this, [this, watcher, generation]() {
+        const RasterResult result = watcher->result();
+        watcher->deleteLater();
+        // The watchdog may have failed this render while the worker ran, and a
+        // later render may have started since; the result belongs to this
+        // render only while both still hold.
+        if (!m_busy || generation != m_renderGeneration)
+            return;
+        switch (result.status) {
+        case RasterResult::Status::Ok:
+            finish(true, result.image, {});
+            return;
+        case RasterResult::Status::NotOnePage:
+            fail(tr("The candidate render did not fit on one page."));
+            return;
+        case RasterResult::Status::Failed:
+            fail(tr("The candidate render could not be rasterized."));
+            return;
+        }
+    });
+    watcher->setFuture(QtConcurrent::run([path, widthPx, heightPx]() { return rasterizePdf(path, widthPx, heightPx); }));
 }
 
 void CandidateRenderer::runJs(const QString &script, const std::function<void(const QVariant &)> &onResult)

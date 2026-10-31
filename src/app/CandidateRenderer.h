@@ -55,6 +55,7 @@ private:
     QString m_pdfPath;
     int m_widthPx = 0;
     int m_heightPx = 0;
+    quint64 m_renderGeneration = 0;
     ResultCallback m_callback;
 
     QTimer *m_pollTimer = nullptr;
