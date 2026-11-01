@@ -137,6 +137,7 @@ target_link_libraries(test_verification_queue PRIVATE
     Qt6::Test
     llocr_app
 )
+llocr_add_profile_resources(test_verification_queue)
 add_test(NAME test_verification_queue COMMAND test_verification_queue)
 
 # The availability presenter: the flags the toolbar reads and the announcement

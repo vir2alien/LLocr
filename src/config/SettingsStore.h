@@ -94,6 +94,8 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString fixLaunchDraftPath READ fixLaunchDraftPath WRITE setFixLaunchDraftPath NOTIFY fixLaunchDraftPathChanged)
     Q_PROPERTY(QString fixRequestProfileId READ fixRequestProfileId WRITE setFixRequestProfileId NOTIFY fixRequestProfileIdChanged)
     Q_PROPERTY(QString fixModelName READ fixModelName WRITE setFixModelName NOTIFY fixModelNameChanged)
+    Q_PROPERTY(int fixReasoningBudgetTokens READ fixReasoningBudgetTokens WRITE setFixReasoningBudgetTokens NOTIFY fixReasoningBudgetTokensChanged)
+    Q_PROPERTY(int readReasoningBudgetTokens READ readReasoningBudgetTokens WRITE setReadReasoningBudgetTokens NOTIFY readReasoningBudgetTokensChanged)
 
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
 
@@ -286,6 +288,10 @@ public:
     void setFixRequestProfileId(const QString &id);
     QString fixModelName() const;
     void setFixModelName(const QString &name);
+    int fixReasoningBudgetTokens() const;
+    void setFixReasoningBudgetTokens(int tokens);
+    int readReasoningBudgetTokens() const;
+    void setReadReasoningBudgetTokens(int tokens);
 
     // The ids of the app's tasks, in the order the task table shows them. The
     // list comes from ConnectionRole, the single source of the roles
@@ -371,6 +377,8 @@ signals:
     void fixLaunchDraftPathChanged();
     void fixRequestProfileIdChanged();
     void fixModelNameChanged();
+    void fixReasoningBudgetTokensChanged();
+    void readReasoningBudgetTokensChanged();
     void hfTokenChanged();
 
 public:
@@ -501,6 +509,9 @@ private:
     static constexpr const char *kDecisionRequestProfileId = "tasks/decision/requestProfileId";
     static constexpr const char *kDecisionModelName = "tasks/decision/modelName";
     static constexpr const char *kDecisionMatchThreshold = "decision/matchThreshold";
+    // The verification tasks' thinking budget (ADR 193); 0 keeps it off.
+    static constexpr const char *kFixReasoningBudgetTokens = "check/fixReasoningBudgetTokens";
+    static constexpr const char *kReadReasoningBudgetTokens = "check/readReasoningBudgetTokens";
 
     // Layout (page markup) model keys
     static constexpr const char *kLayoutLaunchModelPath = "tasks/layout/modelPath";

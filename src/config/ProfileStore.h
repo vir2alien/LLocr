@@ -97,6 +97,25 @@ public:
         return dropped;
     }
 
+    // Removes a named parameter from every user profile (T::parameters
+    // elements must carry .name) — the migration of a parameter the profiles
+    // stopped carrying. Persists when anything was removed.
+    int stripUserParameter(const QString &name)
+    {
+        if (m_userFileTooNew)
+            return 0;
+        int changed = 0;
+        for (auto it = m_userProfiles.begin(); it != m_userProfiles.end(); ++it) {
+            const int before = it->parameters.size();
+            it->parameters.removeIf([&name](const auto &parameter) { return parameter.name == name; });
+            if (it->parameters.size() != before)
+                ++changed;
+        }
+        if (changed > 0)
+            persistUserProfiles();
+        return changed;
+    }
+
     void resetToBuiltIn()
     {
         if (m_userFileTooNew || m_userProfiles.isEmpty())

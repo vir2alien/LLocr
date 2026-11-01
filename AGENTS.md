@@ -485,12 +485,18 @@
     the frame (ADR 240: the fixer is not a verifier).
     The fix models may also **think first**: the mode is the request parameter
     `reasoning_budget_tokens` with the four steps off / low 512 / med 1024 /
-    high 1536 (ADR 193). The model profile says whether the model can think at
-    all (`reasoning: true`), the request profile holds the steps, the budget
-    rides the request (llama.cpp reads it per request — no server restart) and
-    it is also the switch: `enable_thinking` follows it, so zero keeps the old
-    behaviour. The generation budget is computed inside the server's context
-    window (`src/core/RequestBudget.h`): the answer's block budget plus the
+    high 1536 (ADR 193). The steps are the vocabulary only (ADR 268): the two
+    budgets are global settings — `check/fixReasoningBudgetTokens` /
+    `check/readReasoningBudgetTokens`, edited in Настройки → Проверка — and
+    `FixController` injects the per-protocol one into the request right before
+    the `RequestBudget` computation (the fix budget for the fix protocol, the
+    read budget for «Распознать точно»); the parameter no longer sits in the
+    request profiles. The model profile still says whether the model can think
+    at all (`reasoning: true`), the budget rides the request (llama.cpp reads
+    it per request — no server restart) and it is also the switch:
+    `enable_thinking` follows it, so zero keeps the old behaviour. The
+    generation budget is computed inside the server's context window
+    (`src/core/RequestBudget.h`): the answer's block budget plus the
     thinking, clipped so the request fits — the thinking yields before the
     answer, because a correction matters more than a thought; the window
     comes from the running server's `ctx-size`, the prompt's size is estimated

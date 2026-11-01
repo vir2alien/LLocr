@@ -470,6 +470,42 @@ private slots:
         QCOMPARE(reopened.decisionMatchThreshold(), 1.0);
     }
 
+    // The verification tasks' thinking budget (ADR 193); 0 keeps it off.
+    void defaultReasoningBudgetsAreOff()
+    {
+        const SettingsStore store;
+        QCOMPARE(store.fixReasoningBudgetTokens(), 0);
+        QCOMPARE(store.readReasoningBudgetTokens(), 0);
+    }
+
+    void reasoningBudgetsRoundTrip()
+    {
+        SettingsStore store;
+        QSignalSpy fixSpy(&store, &SettingsStore::fixReasoningBudgetTokensChanged);
+        QSignalSpy readSpy(&store, &SettingsStore::readReasoningBudgetTokensChanged);
+
+        store.setFixReasoningBudgetTokens(512);
+        store.setReadReasoningBudgetTokens(1024);
+        QCOMPARE(store.fixReasoningBudgetTokens(), 512);
+        QCOMPARE(store.readReasoningBudgetTokens(), 1024);
+        QCOMPARE(fixSpy.count(), 1);
+        QCOMPARE(readSpy.count(), 1);
+
+        store.setFixReasoningBudgetTokens(512);  // no-op, no signal spam
+        QCOMPARE(fixSpy.count(), 1);
+    }
+
+    void reasoningBudgetsPersistAcrossInstances()
+    {
+        SettingsStore store;
+        store.setFixReasoningBudgetTokens(512);
+        store.setReadReasoningBudgetTokens(1024);
+
+        const SettingsStore reopened;
+        QCOMPARE(reopened.fixReasoningBudgetTokens(), 512);
+        QCOMPARE(reopened.readReasoningBudgetTokens(), 1024);
+    }
+
     // Activating a model of a known family has to pick that family's profile:
     // the weights on disk would otherwise run with another model's launch
     // parameters. A repo the catalog does not know, or one that does not answer

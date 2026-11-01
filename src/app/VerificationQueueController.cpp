@@ -13,7 +13,7 @@ namespace llocr {
 
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
     : QObject(parent), m_deps(std::move(deps)), m_decision(m_deps.runtime, this), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr),
-      m_fix(m_deps.fixRequestProfiles, m_deps.runtime, nullptr)
+      m_fix(m_deps.fixRequestProfiles, m_deps.settings, m_deps.runtime, nullptr)
 {
     connect(&m_decision, &DecisionController::judgeFinished, this, [this](const DecisionResult &result) {
         CheckResult verdict;

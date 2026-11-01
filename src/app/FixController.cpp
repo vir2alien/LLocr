@@ -1,7 +1,10 @@
 #include "app/FixController.h"
 
 #include "config/RequestProfileStore.h"
+#include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "core/RequestBudget.h"
+#include "core/RequestProfile.h"
 
 namespace llocr {
 
@@ -43,8 +46,16 @@ void setParameterNumber(QList<RequestParameter> &parameters, const QString &name
 
 }  // namespace
 
-FixController::FixController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent)
-    : ModelRequestController(runtime, "FixController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<FixModel>())
+void applyReasoningBudget(QList<RequestParameter> &parameters, CheckRequest::FixProtocol protocol, const RequestProfileStore &requestProfiles, const SettingsStore &settings)
+{
+    const ModelProfiles::Role *fixRole = ModelProfiles::roleFor(requestProfiles.activeProfileId(), QStringLiteral("fix"));
+    const bool supported = fixRole && fixRole->reasoningSupported;
+    const int budgetTokens = supported ? (protocol == CheckRequest::FixProtocol::ReadBlock ? settings.readReasoningBudgetTokens() : settings.fixReasoningBudgetTokens()) : 0;
+    setReasoningBudget(parameters, budgetTokens, supported);
+}
+
+FixController::FixController(RequestProfileStore &requestProfiles, SettingsStore &settings, RuntimeController &runtime, QObject *parent)
+    : ModelRequestController(runtime, "FixController", parent), m_requestProfiles(requestProfiles), m_settings(settings), m_model(std::make_unique<FixModel>())
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
         if (stopRequested()) {
@@ -96,6 +107,7 @@ void FixController::fixBlock(
             request.blockType = blockType;
             request.modelId = conn.modelId;
             request.parameters = requestParameters();
+            applyReasoningBudget(request.parameters, protocol, m_requestProfiles, m_settings);
             request.fixProtocol = protocol;
             // The per-block budget overrides the profile's max_tokens only
             // where the profile ships a per-block entry; a user-edited value

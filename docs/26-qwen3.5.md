@@ -114,9 +114,17 @@ LaTeX of the OCR models does not read as churn.
 
 The qwen3.5 pair can **think before it answers** — the fix task's optional
 reasoning mode (ADR 193). The model profile carries `reasoning: true` (the
-capability), the shared request profile carries the steps the task offers
-(`reasoningModes`: off / low 512 / med 1024 / high 1536), and the app derives
-the request parameter `reasoning_budget_tokens` from the two. The budget rides
+capability); the mode itself is a global verification setting, not a per-model
+parameter (ADR 268): Настройки → Проверка holds two budgets — «Мышление при
+исправлении» (`check/fixReasoningBudgetTokens`) and «Мышление при чтении»
+(`check/readReasoningBudgetTokens`), both with the same four steps off / low
+512 / med 1024 / high 1536 — and `FixController` injects the budget into the
+request per protocol right before the `RequestBudget` computation (the fix
+budget for `full_block`, the read budget for «Распознать точно»). The request
+profiles no longer carry the parameter (`reasoningModes` removed from
+`fix-requests.json` and `read-requests.json`; stored per-model budgets —
+qwen3.5-4b 512, qwen3.5-9b 1024 — were dropped on migration, the default is
+off). The budget rides
 the **request** — llama.cpp reads `reasoning_budget_tokens` per request and it
 overrides the server's `--reasoning-budget` — so the mode takes effect on the
 next fix, with no server restart. The budget is also the switch:
@@ -129,8 +137,7 @@ correction matters more than a thought. The window is the running server's
 estimated, and when the thinking does not fit, it shrinks and the footer says
 by how much.
 
-The mode is edited per model in Settings → Models → ⚙ → Request, next to
-temperature and `max_tokens`. The measurement behind it: the stand
+The measurement behind it: the stand
 (`OCRtest/fix_models`) — thinking 512 tokens lifted the fix index from 0.54 to
 0.65 on the problem page, at the price of speed.
 

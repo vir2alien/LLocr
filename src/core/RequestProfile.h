@@ -25,7 +25,7 @@ enum class RequestValueKind {
 
 // A named option of a parameter: the label the settings show and the value
 // the request carries. A parameter with choices is a closed set — the
-// reasoning mode, for one (the choices come from the request profile).
+// reasoning mode, for one.
 struct RequestParameterChoice {
     QString label;
     QVariant value;
@@ -67,5 +67,10 @@ struct RequestProfile {
     static QString valueToText(const QVariant &value);
     static bool textToValue(const QString &text, RequestValueKind kind, QVariant &out);
 };
+
+// Writes the reasoning budget onto a request's parameters: a model that can
+// think always carries it — 0 means the reply is the answer, without thinking
+// — and a model that cannot must not carry it at all.
+void setReasoningBudget(QList<RequestParameter> &parameters, int budgetTokens, bool reasoningSupported);
 
 }  // namespace llocr

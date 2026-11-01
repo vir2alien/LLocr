@@ -3743,6 +3743,18 @@
 <context>
     <name>VerificationBlocksTab</name>
     <message>
+        <source>Thinking during fix</source>
+        <translation>Мышление при исправлении</translation>
+    </message>
+    <message>
+        <source>Thinking during read</source>
+        <translation>Мышление при чтении</translation>
+    </message>
+    <message>
+        <source>Tokens the model may spend thinking before the answer. Models without a thinking channel ignore this; when the context window cannot fit the thinking, the budget is cut and the status line says so.</source>
+        <translation>Сколько токенов модель может потратить на размышления перед ответом. Модели без канала мышления это игнорируют; если размышления не помещаются в контекстное окно, бюджет урезается, и строка состояния об этом сообщает.</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="+121"/>
         <source>Show model confidence</source>
         <translation>Показывать уверенность модели</translation>

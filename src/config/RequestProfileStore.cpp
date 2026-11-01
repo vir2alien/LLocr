@@ -88,6 +88,7 @@ void RequestProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &
     m_profileModels->resetFrom(roleProfiles);
     m_profiles.setBuiltIn(builtIn);
     m_profiles.reloadUserProfiles();
+    m_profiles.stripUserParameter(QString::fromLatin1(kReasoningBudgetParameter));
     reloadDraft();
 }
 

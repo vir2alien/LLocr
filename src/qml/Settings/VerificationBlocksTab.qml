@@ -15,14 +15,35 @@ Item {
     property bool showHelp: false
     property bool loading: false
 
+    readonly property var reasoningBudgetModel: ["off", "low", "med", "high"]
+    readonly property var reasoningBudgetSteps: [0, 512, 1024, 1536]
+
+    function reasoningIndexFor(tokens) {
+        const index = root.reasoningBudgetSteps.indexOf(tokens)
+        return index >= 0 ? index : 0
+    }
+
     function loadValues() {
         loading = true
         showConfidenceCheckBox.checked = Settings.showConfidence
+        fixReasoningBox.currentIndex = root.reasoningIndexFor(Settings.fixReasoningBudgetTokens)
+        readReasoningBox.currentIndex = root.reasoningIndexFor(Settings.readReasoningBudgetTokens)
         loading = false
     }
 
     function saveValues() {
         Settings.showConfidence = showConfidenceCheckBox.checked
+        Settings.fixReasoningBudgetTokens = root.reasoningBudgetSteps[fixReasoningBox.currentIndex]
+        Settings.readReasoningBudgetTokens = root.reasoningBudgetSteps[readReasoningBox.currentIndex]
+    }
+
+    function resetValues() {
+        // The zeros write through at once (like Verification.resetToDefaults()):
+        // Cancel after Reset must not resurrect the old values from settings.
+        Settings.fixReasoningBudgetTokens = 0
+        Settings.readReasoningBudgetTokens = 0
+        fixReasoningBox.currentIndex = 0
+        readReasoningBox.currentIndex = 0
     }
 
     component BlockTypeRow: Item {
@@ -113,6 +134,51 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: Theme.spacingSmall
+            spacing: Theme.spacing
+
+            LLOLabel {
+                text: qsTr("Thinking during fix")
+                color: Theme.textPrimary
+            }
+            Item { Layout.fillWidth: true }
+            ComboBox {
+                id: fixReasoningBox
+                implicitHeight: Theme.controlHeight
+                model: root.reasoningBudgetModel
+                onActivated: root.edited()
+            }
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: Theme.spacingSmall
+            spacing: Theme.spacing
+
+            LLOLabel {
+                text: qsTr("Thinking during read")
+                color: Theme.textPrimary
+            }
+            Item { Layout.fillWidth: true }
+            ComboBox {
+                id: readReasoningBox
+                implicitHeight: Theme.controlHeight
+                model: root.reasoningBudgetModel
+                onActivated: root.edited()
+            }
+        }
+        LLOLabel {
+            Layout.fillWidth: true
+            font.pointSize: Theme.footnoteSize
+            color: Theme.helpColor
+            wrapMode: Text.WordWrap
+            text: qsTr("Tokens the model may spend thinking before the answer. "
+                       + "Models without a thinking channel ignore this; when the "
+                       + "context window cannot fit the thinking, the budget is cut "
+                       + "and the status line says so.")
+        }
 
         LLOCheckBox {
             id: showConfidenceCheckBox

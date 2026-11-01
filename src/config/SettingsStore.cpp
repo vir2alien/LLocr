@@ -136,6 +136,8 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kDecisionRequestProfileId, "decisionRequestProfileId", QVariant(defaultDecisionRequestProfileId())},
         {kDecisionModelName, "decisionModelName", QVariant(QString())},
         {kDecisionMatchThreshold, "decisionMatchThreshold", QVariant(kDefaultDecisionMatchThreshold)},
+        {kFixReasoningBudgetTokens, "fixReasoningBudgetTokens", QVariant(0)},
+        {kReadReasoningBudgetTokens, "readReasoningBudgetTokens", QVariant(0)},
         {kLayoutLaunchModelPath, "layoutLaunchModelPath", QVariant(QString())},
         {kLayoutLaunchMmprojPath, "layoutLaunchMmprojPath", QVariant(QString())},
         {kLayoutLaunchDraftPath, "layoutLaunchDraftPath", QVariant(QString())},
@@ -1219,6 +1221,32 @@ void SettingsStore::setFixModelName(const QString &name)
         return;
     m_settings.setValue(kFixModelName, name);
     emit fixModelNameChanged();
+}
+
+int SettingsStore::fixReasoningBudgetTokens() const
+{
+    return m_settings.value(kFixReasoningBudgetTokens, 0).toInt();
+}
+
+void SettingsStore::setFixReasoningBudgetTokens(int tokens)
+{
+    if (fixReasoningBudgetTokens() == tokens)
+        return;
+    m_settings.setValue(kFixReasoningBudgetTokens, tokens);
+    emit fixReasoningBudgetTokensChanged();
+}
+
+int SettingsStore::readReasoningBudgetTokens() const
+{
+    return m_settings.value(kReadReasoningBudgetTokens, 0).toInt();
+}
+
+void SettingsStore::setReadReasoningBudgetTokens(int tokens)
+{
+    if (readReasoningBudgetTokens() == tokens)
+        return;
+    m_settings.setValue(kReadReasoningBudgetTokens, tokens);
+    emit readReasoningBudgetTokensChanged();
 }
 
 QString SettingsStore::launchModelPathForRole(const QString &role) const

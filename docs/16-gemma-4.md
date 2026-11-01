@@ -173,8 +173,9 @@ contract — the corrected table answers in the candidate's own format
 
 The fix task's optional reasoning mode (ADR 193) **is** offered for the gemma
 pair: the model profile carries `reasoning: true`, so the fix request carries a
-thinking budget and the same four steps (off / low 512 / med 1024 / high 1536)
-that the shared request profile offers.
+thinking budget with the four steps (off / low 512 / med 1024 / high 1536) —
+the vocabulary behind the «Мышление при исправлении» budget in Настройки →
+Проверка (ADR 268).
 
 Verified on llama.cpp b11799 (the model `gemma-4-E4B-it-qat-UD-Q4_K_XL`, the
 server `--jinja --reasoning-budget 0`):

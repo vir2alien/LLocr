@@ -343,4 +343,28 @@ void RequestProfile::sortByOrder()
     std::stable_sort(parameters.begin(), parameters.end(), [](const RequestParameter &a, const RequestParameter &b) { return a.order < b.order; });
 }
 
+void setReasoningBudget(QList<RequestParameter> &parameters, int budgetTokens, bool reasoningSupported)
+{
+    const auto existing = std::find_if(parameters.begin(), parameters.end(), [](const RequestParameter &parameter) { return parameter.name == QLatin1String(kReasoningBudgetParameter); });
+    if (!reasoningSupported) {
+        if (existing != parameters.end())
+            parameters.erase(existing);
+        return;
+    }
+    if (existing != parameters.end()) {
+        existing->kind = RequestValueKind::Number;
+        existing->value = QVariant(double(budgetTokens));
+        return;
+    }
+    RequestParameter parameter;
+    parameter.name = QString::fromLatin1(kReasoningBudgetParameter);
+    parameter.kind = RequestValueKind::Number;
+    parameter.value = QVariant(double(budgetTokens));
+    int order = 0;
+    for (const RequestParameter &entry : parameters)
+        order = qMax(order, entry.order);
+    parameter.order = order + 1;
+    parameters.append(parameter);
+}
+
 }  // namespace llocr

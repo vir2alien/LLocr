@@ -3,6 +3,7 @@
 #include <QtTest>
 
 #include "app/DocumentModel.h"
+#include "app/FixController.h"
 #include "app/VerificationPromptStore.h"
 #include "app/VerificationQueueController.h"
 #include "config/RequestProfileStore.h"
@@ -22,6 +23,16 @@ BoundingBox textBox(const QString &label, const QString &text)
     box.label = label;
     box.text = text;
     return box;
+}
+
+// The value the request carries for the named parameter, or -1 when it is absent.
+int parameterValue(const QList<RequestParameter> &parameters, const QString &name)
+{
+    for (const RequestParameter &parameter : parameters) {
+        if (parameter.name == name)
+            return parameter.value.toInt();
+    }
+    return -1;
 }
 
 // The queue and the dependencies it reads. The runtime paths point inside the
@@ -185,6 +196,36 @@ private slots:
         const auto fixable = fixture.queue().fixableBlocks({0}, onlyTitle);
         QCOMPARE(fixable.size(), 1);
         QCOMPARE(fixable.first().box, 3);
+    }
+
+    void reasoningBudgetFollowsTheFixTaskProfile()
+    {
+        auto settings = std::make_unique<SettingsStore>();
+        settings->setRuntimeRootDir(m_dir.filePath(QStringLiteral("runtime")));
+        settings->setRuntimeModelsDir(m_dir.filePath(QStringLiteral("models")));
+        RequestProfileStore store(*settings, ConnectionRole::Fix);
+        QCOMPARE(store.activeProfileId(), QStringLiteral("qwen3.5-4b"));
+
+        settings->setFixReasoningBudgetTokens(1024);
+        QList<RequestParameter> parameters;
+        applyReasoningBudget(parameters, CheckRequest::FixProtocol::FullBlock, store, *settings);
+        QCOMPARE(parameters.size(), 1);
+        QCOMPARE(parameterValue(parameters, QLatin1String(kReasoningBudgetParameter)), 1024);
+
+        settings->setReadReasoningBudgetTokens(0);
+        applyReasoningBudget(parameters, CheckRequest::FixProtocol::ReadBlock, store, *settings);
+        QCOMPARE(parameters.size(), 1);
+        QCOMPARE(parameterValue(parameters, QLatin1String(kReasoningBudgetParameter)), 0);
+
+        settings->setFixRequestProfileId(QStringLiteral("qwen3-vl-4b"));
+        QCOMPARE(store.activeProfileId(), QStringLiteral("qwen3-vl-4b"));
+        applyReasoningBudget(parameters, CheckRequest::FixProtocol::FullBlock, store, *settings);
+        QCOMPARE(parameterValue(parameters, QLatin1String(kReasoningBudgetParameter)), -1);
+
+        settings->setFixRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        applyReasoningBudget(parameters, CheckRequest::FixProtocol::ReadBlock, store, *settings);
+        QCOMPARE(parameters.size(), 1);
+        QCOMPARE(parameterValue(parameters, QLatin1String(kReasoningBudgetParameter)), 0);
     }
 };
 

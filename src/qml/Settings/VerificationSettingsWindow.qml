@@ -34,6 +34,7 @@ ApplicationWindow {
             text: qsTr("Reset all settings")
             onClicked: {
                 Verification.resetToDefaults()
+                blocksTab.resetValues()
                 loadAll()
                 window.unsavedChanges = false
             }

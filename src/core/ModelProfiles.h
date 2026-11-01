@@ -122,11 +122,6 @@ public:
         QString id;
         QString title;
         Role prompts;
-        // The reasoning modes the task offers (the label and the budget of
-        // thinking tokens). The fix task's modes are shared by every model
-        // that serves it; a model profile says whether its model can think at
-        // all (ADR 193).
-        QList<RequestParameterChoice> reasoningModes;
     };
 
     static constexpr const char *kResourceDir = ":/profiles/models";

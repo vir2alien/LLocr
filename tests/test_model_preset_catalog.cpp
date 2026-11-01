@@ -31,7 +31,7 @@ private slots:
     void verifierSystemPromptFollowsTheModel();
     void checkModelBlockPromptsOverridePerType();
     void fixRolesShipTheCorrectionProtocol();
-    void fixRolesShipTheReasoningMode();
+    void fixRequestProfilesCarryNoReasoningBudget();
     void rolePromptsFallBackToTheSharedProfile();
     void requestProfilesCarryTheSharedRequests();
     void runtimeNoteReachesTheSettings();
@@ -391,51 +391,23 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
 }
 
-// The reasoning mode is optional: the model profile says whether the model
-// can think at all, the request profile offers the modes every fix model
-// shares. A model without the flag gets no parameter and no thinking (ADR 193).
-void TestModelPresetCatalog::fixRolesShipTheReasoningMode()
+// The reasoning budget left the profile layer: no fix request ships the
+// parameter any more — the controller writes it onto the wire from the global
+// settings (ADR 193). The model profile still says whether the model can
+// think at all.
+void TestModelPresetCatalog::fixRequestProfilesCarryNoReasoningBudget()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    const ModelProfiles::PromptProfile *requests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
-    QVERIFY(requests);
-    QCOMPARE(requests->reasoningModes.size(), 4);
-    QCOMPARE(requests->reasoningModes.at(0).label, QStringLiteral("off"));
-    QCOMPARE(requests->reasoningModes.at(0).value.toDouble(), 0.0);
-    QCOMPARE(requests->reasoningModes.at(1).label, QStringLiteral("low"));
-    QCOMPARE(requests->reasoningModes.at(1).value.toDouble(), 512.0);
-    QCOMPARE(requests->reasoningModes.at(2).label, QStringLiteral("med"));
-    QCOMPARE(requests->reasoningModes.at(2).value.toDouble(), 1024.0);
-    QCOMPARE(requests->reasoningModes.at(3).label, QStringLiteral("high"));
-    QCOMPARE(requests->reasoningModes.at(3).value.toDouble(), 1536.0);
-
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
-        const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
-        QVERIFY2(fix, qPrintable(id));
-
-        const RequestParameter *budget = nullptr;
-        for (const RequestParameter &parameter : fix->request) {
-            if (parameter.name == QLatin1String(kReasoningBudgetParameter))
-                budget = &parameter;
-        }
-        if (!fix->reasoningSupported) {
-            // A model that cannot think has no budget to set.
-            QVERIFY2(budget == nullptr, qPrintable(id));
-            continue;
-        }
-        QVERIFY2(budget, qPrintable(id));
-        QCOMPARE(budget->value.toDouble(), 0.0);
-        QCOMPARE(budget->kind, RequestValueKind::Number);
-        QCOMPARE(budget->choices.size(), 4);
-        QCOMPARE(budget->choices.at(1).label, QStringLiteral("low"));
-        QCOMPARE(budget->choices.at(1).value.toDouble(), 512.0);
+        const QList<RequestParameter> request = ModelProfiles::requestFor(profiles, id, QStringLiteral("fix"));
+        for (const RequestParameter &parameter : request)
+            QVERIFY2(parameter.name != QLatin1String(kReasoningBudgetParameter), qPrintable(id));
     }
 
     // The qwen3.5 and gemma pairs declare the capability (the gemma chat
     // template carries the enable_thinking switch and the thought channel —
     // verified on llama.cpp b11799). The Qwen3-VL pair is an Instruct line
-    // with no thinking channel: the flag is off, and the loop above verified
-    // that its requests carry no reasoning budget.
+    // with no thinking channel.
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-9b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-e4b"), QStringLiteral("fix"))->reasoningSupported);

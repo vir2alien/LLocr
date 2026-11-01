@@ -154,30 +154,6 @@ void applyPromptProfile(ModelProfiles::Role &role, const ModelProfiles::Role &pr
     }
 }
 
-// The reasoning budget of a task: the request carries the budget, and the
-// budget is also the switch — a budget of zero means the reply is the answer
-// (ADR 193). A model that cannot think gets no parameter at all.
-void applyReasoningModes(ModelProfiles::Role &role, const QList<RequestParameterChoice> &modes)
-{
-    if (!role.reasoningSupported || modes.isEmpty())
-        return;
-    for (const RequestParameter &parameter : role.request) {
-        if (parameter.name == kReasoningBudgetParameter)
-            return;
-    }
-    RequestParameter parameter;
-    parameter.name = QString::fromLatin1(kReasoningBudgetParameter);
-    parameter.kind = RequestValueKind::Number;
-    parameter.value = QVariant(0.0);
-    parameter.description = QObject::tr("Budget for the model's thinking tokens; 0 means the reply is the answer only.");
-    parameter.choices = modes;
-    int order = 0;
-    for (const RequestParameter &existing : role.request)
-        order = qMax(order, existing.order);
-    parameter.order = order + 1;
-    role.request.append(parameter);
-}
-
 bool findPromptProfile(const QList<ModelProfiles::PromptProfile> &profiles, const QString &id)
 {
     for (const ModelProfiles::PromptProfile &profile : profiles) {
@@ -200,29 +176,6 @@ ModelProfiles::PromptProfile readPromptProfile(const QJsonObject &root, QString 
     if (profile.title.isEmpty())
         profile.title = profile.id;
     readPromptFields(root, profile.prompts, error, profile.id, true);
-    if (!error.isEmpty())
-        return profile;
-
-    const QJsonArray modes = root.value(QStringLiteral("reasoningModes")).toArray();
-    for (const QJsonValue &entry : modes) {
-        if (!entry.isObject()) {
-            error = QObject::tr("Request profile %1 has a malformed reasoning mode").arg(profile.id);
-            return profile;
-        }
-        const QJsonObject mode = entry.toObject();
-        RequestParameterChoice choice;
-        choice.label = mode.value(QStringLiteral("label")).toString();
-        if (choice.label.isEmpty()) {
-            error = QObject::tr("Request profile %1 has a reasoning mode without a label").arg(profile.id);
-            return profile;
-        }
-        if (!mode.value(QStringLiteral("value")).isDouble()) {
-            error = QObject::tr("Request profile %1 has a reasoning mode without a budget").arg(profile.id);
-            return profile;
-        }
-        choice.value = QVariant(mode.value(QStringLiteral("value")).toDouble());
-        profile.reasoningModes.append(choice);
-    }
     return profile;
 }
 
@@ -384,7 +337,6 @@ QList<ModelProfiles::Profile> ModelProfiles::loadFrom(const QString &directory, 
                 return {};
             }
             applyPromptProfile(*role, prompts->prompts);
-            applyReasoningModes(*role, prompts->reasoningModes);
         }
         if (find(out, profile.id)) {
             error = QObject::tr("Duplicate model profile id: %1").arg(profile.id);

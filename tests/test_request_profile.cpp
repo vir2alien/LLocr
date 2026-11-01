@@ -454,6 +454,42 @@ private slots:
         QCOMPARE(merged.parameters.at(0).choices.at(1).label, QStringLiteral("low"));
     }
 
+    void setReasoningBudgetSupportedAppendsZero()
+    {
+        QList<RequestParameter> parameters;
+        setReasoningBudget(parameters, 0, true);
+        QCOMPARE(parameters.size(), 1);
+        QCOMPARE(parameters.constFirst().name, QLatin1String(kReasoningBudgetParameter));
+        QCOMPARE(parameters.constFirst().kind, RequestValueKind::Number);
+        QCOMPARE(parameters.constFirst().value.toDouble(), 0.0);
+    }
+
+    void setReasoningBudgetSupportedAppendsBudget()
+    {
+        QList<RequestParameter> parameters;
+        setReasoningBudget(parameters, 1024, true);
+        QCOMPARE(parameters.size(), 1);
+        QCOMPARE(parameters.constFirst().value.toDouble(), 1024.0);
+    }
+
+    void setReasoningBudgetSupportedOverwritesLegacy()
+    {
+        QList<RequestParameter> parameters = {makeParameter(1, QLatin1String(kReasoningBudgetParameter), 512.0)};
+        setReasoningBudget(parameters, 1536, true);
+        QCOMPARE(parameters.size(), 1);
+        QCOMPARE(parameters.constFirst().value.toDouble(), 1536.0);
+    }
+
+    void setReasoningBudgetUnsupportedRemoves()
+    {
+        QList<RequestParameter> parameters = {makeParameter(1, QLatin1String(kReasoningBudgetParameter), 512.0)};
+        setReasoningBudget(parameters, 0, false);
+        QVERIFY(parameters.isEmpty());
+
+        setReasoningBudget(parameters, 0, false);  // absent: a no-op
+        QVERIFY(parameters.isEmpty());
+    }
+
     void textParsingIsKindStrict()
     {
         QVariant out;
@@ -609,6 +645,57 @@ private slots:
         store.loadDefaultDraft();
         store.saveDraft();
         QVERIFY(!store.hasUserProfile());
+    }
+
+    // The reasoning budget moved out of the profiles (ADR 193): a user copy
+    // that still carries the parameter loses it at load time, on disk too.
+    void userProfileMigrationStripsReasoningBudget()
+    {
+        QTemporaryDir dir;
+        const QString defaultsPath = writeProfile(dir, "defaults.json", kDefaultsJson);
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        // QSettings is process-wide here, so a previous test's choice would leak.
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+
+        const QString userPath = QDir(dir.path()).filePath(QStringLiteral("profiles/requestBlock.json"));
+        QVERIFY(QDir().mkpath(QFileInfo(userPath).absolutePath()));
+        QFile userFile(userPath);
+        QVERIFY(userFile.open(QIODevice::WriteOnly));
+        userFile.write(R"({
+            "schemaVersion": 2,
+            "profiles": [
+                {
+                    "id": "unlimited-ocr",
+                    "parameters": [
+                        { "order": 1, "name": "reasoning_budget_tokens", "value": 1536 },
+                        { "order": 2, "name": "temperature", "value": 0.4 }
+                    ]
+                }
+            ]
+        })");
+        userFile.close();
+
+        RequestProfileStore store(settings);
+        store.setModelProfiles({makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters())});
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        const RequestProfile merged = store.activeProfile();
+        QVERIFY(!findParameter(merged, QLatin1String(kReasoningBudgetParameter)));
+        const RequestParameter *temperature = findParameter(merged, QStringLiteral("temperature"));
+        QVERIFY(temperature);
+        QCOMPARE(temperature->value.toDouble(), 0.4);
+
+        QFile onDisk(userPath);
+        QVERIFY(onDisk.open(QIODevice::ReadOnly));
+        const QJsonArray savedProfiles = QJsonDocument::fromJson(onDisk.readAll()).object().value("profiles").toArray();
+        onDisk.close();
+        QCOMPARE(savedProfiles.size(), 1);
+        const QJsonArray savedParameters = savedProfiles.at(0).toObject().value("parameters").toArray();
+        for (const QJsonValue &entry : savedParameters)
+            QVERIFY(entry.toObject().value("name").toString() != QLatin1String(kReasoningBudgetParameter));
     }
 
     // The OCR sampling profile has no selector of its own: the model id is what
