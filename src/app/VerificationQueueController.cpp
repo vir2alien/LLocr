@@ -676,12 +676,15 @@ void VerificationQueueController::startNextVerify()
         }
         // The reader gets the image, the system prompt and the block prompt —
         // and nothing else: the recognized text of the block is not part of
-        // the request (ADR 266).
+        // the request (ADR 266). The shared profile carries the default
+        // wording; a model profile may ship its own system prompt and block
+        // prompts, because a wording is a calibration like the thresholds
+        // (ADR 267).
         QString systemPrompt = readProfile->prompts.systemPrompt;
         const ModelProfiles::Role *fixRole = ModelProfiles::roleFor(m_deps.fixRequestProfiles.activeProfileId(), QStringLiteral("fix"));
         if (fixRole && !fixRole->readSystemPrompt.isEmpty())
             systemPrompt = fixRole->readSystemPrompt;
-        const QString userPrompt = ModelProfiles::blockPromptForRole(readProfile->prompts, box.label);
+        const QString userPrompt = ModelProfiles::readBlockPromptFor(fixRole, *readProfile, box.label);
         const int maxOutput = ModelProfiles::maxOutputForBlockRole(readProfile->prompts, box.label);
         m_fix.fixBlock(crop, text, systemPrompt, userPrompt, box.label, maxOutput, CheckRequest::FixProtocol::ReadBlock);
         return;

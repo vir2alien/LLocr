@@ -32,7 +32,7 @@ private slots:
     void checkModelBlockPromptsOverridePerType();
     void fixRolesShipTheCorrectionProtocol();
     void fixRolesShipTheReasoningMode();
-    void readSystemPromptShipsPerModel();
+    void rolePromptsFallBackToTheSharedProfile();
     void requestProfilesCarryTheSharedRequests();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
@@ -444,17 +444,24 @@ void TestModelPresetCatalog::fixRolesShipTheReasoningMode()
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("qwen3-vl-8b"), QStringLiteral("fix"))->reasoningSupported);
 }
 
-// The reader's system prompt is a calibration like the thresholds (ADR 267):
-// the shared profile carries the default, and a model family the shared
-// wording cannot carry ships its own. The block prompts stay shared.
-void TestModelPresetCatalog::readSystemPromptShipsPerModel()
+// A prompt is a calibration like the thresholds (ADR 267): the shared request
+// profiles carry the default wording, and a model role may ship its own — the
+// fix system prompt, the fix block prompts (per type), the read system prompt
+// and the read block prompts (per type). Whatever the role does not ship falls
+// back to the shared profile.
+void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
 {
+    // The shipped catalog: only the Qwen3-VL pair ships a reader wording (the
+    // shared one reads as a correction-verification to that family and every
+    // legible block came back unread); every other fix model takes the
+    // shared texts.
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
         const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(fix, qPrintable(id));
         if (!id.startsWith(QStringLiteral("qwen3-vl"))) {
             QVERIFY2(fix->readSystemPrompt.isEmpty(), qPrintable(id));
+            QVERIFY2(fix->readBlockPrompts.isEmpty(), qPrintable(id));
             continue;
         }
         QVERIFY2(!fix->readSystemPrompt.isEmpty(), qPrintable(id));
@@ -464,12 +471,73 @@ void TestModelPresetCatalog::readSystemPromptShipsPerModel()
         // correct" — the shared text reads as a correction-verification to
         // this family and every legible block came back unread.
         QVERIFY2(fix->readSystemPrompt.contains(QStringLiteral("no original text here to compare with")), qPrintable(id));
+        QVERIFY2(fix->readBlockPrompts.isEmpty(), qPrintable(id));
     }
 
     // The two Qwen3-VL profiles carry the same text: a wording that drifted
     // apart would calibrate the pair differently for no reason.
     QCOMPARE(ModelProfiles::roleFor(QStringLiteral("qwen3-vl-4b"), QStringLiteral("fix"))->readSystemPrompt,
              ModelProfiles::roleFor(QStringLiteral("qwen3-vl-8b"), QStringLiteral("fix"))->readSystemPrompt);
+
+    // The fallback, exercised on a synthetic profile that ships one wording
+    // per kind: its own texts win, the shared profile fills every gap.
+    const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
+    const ModelProfiles::PromptProfile *readRequests = ModelProfiles::promptProfile(QString::fromLatin1(ModelProfiles::kReadPromptProfileId));
+    QVERIFY(fixRequests);
+    QVERIFY(readRequests);
+
+    const QByteArray json = R"({
+        "schemaVersion": 1,
+        "id": "synthetic-prompts",
+        "title": "Synthetic",
+        "license": "apache-2.0",
+        "files": {
+            "repo": "synthetic/repo",
+            "revision": "",
+            "quants": [{"id": "q8_0", "file": "model-q8_0.gguf", "sha256": "", "sizeBytes": 1}]
+        },
+        "roles": {
+            "fix": {
+                "alias": "llocr-fix",
+                "protocol": "full_block",
+                "promptProfile": "fix-requests",
+                "systemPrompt": "own fix system prompt",
+                "blockPrompts": {"table": "own fix table prompt"},
+                "readSystemPrompt": "own read system prompt",
+                "readBlockPrompts": {"text": "own read text prompt", "equation": "own read equation prompt"}
+            }
+        }
+    })";
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QFile file(QDir(dir.path()).filePath(QStringLiteral("synthetic-prompts.json")));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(json);
+    file.close();
+
+    QString err;
+    const QList<ModelProfiles::Profile> loaded = ModelProfiles::loadFrom(dir.path(), err);
+    QVERIFY2(err.isEmpty(), qPrintable(err));
+    const ModelProfiles::Profile *profile = ModelProfiles::find(loaded, QStringLiteral("synthetic-prompts"));
+    QVERIFY(profile);
+    const ModelProfiles::Role *fix = ModelProfiles::roleFor(*profile, QStringLiteral("fix"));
+    QVERIFY(fix);
+
+    // The fix task: the role's own wording wins per kind and per block type.
+    QCOMPARE(fix->systemPrompt, QStringLiteral("own fix system prompt"));
+    QCOMPARE(fix->blockPrompts.value(QStringLiteral("table")), QStringLiteral("own fix table prompt"));
+    // Everything the role does not ship falls back to the shared profile.
+    QCOMPARE(fix->blockPrompts.value(QStringLiteral("text")), fixRequests->prompts.blockPrompts.value(QStringLiteral("text")));
+    QCOMPARE(fix->blockAliases.value(QStringLiteral("formula")), fixRequests->prompts.blockAliases.value(QStringLiteral("formula")));
+    QCOMPARE(ModelProfiles::blockPromptFor(loaded, QStringLiteral("synthetic-prompts"), QStringLiteral("fix"), QStringLiteral("formula")),
+             fixRequests->prompts.blockPrompts.value(QStringLiteral("equation")));
+
+    // The read task: same rule, the reader's alias hop applies to the
+    // override lookup too.
+    QCOMPARE(fix->readSystemPrompt, QStringLiteral("own read system prompt"));
+    QCOMPARE(ModelProfiles::readBlockPromptFor(fix, *readRequests, QStringLiteral("text")), QStringLiteral("own read text prompt"));
+    QCOMPARE(ModelProfiles::readBlockPromptFor(fix, *readRequests, QStringLiteral("formula")), QStringLiteral("own read equation prompt"));
+    QCOMPARE(ModelProfiles::readBlockPromptFor(fix, *readRequests, QStringLiteral("page_number")), readRequests->prompts.blockPrompts.value(QStringLiteral("page_number")));
 }
 
 // The fix task sends the same request whatever model serves it, so the request

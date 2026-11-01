@@ -130,12 +130,22 @@ void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QStr
         role.blockMaxOutput.insert(maxOutput.key(), maxOutput.value().toInt(0));
 }
 
-// The shared request texts of a task replace the role's own ones.
+// The shared request texts fill the gaps: a model profile that ships its own
+// wording keeps it — a wording is a calibration like the thresholds (ADR 267)
+// — and the shared profile answers for everything the role does not ship
+// (ADR 182).
 void applyPromptProfile(ModelProfiles::Role &role, const ModelProfiles::Role &prompts)
 {
-    role.systemPrompt = prompts.systemPrompt;
-    role.blockPrompts = prompts.blockPrompts;
-    role.blockAliases = prompts.blockAliases;
+    if (role.systemPrompt.isEmpty())
+        role.systemPrompt = prompts.systemPrompt;
+    for (auto prompt = prompts.blockPrompts.constBegin(); prompt != prompts.blockPrompts.constEnd(); ++prompt) {
+        if (!role.blockPrompts.contains(prompt.key()))
+            role.blockPrompts.insert(prompt.key(), prompt.value());
+    }
+    for (auto alias = prompts.blockAliases.constBegin(); alias != prompts.blockAliases.constEnd(); ++alias) {
+        if (!role.blockAliases.contains(alias.key()))
+            role.blockAliases.insert(alias.key(), alias.value());
+    }
     // The shared reply budgets fill the gaps: a model profile that ships its
     // own entry for a block type keeps it (ADR 192).
     for (auto budget = prompts.blockMaxOutput.constBegin(); budget != prompts.blockMaxOutput.constEnd(); ++budget) {
@@ -317,6 +327,14 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         readPromptFields(roleObject, role, error, profile.id, false);
         if (!error.isEmpty())
             return profile;
+        const QJsonObject readPrompts = roleObject.value(QStringLiteral("readBlockPrompts")).toObject();
+        for (auto prompt = readPrompts.constBegin(); prompt != readPrompts.constEnd(); ++prompt) {
+            if (prompt.key().isEmpty() || prompt.value().toString().isEmpty()) {
+                error = QObject::tr("Model profile %1 has a read block prompt without a block type or text").arg(profile.id);
+                return profile;
+            }
+            role.readBlockPrompts.insert(prompt.key(), prompt.value().toString());
+        }
 
         profile.roles.insert(it.key(), role);
     }
@@ -612,6 +630,22 @@ QString ModelProfiles::blockPromptForRole(const Role &role, const QString &type)
     if (!direct.isEmpty())
         return direct;
     return role.blockPrompts.value(role.blockAliases.value(type));
+}
+
+QString ModelProfiles::readBlockPromptFor(const Role *fixRole, const PromptProfile &readProfile, const QString &type)
+{
+    if (fixRole && !fixRole->readBlockPrompts.isEmpty()) {
+        const QString direct = fixRole->readBlockPrompts.value(type);
+        if (!direct.isEmpty())
+            return direct;
+        const QString canonical = readProfile.prompts.blockAliases.value(type);
+        if (!canonical.isEmpty()) {
+            const QString viaAlias = fixRole->readBlockPrompts.value(canonical);
+            if (!viaAlias.isEmpty())
+                return viaAlias;
+        }
+    }
+    return blockPromptForRole(readProfile.prompts, type);
 }
 
 QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)

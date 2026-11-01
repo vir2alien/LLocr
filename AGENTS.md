@@ -466,8 +466,9 @@
     The protocol is the **action's** choice, not the model's: the request
     carries it (`CheckRequest::fixProtocol`), the model's `roles.fix.protocol`
     is not read, and the reader's prompts live in their own shared profile
-    (`read-requests.json`) — except the system prompt, which a fix role may
-    override with its own `readSystemPrompt`: a wording is a calibration
+    (`read-requests.json`) — except the reader's system prompt and block
+    prompts, which a fix role may override with its own `readSystemPrompt` /
+    `readBlockPrompts`: a wording is a calibration
     (ADR 267), and the Qwen3-VL family reads the shared one as a
     correction-verification, answering REVIEW for every legible block. The
     gate and the layers are the same ones, so a
@@ -734,7 +735,11 @@
     parameters (launch, request, `maxOutput`/`maxOutputByBlock`, the decision
     calibration, the routing rules). `ModelProfiles` loads the request
     profiles from `:/profiles/requests` and merges their texts into the role,
-    so every existing lookup keeps working. The OCR models keep their prompts
+    so every existing lookup keeps working — the merge is a **fallback**: a
+    role may ship its own wording and it wins, the shared profile fills what
+    the role does not ship (ADR 267 — the fix system prompt, the fix block
+    prompts per type, and, for the read task, `readSystemPrompt` and
+    `readBlockPrompts` on the fix role). The OCR models keep their prompts
     inline — their tasks really do differ per model.
   - **The decision thresholds are measured, per model, against the request that
     ships (ADR 184)** — a threshold describes one model's p(match) distribution

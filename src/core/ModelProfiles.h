@@ -26,7 +26,7 @@ public:
         int maxOutput = 0;
         QHash<QString, int> blockMaxOutput;  // maxOutputByBlock, keyed like blockPrompts (fix task)
         bool isDefault = false;              // the role's recommended model, replacing the first-in-catalog fallback
-        QString systemPrompt;                // check-role override of the shared verifier system prompt
+        QString systemPrompt;                // the role's own wording; empty = the task's prompt profile fills it (ADR 267)
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
@@ -40,6 +40,7 @@ public:
         QString promptProfile;                        // id of the prompt profile this role takes its texts from
         bool reasoningSupported = false;              // the model can think: the fix task may spend a reasoning budget
         QString readSystemPrompt;                     // read-task system prompt; empty = the shared reader profile's (ADR 267)
+        QHash<QString, QString> readBlockPrompts;     // read-task per-block prompts; a missing type = the shared reader profile's (ADR 267)
     };
 
     struct Quant {
@@ -173,6 +174,10 @@ public:
     // The same lookup on a prompt profile's own role: the read task's prompts
     // are shared by every model (ADR 259), so they are read without one.
     static QString blockPromptForRole(const Role &role, const QString &type);
+    // The read task's block prompt: the fix role's own override (keyed like
+    // the shared table, the reader's alias hop applies), else the shared
+    // reader profile's prompt (ADR 267).
+    static QString readBlockPromptFor(const Role *fixRole, const PromptProfile &readProfile, const QString &type);
     static int maxOutputForBlockRole(const Role &role, const QString &blockType);
 
     static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
