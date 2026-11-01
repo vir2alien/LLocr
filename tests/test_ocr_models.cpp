@@ -196,7 +196,6 @@ private slots:
         const ModelProfiles::PromptProfile *read = ModelProfiles::promptProfile(QString::fromLatin1(ModelProfiles::kReadPromptProfileId));
         QVERIFY(read);
         QVERIFY(!read->prompts.systemPrompt.isEmpty());
-        QVERIFY2(read->prompts.systemPrompt.contains(QStringLiteral("{{LANGUAGE}}")), qPrintable(read->prompts.systemPrompt));
 
         // Every block type the fix task knows has a reader's prompt.
         const ModelProfiles::PromptProfile *fix = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));

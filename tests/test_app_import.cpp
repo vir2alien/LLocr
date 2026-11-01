@@ -295,8 +295,7 @@ public:
     const QList<QByteArray> &systemoneBodies() const { return m_systemoneBodies; }
 
     // The read requests (ADR 259): the chat calls that carry the reader's
-    // prompt — the recognized text as a sample of the document's notation, or
-    // the bare image when the block has no text yet.
+    // prompt — the image and the block prompt, with no recognized text.
     QList<QByteArray> readRequests() const
     {
         QList<QByteArray> out;
@@ -304,21 +303,6 @@ public:
             if (request.contains(kReadPromptMarker))
                 out.append(request);
         return out;
-    }
-
-    // The read protocol's sample (ADR 259): the recognized text between the
-    // <RECOGNIZED> markers; the wire is JSON, so the newlines around it are
-    // the two-character `\n` sequences.
-    static QString recognizedSampleOf(const QByteArray &request)
-    {
-        const QByteArray begin = "<RECOGNIZED>\\n";
-        const QByteArray end = "\\n</RECOGNIZED>";
-        const int at = request.indexOf(begin);
-        if (at < 0)
-            return {};
-        const int from = at + begin.size();
-        const int to = request.indexOf(end, from);
-        return to < 0 ? QString() : QString::fromUtf8(request.mid(from, to - from));
     }
 
     qreal systemoneProbability = 0.97;
@@ -334,9 +318,8 @@ public:
     // fixReplies overrides per candidate.
     QString fixReply = QStringLiteral("FIX\nFixed block text");
     QHash<QString, QString> fixReplies;
-    // The read protocol's reply (ADR 259): a request carrying a <RECOGNIZED>
-    // sample. The reader writes the block from the image, so the answer is the
-    // whole block and nothing else.
+    // The read protocol's reply (ADR 259): the reader writes the block from
+    // the image, so the answer is the whole block and nothing else.
     QString readReply = QStringLiteral("FIX\nRead block text");
     // The layout reply (the "\nLayout Detection:" prompt): the markup-shaped
     // block lines the layout parser reads. The default pair mirrors the
@@ -2386,10 +2369,10 @@ private slots:
     }
 
     // The read task (ADR 259): the same work list as the fix, but the model
-    // writes the block from the image. The wire carries the recognized text as
-    // a sample of the document's notation, and the answer lands in the
-    // correction layer — the place the fixer's answer lands.
-    void readEntriesCarryTheRecognizedSample()
+    // writes the block from the image. The wire carries no recognized text
+    // (ADR 266), and the answer lands in the correction layer — the place the
+    // fixer's answer lands.
+    void readEntriesCarryNoSample()
     {
         DetTokenChatServer server;
         server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
@@ -2423,13 +2406,14 @@ private slots:
         m_controller->readScopeBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
 
-        // The wire carried the recognized text as a sample of the notation,
-        // not as the candidate under correction.
+        // The wire carried no recognized text at all: the reader gets the
+        // image, the system prompt and the block prompt (ADR 266).
         const QList<QByteArray> reads = server.readRequests();
         QCOMPARE(reads.size(), 2);
-        QVERIFY2(reads.first().contains("<RECOGNIZED>"), reads.first().constData());
+        QVERIFY2(!reads.first().contains("<RECOGNIZED>"), reads.first().constData());
         QVERIFY2(!reads.first().contains("<CANDIDATE>"), reads.first().constData());
-        QCOMPARE(DetTokenChatServer::recognizedSampleOf(reads.first()), QStringLiteral("1. Introduction"));
+        QVERIFY2(!reads.first().contains("sample"), reads.first().constData());
+        QVERIFY2(!reads.first().contains("Introduction"), reads.first().constData());
 
         // The reader's answer lands in the correction layer, and the block
         // carries the reader's status — not the fixer's.
@@ -2443,8 +2427,8 @@ private slots:
         QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("2 rewritten")), qPrintable(m_controller->statusMessage()));
     }
 
-    // A block nobody recognized yet has no sample of the document's notation:
-    // the reader gets the image alone and writes the block (ADR 260).
+    // A block nobody recognized yet gets the same request as any other: the
+    // reader writes the block from the image (ADR 266).
     void readWritesTheBlocksNobodyRecognized()
     {
         DetTokenChatServer server;

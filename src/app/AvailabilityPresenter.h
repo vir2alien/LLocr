@@ -100,6 +100,11 @@ private:
         int currentPageVerification = int(PageVerification::Incomplete);
         int selectedPages = 0;
         int scopedProblemBlocks = 0;
+        // The blocks the reader would take (ADR 260): the count the toolbar
+        // shows next to the read button. It is part of the compared state, so
+        // a scope that swaps one page for another announces the new number —
+        // the count is the only thing that changes then.
+        int scopedReadBlocks = 0;
         bool scopeHasResults = false;
         bool operator==(const Flags &) const = default;
     };

@@ -91,12 +91,12 @@ private slots:
     void emptyCandidateStillTravelsFramed();
     // The reasoning budget rides the request and switches the thinking on.
     void reasoningBudgetTurnsTheThinkingOn();
-    // The read protocol (ADR 259): the recognized text travels as a sample of
-    // the document's notation, not as the candidate.
-    void readRequestBodyCarriesTheRecognizedSample();
-    // A block nobody recognized has no sample of the document's notation: the
-    // reader gets the image alone.
-    void readWithoutATextSendsTheImageAlone();
+    // The read protocol (ADR 266): the request carries the block prompt and
+    // the image — the recognized text is not in it.
+    void readRequestBodyCarriesNoSample();
+    // The reader's request does not depend on the block's text: a block
+    // nobody recognized gets the same request.
+    void readWithoutATextSendsTheSameRequest();
     // The reader has no verdict on the candidate: OK is outside its scheme.
     void readSchemeHasNoOk();
     void readFixCarriesTheBlock();
@@ -308,35 +308,38 @@ void TestFixProtocol::reasoningBudgetTurnsTheThinkingOn()
     QCOMPARE(body.value("max_tokens").toDouble(), 2048.0);
 }
 
-void TestFixProtocol::readRequestBodyCarriesTheRecognizedSample()
+void TestFixProtocol::readRequestBodyCarriesNoSample()
 {
-    // The reader takes the recognized text as a sample of how this document
-    // writes, not as the answer: the framing and the wording say so.
+    // The reader writes the block from the image: the request carries the
+    // block prompt and the image, and nothing else — the recognized text of
+    // the block is not part of it (ADR 266).
     ExposedFixModel model;
     const QJsonObject body = QJsonDocument::fromJson(model.build(readRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
-    const QJsonArray content = body.value("messages").toArray().at(1).toObject().value("content").toArray();
-    QCOMPARE(content.size(), 3);
-    const QString sample = content.at(2).toObject().value("text").toString();
-    QVERIFY2(sample.contains(QStringLiteral("<RECOGNIZED>")), qPrintable(sample));
-    QVERIFY2(sample.contains(QStringLiteral("</RECOGNIZED>")), qPrintable(sample));
-    QVERIFY2(sample.contains(QStringLiteral("The candidate text")), qPrintable(sample));
-    QVERIFY2(sample.contains(QStringLiteral("a sample of the document's notation")), qPrintable(sample));
-    QVERIFY2(!sample.contains(QStringLiteral("<CANDIDATE>")), qPrintable(sample));
-}
-
-void TestFixProtocol::readWithoutATextSendsTheImageAlone()
-{
-    // A block nobody recognized yet has no sample of the document's notation
-    // to show: the reader gets the image alone (ADR 260).
-    ExposedFixModel model;
-    CheckRequest request = readRequest();
-    request.recognizedText.clear();
-    const QJsonObject body = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
-    const QJsonArray content = body.value("messages").toArray().at(1).toObject().value("content").toArray();
-    // The type prompt and the image — no sample.
+    const QJsonArray messages = body.value("messages").toArray();
+    const QJsonArray content = messages.at(1).toObject().value("content").toArray();
+    // The block prompt and the image.
     QCOMPARE(content.size(), 2);
+    QCOMPARE(content.at(0).toObject().value("text").toString(), QStringLiteral("Block type: text."));
+    QVERIFY2(content.at(1).toObject().value("image_url").toObject().value("url").toString().startsWith(QStringLiteral("data:image/png")), qPrintable(QJsonDocument(content).toJson()));
     const QByteArray wire = QJsonDocument(content).toJson();
     QVERIFY2(!wire.contains("<RECOGNIZED>"), wire.constData());
+    QVERIFY2(!wire.contains("<CANDIDATE>"), wire.constData());
+    QVERIFY2(!wire.contains("sample"), wire.constData());
+    QVERIFY2(!wire.contains("The candidate text"), wire.constData());
+}
+
+void TestFixProtocol::readWithoutATextSendsTheSameRequest()
+{
+    // A block nobody recognized yet gets the same request as a recognized one:
+    // the reader's input is the image, and nothing depends on the text (ADR 266).
+    ExposedFixModel model;
+    const QJsonArray withText =
+        QJsonDocument::fromJson(model.build(readRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"))).object().value("messages").toArray().at(1).toObject().value("content").toArray();
+    CheckRequest request = readRequest();
+    request.recognizedText.clear();
+    const QJsonArray withoutText =
+        QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object().value("messages").toArray().at(1).toObject().value("content").toArray();
+    QCOMPARE(QJsonDocument(withoutText).toJson(), QJsonDocument(withText).toJson());
 }
 
 void TestFixProtocol::readSchemeHasNoOk()

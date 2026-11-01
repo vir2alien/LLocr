@@ -152,8 +152,9 @@ The profile is based on `qwen3.5-9b.json` and reuses its prompt set for the
 fix task (the `full_block` protocol, ADR 192): the verifier system prompt
 (the image is the only source of truth; the three verdict tokens OK / FIX /
 REVIEW, and a FIX that carries the complete corrected block) plus one check
-list per block type. The system prompt names the document language through a
-`{{LANGUAGE}}` placeholder the app fills in (ADR 181). The user
+list per block type. The language line is gone (ADR 266): the `{{LANGUAGE}}`
+placeholder was never filled with anything but a hardcoded «Russian», so the
+prompts carry no language line at all. The user
 message orders the type prompt, the block image and the candidate framed by
 `<CANDIDATE>…</CANDIDATE>`. The table prompt pins the same-serialization
 contract — the corrected table answers in the candidate's own format

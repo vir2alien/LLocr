@@ -2,11 +2,21 @@
 
 **Дата:** 2026-10-31 · **ADR:** 259 · **Замеры:** `OCRtest/fix_models/READ_PROTOCOL.md`
 
+> **Правка от 01.11.2026 (ADR 266).** Образец записи из протокола убран: в
+> режиме чтения модель получает **только картинку, системный промпт и промпт
+> блока** — распознанный текст в запрос не едет вовсе. Замеры этого и показывали:
+> чтение без якоря (CER 0.015, индексы 1.00) втрое точнее чтения с якорем
+> (0.040 / 0.84) и правки (0.050 / 0.74); решение принято в пользу точности,
+> плата — сохранность записи (чинитель знает запись документа, читатель без
+> образца — нет). Пункты §1, §3.1, §3.3, §3.5, §4.1 и §5.1 ниже описывают
+> прежний вариант и помечены.
+
 **Что это.** У задачи правки появляется второй протокол: модель **читает блок с
-картинки сама**, а распознанный текст приходит ей как **образец записи
-документа** — не как кандидат для исправления. Ответ — полный блок, который
-модель прочитала; гейт сравнивает его с текущим текстом блока, и приложение
-решает, менять текст или нет.
+картинки сама** — распознанный текст приходит ей не как кандидат для
+исправления, а как образец записи документа (ADR 266 убрал и образец: в
+запросе остаются картинка, системный промпт и промпт блока). Ответ — полный
+блок, который модель прочитала; гейт сравнивает его с текущим текстом блока, и
+приложение решает, менять текст или нет.
 
 **Зачем.** Замер на корпусе с неверными кандидатами: чтение точнее правки
 (CER 0.040 у чтения с якорем против 0.050 у правки; 0.015 у чтения без якоря), а
@@ -17,7 +27,8 @@
 записи документа и переписывает 9 из 10 верных блоков, из них 5 — с осмысленным
 изменением (начертание, регистр, символ, потерянный подстрочный индекс). С
 образцом записи профиль ущерба совпадает с базовым: 3 осмысленных, 1
-испорченный по содержанию.
+испорченный по содержанию. (ADR 266: довод отменён — выбрана точность чтения,
+CER 0.015 против 0.040; часть смен записи гейт отсекает носителями.)
 
 ---
 
@@ -26,20 +37,15 @@
 ### 1.1 Запрос роли `fix` при `protocol: "read_block"`
 
 ```
-system: read-requests.json → systemPrompt   ({{LANGUAGE}} подставляется как сейчас)
+system: read-requests.json → systemPrompt
 user:   [ {type: text,  text: <тип-подсказка блока>},
-          {type: image, image_url: <кроп блока>},
-          {type: text,  text: "The block as it was recognized (a sample of the
-                              document's notation, not the answer):
-                              <RECOGNIZED>
-                              {текст блока}
-                              </RECOGNIZED>"} ]
+          {type: image, image_url: <кроп блока>} ]
 ```
 
-Отличие от `full_block` — ровно две вещи: рамка вокруг распознанного текста
-(`<RECOGNIZED>` вместо `<CANDIDATE>`) и тексты промптов. Порядок частей тот же
-(тип-подсказка → картинка → текст); ось порядка измерена и рычагом не
-является.
+Отличие от `full_block` — тексты промптов и отсутствие кандидата: в режиме
+чтения распознанный текст в запрос не едет (ADR 266), поэтому частей две, а не
+три; порядок частей тот же (тип-подсказка → картинка), ось порядка измерена и
+рычагом не является.
 
 ### 1.2 Ответ
 
@@ -145,10 +151,9 @@ glob (`src/CMakeLists.txt`, `requests/*.json`) — правка CMake не ну�
 
 ### 3.1 `src/models/FixModel.cpp`
 
-- `buildRequestBody`: при `read_block` часть с распознанным текстом собирается
-  как `<RECOGNIZED>` с припиской «a sample of the document's notation, not the
-  answer»; при `full_block` — как сейчас, в `<CANDIDATE>` с припиской
-  «OCR candidate:».
+- `buildRequestBody`: при `read_block` часть с распознанным текстом **не
+  собирается вовсе** (ADR 266) — в запросе только тип-подсказка и картинка; при
+  `full_block` — как сейчас, в `<CANDIDATE>` с припиской «OCR candidate:».
 - `parseResponse`: при `read_block` ветка `OK` пропускается, всё остальное
   (ветка `FIX`, гейт, `REVIEW`, отклонение от схемы) — как сейчас. Текст
   отклонения при `read_block` называет схему `FIX/REVIEW`, а не `OK/FIX/REVIEW`.
@@ -167,7 +172,8 @@ glob (`src/CMakeLists.txt`, `requests/*.json`) — правка CMake не ну�
 ### 3.3 `src/core/CheckRequest.h`
 
 Комментарий поля `recognizedText`: текст блока нужен гейту как база сравнения;
-в сеть он уходит только в `full_block` (в `read_block` — как образец записи).
+в сеть он уходит только в `full_block` (в `read_block` — ADR 266 — не уходит
+вовсе).
 
 ### 3.4 Профили
 
@@ -190,8 +196,8 @@ glob (`src/CMakeLists.txt`, `requests/*.json`) — правка CMake не ну�
 - Список работы кнопки в шапке — **все текстовые блоки выбранных страниц**, и
   с текстом, и размеченные без него; в подписи — число блоков
   (`scopedReadBlockCount`), и кнопка активна, как только блоки появились.
-  У блока без текста нет образца записи: читатель получает одну картинку и
-  промпт без абзаца-образца (`systemPromptNoSample`).
+  У блока без текста запрос тот же: читатель получает картинку, системный
+  промпт и промпт блока (ADR 266).
 - Кнопка в тулбаре берёт выбранный блок.
 - Результат ложится в те же слои и переходы, что и ответ правки, но у него
   свои статусы: `Read` (совпало), `ReadFixed` (другое), `ReadDamaged` (не
@@ -224,8 +230,9 @@ glob (`src/CMakeLists.txt`, `requests/*.json`) — правка CMake не ну�
 
 ### 4.1 Системный промпт (`read-requests.json` → `systemPrompt`)
 
-Дословно как измеренный (`probe.py`: `FIX_NO_CANDIDATE_SYSTEM` + заметка об
-образце записи). `{{LANGUAGE}}` подставляет приложение.
+Прежний вариант (ADR 266 убрал из него заметку об образце записи и строку
+`Document language: {{LANGUAGE}}.` — плейсхолдер приложение не наполняло,
+подстановка была жёстко «Russian»).
 
 ```
 You produce the corrected text of one block of a technical document. The image is the only source of truth: write what the image shows, not what the formula usually looks like.
@@ -254,6 +261,10 @@ Use REVIEW when a character is cut by the crop, covered, or blurred past recogni
 
 The block as it was recognized is given below as a sample of how this document writes: its delimiters, macros, fonts and tag style. Read the content yourself from the image — where the sample and the image disagree, follow the image. Never copy the sample's content, and never keep a character of it that the image contradicts.
 ```
+
+Абзац про образец записи («The block as it was recognized…») и строка
+`Document language: {{LANGUAGE}}.` убраны ADR 266 — в профиле остаётся один
+системный промпт, а строку про язык приложение всё равно не наполняло.
 
 Два предложения заголовка — «not what the formula usually looks like» и «Do not
 complete a formula you cannot fully read» — оставлены как измерены: переписывать
@@ -299,7 +310,7 @@ Tags, indices and designations are content, not carrier: a Latin suffix where th
 | `page_number` | — | — (правило «Never infer or complete an ambiguous digit: answer REVIEW» остаётся) |
 | `seal` | «Never fix: NBSP, quote style» | — (правило «Never guess a smudged … character: answer REVIEW» остаётся) |
 | `key_value` | «Never fix: NBSP, quote style» | — |
-| `table` | «Output the table in the candidate's serialization … Change only the cells the image contradicts; reproduce every unchanged cell exactly.» | «Output the table in the sample's serialization (HTML if the sample is HTML, a pipe table if it is Markdown). Write every cell as the image shows it, and keep the cell position, rowspan, colspan, and empty cells as they are.» |
+| `table` | «Output the table in the candidate's serialization … Change only the cells the image contradicts; reproduce every unchanged cell exactly.» | «Write the table as HTML: one `<table>` element, a row per line and a cell per column. Write every cell as the image shows it, keeping the cell position, rowspan, colspan and the empty cells as they are.» (ADR 266: образца нет — сериализацию промпт называет прямо; HTML держит всё приложение, OTSL конвертируется в HTML) |
 
 Во всех типах: «Mode after FIX: the complete corrected block.» → «Mode after
 FIX: the complete block as you read it from the image.»; «Always fix:» → «Always
@@ -312,8 +323,10 @@ get right:»; «Preserve the candidate's …» → «Keep the author's …». П
 ### 5.1 Тесты (`tests/`)
 
 - `test_fix_protocol`:
-  - запрос при `read_block` содержит `<RECOGNIZED>` и не содержит
-    `<CANDIDATE>`; при `full_block` — наоборот (регресс на прежний протокол);
+  - запрос при `read_block` содержит тип-подсказку и картинку и **не содержит**
+    ни `<RECOGNIZED>`, ни `<CANDIDATE>`, ни распознанного текста блока
+    (ADR 266); запрос с пустым текстом блока совпадает с запросом с текстом;
+    при `full_block` — наоборот (регресс на прежний протокол);
   - разбор ответа при `read_block`: `FIX` с текстом ⇒ `Fixed` (через гейт);
     `REVIEW` ⇒ `Review`; `OK` ⇒ `Review` с причиной; пустой ответ ⇒ `Review`;
     ответ, обрезанный бюджетом (`finish_reason: length`) ⇒ `Review`;
@@ -325,10 +338,11 @@ get right:»; «Preserve the candidate's …» → «Keep the author's …». П
   известных (`full_block`, `read_block`); профиль промптов читателя
   (`read-requests`) существует, несёт текст на каждый тип блока и бюджет на
   каждый тип блока.
-- `test_app_import`: действие «Перечитать» берёт все текстовые блоки
+- `test_app_import`: действие «Распознать точно» берёт все текстовые блоки
   выбранных страниц (в том числе размеченные без текста), отправляет запрос
-  с `<RECOGNIZED>` (без `<CANDIDATE>`) — или одну картинку, когда образца
-  нет, — и кладёт прочитанное в слой коррекции со статусом читателя.
+  без распознанного текста (ни `<RECOGNIZED>`, ни `<CANDIDATE>`) — картинка,
+  системный промпт, промпт блока (ADR 266) — и кладёт прочитанное в слой
+  коррекции со статусом читателя.
 - Регистрация `read-requests.json` в `tests/CMakeLists.txt` рядом с
   `fix-requests.json` — тесты грузят профили промптов как ресурс.
 

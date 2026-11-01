@@ -38,10 +38,9 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   that have no answer yet, so a re-recognition only verifies the newly
   recognized blocks. Fixing is a separate action («Исправить», ADR 178): the
   rejected blocks go to the fix model in their own run. Re-reading is a third
-  action («Перечитать», ADR 259, ADR 260): the fix model writes the block from
-  the image and the recognized text travels only as a sample of the document's
-  notation — a block nobody recognized yet has no sample, and the reader gets
-  the image alone. The protocol is the action's choice
+  action («Распознать точно», ADR 259, ADR 260): the fix model writes the block
+  from the image, and the recognized text of the block never travels — the
+  request carries the image, the system prompt and the block prompt (ADR 266). The protocol is the action's choice
   (`CheckRequest::fixProtocol`), not the model's. The reader's outcome is
   visible: its state speaks for the block in the frame (green — read, red —
   unreadable), it explains itself in the reader's words, and the run ends with

@@ -11,12 +11,6 @@
 
 namespace llocr {
 
-namespace {
-// The language the prompts name ({{LANGUAGE}}). The user's choice and
-// the auto-detection land in the next step.
-const QString kDocumentLanguage = QStringLiteral("Russian");
-}  // namespace
-
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
     : QObject(parent), m_deps(std::move(deps)), m_decision(m_deps.runtime, this), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr),
       m_fix(m_deps.fixRequestProfiles, m_deps.runtime, nullptr)
@@ -677,12 +671,10 @@ void VerificationQueueController::startNextVerify()
             skipCurrentTask();
             return;
         }
-        // A block with no recognized text has no sample of the document's
-        // notation: the reader gets the prompt without the sample paragraph
-        // and the image alone (ADR 260).
-        const bool hasSample = !text.isEmpty();
-        QString systemPrompt = hasSample ? readProfile->prompts.systemPrompt : readProfile->prompts.systemPromptNoSample;
-        systemPrompt.replace(QStringLiteral("{{LANGUAGE}}"), kDocumentLanguage);
+        // The reader gets the image, the system prompt and the block prompt —
+        // and nothing else: the recognized text of the block is not part of
+        // the request (ADR 266).
+        const QString systemPrompt = readProfile->prompts.systemPrompt;
         const QString userPrompt = ModelProfiles::blockPromptForRole(readProfile->prompts, box.label);
         const int maxOutput = ModelProfiles::maxOutputForBlockRole(readProfile->prompts, box.label);
         m_fix.fixBlock(crop, text, systemPrompt, userPrompt, box.label, maxOutput, CheckRequest::FixProtocol::ReadBlock);
@@ -700,7 +692,6 @@ void VerificationQueueController::startNextVerify()
         const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
         const QString userPrompt = ModelProfiles::blockPromptFor(profiles, modelId, QStringLiteral("fix"), box.label);
         QString systemPrompt = ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("fix"));
-        systemPrompt.replace(QStringLiteral("{{LANGUAGE}}"), kDocumentLanguage);
         const int maxOutput = ModelProfiles::maxOutputForBlock(profiles, modelId, QStringLiteral("fix"), box.label);
         // The fix protocol judges the block's current text; the candidate is
         // the block's own text — a formula was brought to its canonical LaTeX

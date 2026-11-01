@@ -102,7 +102,6 @@ namespace {
 void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QString &error, const QString &id, bool requestProfile)
 {
     role.systemPrompt = object.value(QStringLiteral("systemPrompt")).toString();
-    role.systemPromptNoSample = object.value(QStringLiteral("systemPromptNoSample")).toString();
 
     const QJsonObject blockPrompts = object.value(QStringLiteral("blockPrompts")).toObject();
     for (auto prompt = blockPrompts.constBegin(); prompt != blockPrompts.constEnd(); ++prompt) {
@@ -135,7 +134,6 @@ void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QStr
 void applyPromptProfile(ModelProfiles::Role &role, const ModelProfiles::Role &prompts)
 {
     role.systemPrompt = prompts.systemPrompt;
-    role.systemPromptNoSample = prompts.systemPromptNoSample;
     role.blockPrompts = prompts.blockPrompts;
     role.blockAliases = prompts.blockAliases;
     // The shared reply budgets fill the gaps: a model profile that ships its

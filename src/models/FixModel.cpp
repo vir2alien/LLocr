@@ -164,35 +164,29 @@ QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteAr
     // Fix protocol (ADR 163): the candidate travels as its own user-message
     // part, framed by <CANDIDATE>; the system message carries the shared
     // contract; the parts follow the order the model's fix role trains.
-    // The read protocol (ADR 259) frames the same text as <RECOGNIZED> and
-    // names it a sample of the document's notation: the reader writes the
-    // block from the image, the recognized text is not the answer.
+    // The read protocol (ADR 259) has no candidate and no sample: the reader
+    // gets the image, the system prompt and the block prompt, and writes the
+    // block from the image alone (ADR 266).
     const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("fix"));
     const bool promptFirst = role && role->promptBeforeImage;
 
     const QJsonObject typePromptPart = textPart(request.typePrompt);
     const QJsonObject image = imagePart(imageDataUrl);
     const bool readProtocol = request.fixProtocol == CheckRequest::FixProtocol::ReadBlock;
-    // A block with no recognized text has no sample of the document's notation
-    // to show: the reader gets the image alone (ADR 260).
-    const bool sampleSent = !readProtocol || !request.recognizedText.isEmpty();
-    const QJsonObject ocrPart =
-        !sampleSent    ? QJsonObject()
-        : readProtocol ? textPart(QStringLiteral("The block as it was recognized (a sample of the document's notation, not the answer):\n<RECOGNIZED>\n%1\n</RECOGNIZED>").arg(request.recognizedText))
-                       : textPart(QStringLiteral("OCR candidate:\n<CANDIDATE>\n%1\n</CANDIDATE>").arg(request.recognizedText));
+    const QJsonObject ocrPart = readProtocol ? QJsonObject() : textPart(QStringLiteral("OCR candidate:\n<CANDIDATE>\n%1\n</CANDIDATE>").arg(request.recognizedText));
 
     QJsonArray content;
     if (promptFirst) {
         if (!request.typePrompt.isEmpty())
             content.append(typePromptPart);
-        if (sampleSent)
+        if (!readProtocol)
             content.append(ocrPart);
         content.append(image);
     } else {
         if (!request.typePrompt.isEmpty())
             content.append(typePromptPart);
         content.append(image);
-        if (sampleSent)
+        if (!readProtocol)
             content.append(ocrPart);
     }
 

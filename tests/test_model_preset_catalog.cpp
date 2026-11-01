@@ -283,7 +283,6 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
         // EMPTY is gone from the scheme, and the language is a placeholder the
         // app fills in.
         QVERIFY2(!system.contains(QStringLiteral("EMPTY")), qPrintable(id));
-        QVERIFY2(system.contains(QStringLiteral("{{LANGUAGE}}")), qPrintable(id));
         QVERIFY2(system.contains(QStringLiteral("Never truncate output")), qPrintable(id));
         // The reply carries the whole block and nothing else.
         QVERIFY2(system.contains(QStringLiteral("<the complete corrected block>")), qPrintable(id));

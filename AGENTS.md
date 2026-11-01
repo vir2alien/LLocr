@@ -457,13 +457,12 @@
     The budgets are the protocol's own rule, so they live in the **request
     profile** (`fix-requests.json`), one copy for all four fix models; a model
     profile may still ship its own entry for a block type and it wins. The
-    **read** protocol (ADR 259, ADR 260) is the same task with another
-    contract: the «Перечитать» button sends the recognized text as a *sample
-    of the document's notation* (`<RECOGNIZED>`) instead of a candidate, and
-    the model writes the block from the image (`FIX` with the whole block, or
+    **read** protocol (ADR 259, ADR 260, ADR 266) is the same task with
+    another contract: the «Распознать точно» button sends the image, the
+    system prompt and the block prompt — and nothing else; the recognized text
+    of the block never travels (ADR 266), so the reader has one source of
+    truth and writes the block from the image (`FIX` with the whole block, or
     `REVIEW`; `OK` is outside the scheme and lands on Review with the reason).
-    A block with no recognized text has no sample: the reader gets the image
-    alone, with the prompt minus the sample paragraph (`systemPromptNoSample`).
     The protocol is the **action's** choice, not the model's: the request
     carries it (`CheckRequest::fixProtocol`), the model's `roles.fix.protocol`
     is not read, and the reader's prompts live in their own shared profile
@@ -608,13 +607,13 @@
     back into it). «Проверить» runs the decision pass
     only (`checkScopeEnabledBlocks()`) — verify and fix are separate buttons
     in the manual pipeline; the automatic check/fix switches are gone
-    (ADR 178). «Перечитать» (the magnifier over a page) sits in the same row
+    (ADR 178). «Распознать точно» (the magnifier over a page) sits in the same row
     as «Проверить» — the group keeps its three rows, so the menu does not grow
     with every new action. It takes **every text block of the selected pages**
     (`scopedReadBlockCount`, shown as a `(N)` badge) — except the blocks the
     user owns (hand-written or confirmed by hand): the fix model writes the
-    block from the image, and a block nobody recognized yet has no sample —
-    the reader gets the image alone. The button is active as soon as the
+    block from the image, and the recognized text of the block never travels
+    (ADR 266). The button is active as soon as the
     blocks appeared. The model is the one chosen in the settings for fixing a block,
     and the answer lands in the same layers (ADR 259, ADR 260). The run ends
     with its own tally in the status line («Прочитано блоков: переписано — N,

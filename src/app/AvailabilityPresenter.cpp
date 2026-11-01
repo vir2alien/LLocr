@@ -54,6 +54,7 @@ void AvailabilityPresenter::refresh(const Revisions &revisions)
         currentPageVerification(),
         selectedPageCount(),
         scopedPendingFixCount(),
+        scopedReadBlockCount(),
         scopeHasResults(),
     };
     if (current == m_flags)

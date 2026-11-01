@@ -27,7 +27,6 @@ public:
         QHash<QString, int> blockMaxOutput;  // maxOutputByBlock, keyed like blockPrompts (fix task)
         bool isDefault = false;              // the role's recommended model, replacing the first-in-catalog fallback
         QString systemPrompt;                // check-role override of the shared verifier system prompt
-        QString systemPromptNoSample;        // the read task's prompt for a block with no recognized text (ADR 260)
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
