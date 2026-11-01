@@ -20,6 +20,8 @@
 set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-4b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-9b.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3-vl-4b.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3-vl-8b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/gemma-4-e4b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/gemma-4-12b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/glm-ocr.json"

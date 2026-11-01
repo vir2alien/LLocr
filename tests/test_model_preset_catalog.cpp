@@ -32,6 +32,7 @@ private slots:
     void checkModelBlockPromptsOverridePerType();
     void fixRolesShipTheCorrectionProtocol();
     void fixRolesShipTheReasoningMode();
+    void readSystemPromptShipsPerModel();
     void requestProfilesCarryTheSharedRequests();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
@@ -90,6 +91,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     const QList<Expected> expected = {
         {"qwen3.5-4b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"qwen3.5-9b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
+        {"qwen3-vl-4b", "fix", "b9263", "q8_0,q4_k_m", "temp,jinja,flash-attn,image-min-tokens"},
+        {"qwen3-vl-8b", "fix", "b9263", "q8_0,q4_k_m", "temp,jinja,flash-attn,image-min-tokens"},
         {"gemma-4-e4b", "fix", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,image-min-tokens,ubatch-size"},
         {"glm-ocr", "blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
@@ -269,7 +272,10 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     const QStringList fixModels = ModelProfiles::idsForRole(profiles, QStringLiteral("fix"));
-    QCOMPARE(fixModels, QStringList({QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
+    QCOMPARE(
+        fixModels,
+        QStringList(
+            {QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3-vl-4b"), QStringLiteral("qwen3-vl-8b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
 
     for (const QString &id : fixModels) {
         const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
@@ -323,7 +329,7 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     // The equivalence rules are synced with the decision v6 block prompts
     // (docs/21): the fixer treats the same things as equivalent and strictly
     // different, or the two models would fight over е/ё, homoglyphs, LaTeX
-    // commands and table cells. All four fix models ship identical prompts.
+    // commands and table cells. All six fix models ship identical prompts.
     const QString fixText = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("text"));
     QVERIFY(fixText.contains(QStringLiteral("Never fix:")));
     QVERIFY(fixText.contains(QStringLiteral("е/ё")));
@@ -425,13 +431,45 @@ void TestModelPresetCatalog::fixRolesShipTheReasoningMode()
         QCOMPARE(budget->choices.at(1).value.toDouble(), 512.0);
     }
 
-    // Every fix model may think: the qwen pair and the gemma pair both declare
-    // the capability (the gemma chat template carries the enable_thinking switch
-    // and the thought channel — verified on llama.cpp b11799).
+    // The qwen3.5 and gemma pairs declare the capability (the gemma chat
+    // template carries the enable_thinking switch and the thought channel —
+    // verified on llama.cpp b11799). The Qwen3-VL pair is an Instruct line
+    // with no thinking channel: the flag is off, and the loop above verified
+    // that its requests carry no reasoning budget.
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-9b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-e4b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-12b"), QStringLiteral("fix"))->reasoningSupported);
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("qwen3-vl-4b"), QStringLiteral("fix"))->reasoningSupported);
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("qwen3-vl-8b"), QStringLiteral("fix"))->reasoningSupported);
+}
+
+// The reader's system prompt is a calibration like the thresholds (ADR 267):
+// the shared profile carries the default, and a model family the shared
+// wording cannot carry ships its own. The block prompts stay shared.
+void TestModelPresetCatalog::readSystemPromptShipsPerModel()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
+        const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
+        QVERIFY2(fix, qPrintable(id));
+        if (!id.startsWith(QStringLiteral("qwen3-vl"))) {
+            QVERIFY2(fix->readSystemPrompt.isEmpty(), qPrintable(id));
+            continue;
+        }
+        QVERIFY2(!fix->readSystemPrompt.isEmpty(), qPrintable(id));
+        QVERIFY2(fix->readSystemPrompt.contains(QStringLiteral("REVIEW")), qPrintable(id));
+        QVERIFY2(fix->readSystemPrompt.contains(QStringLiteral("FIX")), qPrintable(id));
+        // The clause the shared wording lacks: REVIEW is not "nothing to
+        // correct" — the shared text reads as a correction-verification to
+        // this family and every legible block came back unread.
+        QVERIFY2(fix->readSystemPrompt.contains(QStringLiteral("no original text here to compare with")), qPrintable(id));
+    }
+
+    // The two Qwen3-VL profiles carry the same text: a wording that drifted
+    // apart would calibrate the pair differently for no reason.
+    QCOMPARE(ModelProfiles::roleFor(QStringLiteral("qwen3-vl-4b"), QStringLiteral("fix"))->readSystemPrompt,
+             ModelProfiles::roleFor(QStringLiteral("qwen3-vl-8b"), QStringLiteral("fix"))->readSystemPrompt);
 }
 
 // The fix task sends the same request whatever model serves it, so the request
@@ -467,7 +505,7 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
     // The reply budgets are the protocol's own rule — the whole block travels
     // in the reply — so they live in the request profile, once, and every fix
     // model inherits them (ADR 192). A model profile that ships its own entry
-    // keeps it; the four shipped fix models ship none.
+    // keeps it; the shipped fix models ship none.
     QVERIFY(!fixRequests->prompts.blockMaxOutput.isEmpty());
     QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("text")), 2048);
     QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("page_number")), 64);

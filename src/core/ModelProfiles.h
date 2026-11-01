@@ -39,6 +39,7 @@ public:
         int imageLongestEdge = 0;                     // 0 = send the page as-is; >0 = downscale to fit (LightOnOCR-3 trains on 2048 px pages)
         QString promptProfile;                        // id of the prompt profile this role takes its texts from
         bool reasoningSupported = false;              // the model can think: the fix task may spend a reasoning budget
+        QString readSystemPrompt;                     // read-task system prompt; empty = the shared reader profile's (ADR 267)
     };
 
     struct Quant {

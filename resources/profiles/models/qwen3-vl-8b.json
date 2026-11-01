@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "id": "qwen3-vl-8b",
+  "title": "Qwen3-VL-8B",
+  "license": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF",
+  "minBuild": "b9263",
+  "files": {
+    "repo": "Qwen/Qwen3-VL-8B-Instruct-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q8_0",
+        "file": "Qwen3VL-8B-Instruct-Q8_0.gguf",
+        "sha256": "",
+        "sizeBytes": 8709519456
+      },
+      {
+        "id": "q4_k_m",
+        "file": "Qwen3VL-8B-Instruct-Q4_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 5027784800
+      }
+    ],
+    "mmproj": {
+      "sizeBytes": 1159029824,
+      "id": "f16",
+      "file": "mmproj-Qwen3VL-8B-Instruct-F16.gguf",
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
+    }
+  },
+  "memory": {
+    "nLayer": 36,
+    "nKvLayers": 36,
+    "nHead": 32,
+    "nKvHead": 8,
+    "headDim": 128,
+    "nEmbd": 4096,
+    "nFf": 12288,
+    "visionTokens": 1024,
+    "visionBytesPerToken": 184383,
+    "workingSetBytesPerToken": 409641,
+    "workingSetContextBytes": 2
+  },
+  "roles": {
+    "fix": {
+      "alias": "llocr-fix",
+      "protocol": "full_block",
+      "promptProfile": "fix-requests",
+      "readSystemPrompt": "You correct one block of a document from an image. The image is the only source of truth: write what it shows, not what it usually looks like.\n\nPreserve script, case, face (upright/italic/bold), position (baseline/subscript/superscript, nesting depth), and bracket pairing. Read glyphs at the printed size; never guess small print.\n\nAdd nothing. Complete nothing you cannot fully read. Do not translate, reflow, simplify or normalize.\n\nAnswer with exactly one of:\n\nREVIEW\n\nor\n\nFIX\n<complete corrected block>\n\nREVIEW does not mean that no correction is needed: there is no original text here to compare with. REVIEW means the block cannot be read. If the text is legible, write FIX and copy the complete block exactly as printed. Use REVIEW only when a character is cut off, covered or fully unreadable. If it is visible, read it. No explanation, no code fence.",
+      "reasoning": false,
+      "maxOutput": 8192,
+      "launch": [
+        {
+          "order": 1,
+          "name": "temp",
+          "value": 0,
+          "description": "Server-side default sampling temperature; greedy decoding for transcription."
+        },
+        {
+          "order": 2,
+          "name": "jinja",
+          "description": "Use the chat template from the GGUF metadata."
+        },
+        {
+          "order": 3,
+          "name": "flash-attn",
+          "value": "on",
+          "description": "Flash attention kernels; required for the vision stack."
+        },
+        {
+          "order": 4,
+          "name": "image-min-tokens",
+          "value": 1024,
+          "description": "Vision budget floor; llama.cpp warns that Qwen-VL needs at least 1024 image tokens for grounding tasks."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 3,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 6,
+          "name": "cache_prompt",
+          "value": true,
+          "description": "Cache the prompt (system message, image embeddings) between blocks; a dense model can reuse it, unlike the hybrid-recurrent fix family."
+        },
+        {
+          "order": 7,
+          "name": "stop",
+          "value": [
+"</CANDIDATE>"
+          ],
+          "description": "Stop sequences; the reply ends with the verdict even when the model would keep generating. Only the protocol marker belongs here: an end-of-text token listed as a stop word is matched against the reply itself and cuts the answer to nothing."
+        }
+      ]
+    }
+  }
+}

@@ -223,7 +223,8 @@ context of its own: it has no cache and no compute buffer of its own.
 ## 6. The calibration of the shipped models
 
 The coefficients of every model of the catalog, as they are in the profiles
-(measured against llama.cpp b11799, `--parallel 1`, the app's flags):
+(measured against llama.cpp b11799 — the Qwen3-VL pair against b12000 —
+`--parallel 1`, the app's flags):
 
 | Model | KV layers | KV heads × head dim | Vision | Working set | Draft (weights / context) | Sliding cells |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -231,6 +232,8 @@ The coefficients of every model of the catalog, as they are in the profiles
 | `mineru` | 24 | 2 × 64 | 132 324 B/token (1369) | derived | — | — |
 | `qwen3.5-4b` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
 | `qwen3.5-9b` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
+| `qwen3-vl-4b` | 36 | 8 × 128 | 159 809 B/token (2116) | 264 233 B/token + 2 B | — | — |
+| `qwen3-vl-8b` | 36 | 8 × 128 | 184 383 B/token (2116) | 409 641 B/token + 2 B | — | — |
 | `minicpm-jev` | 6 | 2 × 256 | 110 655 B/token (2116) | derived | — | — |
 | `gemma-4-12b` | 8 | 8 × 64 | 55 419 B/token (1120) | 267 320 B/token + 2 B | 253 708 800 / 387 994 092 | 1 006 632 960 |
 | `gemma-4-e4b` | 4 | 2 × 512 | **3 986 933 350 flat** | 176 218 B/token + 36 B | 59 678 016 / 188 743 680 | 62 914 560 |
@@ -246,6 +249,8 @@ model's manual names as the main one (the sizes in GiB, the buffers in MiB):
 | `mineru` | q8_0 | 0.49 | 677 | 192 | 52 | 173 | 0 | 0 | 1.56 | **1.75 GiB** |
 | `qwen3.5-4b` | q8_0 | 4.29 | 641 | 512 | 103 | 108 | 0 | 0 | 5.63 | **6.14 GiB** |
 | `qwen3.5-9b` | q8_0 | 9.11 | 876 | 512 | 137 | 108 | 0 | 0 | 10.71 | **11.63 GiB** |
+| `qwen3-vl-4b` | q8_0 | 3.99 | 798 | 2304 | 145 | 156 | 0 | 0 | 7.31 | **7.96 GiB** |
+| `qwen3-vl-8b` | q8_0 | 8.11 | 1105 | 2304 | 216 | 180 | 0 | 0 | 11.82 | **12.84 GiB** |
 
 The profiles carry the rates rounded: the measurements were 110 653 B/token
 for the Qwen tower, 238 848 for the GLM-OCR tower and 132 351 for the MinerU

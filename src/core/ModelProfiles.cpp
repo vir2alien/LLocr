@@ -285,6 +285,7 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
             role.blockMatchThresholds.insert(threshold.key(), threshold.value().toDouble(-1.0));
         role.promptProfile = roleObject.value(QStringLiteral("promptProfile")).toString();
         role.reasoningSupported = roleObject.value(QStringLiteral("reasoning")).toBool(false);
+        role.readSystemPrompt = roleObject.value(QStringLiteral("readSystemPrompt")).toString();
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
         if (!error.isEmpty())
             return profile;

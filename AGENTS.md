@@ -46,7 +46,7 @@
   | `docs/20-model-task-rework.md` | Rework plan: the task vocabulary, two-layer verification, the fix pipeline (since ADR 192 the `full_block` protocol), page statuses, new settings windows (Oct 2026); re-stated to the four-task matrix (ADR 252), stage table with statuses |
   | `docs/24-mineru.md`       | Model manual: MinerU2.5-Pro-2605-1.2B (two-step protocol, 1036² squash, `--special`, layout absorption); Russian mirror in `24-mineru.ru.md` |
   | `docs/26-qwen3.5.md`      | Model manual: Qwen3.5-4B/9B, the fix default (OK/FIX/REVIEW, MTP drafting, framed candidate); Russian mirror in `26-qwen3.5.ru.md` |
-  | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all seven models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
+  | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all nine models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
   | `docs/29-external-runtime-tasks-and-secrets.md` | Plan + record: the external runtime gets the same four tasks as the managed one, each with its own endpoint, key and alias (ADR 226); the secrets live in the OS secret store (ADR 227) |
   | `docs/31-minicpm-jev.md`  | Model manual: MiniCPM-OCR Jev — the visual-diff decision (`systemone_visual_diff_v1`, two images, the CandidateRenderer render leg, thresholds pending calibration); Russian mirror in `31-minicpm-jev.ru.md` |
 | `docs/32-orientation-pipeline.md` | The page-orientation correction pipeline: the two-stage pixel check (Sauvola, the skew sweep, periodicity + variation), the auto-straightening, the markup pass's rotation-token vote and the auto-turn with the second pass; Russian mirror in `32-orientation-pipeline.ru.md` |
@@ -455,7 +455,7 @@
     commands or table cells; `maxOutputByBlock` budgets the reply per block
     type — the whole block travels in the reply, so the budget must fit it.
     The budgets are the protocol's own rule, so they live in the **request
-    profile** (`fix-requests.json`), one copy for all four fix models; a model
+    profile** (`fix-requests.json`), one copy for all six fix models; a model
     profile may still ship its own entry for a block type and it wins. The
     **read** protocol (ADR 259, ADR 260, ADR 266) is the same task with
     another contract: the «Распознать точно» button sends the image, the
@@ -466,7 +466,11 @@
     The protocol is the **action's** choice, not the model's: the request
     carries it (`CheckRequest::fixProtocol`), the model's `roles.fix.protocol`
     is not read, and the reader's prompts live in their own shared profile
-    (`read-requests.json`). The gate and the layers are the same ones, so a
+    (`read-requests.json`) — except the system prompt, which a fix role may
+    override with its own `readSystemPrompt`: a wording is a calibration
+    (ADR 267), and the Qwen3-VL family reads the shared one as a
+    correction-verification, answering REVIEW for every legible block. The
+    gate and the layers are the same ones, so a
     read that reproduces the text keeps the block's bytes and drops the stale
     `Mismatch`; the reader's own outcomes are separate statuses (`Read`,
     `ReadFixed`, `ReadDamaged`), so the panel never shows the fixer's words
@@ -685,12 +689,14 @@
     launch files; `check/`
     keeps only `showConfidence` — the automatic check/fix switches are gone,
     ADR 178) and one `RequestProfileStore` per task. Shipped model → task matrix
-    (seven models; the ten removed ones live in `archive/models/`, ADR 251):
+    (nine models; the ten removed ones live in `archive/models/`, ADR 251):
     `mineru` → layout + blockRecognition (the default for both — one model
     closes the markup → recognition pipeline, ADR 252); `glm-ocr` →
     blockRecognition; `minicpm-jev` (visual diff,
     ADR 235/254) → decision (`docs/31-minicpm-jev.md`); `qwen3.5-4b/9b`,
-    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW, ADR 180/181).
+    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW, ADR 180/181); `qwen3-vl-4b/8b`
+    (dense, Instruct without a thinking channel) → fix, the read task rides
+    its own `readSystemPrompt` (ADR 267).
     Task defaults (ADR 169,
     `roles.<task>.default: true` in the profile JSONs, exactly one per
     task, read by the auto-selection): blockRecognition = `mineru`,
