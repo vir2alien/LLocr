@@ -368,11 +368,11 @@
     </message>
     <message>
         <location line="+8"/>
-        <source>Re-read block</source>
-        <translation>Перечитать блок</translation>
+        <source>Recognize block exactly</source>
+        <translation>Распознать блок точно</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+6"/>
         <source>Delete block</source>
         <translation>Удалить блок</translation>
     </message>
@@ -1053,12 +1053,12 @@
 <context>
     <name>Header</name>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+83"/>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+74"/>
         <source>File</source>
         <translation>Файл</translation>
     </message>
     <message>
-        <location line="+377"/>
+        <location line="+394"/>
         <source>Open project…</source>
         <translation>Открыть проект…</translation>
     </message>
@@ -1073,12 +1073,12 @@
         <translation>Сохранить проект как…</translation>
     </message>
     <message>
-        <location line="-339"/>
+        <location line="-347"/>
         <source>Automatic pipelines arrive in a later step</source>
         <translation type="vanished">Автоматические пайплайны появятся в следующем шаге</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+32"/>
         <source>Mark up</source>
         <translation>Разметить</translation>
     </message>
@@ -1088,12 +1088,7 @@
         <translation>Найти блоки на выбранных страницах</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Recognize</source>
-        <translation>Распознать</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="-19"/>
         <source>With markup</source>
         <translation>С разметкой</translation>
     </message>
@@ -1108,22 +1103,22 @@
         <translation>Распознать выбранные страницы: блоки и их текст одним проходом</translation>
     </message>
     <message>
-        <location line="-25"/>
+        <location line="+31"/>
         <source>Recognize the marked blocks that still have no text</source>
         <translation>Распознать размеченные блоки, у которых ещё нет текста</translation>
     </message>
     <message>
-        <location line="+45"/>
+        <location line="-11"/>
         <source>Recognize the selected pages as raw text</source>
         <translation>Распознать выбранные страницы как сплошной текст</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+35"/>
         <source>Verify</source>
         <translation>Проверить</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+42"/>
         <location line="+1"/>
         <source>Fix</source>
         <translation>Исправить</translation>
@@ -1134,17 +1129,18 @@
         <translation>Исправить блоки, ожидающие исправления, на выбранных страницах</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <source>Re-read</source>
-        <translation>Перечитать</translation>
+        <location line="-32"/>
+        <location line="+1"/>
+        <source>Recognize exactly</source>
+        <translation>Распознать точно</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+8"/>
         <source>Read the blocks of the selected pages from the image</source>
         <translation>Прочитать с картинки блоки выбранных страниц</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+38"/>
         <source>Export</source>
         <translation>Экспорт</translation>
     </message>
@@ -1154,7 +1150,7 @@
         <translation>Настройки</translation>
     </message>
     <message>
-        <location line="+202"/>
+        <location line="+205"/>
         <source>Setup wizard</source>
         <translation>Мастер настройки</translation>
     </message>
@@ -1169,13 +1165,17 @@
         <translation>Вывод</translation>
     </message>
     <message>
-        <location line="-275"/>
-        <location line="+279"/>
+        <location line="-307"/>
+        <source>Verification and fixing</source>
+        <translation>Проверка и исправление</translation>
+    </message>
+    <message>
+        <location line="+311"/>
         <source>Verification</source>
         <translation>Проверка</translation>
     </message>
     <message>
-        <location line="-443"/>
+        <location line="-460"/>
         <source>Import</source>
         <translation>Импорт</translation>
     </message>
@@ -1185,12 +1185,12 @@
         <translation>Открыть изображения, PDF или DjVu</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+4"/>
         <source>Pages</source>
         <translation type="vanished">Страницы</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+20"/>
         <source>All</source>
         <translation>Все</translation>
     </message>
@@ -1200,12 +1200,12 @@
         <translation>Страницы для обработки: следуют за выделением в панели миниатюр, либо введите диапазон вида 1-10, 15</translation>
     </message>
     <message>
-        <location line="+28"/>
+        <location line="-18"/>
         <source>Auto</source>
         <translation>Авто</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+37"/>
         <source>Fast</source>
         <translation type="vanished">Быстро</translation>
     </message>
@@ -1220,12 +1220,12 @@
         <translation type="vanished">Точно</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+24"/>
         <source>Recognize %1 pg.</source>
         <translation>Распознать %1 стр.</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+29"/>
         <source>Recognition</source>
         <translation>Распознавание</translation>
     </message>
@@ -1236,8 +1236,8 @@
     </message>
     <message>
         <location line="+12"/>
-        <source>Recognize blocks</source>
-        <translation>Распознать блоки</translation>
+        <source>Recognize</source>
+        <translation>Распознать</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -1245,13 +1245,13 @@
         <translation>Остановить распознавание блоков</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="-10"/>
         <location line="+20"/>
         <source>Stop the recognition</source>
         <translation>Остановить распознавание</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+22"/>
         <source>Stop the verification</source>
         <translation>Остановить проверку</translation>
     </message>
@@ -1261,27 +1261,27 @@
         <translation>Проверить распознанные блоки, не исправляя их</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+43"/>
         <source>Stop the fix</source>
         <translation>Остановить исправление</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="-23"/>
         <source>Stop the re-reading</source>
         <translation>Остановить перечитывание</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+44"/>
         <source>Export the recognized text</source>
         <translation>Экспортировать распознанный текст</translation>
     </message>
     <message>
-        <location line="+230"/>
+        <location line="+233"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+4"/>
         <source>Models</source>
         <translation>Модели</translation>
     </message>
@@ -1301,17 +1301,17 @@
         <translation>Разметка заменит распознанные блоки и текст на выбранных страницах. Продолжить?</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+146"/>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+167"/>
         <source>Stop the automatic pipeline</source>
         <translation>Остановить автопайплайн</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Mark up, recognize, verify and fix the selected pages</source>
         <translation>Разметить, распознать, проверить и исправить выбранные страницы</translation>
     </message>
     <message>
-        <location line="+389"/>
+        <location line="+423"/>
         <source>Automatic pipeline?</source>
         <translation>Автопайплайн?</translation>
     </message>

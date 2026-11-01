@@ -137,6 +137,16 @@ target_link_libraries(test_verification_queue PRIVATE
 )
 add_test(NAME test_verification_queue COMMAND test_verification_queue)
 
+# The availability presenter: the flags the toolbar reads and the announcement
+# when one of them flips (the scope's block count among them).
+qt_add_executable(test_availability_presenter test_availability_presenter.cpp)
+
+target_link_libraries(test_availability_presenter PRIVATE
+    Qt6::Test
+    llocr_app
+)
+add_test(NAME test_availability_presenter COMMAND test_availability_presenter)
+
 qt_add_executable(test_ocr_models test_ocr_models.cpp)
 
 target_link_libraries(test_ocr_models PRIVATE

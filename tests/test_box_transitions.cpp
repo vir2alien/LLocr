@@ -185,6 +185,33 @@ private slots:
         QVERIFY(!BoxTransitions::needsFix(damaged));
     }
 
+    // A block nobody recognized: there is nothing to correct, so the reader's
+    // block is the recognition itself and lands in the text layer (ADR 265).
+    // Such a block is an ordinary recognized one: no remedy has answered it,
+    // so it waits for the decision model and then for the fixer.
+    void theReadOfAnUnrecognizedBlockIsItsRecognition()
+    {
+        BoundingBox box;  // markup only: no text and no correction
+        box.label = QStringLiteral("text");
+        BoxTransitions::readApplied(box, QStringLiteral("read text"));
+
+        QCOMPARE(box.text, QStringLiteral("read text"));
+        QVERIFY(box.correctedText.isEmpty());
+        // The text layer carries no verdict yet: the decision model has not
+        // looked at it.
+        QCOMPARE(box.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(box.correctedCheckStatus, BoxCheckStatus::NotChecked);
+        // No remedy has answered the block: it is not marked as read.
+        QCOMPARE(box.fixStatus, BoxFixStatus::None);
+        // There is no correction: the text is the layer in view.
+        QVERIFY(!BoxTransitions::effectiveLayerIsCorrection(box));
+
+        // The decision model rejects the fresh text: the block waits for the
+        // fixer, exactly as an ordinary recognized block does.
+        box.checkStatus = BoxCheckStatus::Mismatch;
+        QVERIFY(BoxTransitions::needsFix(box));
+    }
+
     // A fix that answers «no correction needed» drops the stale verdict: the
     // fixer is not a verifier (ADR 240), so the block goes back to the gray
     // «recognized» state and the corrected layer is not created at all.

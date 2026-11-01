@@ -85,7 +85,9 @@ void fixMarkedUnreadable(BoundingBox &box);
 // image, so its answer says what it read — the panel words it apart from the
 // fixer's. The transitions are the fixer's: the reader is not a verifier
 // either (ADR 240), and a block it read waits for the operator, not for the
-// fixer.
+// fixer. A block nobody recognized has nothing to correct: there the reader's
+// block is the recognition itself and lands in the text layer (ADR 265) —
+// such a block is an ordinary recognized one, remedy and verdict included.
 void readApplied(BoundingBox &box, const QString &text);
 void readConfirmedOriginal(BoundingBox &box);
 void readMarkedUnreadable(BoundingBox &box);

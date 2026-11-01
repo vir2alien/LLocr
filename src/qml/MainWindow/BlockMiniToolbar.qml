@@ -91,7 +91,7 @@ Rectangle {
         MiniButton {
             visible: miniRoot.isTextBlock
             iconName: "file-search"
-            tip: qsTr("Re-read block")
+            tip: qsTr("Recognize block exactly")
             enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle && Controller.fixModelAvailable
             onClicked: Controller.readSelectedBlock()
         }

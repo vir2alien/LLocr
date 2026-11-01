@@ -2483,10 +2483,27 @@ private slots:
         QVERIFY2(!reads.first().contains("<RECOGNIZED>"), reads.first().constData());
         QVERIFY2(!reads.first().contains("<CANDIDATE>"), reads.first().constData());
 
-        // The reader's block landed in the correction layer, with the reader's
-        // own status.
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("Read block text"));
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::FixStatusRole).toInt(), int(BoxFixStatus::ReadFixed));
+        // The reader's block landed in the text layer: nobody had recognized
+        // this block, so there was nothing to correct — the reader's block is
+        // the recognition itself (ADR 265).
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), QStringLiteral("Read block text"));
+        QVERIFY(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString().isEmpty());
+        // No remedy has answered it: the block is an ordinary recognized one.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::FixStatusRole).toInt(), int(BoxFixStatus::None));
+
+        // The page is no longer markup-only: its blocks carry text now.
+        auto *pages = qobject_cast<PageListModel *>(m_controller->pageModel());
+        QVERIFY(pages);
+        QCOMPARE(pages->data(pages->index(0), PageListModel::RecognitionModeRole).toInt(), int(PageRecognitionMode::MarkupOcr));
+
+        // The decision model rejects the fresh text — and the blocks wait for
+        // the fixer, exactly as after an ordinary recognition: the «Исправить»
+        // badge counts them.
+        server.systemoneProbability = 0.1;  // below the 0.5 threshold: every block mismatches
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(m_controller->scopedPendingFixCount(), 2);
     }
 
     // Moving a block empties it (ADR 241): the text was recognized for the

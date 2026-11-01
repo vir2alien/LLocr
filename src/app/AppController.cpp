@@ -1794,7 +1794,13 @@ void AppController::applyRemedyToBox(int pageIndex, int boxIndex, const CheckRes
         }
         textChanged = BoxTransitions::effectiveText(box) != before;
     });
-    if (!applied || !textChanged)
+    if (!applied)
+        return;
+    // A read that landed as the recognition (ADR 265) filled the page's blocks:
+    // the page stops being markup-only.
+    if (read)
+        refreshRecognitionModeAfterBlockText(pageIndex);
+    if (!textChanged)
         return;
     schedulePageTextChanged(pageIndex);
 }

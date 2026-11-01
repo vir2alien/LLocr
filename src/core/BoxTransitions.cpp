@@ -231,6 +231,15 @@ void fixMarkedUnreadable(BoundingBox &box)
 
 void readApplied(BoundingBox &box, const QString &text)
 {
+    if (box.text.isEmpty()) {
+        // The block was never recognized: there is nothing to correct, and the
+        // reader's block IS the recognition (ADR 265). It lands in the text
+        // layer exactly like any other recognition — and no remedy has
+        // answered it, so the block waits for the decision model and then for
+        // the fixer, just as an ordinary recognized block does.
+        ocrResultApplied(box, text);
+        return;
+    }
     fixApplied(box, text);
     box.fixStatus = BoxFixStatus::ReadFixed;
 }

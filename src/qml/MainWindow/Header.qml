@@ -205,7 +205,7 @@ ToolBar {
             }
 
             IconToolButton {
-                text: qsTr("Recognize blocks")
+                text: qsTr("Recognize")
                 iconName: "scan-text"
                 Layout.fillWidth: true
                 stopMode: Controller.checkBusy && Controller.checkRecheckPhase
@@ -228,7 +228,7 @@ ToolBar {
         ToolDivider {}
 
         ToolGroup {
-            title: qsTr("Verification")
+            title: qsTr("Verification and fixing")
 
             // The verify and the re-read share a row: the group stays three
             // rows tall (the caption, this row, the fix), and the menu does
@@ -258,8 +258,8 @@ ToolBar {
 
                 IconToolButton {
                     text: Controller.scopedReadBlockCount > 0
-                          ? qsTr("Re-read") + " (" + Controller.scopedReadBlockCount + ")"
-                          : qsTr("Re-read")
+                          ? qsTr("Recognize exactly") + " (" + Controller.scopedReadBlockCount + ")"
+                          : qsTr("Recognize exactly")
                     iconName: "file-search"
                     Layout.fillWidth: true
                     stopMode: Controller.checkBusy && Controller.checkReadPhase
@@ -342,6 +342,8 @@ ToolBar {
     // the button stays enabled and its click stops the run it started. The
     // implicit width must come from the content: a custom contentItem alone
     // sizes the control to its padding, and the toolbar piles the buttons up.
+    // The caption sets that width in both modes, so the button keeps its size
+    // when it turns into the stop ring.
     component IconToolButton: ToolButton {
         id: iconButton
 
@@ -357,14 +359,15 @@ ToolBar {
         Layout.minimumWidth: implicitWidth
 
         contentItem: Item {
-            implicitWidth: iconButton.stopMode ? stopStack.implicitWidth
-                                               : contentRow.implicitWidth
+            implicitWidth: contentRow.implicitWidth
             implicitHeight: iconButton.stopMode ? stopStack.implicitHeight
                                                 : contentRow.implicitHeight
 
             Row {
                 id: contentRow
-                visible: !iconButton.stopMode
+                // Not `visible`: an invisible row drops out of the layout, and
+                // the width must stay the caption's in stop mode.
+                opacity: iconButton.stopMode ? 0 : 1
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 5

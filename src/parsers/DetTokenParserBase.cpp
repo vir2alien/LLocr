@@ -24,11 +24,6 @@ constexpr int kMinRepeatWords = 8;
 constexpr double kRepeatCoverage = 0.6;
 constexpr int kMinTailChars = 8;
 
-// A hallucinating model can repeat span attributes with huge values; the grid
-// is bounded so one reply cannot drive the formatter into a multi-GB
-// allocation or a GUI hang.
-constexpr int kMaxTableColumns = 512;
-
 struct BlockFingerprint {
     QString simplified;
     QStringList words;

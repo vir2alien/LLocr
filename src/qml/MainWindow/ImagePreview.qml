@@ -408,11 +408,17 @@ Item {
                     // stay out: the fixer is not a verifier (ADR 240).
                     readonly property bool hasText: boxText.length > 0 || boxCorrectedText.length > 0
                     readonly property bool readDamaged: boxFixStatus === 6
-                    readonly property bool readState: boxFixStatus === 4 || boxFixStatus === 5 || boxFixStatus === 6
+                    // The reader's answer is a verdict when it judged a text
+                    // that was there: it confirmed the text (Read) or replaced
+                    // it in the correction layer (ReadFixed with a correction).
+                    // A reader that wrote a block nobody had recognized judged
+                    // nothing — its answer is the recognition itself (ADR 265),
+                    // and such a block is gray like any other recognized one.
+                    readonly property bool readVerdict: boxFixStatus === 4 || (boxFixStatus === 5 && boxDelegate.correctionActive)
                     readonly property bool verified: effectiveStatus === 1 || effectiveStatus === 5 || effectiveStatus === 6
                     readonly property bool failed: boxDelegate.readDamaged || effectiveStatus === 3 || effectiveStatus === 4 || effectiveStatus === 7
                     readonly property color stateColor: boxDelegate.readDamaged ? Theme.error
-                                                     : boxDelegate.readState ? Theme.success
+                                                     : boxDelegate.readVerdict ? Theme.success
                                                      : boxDelegate.verified ? Theme.success
                                                      : boxDelegate.failed ? Theme.error
                                                      : Theme.nothing
