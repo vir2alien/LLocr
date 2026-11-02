@@ -229,6 +229,11 @@ bool LaunchProfileStore::setDraftValue(int row, const QString &text)
     return m_model->setValue(row, text);
 }
 
+bool LaunchProfileStore::draftHasSecretLikeParameter() const
+{
+    return m_model->hasSecretLikeName();
+}
+
 void LaunchProfileStore::saveDraft()
 {
     if (m_draftProfileId.isEmpty())

@@ -39,6 +39,16 @@ const QStringList &LaunchProfile::reservedArgNames()
     return names;
 }
 
+bool LaunchProfile::isSecretLikeName(const QString &name)
+{
+    const QString lower = name.trimmed().toLower();
+    if (lower.isEmpty())
+        return false;
+    if (lower.contains(QLatin1String("token")) || lower.contains(QLatin1String("password")))
+        return true;
+    return lower.endsWith(QLatin1String("-key")) || lower.endsWith(QLatin1String("_key"));
+}
+
 bool LaunchParameter::operator==(const LaunchParameter &other) const
 {
     return name == other.name && kind == other.kind && value.typeId() == other.value.typeId() && value == other.value;

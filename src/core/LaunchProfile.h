@@ -36,6 +36,7 @@ struct LaunchProfile {
     static constexpr const char *kBuiltInPath = ":/profiles/serverLaunch.json";
 
     static const QStringList &reservedArgNames();
+    static bool isSecretLikeName(const QString &name);
     static QList<LaunchProfile> parseFile(const QJsonObject &root, QString &error);
     static QList<LaunchProfile> profilesFromJson(const QJsonObject &root, QString &error) { return parseFile(root, error); }
     static LaunchProfile merge(const LaunchProfile &defaults, const LaunchProfile &user);

@@ -1417,6 +1417,14 @@
 <context>
     <name>LaunchTab</name>
     <message>
+        <source>Save the value anyway?</source>
+        <translation>Всё равно сохранить значение?</translation>
+    </message>
+    <message>
+        <source>The value will be stored as plain text in the launch profile.</source>
+        <translation>Значение сохранится открытым текстом в профиль запуска</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/Settings/LaunchTab.qml" line="+57"/>
         <source>(flag)</source>
         <translation>(флаг)</translation>

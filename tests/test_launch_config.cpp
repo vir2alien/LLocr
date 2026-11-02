@@ -1,8 +1,12 @@
+#include <QDir>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTemporaryDir>
 #include <QtTest>
 
+#include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
 #include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
@@ -19,6 +23,25 @@ namespace {
 QJsonObject objectFromJson(const QByteArray &json)
 {
     return QJsonDocument::fromJson(json).object();
+}
+
+constexpr const char *kCpuPresetJson = R"({
+    "schemaVersion": 1,
+    "profiles": [
+        { "id": "cpu", "name": "CPU", "backend": "cpu",
+          "parameters": [
+              { "order": 1, "name": "ctx-size", "value": 8192 }
+          ] }
+    ]
+})";
+
+QString writeProfileFile(const QTemporaryDir &dir, const QString &name, const char *json)
+{
+    const QString path = QDir(dir.path()).filePath(name);
+    QFile file(path);
+    file.open(QIODevice::WriteOnly);
+    file.write(json);
+    return path;
 }
 
 }  // namespace
@@ -45,6 +68,9 @@ private slots:
     void parseErrors();
 
     void modelEditKindSwitching();
+    void secretLikeNameMatrix();
+    void draftModelReportsSecretLikeNames();
+    void apiKeyDoesNotSettleInTheUserJson();
 };
 
 static ServerCapabilities modernCaps()
@@ -352,6 +378,90 @@ void TestLaunchConfig::modelEditKindSwitching()
 
     // No-op edit still succeeds.
     QVERIFY(model.setValue(2, "none"));
+}
+
+// The save-time warning speaks the platform's vocabulary: a row whose name
+// reads like a credential would persist its value as plain text in the user's
+// JSON profile.
+void TestLaunchConfig::secretLikeNameMatrix()
+{
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("api-key")));
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("API-KEY")));
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("--api-key")));
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("api_key")));
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("hf-token")));
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("MyToken")));
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("password")));
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("db-password")));
+    QVERIFY(LaunchProfile::isSecretLikeName(QStringLiteral("tinkoff-key")));
+
+    QVERIFY(!LaunchProfile::isSecretLikeName(QString()));
+    QVERIFY(!LaunchProfile::isSecretLikeName(QStringLiteral("ctx-size")));
+    QVERIFY(!LaunchProfile::isSecretLikeName(QStringLiteral("flash-attn")));
+    QVERIFY(!LaunchProfile::isSecretLikeName(QStringLiteral("n-gpu-layers")));
+    QVERIFY(!LaunchProfile::isSecretLikeName(QStringLiteral("port")));
+    // 'key' inside a word is not a key.
+    QVERIFY(!LaunchProfile::isSecretLikeName(QStringLiteral("monkey")));
+    QVERIFY(!LaunchProfile::isSecretLikeName(QStringLiteral("keyboard")));
+}
+
+void TestLaunchConfig::draftModelReportsSecretLikeNames()
+{
+    LaunchParametersModel model;
+    QList<LaunchParameter> rows;
+    rows.append(makeParameter(QStringLiteral("ctx-size"), LaunchValueKind::Number, QVariant(16384.0), 1));
+    rows.append(makeParameter(QStringLiteral("flash-attn"), LaunchValueKind::Text, QVariant(QStringLiteral("on")), 2));
+    model.resetFrom(rows);
+    QVERIFY(!model.hasSecretLikeName());
+
+    rows.append(makeParameter(QStringLiteral("api-key"), LaunchValueKind::Text, QVariant(QStringLiteral("sk-test")), 3));
+    model.resetFrom(rows);
+    QVERIFY(model.hasSecretLikeName());
+}
+
+// Task 1 reserved the api-key name at compose; the store closes the same hole
+// at load: a user copy carrying a name outside the platform layer is dropped
+// wholesale and the JSON is rewritten clean. This pins the whole path — no
+// secret value survives in the file or reaches the argv, whichever way it
+// got into the profile.
+void TestLaunchConfig::apiKeyDoesNotSettleInTheUserJson()
+{
+    QTemporaryDir dir;
+    const QString presetsPath = writeProfileFile(dir, QStringLiteral("presets.json"), kCpuPresetJson);
+
+    SettingsStore settings;
+    settings.setRuntimeRootDir(dir.path());
+    settings.setRuntimeModelsDir(QDir(dir.path()).filePath(QStringLiteral("models")));
+    settings.setRuntimeBackend(QStringLiteral("cpu"));
+
+    const QDir profilesDir = RuntimePaths(settings.runtimeRootDir(), settings.runtimeModelsDir()).profilesDir();
+    QVERIFY(QDir().mkpath(profilesDir.path()));
+    const QString userPath = profilesDir.filePath(QStringLiteral("serverLaunch.json"));
+    QFile user(userPath);
+    QVERIFY(user.open(QIODevice::WriteOnly));
+    user.write(QByteArrayLiteral("{\"schemaVersion\":1,\"profiles\":[{\"id\":\"cpu\",\"parameters\":["
+                                 "{\"order\":1,\"name\":\"ctx-size\",\"value\":8192},"
+                                 "{\"order\":2,\"name\":\"api-key\",\"value\":\"sk-hand-edited\"}]}]}"));
+    user.close();
+
+    LaunchProfileStore store(settings, presetsPath);
+
+    QVERIFY(!store.hasUserProfile());
+    // The dropped copy was the only profile, so the whole file is gone; a
+    // copy that survives the sweep must at least not carry the secret.
+    if (QFile::exists(userPath)) {
+        QFile kept(userPath);
+        QVERIFY(kept.open(QIODevice::ReadOnly));
+        const QByteArray persisted = kept.readAll();
+        QVERIFY(!persisted.contains("sk-hand-edited"));
+    }
+
+    QVERIFY(store.activeProfile().find(QStringLiteral("api-key")) == nullptr);
+    ServerLaunchConfig cfg;
+    cfg.parameters = store.activeProfile().parameters;
+    const QStringList args = cfg.toArguments(modernCaps());
+    QCOMPARE(args.count(QStringLiteral("--api-key")), 0);
+    QVERIFY(!args.contains(QStringLiteral("sk-hand-edited")));
 }
 
 QTEST_MAIN(TestLaunchConfig)

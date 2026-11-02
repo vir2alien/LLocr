@@ -28,6 +28,7 @@ public:
     const QList<LaunchParameter> &parameters() const { return m_parameters; }
     void resetFrom(const QList<LaunchParameter> &parameters);
     bool setValue(int row, const QString &text);
+    bool hasSecretLikeName() const;
 
 private:
     QList<LaunchParameter> m_parameters;

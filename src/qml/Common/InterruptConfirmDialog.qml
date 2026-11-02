@@ -7,6 +7,7 @@ Dialog {
     id: root
 
     property string prompt: ""
+    property color promptColor: Theme.textPrimary
     signal confirmed()
 
     parent: Overlay.overlay
@@ -17,7 +18,7 @@ Dialog {
 
     LLOLabel {
         width: parent.width
-        color: Theme.textPrimary
+        color: root.promptColor
         text: root.prompt
     }
 

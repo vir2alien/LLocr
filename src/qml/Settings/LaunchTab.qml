@@ -27,6 +27,10 @@ Item {
     }
 
     function saveValues() {
+        if (root.profiles.draftHasSecretLikeParameter()) {
+            secretValueDialog.open()
+            return
+        }
         root.profiles.saveDraft()
     }
 
@@ -133,5 +137,17 @@ Item {
         }
 
         Item { Layout.fillHeight: true }
+    }
+
+    // The platform rows carry no secrets, but a row whose name reads like one
+    // (api-key, a token, a password) would persist its value as plain text in
+    // the user's JSON profile — the save asks first.
+    InterruptConfirmDialog {
+        id: secretValueDialog
+
+        title: qsTr("Save the value anyway?")
+        prompt: qsTr("The value will be stored as plain text in the launch profile.")
+        promptColor: Theme.accentAttention
+        onConfirmed: root.profiles.saveDraft()
     }
 }

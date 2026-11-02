@@ -2,6 +2,8 @@
 
 #include "core/ValueParsing.h"
 
+#include <algorithm>
+
 namespace llocr {
 
 LaunchParametersModel::LaunchParametersModel(QObject *parent) : QAbstractListModel(parent) {}
@@ -85,6 +87,11 @@ bool LaunchParametersModel::setValue(int row, const QString &text)
     const QModelIndex idx = index(row);
     emit dataChanged(idx, idx, {ValueTextRole, KindRole});
     return true;
+}
+
+bool LaunchParametersModel::hasSecretLikeName() const
+{
+    return std::any_of(m_parameters.cbegin(), m_parameters.cend(), [](const LaunchParameter &p) { return LaunchProfile::isSecretLikeName(p.name); });
 }
 
 }  // namespace llocr
