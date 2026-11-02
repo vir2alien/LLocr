@@ -27,6 +27,8 @@ RowLayout {
     property alias endpointText: endpointField.text
     property alias aliasText: aliasField.text
 
+    readonly property alias plaintextKeyWarningVisible: plaintextKeyWarning.visible
+
     // The key's presence is not a binding: the secret store has no notify
     // signal, the settings do.
     property bool keyPresent: false
@@ -64,13 +66,28 @@ RowLayout {
         verticalAlignment: Text.AlignVCenter
     }
 
-    TextField {
-        id: endpointField
+    ColumnLayout {
         Layout.preferredWidth: root.endpointWidth
         Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        placeholderText: Settings.baseUrl
+        spacing: Theme.spacingSmall
+
+        TextField {
+            id: endpointField
+            Layout.fillWidth: true
+            implicitHeight: Theme.controlHeight
+            selectByMouse: true
+            placeholderText: Settings.baseUrl
+        }
+
+        LLOLabel {
+            id: plaintextKeyWarning
+            Layout.fillWidth: true
+            font.pointSize: Theme.captionSize
+            color: Theme.accentAttention
+            visible: Settings.isPlaintextKeyEndpoint(endpointField.text)
+            wrapMode: Text.WordWrap
+            text: qsTr("The key will be sent in plain text (http outside the local machine).")
+        }
     }
 
     SecretKeyField {

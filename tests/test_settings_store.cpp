@@ -163,6 +163,30 @@ private slots:
         QCOMPARE(store.effectiveBaseUrlForRole(QStringLiteral("fix")), QStringLiteral("http://shared:8080"));
     }
 
+    // The one rule behind the plaintext-key warning (the shared server field
+    // and the per-task rows, ADR 226): an http endpoint whose host is not one
+    // of the loopback names would carry the key as clear text.
+    void plaintextKeyEndpointIsHttpOutsideLoopback()
+    {
+        const QList<QPair<QString, bool>> cases = {
+            {QStringLiteral(""), false},
+            {QStringLiteral("http://localhost:8080"), false},
+            {QStringLiteral("http://127.0.0.1:8080"), false},
+            {QStringLiteral("http://[::1]:8080"), false},
+            {QStringLiteral("HTTPS://LOCALHOST:8080"), false},
+            {QStringLiteral("https://api.example.com/v1"), false},
+            {QStringLiteral("example.com:8080"), false},
+            {QStringLiteral("http://192.168.1.5:8080"), true},
+            {QStringLiteral("http://user:pass@10.0.0.9"), true},
+            {QStringLiteral("HTTP://EXAMPLE.ORG:8080"), true},
+            {QStringLiteral("  http://10.0.0.9:8080  "), true},
+            {QStringLiteral("http://"), true},
+            {QStringLiteral("http:/localhost:8080"), false},
+        };
+        for (const auto &endpoint : cases)
+            QCOMPARE(SettingsStore::isPlaintextKeyEndpoint(endpoint.first), endpoint.second);
+    }
+
     void taskKeyFallsBackToTheSharedOne()
     {
         SettingsStore store;

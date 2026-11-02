@@ -49,6 +49,7 @@ private slots:
     void theTaskEndpointAndAliasAreSaved();
     void theSavedValuesComeBackIntoTheFields();
     void theHttpRemoteEndpointWarnsAboutPlaintextKey();
+    void theTaskRowWarnsAboutPlaintextKeyOnItsOwnEndpoint();
 
 private:
     void registerModuleTypes();
@@ -279,6 +280,44 @@ void TestRuntimeTabExternalQml::theHttpRemoteEndpointWarnsAboutPlaintextKey()
         evaluate(tab.get(), QStringLiteral("baseUrlField.text = %1").arg(endpoint.first.isEmpty() ? QStringLiteral("''") : QStringLiteral("'%1'").arg(endpoint.first)));
         QCoreApplication::processEvents();
         QCOMPARE(evaluate(tab.get(), QStringLiteral("plaintextKeyWarning.visible")).toBool(), endpoint.second);
+    }
+}
+
+// The per-task row carries the same warning over its own endpoint (ADR 226):
+// its field decides, not the shared one, and the shared field stays quiet
+// while only the row's endpoint would leak the key.
+void TestRuntimeTabExternalQml::theTaskRowWarnsAboutPlaintextKeyOnItsOwnEndpoint()
+{
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    // A remote http shared endpoint lights the tab's warning; the row with an
+    // empty endpoint (the shared value) does not speak for it.
+    evaluate(tab.get(), QStringLiteral("baseUrlField.text = 'http://10.0.0.9:8080'"));
+    QCoreApplication::processEvents();
+    QCOMPARE(evaluate(tab.get(), QStringLiteral("plaintextKeyWarning.visible")).toBool(), true);
+
+    QObject *row = rowForTask(tab.get(), QStringLiteral("fix"));
+    QVERIFY(row);
+    QCOMPARE(row->property("plaintextKeyWarningVisible").toBool(), false);
+
+    const QList<QPair<QString, bool>> cases = {
+        {QStringLiteral(""), false},
+        {QStringLiteral("http://localhost:8080"), false},
+        {QStringLiteral("http://127.0.0.1:8080"), false},
+        {QStringLiteral("http://[::1]:8080"), false},
+        {QStringLiteral("HTTPS://LOCALHOST:8080"), false},
+        {QStringLiteral("https://api.example.com/v1"), false},
+        {QStringLiteral("example.com:8080"), false},
+        {QStringLiteral("http://192.168.1.5:8080"), true},
+        {QStringLiteral("http://user:pass@10.0.0.9"), true},
+        {QStringLiteral("HTTP://EXAMPLE.ORG:8080"), true},
+    };
+    for (const auto &endpoint : cases) {
+        row->setProperty("endpointText", endpoint.first);
+        QCoreApplication::processEvents();
+        QCOMPARE(row->property("plaintextKeyWarningVisible").toBool(), endpoint.second);
     }
 }
 

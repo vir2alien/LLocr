@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <QCoreApplication>
 #include <QMetaProperty>
+#include <QUrl>
 
 namespace llocr {
 
@@ -382,6 +383,20 @@ QString SettingsStore::effectiveBaseUrlForRole(const QString &role) const
     if (!own.isEmpty())
         return own;
     return baseUrl();
+}
+
+bool SettingsStore::isPlaintextKeyEndpoint(const QString &url)
+{
+    const QString trimmed = url.trimmed();
+    // Without the authority separator QUrl reads the rest as a path: the
+    // request has no host and the key goes nowhere.
+    if (!trimmed.contains(QLatin1String("://")))
+        return false;
+    const QUrl parsed(trimmed);
+    if (parsed.scheme().compare(QStringLiteral("http"), Qt::CaseInsensitive) != 0)
+        return false;
+    const QString host = parsed.host();
+    return host != QLatin1String("127.0.0.1") && host != QLatin1String("::1") && host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) != 0;
 }
 
 bool SettingsStore::apiKeySetForRole(const QString &role) const

@@ -140,6 +140,12 @@ public:
     // the app, and the UI has to show that reason (ADR 233).
     Q_INVOKABLE void refreshSecretState();
 
+    // True when an endpoint would carry an API key as clear text: an http URL
+    // whose host is not one of the loopback names. The one rule behind the
+    // plaintext-key warning of the shared server field and of the per-task
+    // rows (ADR 226).
+    Q_INVOKABLE static bool isPlaintextKeyEndpoint(const QString &url);
+
     // The external connection of one task (ADR 226): its own endpoint, its
     // own key, its own alias. An empty endpoint means the shared one.
     Q_INVOKABLE QString baseUrlForRole(const QString &role) const;

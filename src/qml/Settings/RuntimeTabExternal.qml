@@ -60,25 +60,6 @@ ColumnLayout {
         return qsTr("The key is kept in %1 — not in the settings file.").arg(Settings.secretStoreName)
     }
 
-    // True when the endpoint would carry the key as clear text: an http URL
-    // whose host is not one of the loopback names.
-    function isPlaintextKeyEndpoint(text) {
-        const match = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^\/?#]*)/.exec(text.trim())
-        if (!match || match[1].toLowerCase() !== "http")
-            return false
-        const authority = match[2]
-        const hostPart = authority.substring(authority.lastIndexOf("@") + 1)
-        let host = hostPart
-        if (host.startsWith("[")) {
-            const end = host.indexOf("]")
-            host = end >= 0 ? host.substring(1, end) : host.substring(1)
-        } else {
-            host = host.split(":")[0]
-        }
-        host = host.toLowerCase()
-        return host !== "127.0.0.1" && host !== "::1" && host !== "localhost"
-    }
-
     Connections {
         target: Settings
         function onSecretsChanged() {
@@ -108,7 +89,7 @@ ColumnLayout {
         Layout.fillWidth: true
         font.pointSize: Theme.captionSize
         color: Theme.accentAttention
-        visible: extRoot.isPlaintextKeyEndpoint(baseUrlField.text)
+        visible: Settings.isPlaintextKeyEndpoint(baseUrlField.text)
         wrapMode: Text.WordWrap
         text: qsTr("The key will be sent in plain text (http outside the local machine).")
     }

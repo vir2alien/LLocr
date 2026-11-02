@@ -3532,6 +3532,10 @@
 <context>
     <name>TaskConnectionRow</name>
     <message>
+        <source>The key will be sent in plain text (http outside the local machine).</source>
+        <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/Settings/TaskConnectionRow.qml" line="+90"/>
         <source>the model id</source>
         <translation>идентификатор модели</translation>
