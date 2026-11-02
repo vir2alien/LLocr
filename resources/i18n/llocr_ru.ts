@@ -4427,6 +4427,10 @@
         <translation>Сервер уже запущен</translation>
     </message>
     <message>
+        <source>Host %1 is not allowed: the server is available only locally. To allow a non-loopback host, enable the allowNonLoopback setting</source>
+        <translation>Хост %1 недопустим: сервер доступен только локально. Разрешить не-loopback хост можно настройкой allowNonLoopback</translation>
+    </message>
+    <message>
         <location line="-490"/>
         <source>Model is not selected — pick a model in Settings → Models or in the Setup wizard</source>
         <translation>Модель не выбрана — выберите модель в Settings → Models или в мастере настройки</translation>

@@ -44,6 +44,23 @@ constexpr int kProbeTimeoutMs = 120000;          // RuntimeLocator::probeCached 
 constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
 constexpr double kMemoryBudgetFactor = 0.9;
 
+// The managed server may listen only where the other machines cannot reach
+// it; the launch host is compared by its host part ("host:port" and bracketed
+// spellings are tolerated), case-insensitively.
+bool isLoopbackHost(QString host)
+{
+    host = host.trimmed();
+    if (host.startsWith(QLatin1Char('['))) {
+        const int close = host.indexOf(QLatin1Char(']'));
+        if (close > 0)
+            host = host.mid(1, close - 1);
+    } else if (host.count(QLatin1Char(':')) == 1) {
+        host.truncate(host.indexOf(QLatin1Char(':')));  // a port, not part of "::1"
+    }
+    return host.compare(QLatin1String("127.0.0.1"), Qt::CaseInsensitive) == 0 || host.compare(QLatin1String("::1"), Qt::CaseInsensitive) == 0 ||
+           host.compare(QLatin1String("localhost"), Qt::CaseInsensitive) == 0;
+}
+
 // The external server's context window: it publishes the size of every model
 // in /v1/models. The app needs it to keep a request inside the window
 // (ADR 193): without it the thinking budget cannot yield before the answer,
@@ -844,6 +861,12 @@ QString RuntimeController::startServer(ConnectionRole role)
 
     if (m_server && (m_server->state() == RuntimeState::Starting || m_server->state() == RuntimeState::Ready || m_server->state() == RuntimeState::Stopping))
         return refuse(tr("Server is already running"));
+
+    const QString launchHost = m_settings.launchHost();
+    if (!isLoopbackHost(launchHost) && !m_settings.allowNonLoopback())
+        return refuse(tr("Host %1 is not allowed: the server is available only locally. "
+                         "To allow a non-loopback host, enable the allowNonLoopback setting")
+                          .arg(launchHost));
 
     if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
         const QString roleError = roleConfigError(role);

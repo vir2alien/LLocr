@@ -1550,6 +1550,94 @@ private slots:
         QVERIFY2(resolved.error.contains(QStringLiteral("gone.gguf")), qPrintable(resolved.error));
     }
 
+    // launchHost=0.0.0.0 listens on every interface: the start refuses and
+    // names the switch that permits it, both on the direct start and through
+    // the recognition gate's resolve.
+    void managedNonLoopbackHostRefusedWithoutAllowNonLoopback()
+    {
+        QTemporaryDir dir;
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+        store.setLaunchHost(QStringLiteral("0.0.0.0"));
+        QVERIFY(!store.allowNonLoopback());
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+        QVERIFY(runtime.configValid());
+
+        const QString err = runtime.startServer();
+        QVERIFY2(!err.isEmpty(), "a non-loopback host must be refused");
+        QVERIFY2(err.contains(QStringLiteral("allowNonLoopback")), qPrintable(err));
+        QVERIFY(runtime.state() != RuntimeState::Starting);
+        QVERIFY(runtime.state() != RuntimeState::Ready);
+
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) { resolved = c; });
+        QVERIFY2(resolved.error.contains(QStringLiteral("allowNonLoopback")), qPrintable(resolved.error));
+    }
+
+    // With the switch on the gate lets the start through. The refusal that
+    // comes back is the missing-model one — nothing was spawned, and the host
+    // was not the reason.
+    void managedNonLoopbackHostAllowedWithAllowNonLoopback()
+    {
+        QTemporaryDir dir;
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        // launchModelPath intentionally left empty: the start stops at the model
+        // gate right after the host one, so no server is started on 0.0.0.0.
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+        store.setLaunchHost(QStringLiteral("0.0.0.0"));
+        store.setAllowNonLoopback(true);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        const QString err = runtime.startServer();
+        QVERIFY2(!err.contains(QStringLiteral("allowNonLoopback")), qPrintable(err));
+        QVERIFY2(err.contains(QStringLiteral("model"), Qt::CaseInsensitive), qPrintable(err));
+        QVERIFY(runtime.state() != RuntimeState::Starting);
+        QVERIFY(runtime.state() != RuntimeState::Ready);
+    }
+
+    // The loopback forms pass the gate without the switch: case-insensitive,
+    // and a "host:port" or bracketed spelling counts by its host part.
+    void managedLoopbackHostVariantsPassTheGate()
+    {
+        QTemporaryDir dir;
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        for (const QString &host : {QStringLiteral("LocalHost"), QStringLiteral("[::1]"), QStringLiteral("127.0.0.1:8080")}) {
+            store.setLaunchHost(host);
+            RuntimeController runtime(store, launchProfiles);
+            const QString err = runtime.startServer();
+            QVERIFY2(!err.contains(QStringLiteral("allowNonLoopback")), qPrintable(err));
+            QVERIFY2(err.contains(QStringLiteral("model"), Qt::CaseInsensitive), qPrintable(err));
+        }
+    }
+
     // A build tag is a number, not text: «b11312» sorts before «b4000», so the
     // profile's minBuild used to refuse every five-digit build and sent the user
     // to Settings → Runtime for a runtime that was already new enough.
