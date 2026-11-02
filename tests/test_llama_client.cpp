@@ -110,6 +110,20 @@ private slots:
         QVERIFY(dead.result().error.contains(QStringLiteral("10.255.255.1")));
         QVERIFY(!dead.result().error.contains(QStringLiteral("alice")));
         QVERIFY(!dead.result().error.contains(QStringLiteral("secret-pw")));
+
+        // The 404 leg: Qt's transfer-error text embeds the request's raw URL
+        // ("Error transferring <url> — server replied: …"), so the userinfo
+        // must be stripped from it in the error text and the journal.
+        const QUrl missingUrl(QStringLiteral("http://alice:secret-pw@127.0.0.1:%1/v1/nowhere").arg(m_mockPort));
+        QFuture<HttpResponse> missing = client.postJson(missingUrl, "{}", {}, {}, 5000, 15000);
+        QTRY_VERIFY_WITH_TIMEOUT(missing.isFinished(), 20000);
+        QVERIFY(!missing.result().success);
+        QVERIFY2(missing.result().error.contains(QStringLiteral("127.0.0.1:%1").arg(m_mockPort)), qPrintable(missing.result().error));
+        QVERIFY2(!missing.result().error.contains(QStringLiteral("alice")), qPrintable(missing.result().error));
+        QVERIFY2(!missing.result().error.contains(QStringLiteral("secret-pw")), qPrintable(missing.result().error));
+
+        const QStringList journalLines = RequestJournal::instance().lines();
+        QVERIFY(std::none_of(journalLines.cbegin(), journalLines.cend(), [](const QString &line) { return line.contains(QStringLiteral("alice")) || line.contains(QStringLiteral("secret-pw")); }));
     }
 
     void hugeResponseIsCapped()

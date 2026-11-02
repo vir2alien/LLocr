@@ -119,7 +119,7 @@ void LlamaClient::startPost(
         }
     });
 
-    QObject::connect(reply, &QNetworkReply::finished, reply, [reply, promise, responseTimeoutMs, trace]() mutable {
+    QObject::connect(reply, &QNetworkReply::finished, reply, [reply, promise, responseTimeoutMs, trace, url]() mutable {
         HttpResponse response;
         const QByteArray replyBody = reply->readAll();
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -144,6 +144,9 @@ void LlamaClient::startPost(
                 error = QCoreApplication::translate("LlamaClient", "The server refused the request (HTTP 401): the API key was not sent, or it was not accepted.");
             } else {
                 error = reply->errorString();
+                // Qt's transfer-error text embeds the request's raw URL.
+                if (!url.userInfo().isEmpty())
+                    error.replace(url.toString(), displayUrl(url));
             }
             const QString serverError = extractServerError(replyBody);
             if (!serverError.isEmpty())
