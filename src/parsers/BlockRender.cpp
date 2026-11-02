@@ -1,6 +1,7 @@
 #include "parsers/BlockRender.h"
 #include "parsers/DetTokenFormat.h"
 #include "parsers/OtslTable.h"
+#include "parsers/TableLimits.h"
 
 #include "core/BoxTransitions.h"
 #include "core/ServiceMarkers.h"
@@ -15,11 +16,6 @@
 namespace llocr {
 
 namespace {
-
-// A hallucinating model can repeat span attributes with huge values; the grid
-// is bounded so one reply cannot drive the formatter into a multi-GB
-// allocation or a GUI hang.
-constexpr int kMaxTableColumns = 512;
 
 QString formatTable(const QString &text, bool tablesAsHtml)
 {

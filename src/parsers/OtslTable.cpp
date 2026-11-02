@@ -2,6 +2,7 @@
 
 #include "core/ServiceMarkers.h"
 #include "parsers/DetTokenFormat.h"
+#include "parsers/TableLimits.h"
 
 #include <QRegularExpression>
 #include <QStringList>
@@ -140,9 +141,15 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
     if (rows.isEmpty())
         return convertMath(work);
 
+    if (rows.size() > kMaxTableRows) {
+        rows.resize(kMaxTableRows);
+        htmlRows.resize(kMaxTableRows);
+    }
+
     int cols = 1;
     for (const QStringList &r : std::as_const(rows))
         cols = (std::max)(cols, static_cast<int>(r.size()));
+    cols = (std::min)(cols, kMaxTableColumns);
 
     if (cols == 1) {
         QStringList lines;
@@ -157,13 +164,19 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
         for (int r = 0; r < htmlRows.size(); ++r) {
             out += QStringLiteral("<tr>");
             const QString tag = (r == 0) ? QStringLiteral("th") : QStringLiteral("td");
+            int col = 0;
             for (const OtslHtmlCell &cell : std::as_const(htmlRows[r])) {
+                if (col >= kMaxTableColumns)
+                    break;
+                const int colspan = (std::min)(cell.colspan, kMaxTableColumns - col);
+                const int rowspan = (std::min)(cell.rowspan, kMaxTableRows);
                 out += QLatin1Char('<') + tag;
-                if (cell.colspan > 1)
-                    out += QStringLiteral(" colspan=\"%1\"").arg(cell.colspan);
-                if (cell.rowspan > 1)
-                    out += QStringLiteral(" rowspan=\"%1\"").arg(cell.rowspan);
+                if (colspan > 1)
+                    out += QStringLiteral(" colspan=\"%1\"").arg(colspan);
+                if (rowspan > 1)
+                    out += QStringLiteral(" rowspan=\"%1\"").arg(rowspan);
                 out += QLatin1Char('>') + cell.text.simplified().toHtmlEscaped() + QStringLiteral("</") + tag + QLatin1Char('>');
+                col += colspan;
             }
             out += QStringLiteral("</tr>\n");
         }

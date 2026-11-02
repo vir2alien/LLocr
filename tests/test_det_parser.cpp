@@ -1,3 +1,4 @@
+#include <QElapsedTimer>
 #include <QtTest>
 
 #include "core/ModelProfiles.h"
@@ -6,9 +7,11 @@
 #include "parsers/BlockStyle.h"
 #include "parsers/DetTokenFormat.h"
 #include "parsers/MinerULayoutParser.h"
+#include "parsers/OtslTable.h"
 #include "parsers/ParserFactory.h"
 #include "parsers/ParserOptions.h"
 #include "parsers/RawParser.h"
+#include "parsers/TableLimits.h"
 
 using namespace llocr;
 
@@ -367,6 +370,44 @@ private slots:
         QVERIFY(mixed.contains(QStringLiteral("$$a$$")));
         QVERIFY(mixed.contains(QStringLiteral("tail")));
         QVERIFY(!mixed.contains(QChar(u'\x01')));
+    }
+
+    // --- OTSL table limits (formatOtslTable) ----------------------------------
+
+    // A page whose printed markers the model transcribes verbatim hands the
+    // formatter K <fcel> cells in the first row and R more <nl>-broken rows —
+    // K+R tokens that expand into an R×K grid of cells in the reply. Both
+    // output branches are clamped to TableLimits so one reply cannot freeze
+    // the GUI thread or exhaust memory.
+    void otslTableGridIsClamped()
+    {
+        QString reply;
+        for (int i = 0; i < 20000; ++i)
+            reply += QStringLiteral("<fcel> ");
+        for (int i = 0; i < 20000; ++i)
+            reply += QStringLiteral("<fcel>x<nl>");
+
+        QElapsedTimer timer;
+        timer.start();
+        const QString gfm = formatOtslTable(reply, false);
+        const qint64 gfmMs = timer.elapsed();
+
+        const QStringList lines = gfm.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        QVERIFY(lines.size() >= 2);
+        QVERIFY(lines.at(1).contains(QStringLiteral("---")));
+        QVERIFY(lines.size() <= kMaxTableRows + 1);
+        QVERIFY(lines.first().count(QLatin1Char('|')) - 1 <= kMaxTableColumns);
+        QVERIFY(gfmMs < 5000);
+
+        timer.restart();
+        const QString html = formatOtslTable(reply, true);
+        const qint64 htmlMs = timer.elapsed();
+
+        QVERIFY(html.count(QStringLiteral("<tr>")) <= kMaxTableRows);
+        const int firstRowEnd = html.indexOf(QStringLiteral("</tr>"));
+        QVERIFY(firstRowEnd > 0);
+        QVERIFY(html.left(firstRowEnd).count(QStringLiteral("<th")) <= kMaxTableColumns);
+        QVERIFY(htmlMs < 5000);
     }
 };
 

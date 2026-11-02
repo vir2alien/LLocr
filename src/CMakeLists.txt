@@ -149,6 +149,7 @@ qt_add_library(llocr_parsers STATIC
     parsers/DetTokenFormat.cpp
     parsers/OtslTable.h
     parsers/OtslTable.cpp
+    parsers/TableLimits.h
     parsers/ParserFactory.h
     parsers/ParserFactory.cpp
 )
