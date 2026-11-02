@@ -200,6 +200,36 @@ private slots:
         QCOMPARE(secretsSpy.count(), 2);
     }
 
+    // The Hugging Face token is a secret the same way the API key is (ADR 227):
+    // the QML sees only whether a token is set, and the value itself has no
+    // property to bind to — a future `text: Settings.hfToken` does not compile.
+    void hfTokenIsPresenceOnlyFromQml()
+    {
+        SettingsStore store;
+        const QMetaObject *mo = store.metaObject();
+
+        QCOMPARE(mo->indexOfProperty("hfToken"), -1);
+        const int setIndex = mo->indexOfProperty("hfTokenSet");
+        QVERIFY(setIndex >= 0);
+        const QMetaProperty setProp = mo->property(setIndex);
+        QCOMPARE(setProp.metaType().id(), QMetaType::Bool);
+        QVERIFY(!setProp.isWritable());
+
+        QCOMPARE(store.hfTokenSet(), false);
+        QCOMPARE(store.hfToken(), QString());
+
+        QSignalSpy tokenSpy(&store, &SettingsStore::hfTokenChanged);
+        QVERIFY(QMetaObject::invokeMethod(&store, "setHfToken", Q_ARG(QString, QStringLiteral("hf-secret"))));
+        QCOMPARE(tokenSpy.count(), 1);
+        QCOMPARE(store.hfTokenSet(), true);
+        QCOMPARE(store.hfToken(), QStringLiteral("hf-secret"));
+
+        store.setHfToken(QString());
+        QCOMPARE(tokenSpy.count(), 2);
+        QCOMPARE(store.hfTokenSet(), false);
+        QCOMPARE(store.hfToken(), QString());
+    }
+
     // Scoped resets (ADR 75): only the window's own group returns to
     // defaults; everything else stays as the user configured it.
     void resetOutputGroup()
@@ -624,14 +654,14 @@ private slots:
         //  - windowX/Y/Width/Height/State: UI state, intentionally not reset;
         //  - runtimeRootDir / runtimeModelsDir: they point at the user's disk,
         //    not at the product's schema — the reset carries them over;
-        //  - hfToken: the token lives in the OS secret store (ADR 227), which
-        //    the reset does not touch;
         //  - connectionMode / lastExternalBaseUrl: covered implicitly through
         //    setConnectionMode()'s restore path (baseUrl is reset, but its
         //    final value when coming from Managed is the restored endpoint).
+        //  The secrets (apiKey, hfToken) are not writable properties at all:
+        //  they live in the OS store (ADR 227), which the reset does not touch.
         auto excluded = [](const QByteArray &name) {
             return name.startsWith("window") || name == QByteArrayLiteral("connectionMode") || name == QByteArrayLiteral("lastExternalBaseUrl") || name == QByteArrayLiteral("runtimeRootDir") ||
-                   name == QByteArrayLiteral("runtimeModelsDir") || name == QByteArrayLiteral("hfToken");
+                   name == QByteArrayLiteral("runtimeModelsDir");
         };
 
         QHash<QByteArray, QVariant> sentinels;

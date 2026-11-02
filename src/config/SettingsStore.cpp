@@ -148,7 +148,6 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kFixLaunchDraftPath, "fixLaunchDraftPath", QVariant(QString())},
         {kFixRequestProfileId, "fixRequestProfileId", QVariant(defaultFixRequestProfileId())},
         {kFixModelName, "fixModelName", QVariant(QString())},
-        {kHfToken, "hfToken", QVariant(QString())},
         {kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString())},
     };
     return table;
@@ -1311,6 +1310,11 @@ QStringList SettingsStore::taskRoles() const
 QString SettingsStore::launchProfileId() const
 {
     return m_settings.value(kLaunchProfileId).toString();
+}
+
+bool SettingsStore::hfTokenSet() const
+{
+    return SecretStore::exists(secretId(kHfToken));
 }
 
 QString SettingsStore::hfToken() const

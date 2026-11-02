@@ -97,7 +97,10 @@ class SettingsStore : public QObject
     Q_PROPERTY(int fixReasoningBudgetTokens READ fixReasoningBudgetTokens WRITE setFixReasoningBudgetTokens NOTIFY fixReasoningBudgetTokensChanged)
     Q_PROPERTY(int readReasoningBudgetTokens READ readReasoningBudgetTokens WRITE setReadReasoningBudgetTokens NOTIFY readReasoningBudgetTokensChanged)
 
-    Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
+    // The Hugging Face token is a secret the same way: it lives in the OS
+    // secret store and is never handed to the QML — the UI sees only whether
+    // a token is set (ADR 227).
+    Q_PROPERTY(bool hfTokenSet READ hfTokenSet NOTIFY hfTokenChanged)
 
 public:
     explicit SettingsStore(QObject *parent = nullptr);
@@ -311,8 +314,11 @@ public:
     Q_INVOKABLE void setModelNameForRole(const QString &role, const QString &name);
     QStringList taskRoles() const;
 
+    // The Hugging Face token of the model downloads. The getter serves the
+    // download path; the QML writes the token and reads only its presence.
+    bool hfTokenSet() const;
     QString hfToken() const;
-    void setHfToken(const QString &token);
+    Q_INVOKABLE void setHfToken(const QString &token);
 
     QString selectedQuant(const QString &profileId) const;
     void setSelectedQuant(const QString &profileId, const QString &quantId);
