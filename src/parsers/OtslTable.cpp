@@ -57,6 +57,9 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
     bool haveCell = false;
     OtslCellKind kind = OtslCellKind::Content;
     int pos = 0;
+    int htmlCol = 0;     // column the next htmlRow slot occupies (running sum of colspans)
+    int aboveIdx = 0;    // forward cursor into the row above: slots close left to right,
+    int aboveStart = 0;  // so the covering cell never lies before the one found last
 
     auto flushCell = [&]() {
         if (!haveCell && !pending.trimmed().isEmpty()) {
@@ -75,22 +78,19 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
             OtslHtmlCell cell;
             cell.text = convertMath(stripServiceTokens(pending));
             htmlRow.append(cell);
+            ++htmlCol;
         } else {
             row.append(QString());
-            int col = 0;
-            for (const OtslHtmlCell &c : std::as_const(htmlRow))
-                col += c.colspan;
             bool coveredHandled = false;
             if (kind != OtslCellKind::CoveredLeft && !htmlRows.isEmpty()) {
                 const QVector<OtslHtmlCell> &above = htmlRows.last();
-                int start = 0;
-                for (int i = 0; i < above.size(); ++i) {
-                    if (col >= start && col < start + above.at(i).colspan) {
-                        ++htmlRows.last()[i].rowspan;
-                        coveredHandled = true;
-                        break;
-                    }
-                    start += above.at(i).colspan;
+                while (aboveIdx < above.size() && htmlCol >= aboveStart + above.at(aboveIdx).colspan) {
+                    aboveStart += above.at(aboveIdx).colspan;
+                    ++aboveIdx;
+                }
+                if (aboveIdx < above.size()) {
+                    ++htmlRows.last()[aboveIdx].rowspan;
+                    coveredHandled = true;
                 }
             }
             if (!coveredHandled) {
@@ -98,6 +98,7 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
                     ++htmlRow.last().colspan;
                 else
                     htmlRow.append(OtslHtmlCell{QString(), 1, 1});
+                ++htmlCol;
             }
         }
         pending.clear();
@@ -119,6 +120,9 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
             }
             row.clear();
             htmlRow.clear();
+            htmlCol = 0;
+            aboveIdx = 0;
+            aboveStart = 0;
         } else {
             flushCell();
             haveCell = true;

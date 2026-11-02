@@ -409,6 +409,66 @@ private slots:
         QVERIFY(html.left(firstRowEnd).count(QStringLiteral("<th")) <= kMaxTableColumns);
         QVERIFY(htmlMs < 5000);
     }
+
+    // The span bookkeeping the covered cells (<lcel>/<ucel>/<xcel>) rely on:
+    // <lcel> widens the previous cell's colspan, a covered slot above the
+    // table's first row feeds the cell above (rowspan) and leaves no cell of
+    // its own.
+    void otslSpanCellsKeepTheirSpans()
+    {
+        const QString gfm = formatOtslTable(QStringLiteral("<fcel>a<lcel><fcel>b<lcel><nl>"), false);
+        QCOMPARE(gfm, QStringLiteral("| a |  | b |  |\n| --- | --- | --- | --- |"));
+
+        const QString html = formatOtslTable(QStringLiteral("<fcel>a<fcel>b<nl><fcel>x<ucel><ucel><nl>"), true);
+        QVERIFY(html.contains(QStringLiteral("<th>a</th>")));
+        QVERIFY(html.contains(QStringLiteral("<th rowspan=\"3\">b</th>")));
+        QVERIFY(html.contains(QStringLiteral("<td>x</td>")));
+    }
+
+    // A span-heavy row must not re-walk the cells parsed so far per token:
+    // alternating <fcel>/<lcel> (and the coverage lookup against a wide row
+    // above) costs one forward pass over the row, not one pass per cell.
+    void otslSpanHeavyRowStaysLinear()
+    {
+        QString pairs;
+        for (int i = 0; i < 30000; ++i)
+            pairs += (i % 2 == 0) ? QStringLiteral("<fcel>x") : QStringLiteral("<lcel>");
+        pairs += QStringLiteral("<nl>");
+
+        QElapsedTimer timer;
+        timer.start();
+        const QString gfm = formatOtslTable(pairs, false);
+        const qint64 pairsGfmMs = timer.elapsed();
+
+        const QStringList lines = gfm.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        QCOMPARE(lines.size(), 2);
+        QCOMPARE(static_cast<int>(lines.first().count(QLatin1Char('|'))) - 1, kMaxTableColumns);
+        QVERIFY(pairsGfmMs < 250);
+
+        timer.restart();
+        const QString html = formatOtslTable(pairs, true);
+        const qint64 pairsHtmlMs = timer.elapsed();
+        QCOMPARE(html.count(QStringLiteral("<tr>")), 1);
+        QVERIFY(html.count(QStringLiteral("<td")) <= kMaxTableColumns);
+        QVERIFY(pairsHtmlMs < 250);
+
+        // The coverage lookup against a wide row above takes the same path.
+        QString covered;
+        for (int i = 0; i < 20000; ++i)
+            covered += QStringLiteral("<fcel>a");
+        covered += QStringLiteral("<nl>");
+        for (int i = 0; i < 20000; ++i)
+            covered += (i % 2 == 0) ? QStringLiteral("<fcel>x") : QStringLiteral("<ucel>");
+        covered += QStringLiteral("<nl>");
+
+        timer.restart();
+        const QString gfm2 = formatOtslTable(covered, false);
+        const qint64 coveredGfmMs = timer.elapsed();
+        const QStringList lines2 = gfm2.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        QCOMPARE(lines2.size(), 3);
+        QCOMPARE(static_cast<int>(lines2.first().count(QLatin1Char('|'))) - 1, kMaxTableColumns);
+        QVERIFY(coveredGfmMs < 250);
+    }
 };
 
 QTEST_MAIN(TestDetParser)
