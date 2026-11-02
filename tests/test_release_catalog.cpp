@@ -90,6 +90,17 @@ QByteArray releasesJson()
     return QJsonDocument(buildReleases()).toJson(QJsonDocument::Compact);
 }
 
+// The current cache layout: the URL the list was fetched from plus the
+// releases array. A cache whose URL is not the one being served — and a legacy
+// bare-array file, which carries no URL — must not be served.
+QByteArray releasesCacheJson(const QString &sourceUrl)
+{
+    QJsonObject cache;
+    cache.insert(QStringLiteral("sourceUrl"), sourceUrl);
+    cache.insert(QStringLiteral("releases"), buildReleases());
+    return QJsonDocument(cache).toJson(QJsonDocument::Compact);
+}
+
 }  // namespace
 
 class TestReleaseCatalog : public QObject
@@ -105,9 +116,11 @@ private slots:
     void cudartAssetIsFlagged();
     void cacheMissingIsNotFresh();
     void cacheIsFreshWithinTtl();
+    void freshCacheFromAnotherSourceIsNotServed();
     void buildFromTag();
     void detectPlatformMatchesHost();
     void staleCacheSurvivesFailedFetch();
+    void fallbackCacheIsBoundToItsSource();
 
 private:
     // Answers every request with one canned status line, so the fetch paths can
@@ -281,7 +294,7 @@ void TestReleaseCatalog::cacheMissingIsNotFresh()
     bool fresh = false;
     QString err;
     qint64 cachedBuild = -1;
-    const QList<ReleaseInfo> list = ReleaseCatalog::loadCache(dir.path(), when, cachedBuild, fresh, err);
+    const QList<ReleaseInfo> list = ReleaseCatalog::loadCache(dir.path(), QLatin1String(ReleaseCatalog::kApiUrl), when, cachedBuild, fresh, err);
     QVERIFY(list.isEmpty());
     QVERIFY(!fresh);
     QVERIFY(!err.isEmpty());
@@ -293,18 +306,38 @@ void TestReleaseCatalog::cacheIsFreshWithinTtl()
     QVERIFY(dir.isValid());
     QFile f(QDir(dir.path()).filePath(QStringLiteral("releases.json")));
     QVERIFY(f.open(QIODevice::WriteOnly));
-    f.write(releasesJson());
+    f.write(releasesCacheJson(QLatin1String(ReleaseCatalog::kApiUrl)));
     f.close();
 
     QDateTime when;
     bool fresh = false;
     QString err;
     qint64 cachedBuild = -1;
-    const QList<ReleaseInfo> list = ReleaseCatalog::loadCache(dir.path(), when, cachedBuild, fresh, err);
+    const QList<ReleaseInfo> list = ReleaseCatalog::loadCache(dir.path(), QLatin1String(ReleaseCatalog::kApiUrl), when, cachedBuild, fresh, err);
     QVERIFY(fresh);
     QCOMPARE(list.size(), 2);
     QCOMPARE(cachedBuild, qint64(10594));
     QVERIFY(!when.isNull());
+}
+
+// The fresh path is bound like the fallback: a cache served without a request
+// must still have been written by the source now configured.
+void TestReleaseCatalog::freshCacheFromAnotherSourceIsNotServed()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QFile f(QDir(dir.path()).filePath(QStringLiteral("releases.json")));
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write(releasesCacheJson(QLatin1String(ReleaseCatalog::kApiUrl)));
+    f.close();
+
+    QDateTime when;
+    bool fresh = true;
+    QString err;
+    qint64 cachedBuild = -1;
+    const QList<ReleaseInfo> list = ReleaseCatalog::loadCache(dir.path(), QStringLiteral("https://other.example/releases"), when, cachedBuild, fresh, err);
+    QVERIFY(list.isEmpty());
+    QVERIFY(!fresh);
 }
 
 // Regression: a transport failure, a rate limit or an unexpected body must not
@@ -325,10 +358,12 @@ void TestReleaseCatalog::staleCacheSurvivesFailedFetch()
     for (const QByteArray &status : failures) {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
+        StatusServer server;
+        QVERIFY(server.start(status));
         const QString cacheFile = QDir(dir.path()).filePath(QStringLiteral("releases.json"));
         QFile f(cacheFile);
         QVERIFY(f.open(QIODevice::WriteOnly));
-        f.write(releasesJson());
+        f.write(releasesCacheJson(server.url()));
         f.close();
         // Age the cache past the TTL so the fetch is actually attempted
         // (setFileTime needs an open file).
@@ -336,8 +371,6 @@ void TestReleaseCatalog::staleCacheSurvivesFailedFetch()
         QVERIFY(f.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-8 * 3600), QFileDevice::FileModificationTime));
         f.close();
 
-        StatusServer server;
-        QVERIFY(server.start(status));
         QNetworkAccessManager nam;
         QString error;
         const QList<ReleaseInfo> list = ReleaseCatalog::fetchReleasesLocal(&nam, dir.path(), error, 5000, server.url());
@@ -347,6 +380,65 @@ void TestReleaseCatalog::staleCacheSurvivesFailedFetch()
         QCOMPARE(list.first().build, qint64(10594));
         QVERIFY2(QFile::exists(cacheFile), "a failed fetch must not drop the cached release list");
     }
+}
+
+// The cache is bound to the URL it was fetched from: the offline fallback
+// serves only a releases.json written by the very request being retried, so a
+// tampered file cannot feed the installer a fake download URL and digest. A
+// cache from another source — and a legacy one, which carries no URL — reads
+// as if the file were absent.
+void TestReleaseCatalog::fallbackCacheIsBoundToItsSource()
+{
+    const QByteArray failure = QByteArrayLiteral("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n"
+                                                 "Connection: close\r\n\r\n");
+
+    const QStringList foreignSources = {
+        QStringLiteral("https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=1"),
+        QString(),  // a legacy cache written before the source mark existed
+    };
+    for (const QString &source : foreignSources) {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        StatusServer server;
+        QVERIFY(server.start(failure));
+        const QString cacheFile = QDir(dir.path()).filePath(QStringLiteral("releases.json"));
+        QFile f(cacheFile);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(source.isEmpty() ? releasesJson() : releasesCacheJson(source));
+        f.close();
+        QVERIFY(f.open(QIODevice::ReadWrite));
+        QVERIFY(f.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-8 * 3600), QFileDevice::FileModificationTime));
+        f.close();
+
+        QNetworkAccessManager nam;
+        QString error;
+        const QList<ReleaseInfo> list = ReleaseCatalog::fetchReleasesLocal(&nam, dir.path(), error, 5000, server.url());
+
+        QVERIFY2(!error.isEmpty(), "the failure must still be reported");
+        QVERIFY2(list.isEmpty(), qPrintable(QStringLiteral("a cache from '%1' must not be served as the fallback").arg(source)));
+        QVERIFY2(QFile::exists(cacheFile), "an untrusted cache is left in place, not deleted");
+    }
+
+    // The mirror image: a cache this very source wrote is the fallback.
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    StatusServer server;
+    QVERIFY(server.start(failure));
+    const QString cacheFile = QDir(dir.path()).filePath(QStringLiteral("releases.json"));
+    QFile f(cacheFile);
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write(releasesCacheJson(server.url()));
+    f.close();
+    QVERIFY(f.open(QIODevice::ReadWrite));
+    QVERIFY(f.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-8 * 3600), QFileDevice::FileModificationTime));
+    f.close();
+
+    QNetworkAccessManager nam;
+    QString error;
+    const QList<ReleaseInfo> list = ReleaseCatalog::fetchReleasesLocal(&nam, dir.path(), error, 5000, server.url());
+    QVERIFY2(!error.isEmpty(), "the failure must still be reported");
+    QCOMPARE(list.size(), 2);
+    QCOMPARE(list.first().build, qint64(10594));
 }
 
 void TestReleaseCatalog::buildFromTag()

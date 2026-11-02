@@ -61,7 +61,10 @@ class TestRuntimeInstaller : public QObject
 
         QFile file(QDir(cacheDir).filePath(QStringLiteral("releases.json")));
         QVERIFY(file.open(QIODevice::WriteOnly));
-        file.write(QJsonDocument(QJsonArray{release}).toJson(QJsonDocument::Compact));
+        QJsonObject cache;
+        cache.insert(QStringLiteral("sourceUrl"), QLatin1String(ReleaseCatalog::kApiUrl));
+        cache.insert(QStringLiteral("releases"), QJsonArray{release});
+        file.write(QJsonDocument(cache).toJson(QJsonDocument::Compact));
         file.close();
     }
 

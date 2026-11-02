@@ -46,8 +46,11 @@ public:
 
     static ReleaseAsset parseAssetName(const QString &fileName, const QString &downloadUrl, qint64 size);
     static QHash<QString, QString> parseSha256Table(const QString &body);
-    static QList<ReleaseInfo> readCacheFile(const QString &cacheDir, QString &error, qint64 *cachedBuild = nullptr);
-    static QList<ReleaseInfo> loadCache(const QString &cacheDir, QDateTime &cachedAt, qint64 &cachedBuild, bool &isFresh, QString &error);
+    // `sourceUrl` binds the cache to the request it came from: a cache written
+    // by another URL — or a legacy one without the mark — reads as absent and
+    // can never become the offline fallback.
+    static QList<ReleaseInfo> readCacheFile(const QString &cacheDir, const QString &sourceUrl, QString &error, qint64 *cachedBuild = nullptr);
+    static QList<ReleaseInfo> loadCache(const QString &cacheDir, const QString &sourceUrl, QDateTime &cachedAt, qint64 &cachedBuild, bool &isFresh, QString &error);
     static QList<ReleaseInfo> fetchReleasesLocal(QNetworkAccessManager *nam, QString cacheDir, QString &error, int timeoutMs = kRequestTimeoutMs, const QString &apiUrl = QString());
 };
 

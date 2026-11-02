@@ -47,6 +47,21 @@ QString digestFromApiField(const QString &value)
     return m.hasMatch() ? m.captured(1).toLower() : QString();
 }
 
+// The cache file is either the current `{"sourceUrl": …, "releases": […]}` or
+// a legacy bare array, which carries no mark at all.
+QJsonArray cachedReleasesArray(const QJsonDocument &doc, QString *sourceUrl)
+{
+    if (doc.isObject()) {
+        const QJsonObject o = doc.object();
+        if (sourceUrl)
+            *sourceUrl = o.value(QStringLiteral("sourceUrl")).toString();
+        return o.value(QStringLiteral("releases")).toArray();
+    }
+    if (sourceUrl)
+        sourceUrl->clear();
+    return doc.array();
+}
+
 }  // namespace
 
 int extractBuildNumberFromTag(const QString &tagName)
@@ -155,7 +170,7 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items, QS
     return releases;
 }
 
-QList<ReleaseInfo> ReleaseCatalog::readCacheFile(const QString &cacheDir, QString &error, qint64 *cachedBuild)
+QList<ReleaseInfo> ReleaseCatalog::readCacheFile(const QString &cacheDir, const QString &sourceUrl, QString &error, qint64 *cachedBuild)
 {
     const QString path = QDir(cacheDir).filePath(QStringLiteral("releases.json"));
     if (!QFileInfo::exists(path)) {
@@ -169,18 +184,23 @@ QList<ReleaseInfo> ReleaseCatalog::readCacheFile(const QString &cacheDir, QStrin
     }
     QJsonParseError perr;
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
-    if (perr.error != QJsonParseError::NoError || !doc.isArray()) {
+    if (perr.error != QJsonParseError::NoError || !(doc.isArray() || doc.isObject())) {
         error = QObject::tr("Cached releases are malformed");
         return QList<ReleaseInfo>();
     }
-    const QJsonArray arr = doc.array();
-    if (cachedBuild && !arr.isEmpty()) {
+    QString cachedFrom;
+    const QJsonArray arr = cachedReleasesArray(doc, &cachedFrom);
+    if (cachedFrom != sourceUrl || arr.isEmpty()) {
+        error = QObject::tr("No cached releases yet");
+        return QList<ReleaseInfo>();
+    }
+    if (cachedBuild) {
         *cachedBuild = extractBuildNumberFromTag(arr.first().toObject().value(QStringLiteral("tag_name")).toString());
     }
     return parseReleasesJson(arr, error);
 }
 
-QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir, QDateTime &cachedAt, qint64 &cachedBuild, bool &isFresh, QString &error)
+QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir, const QString &sourceUrl, QDateTime &cachedAt, qint64 &cachedBuild, bool &isFresh, QString &error)
 {
     isFresh = false;
     cachedBuild = -1;
@@ -195,22 +215,26 @@ QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir, QDateTime 
         error = QObject::tr("Cached release list is stale");
         return QList<ReleaseInfo>();
     }
+    const QList<ReleaseInfo> list = readCacheFile(cacheDir, sourceUrl, error, &cachedBuild);
+    if (list.isEmpty())
+        return QList<ReleaseInfo>();
     isFresh = true;
-    return readCacheFile(cacheDir, error, &cachedBuild);
+    return list;
 }
 
 QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam, QString cacheDir, QString &error, int timeoutMs, const QString &apiUrl)
 {
+    const QString requestUrl = apiUrl.isEmpty() ? QLatin1String(kApiUrl) : apiUrl;
     QList<ReleaseInfo> fromCache;
     QDateTime cachedAt;
     qint64 cachedBuild = -1;
     bool isFresh = false;
     QString cacheErr;
-    fromCache = loadCache(cacheDir, cachedAt, cachedBuild, isFresh, cacheErr);
+    fromCache = loadCache(cacheDir, requestUrl, cachedAt, cachedBuild, isFresh, cacheErr);
     if (isFresh)
         return fromCache;
     if (fromCache.isEmpty())
-        fromCache = readCacheFile(cacheDir, cacheErr, &cachedBuild);
+        fromCache = readCacheFile(cacheDir, requestUrl, cacheErr, &cachedBuild);
 
     if (!nam) {
         error = QObject::tr("No network client available");
@@ -222,7 +246,7 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     options.headers = {
         {"Accept", "application/vnd.github+json"},
     };
-    const HttpClient::Response response = HttpClient::get(nam, QUrl(apiUrl.isEmpty() ? QLatin1String(kApiUrl) : apiUrl), options);
+    const HttpClient::Response response = HttpClient::get(nam, QUrl(requestUrl), options);
     const QByteArray payload = response.body;
     const int status = response.status;
 
@@ -267,7 +291,10 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     QDir().mkpath(cacheDir);
     QSaveFile sf(QDir(cacheDir).filePath(QStringLiteral("releases.json")));
     if (sf.open(QIODevice::WriteOnly)) {
-        sf.write(QJsonDocument(doc.array()).toJson(QJsonDocument::Compact));
+        QJsonObject cache;
+        cache.insert(QStringLiteral("sourceUrl"), requestUrl);
+        cache.insert(QStringLiteral("releases"), doc.array());
+        sf.write(QJsonDocument(cache).toJson(QJsonDocument::Compact));
         sf.commit();
     }
     return parsed;
