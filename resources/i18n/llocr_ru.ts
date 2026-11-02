@@ -1490,6 +1490,14 @@
         <source>The server refused the request (HTTP 401): the API key was not sent, or it was not accepted.</source>
         <translation>Сервер отказал в запросе (HTTP 401): ключ не отправлен или не принят.</translation>
     </message>
+    <message>
+        <source>The server returned a redirect — the endpoint must not redirect requests</source>
+        <translation>Сервер вернул redirect — endpoint не должен перенаправлять запросы</translation>
+    </message>
+    <message>
+        <source>The server response exceeded the reasonable size (%1 MB)</source>
+        <translation>Ответ сервера превысил разумный размер (%1 МБ)</translation>
+    </message>
 </context>
 <context>
     <name>Main</name>
@@ -3042,6 +3050,10 @@
         <location line="+6"/>
         <source>Endpoint base URL</source>
         <translation>Базовый URL конечной точки</translation>
+    </message>
+    <message>
+        <source>The key will be sent in plain text (http outside the local machine).</source>
+        <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
     <message>
         <location line="+11"/>

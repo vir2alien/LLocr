@@ -48,6 +48,7 @@ private slots:
     void theCompactModeHidesTheTasks();
     void theTaskEndpointAndAliasAreSaved();
     void theSavedValuesComeBackIntoTheFields();
+    void theHttpRemoteEndpointWarnsAboutPlaintextKey();
 
 private:
     void registerModuleTypes();
@@ -251,6 +252,34 @@ void TestRuntimeTabExternalQml::theSavedValuesComeBackIntoTheFields()
     QCOMPARE(row->property("task").toString(), QStringLiteral("decision"));
     QCOMPARE(row->property("endpointText").toString(), QStringLiteral("http://decision:9000"));
     QCOMPARE(row->property("aliasText").toString(), QStringLiteral("decision-model"));
+}
+
+// An http endpoint outside the loopback hosts would carry the key as clear
+// text: the warning must name it while the user types, and stay quiet for
+// https and the loopback names.
+void TestRuntimeTabExternalQml::theHttpRemoteEndpointWarnsAboutPlaintextKey()
+{
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    const QList<QPair<QString, bool>> cases = {
+        {QStringLiteral(""), false},
+        {QStringLiteral("http://localhost:8080"), false},
+        {QStringLiteral("http://127.0.0.1:8080"), false},
+        {QStringLiteral("http://[::1]:8080"), false},
+        {QStringLiteral("HTTPS://LOCALHOST:8080"), false},
+        {QStringLiteral("https://api.example.com/v1"), false},
+        {QStringLiteral("example.com:8080"), false},
+        {QStringLiteral("http://192.168.1.5:8080"), true},
+        {QStringLiteral("http://user:pass@10.0.0.9"), true},
+        {QStringLiteral("HTTP://EXAMPLE.ORG:8080"), true},
+    };
+    for (const auto &endpoint : cases) {
+        evaluate(tab.get(), QStringLiteral("baseUrlField.text = %1").arg(endpoint.first.isEmpty() ? QStringLiteral("''") : QStringLiteral("'%1'").arg(endpoint.first)));
+        QCoreApplication::processEvents();
+        QCOMPARE(evaluate(tab.get(), QStringLiteral("plaintextKeyWarning.visible")).toBool(), endpoint.second);
+    }
 }
 
 int main(int argc, char *argv[])

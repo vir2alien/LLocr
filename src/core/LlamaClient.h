@@ -51,6 +51,10 @@ private:
 
     static QString extractServerError(const QByteArray &responseData);
 
+    // The endpoint as the journal and the error texts show it: without the
+    // userinfo, so typed credentials never leave the request itself.
+    static QString displayUrl(const QUrl &url);
+
 private:
     QNetworkAccessManager m_network;
     QPointer<QNetworkReply> m_currentReply;

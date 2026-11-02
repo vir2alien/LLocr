@@ -761,6 +761,10 @@ add_test(NAME test_install_lock COMMAND test_install_lock)
 # ---- Core transport: LlamaClient reentrancy (C++-I4) ------------------------
 qt_add_executable(test_llama_client test_llama_client.cpp)
 
+target_compile_definitions(test_llama_client PRIVATE
+    LLOCR_MOCK_SERVER="$<TARGET_FILE:mock_llama_server>"
+)
+
 target_link_libraries(test_llama_client PRIVATE
     Qt6::Test
     llocr_core

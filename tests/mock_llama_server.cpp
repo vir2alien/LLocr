@@ -279,6 +279,28 @@ int main(int argc, char *argv[])
                      body);
             s->flush();
         } else if (req.contains("POST /v1/chat/completions")) {
+            // LLOCR_MOCK_CHAT_REDIRECT answers a 302 to /moved (the client
+            // must refuse to follow it); LLOCR_MOCK_CHAT_HUGE_BODY=N streams
+            // an N-megabyte body (the client must cap the response).
+            if (::getenv("LLOCR_MOCK_CHAT_REDIRECT")) {
+                s->write("HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:9/moved\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                s->flush();
+                return;
+            }
+            const int hugeBodyMb = qEnvironmentVariableIntValue("LLOCR_MOCK_CHAT_HUGE_BODY");
+            if (hugeBodyMb > 0) {
+                const QByteArray body(hugeBodyMb * 1024 * 1024, 'x');
+                s->write("HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/octet-stream\r\n"
+                         "Content-Length: " +
+                         QByteArray::number(body.size()) +
+                         "\r\n"
+                         "Connection: close\r\n\r\n");
+                s->flush();
+                s->write(body);
+                s->flush();
+                return;
+            }
             // Self-test endpoint: echo a fixed OCR-looking response.
             const QByteArray body = QJsonDocument(QJsonObject{{"id", "cmpl-self"},
                                                               {"object", "chat.completion"},

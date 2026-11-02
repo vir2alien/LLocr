@@ -14,12 +14,21 @@
 
 namespace llocr {
 
+namespace {
+constexpr qint64 kMaxResponseBytes = 64 * 1024 * 1024;
+}
+
 QUrl LlamaClient::endpointUrl(const QString &baseUrl, const QString &endpointPath)
 {
     QString base = baseUrl;
     while (base.endsWith('/'))
         base.chop(1);
     return QUrl(base + endpointPath);
+}
+
+QString LlamaClient::displayUrl(const QUrl &url)
+{
+    return url.toString(QUrl::RemoveUserInfo | QUrl::RemovePassword);
 }
 
 QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, const QString &modelId, int connectionTimeoutMs, int responseTimeoutMs)
@@ -32,7 +41,7 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
     // The API key lives in the header and never reaches it.
     auto trace = std::make_shared<RequestJournal::Record>();
     trace->at = QDateTime::currentDateTime();
-    trace->endpoint = url.toString();
+    trace->endpoint = displayUrl(url);
     trace->model = modelId;
     trace->requestBytes = body.size();
 
@@ -58,10 +67,10 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
     const quint16 port = quint16(url.port(https ? 443 : 80));
 
     QObject::connect(timer, &QTimer::timeout, socket, [finish, url, connectionTimeoutMs]() {
-        finish(HttpResponse{false, {}, QCoreApplication::translate("LlamaClient", "Connection to %1 timed out after %2 ms").arg(url.toString()).arg(connectionTimeoutMs)});
+        finish(HttpResponse{false, {}, QCoreApplication::translate("LlamaClient", "Connection to %1 timed out after %2 ms").arg(displayUrl(url)).arg(connectionTimeoutMs)});
     });
     QObject::connect(socket, &QTcpSocket::errorOccurred, socket, [finish, socket, url](QAbstractSocket::SocketError) {
-        finish(HttpResponse{false, {}, QCoreApplication::translate("LlamaClient", "Connection to %1 failed: %2").arg(url.toString(), socket->errorString())});
+        finish(HttpResponse{false, {}, QCoreApplication::translate("LlamaClient", "Connection to %1 failed: %2").arg(displayUrl(url), socket->errorString())});
     });
     QObject::connect(socket, &QTcpSocket::connected, socket, [this, socket, timer, promise, url, body, apiKey, responseTimeoutMs, trace]() {
         timer->stop();
@@ -84,6 +93,9 @@ void LlamaClient::startPost(
     const std::shared_ptr<QPromise<HttpResponse>> &promise, const QUrl &url, const QByteArray &body, const QString &apiKey, int responseTimeoutMs, const std::shared_ptr<RequestJournal::Record> &trace)
 {
     QNetworkRequest request(url);
+    // The endpoint must answer itself: with Qt's default policy a redirect
+    // would be followed and the Bearer could ride to another host.
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     if (!apiKey.isEmpty())
         request.setRawHeader("Authorization", "Bearer " + apiKey.toUtf8());
@@ -100,6 +112,13 @@ void LlamaClient::startPost(
     if (responseTimeoutMs > 0)
         timer->start(responseTimeoutMs);
 
+    QObject::connect(reply, &QNetworkReply::downloadProgress, reply, [reply](qint64 received, qint64) {
+        if (received > kMaxResponseBytes) {
+            reply->setProperty("llocrTooLarge", true);
+            reply->abort();
+        }
+    });
+
     QObject::connect(reply, &QNetworkReply::finished, reply, [reply, promise, responseTimeoutMs, trace]() mutable {
         HttpResponse response;
         const QByteArray replyBody = reply->readAll();
@@ -107,7 +126,15 @@ void LlamaClient::startPost(
         trace->status = status;
         trace->responseBytes = replyBody.size();
         trace->durationMs = trace->at.msecsTo(QDateTime::currentDateTime());
-        if (reply->error() != QNetworkReply::NoError) {
+        if (status >= 300 && status < 400) {
+            response.error = QCoreApplication::translate("LlamaClient", "The server returned a redirect — the endpoint must not redirect requests");
+            trace->error = response.error;
+        } else if (reply->property("llocrTooLarge").toBool()) {
+            // The cap aborts after the body is already in: the transport may
+            // report no error, so the verdict rides on the property alone.
+            response.error = QCoreApplication::translate("LlamaClient", "The server response exceeded the reasonable size (%1 MB)").arg(kMaxResponseBytes / (1024 * 1024));
+            trace->error = response.error;
+        } else if (reply->error() != QNetworkReply::NoError) {
             QString error;
             if (reply->error() == QNetworkReply::OperationCanceledError && reply->property("llocrTimedOut").toBool()) {
                 error = QCoreApplication::translate("LlamaClient", "Request timed out after %1 ms").arg(responseTimeoutMs);
