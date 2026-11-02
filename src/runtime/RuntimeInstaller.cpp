@@ -236,6 +236,7 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
 {
     setBusy(false);
     if (releases.isEmpty()) {
+        m_installAfterCatalog = false;
         setStatusMessage(error.isEmpty() ? tr("No releases available") : error);
         setState(State::Error);
         return;
@@ -262,6 +263,11 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
     }
     setState(State::Ready);
     emit catalogChanged();
+
+    if (m_installAfterCatalog) {
+        m_installAfterCatalog = false;
+        startDownloadAndInstall();
+    }
 }
 
 QString RuntimeInstaller::updateBuild() const
@@ -299,6 +305,13 @@ void RuntimeInstaller::startDownloadAndInstall()
 {
     if (m_state == State::Fetching || m_state == State::Downloading)
         return;
+    if (m_releases.isEmpty()) {
+        // Nobody fetched the release list yet — the wizard's first run does
+        // not: fetch it and install as soon as it is here.
+        m_installAfterCatalog = true;
+        startCatalogFetch();
+        return;
+    }
     if (m_selectedRelease < 0 || m_selectedRelease >= m_releases.size()) {
         setStatusMessage(tr("No release selected — check for updates first"));
         setState(State::Error);

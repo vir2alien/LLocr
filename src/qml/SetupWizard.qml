@@ -40,6 +40,9 @@ Dialog {
     // other use is an identity comparison, which a var keeps working.
     readonly property var currentStep: steps.length ? steps[current] : null
     readonly property var canProceed: !!(currentStep && currentStep.complete)
+    // Every step but the first has a way back — the last one too: a failed
+    // check is fixed by going back to the step that holds the cause.
+    readonly property bool canGoBack: current > 0
 
     function rebuildSteps() {
         const choice = stepWelcome.choice
@@ -57,6 +60,9 @@ Dialog {
         rebuildSteps()
         wizard.current = 0
         Settings.setupDismissed = false
+        // The check step shows the self-test's verdict; a verdict of an
+        // earlier visit is not this visit's verdict.
+        SelfTest.resetSelfTest()
         RuntimeInstaller.rescanInstalledBuilds()
         wizard.open()
     }
@@ -152,7 +158,7 @@ Dialog {
             Item { Layout.fillWidth: true }
             LLOButton {
                 text: qsTr("Back")
-                visible: wizard.current > 0 && wizard.current < wizard.lastStep
+                visible: wizard.canGoBack
                 onClicked: {
                     // Going back reconsiders the mode choice: the endpoint
                     // typed on the external step is abandoned, not saved.

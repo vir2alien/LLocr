@@ -33,6 +33,10 @@ public:
 
     QFuture<SelfTestResult> runSelfTest();
     Q_INVOKABLE void runSelfTestQml();
+    // Throws the last run's verdict away: a wizard that opens again must not
+    // show the message of a run that belongs to the previous visit, and must
+    // not be able to open its Finish gate with it.
+    Q_INVOKABLE void resetSelfTest();
 
     bool selftestRunning() const { return m_selftestRunning; }
     bool selftestOk() const { return m_selftestOk; }

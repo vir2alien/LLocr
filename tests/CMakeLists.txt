@@ -435,6 +435,30 @@ qt_add_resources(test_task_models_table_qml "task_models_table_ui_icons"
 )
 add_test(NAME test_task_models_table_qml COMMAND test_task_models_table_qml)
 
+# The setup wizard's steps: the check step must not report a failure where
+# the setup is fine, and the hardware step must pick the quantization that
+# fits the memory. The files are read from the source tree, so the test
+# covers the shipped QML rather than a copy.
+qt_add_executable(test_setup_wizard_qml test_setup_wizard_qml.cpp)
+
+target_link_libraries(test_setup_wizard_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+llocr_add_profile_resources(test_setup_wizard_qml)
+add_test(NAME test_setup_wizard_qml COMMAND test_setup_wizard_qml)
+
+qt_add_executable(test_runtime_installer test_runtime_installer.cpp)
+
+target_link_libraries(test_runtime_installer PRIVATE
+    Qt6::Test
+    Qt6::Network
+    llocr_runtime
+)
+add_test(NAME test_runtime_installer COMMAND test_runtime_installer)
+
 qt_add_executable(test_runtime_lifetime test_runtime_lifetime.cpp)
 
 target_link_libraries(test_runtime_lifetime PRIVATE

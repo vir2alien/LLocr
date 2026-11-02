@@ -35,10 +35,12 @@ Item {
         ModelInstaller.reloadPresets()
         ModelInstaller.rescanRegistry()
         taskTable.syncDraft()
-        // Tasks the user has never configured get the auto-selection;
-        // already configured tasks keep their own pick.
+        // Tasks the user has never configured get the auto-selection; already
+        // configured tasks keep their own pick. The request profile id cannot
+        // tell the two apart — every task has one by default — so the model
+        // the task points at is the sign.
         const prefill = ModelInstaller.defaultTaskChoices().filter(
-                    choice => RoleProfiles.requestProfileId(choice.task).length === 0)
+                    choice => Settings.launchModelPathForRole(choice.task).length === 0)
         taskTable.prefillChoices(prefill)
     }
 

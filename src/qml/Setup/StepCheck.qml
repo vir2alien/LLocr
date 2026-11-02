@@ -17,7 +17,10 @@ Item {
     // still to download, {task, key, quantId, model, size} each.
     property var missingChoices: []
 
-    property bool complete: Runtime.configValid
+    // The Finish opens on the check that ran in this visit: the phase carries
+    // it, so a self-test from an earlier visit cannot open the gate.
+    property bool complete: root.phase === "done"
+                            && Runtime.configValid
                             && SelfTest.selftestOk
                             && !SelfTest.selftestRunning
 
@@ -36,6 +39,13 @@ Item {
     }
 
     implicitHeight: contentColumn.implicitHeight + 40
+
+    onVisibleChanged: {
+        // Entering the step again starts the check afresh — a verdict of the
+        // previous visit is not this visit's verdict.
+        if (visible && !chainBusy)
+            phase = "idle"
+    }
 
     function fmtBytes(bytes) {
         if (bytes <= 0)
@@ -101,7 +111,9 @@ Item {
     Connections {
         target: SelfTest
         function onSelftestFinished() {
-            if (phase !== "check")
+            // The signal is also the notification of "the self-test started":
+            // while it runs, there is no verdict yet.
+            if (phase !== "check" || SelfTest.selftestRunning)
                 return
             phase = SelfTest.selftestOk ? "done" : "failed"
         }

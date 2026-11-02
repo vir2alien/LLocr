@@ -162,6 +162,9 @@ private:
 
     QList<ReleaseInfo> m_releases;
     int m_selectedRelease = 0;
+    // An install was asked for before the release list was fetched: it starts
+    // as soon as the list is here.
+    bool m_installAfterCatalog = false;
     bool m_hasUpdate = false;
     QDateTime m_lastCatalogAt;
     InstalledBuildsModel *m_installedBuilds = nullptr;

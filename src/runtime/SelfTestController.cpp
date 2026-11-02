@@ -72,6 +72,15 @@ void SelfTestController::runSelfTestRequest(const ResolvedConnection &conn, std:
     watch->setFuture(m_selftestModel->recognize(request, conn.toConnectionConfig()));
 }
 
+void SelfTestController::resetSelfTest()
+{
+    if (m_selftestRunning)
+        return;
+    m_selftestOk = false;
+    m_selftestMessage.clear();
+    emit selftestFinished();
+}
+
 void SelfTestController::retranslate()
 {
     if (m_selftestRunning) {
