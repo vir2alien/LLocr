@@ -161,16 +161,39 @@ ESpec makeEntry(const QString &name, const QByteArray &payload, bool deflate = f
 
 struct TEntry {
     QString name;
-    QByteArray content;  // payload for regular files, link target for symlinks
-    QString linkTarget;  // non-empty => symlink (typeflag '2')
+    QByteArray content;   // payload for regular files, link target for symlinks
+    QString linkTarget;   // non-empty => symlink (typeflag '2')
+    QString paxLinkpath;  // non-empty => a PAX 'x' record precedes the entry and names the link target
     bool isDir = false;
     quint32 mode = 0644;
 };
+
+// One PAX record: "<len> key=value\n" where <len> counts the whole record.
+QByteArray paxRecord(const char *key, const QString &value)
+{
+    const QString body = QStringLiteral(" %1=%2\n").arg(QString::fromLatin1(key), value);
+    int len = body.size() + 1;
+    while (QString::number(len).size() + body.size() != len)
+        ++len;
+    return (QString::number(len) + body).toUtf8();
+}
 
 QByteArray buildTar(const QList<TEntry> &entries)
 {
     QByteArray out;
     for (const TEntry &e : entries) {
+        if (!e.paxLinkpath.isEmpty()) {
+            const QByteArray records = paxRecord("linkpath", e.paxLinkpath);
+            QByteArray px(512, char(0));
+            px[156] = char('x');
+            const QString size = QStringLiteral("%1").arg(qint64(records.size()), 11, 8, QLatin1Char('0'));
+            ::memcpy(px.data() + 124, size.toLatin1().constData(), 11);
+            ::memcpy(px.data() + 257, "ustar\0", 6);
+            out += px;
+            out += records;
+            const qint64 pad = (512 - (records.size() % 512)) % 512;
+            out += QByteArray(int(pad), char(0));
+        }
         QByteArray h(512, char(0));
         char *raw = h.data();
         const QByteArray name = e.name.toUtf8();
@@ -181,7 +204,7 @@ QByteArray buildTar(const QList<TEntry> &entries)
         ::memcpy(raw + 148, spaces.constData(), 6);
         if (e.isDir) {
             h[156] = char('5');
-        } else if (!e.linkTarget.isEmpty()) {
+        } else if (!e.linkTarget.isEmpty() || !e.paxLinkpath.isEmpty()) {
             h[156] = char('2');
             const QByteArray target = e.linkTarget.toUtf8().left(100);
             ::memcpy(raw + 157, target.constData(), ::size_t(target.size()));
@@ -193,7 +216,7 @@ QByteArray buildTar(const QList<TEntry> &entries)
         // magic "ustar\0" (raw bytes; no template overload ambiguity)
         ::memcpy(raw + 257, "ustar\0", 6);
         out += h;
-        if (!e.isDir && e.linkTarget.isEmpty()) {
+        if (!e.isDir && e.linkTarget.isEmpty() && e.paxLinkpath.isEmpty()) {
             out += e.content;
             const qint64 pad = (512 - (e.content.size() % 512)) % 512;
             out += QByteArray(int(pad), char(0));
@@ -302,6 +325,19 @@ private slots:
         QVERIFY(!ArchiveExtractor::extractZip(zip, QDir(dir.path()).filePath("out")).ok);
     }
 
+    void rejectsColonAnywhereInName()
+    {
+        QTemporaryDir dir;
+        QList<ESpec> specs;
+        specs.append(makeEntry(QStringLiteral("foo:ads"), QByteArrayLiteral("x")));
+        const QString zip = writeZip(dir, QStringLiteral("ads.zip"), buildZip(specs));
+        const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
+        const ExtractResult r = ArchiveExtractor::extractZip(zip, dest);
+        QVERIFY(!r.ok);
+        QVERIFY(!QFile::exists(QDir(dest).filePath(QStringLiteral("foo"))));
+        QVERIFY(!QFile::exists(QDir(dest).filePath(QStringLiteral("foo:ads"))));
+    }
+
     void rejectsSymbolicLink()
     {
         QTemporaryDir dir;
@@ -349,6 +385,22 @@ private slots:
         const ExtractResult r = ArchiveExtractor::extractZip(zip, QDir(dir.path()).filePath("out"));
         QVERIFY(!r.ok);
         QVERIFY(r.error.contains(QStringLiteral("ratio")));
+    }
+
+    void rejectsOversizedCompressedZip()
+    {
+        QTemporaryDir dir;
+        QList<ESpec> specs;
+        specs.append(makeEntry(QStringLiteral("file.bin"), QByteArrayLiteral("payload")));
+        const QByteArray bytes = buildZip(specs);
+        const QString zip = writeZip(dir, QStringLiteral("cap.zip"), bytes);
+        const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
+        const ExtractResult over = ArchiveExtractor::extractZip(zip, dest, bytes.size() - 1);
+        QVERIFY(!over.ok);
+        QVERIFY(over.error.contains(QStringLiteral("large")));
+        QCOMPARE(over.fileCount, 0);
+        const ExtractResult exact = ArchiveExtractor::extractZip(zip, dest, bytes.size());
+        QVERIFY2(exact.ok, qPrintable(exact.error));
     }
 
     void setsExecutableBitOnUnix()
@@ -457,6 +509,76 @@ private slots:
         const ExtractResult r = ArchiveExtractor::extractTarGz(archive, QDir(dir.path()).filePath("out"));
         QVERIFY(r.ok);
         QVERIFY(!r.warning.isEmpty());
+    }
+
+    void tarRejectsWindowsSymlinkTargets()
+    {
+        QTemporaryDir dir;
+        const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
+        for (const QString &target : {QStringLiteral("C:/x"), QStringLiteral("\\\\srv\\share")}) {
+            QList<TEntry> entries;
+            TEntry link;
+            link.name = QStringLiteral("a/b");
+            link.linkTarget = target;
+            entries << link;
+            const QString archive = writeZip(dir, QStringLiteral("w.tar.gz"), gzipBytes(buildTar(entries)));
+            const ExtractResult r = ArchiveExtractor::extractTarGz(archive, dest);
+            QVERIFY2(r.ok, qPrintable(r.error));
+            QVERIFY2(!r.warning.isEmpty(), qPrintable(QStringLiteral("no warning for target %1").arg(target)));
+            QVERIFY2(!QFile::exists(QDir(dest).filePath(QStringLiteral("a/b"))), qPrintable(target));
+        }
+    }
+
+    void tarPaxLinkpathIsHonored()
+    {
+        QTemporaryDir dir;
+        QList<TEntry> entries;
+        TEntry link;
+        link.name = QStringLiteral("lib/libfoo.dylib");
+        link.paxLinkpath = QStringLiteral("libfoo.1.dylib");
+        entries << link;
+        const QString archive = writeZip(dir, QStringLiteral("p.tar.gz"), gzipBytes(buildTar(entries)));
+        const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
+        const ExtractResult r = ArchiveExtractor::extractTarGz(archive, dest);
+        QVERIFY2(r.ok, qPrintable(r.error));
+#ifdef Q_OS_UNIX
+        QVERIFY2(r.warning.isEmpty(), qPrintable(r.warning));
+        QFileInfo linkInfo(QDir(dest).filePath(QStringLiteral("lib/libfoo.dylib")));
+        QVERIFY(linkInfo.isSymLink());
+        QCOMPARE(QFileInfo(linkInfo.symLinkTarget()).fileName(), QStringLiteral("libfoo.1.dylib"));
+#endif
+    }
+
+    void tarPaxLinkpathUnsafeIsRejected()
+    {
+        QTemporaryDir dir;
+        QList<TEntry> entries;
+        TEntry link;
+        link.name = QStringLiteral("a/b");
+        link.paxLinkpath = QStringLiteral("C:/x");
+        entries << link;
+        const QString archive = writeZip(dir, QStringLiteral("pu.tar.gz"), gzipBytes(buildTar(entries)));
+        const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
+        const ExtractResult r = ArchiveExtractor::extractTarGz(archive, dest);
+        QVERIFY(r.ok);
+        QVERIFY2(r.warning.contains(QStringLiteral("unsafe")), qPrintable(r.warning));
+        QVERIFY(!QFile::exists(QDir(dest).filePath(QStringLiteral("a/b"))));
+    }
+
+    void rejectsOversizedCompressedTarGz()
+    {
+        QTemporaryDir dir;
+        QList<TEntry> entries;
+        entries << tarEntry(QStringLiteral("f.txt"), QByteArrayLiteral("payload"));
+        const QByteArray bytes = gzipBytes(buildTar(entries));
+        const QString archive = writeZip(dir, QStringLiteral("cap.tar.gz"), bytes);
+        const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
+        const ExtractResult over = ArchiveExtractor::extractTarGz(archive, dest, bytes.size() - 1);
+        QVERIFY(!over.ok);
+        QVERIFY(over.error.contains(QStringLiteral("large")));
+        QCOMPARE(over.fileCount, 0);
+        const ExtractResult exact = ArchiveExtractor::extractTarGz(archive, dest, bytes.size());
+        QVERIFY2(exact.ok, qPrintable(exact.error));
     }
 
     // ustar name fields are NUL-padded and legally contain spaces; stopping

@@ -2007,10 +2007,16 @@
         <translation>Неподдерживаемый тип архива: %1</translation>
     </message>
     <message>
-        <location line="+9"/>
-        <location line="+254"/>
+        <location line="-118"/>
+        <location line="+276"/>
         <source>Unable to open archive: %1</source>
         <translation>Не удалось открыть архив: %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <location line="+321"/>
+        <source>Archive is too large</source>
+        <translation>Архив слишком велик</translation>
     </message>
     <message>
         <location line="-118"/>

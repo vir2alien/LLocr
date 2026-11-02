@@ -15,14 +15,15 @@ struct ExtractResult {
 class ArchiveExtractor
 {
 public:
-    static constexpr qint64 kMaxTotalBytes = 4LL * 1024 * 1024 * 1024;  // 4 GiB
+    static constexpr qint64 kMaxTotalBytes = 4LL * 1024 * 1024 * 1024;    // 4 GiB
+    static constexpr qint64 kMaxArchiveBytes = 2LL * 1024 * 1024 * 1024;  // 2 GiB
     static constexpr int kMaxFiles = 10000;
     static constexpr int kMaxCompressionRatio = 200;
 
     static ExtractResult extractArchive(const QString &archivePath, const QString &destDir);
 
-    static ExtractResult extractZip(const QString &zipPath, const QString &destDir);
-    static ExtractResult extractTarGz(const QString &tarGzPath, const QString &destDir);
+    static ExtractResult extractZip(const QString &zipPath, const QString &destDir, qint64 maxArchiveBytes = kMaxArchiveBytes);
+    static ExtractResult extractTarGz(const QString &tarGzPath, const QString &destDir, qint64 maxArchiveBytes = kMaxArchiveBytes);
 };
 
 }  // namespace llocr

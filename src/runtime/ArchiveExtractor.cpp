@@ -94,9 +94,9 @@ QString normalizeName(const QString &raw, bool &ok, QString &error, bool &isDir)
         error = QStringLiteral("absolute path in zip entry name");
         return {};
     }
-    if (raw.size() >= 2 && raw.at(1) == QLatin1Char(':')) {
+    if (raw.contains(QLatin1Char(':'))) {
         ok = false;
-        error = QStringLiteral("drive prefix in zip entry name");
+        error = QStringLiteral("colon in zip entry name");
         return {};
     }
 
@@ -168,12 +168,16 @@ ExtractResult ArchiveExtractor::extractArchive(const QString &archivePath, const
     return r;
 }
 
-ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString &destDir)
+ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString &destDir, qint64 maxArchiveBytes)
 {
     ExtractResult result;
     QFile archive(zipPath);
     if (!archive.open(QIODevice::ReadOnly)) {
         result.error = QObject::tr("Unable to open archive: %1").arg(zipPath);
+        return result;
+    }
+    if (archive.size() > maxArchiveBytes) {
+        result.error = QObject::tr("Archive is too large");
         return result;
     }
     const QByteArray data = archive.readAll();
@@ -422,12 +426,16 @@ PaxValues parsePaxRecords(const QByteArray &data)
 
 }  // namespace
 
-ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath, const QString &destDir)
+ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath, const QString &destDir, qint64 maxArchiveBytes)
 {
     ExtractResult result;
     QFile archive(tarGzPath);
     if (!archive.open(QIODevice::ReadOnly)) {
         result.error = QObject::tr("Unable to open archive: %1").arg(tarGzPath);
+        return result;
+    }
+    if (archive.size() > maxArchiveBytes) {
+        result.error = QObject::tr("Archive is too large");
         return result;
     }
     const QByteArray compressed = archive.readAll();
@@ -562,6 +570,7 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath, const QSt
             return result;
         }
 
+        const QString paxLinkpath = pendingPax.linkpath;
         pendingLongName.clear();
         pendingPax = PaxValues{};
 
@@ -571,9 +580,9 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath, const QSt
         if (typeflag == '2') {  // symbolic link
             QString target = linkName;
             if (target.isEmpty())
-                target = pendingPax.linkpath;
+                target = paxLinkpath;
 
-            if (target.startsWith(QLatin1Char('/')) || target.contains(QLatin1String(".."))) {
+            if (target.startsWith(QLatin1Char('/')) || target.contains(QLatin1String("..")) || target.contains(QLatin1Char('\\')) || target.contains(QLatin1Char(':'))) {
                 result.warning = QObject::tr("Skipped unsafe symlink %1").arg(normalized);
                 continue;
             }
