@@ -54,6 +54,14 @@ bool isSubpathOf(const QString &path, const QString &dir)
     return p == d || p.startsWith(d + QLatin1Char('/'));
 }
 
+// Canonical when the file system can resolve it (symlink escape), absolute
+// otherwise (a not-yet-downloaded file has no canonical form yet).
+QString resolvablePath(const QString &p)
+{
+    const QString canon = ModelRegistry::canonicalPath(p);
+    return canon.isEmpty() ? QFileInfo(p).absoluteFilePath() : canon;
+}
+
 void sortSplitParts(QStringList *names)
 {
     std::sort(names->begin(), names->end(), &ModelCatalog::splitAscending);
@@ -402,14 +410,34 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
     return out;
 }
 
+QString ModelRegistry::outsideModelsDirError(const QString &path, const QString &modelsDir)
+{
+    if (path.isEmpty() || !isSubpathOf(resolvablePath(path), resolvablePath(modelsDir)))
+        return QObject::tr("This model file lies outside the models directory and cannot be removed.");
+    return QString();
+}
+
 QString ModelRegistry::removalError(const ModelEntry &e, const QString &modelsDir, bool active, bool runtimeReady)
 {
     if (e.origin != ModelOrigin::Managed)
         return QObject::tr("This model is external and can only be hidden from the list, not deleted");
-    const QString modelPath = canonicalPath(e.modelPath).isEmpty() ? QFileInfo(e.modelPath).absoluteFilePath() : canonicalPath(e.modelPath);
-    const QString dirPath = canonicalPath(modelsDir).isEmpty() ? QFileInfo(modelsDir).absoluteFilePath() : canonicalPath(modelsDir);
-    if (dirPath.isEmpty() || modelPath.isEmpty() || !isSubpathOf(modelPath, dirPath))
-        return QObject::tr("This model file lies outside the models directory and cannot be removed.");
+    const QString outside = outsideModelsDirError(e.modelPath, modelsDir);
+    if (!outside.isEmpty())
+        return outside;
+    // entryFromJson derives an empty dir from the model file's directory; an
+    // explicitly recorded one must obey the same boundary.
+    QString entryDir = e.dir;
+    if (canonicalPath(entryDir).isEmpty())
+        entryDir = QFileInfo(e.modelPath).absolutePath();
+    QStringList paths = {entryDir, e.mmprojPath, e.draftPath};
+    paths.append(e.parts);
+    for (const QString &path : std::as_const(paths)) {
+        if (path.isEmpty())
+            continue;
+        const QString error = outsideModelsDirError(path, modelsDir);
+        if (!error.isEmpty())
+            return error;
+    }
     if (active && runtimeReady)
         return QObject::tr("This model is in use. Stop the server before removing it.");
     return QString();

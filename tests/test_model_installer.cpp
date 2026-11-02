@@ -324,6 +324,73 @@ private slots:
         QVERIFY(QFile::exists(mmprojB));
     }
 
+    // index.json lives in the models directory and is read as data, so a planted
+    // entry whose dir/parts/mmproj name places outside it must not turn the
+    // disk block's delete button into an arbitrary-file eraser: the guard
+    // refuses every such path before anything on disk is touched.
+    void aForgedIndexCannotDeleteOutsideTheModelsDir()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
+        QVERIFY(QDir().mkpath(modelsDir));
+
+        // A real model file inside the models directory: the modelPath-only
+        // check of the old guard passes for all three forged entries.
+        const QString model = writeGguf(modelsDir, QStringLiteral("dummy-Q4_K_M.gguf"));
+        QVERIFY(!model.isEmpty());
+        // The victims: a directory and a file outside the models directory.
+        const QString victimDir = QDir(root.path()).filePath(QStringLiteral("victim_dir"));
+        QVERIFY(QDir().mkpath(victimDir));
+        const QString victimFile = writeGguf(root.path(), QStringLiteral("victim.gguf"));
+        QVERIFY(!victimFile.isEmpty());
+
+        ModelEntry forgedDir;
+        forgedDir.id = QStringLiteral("forged_dir");
+        forgedDir.modelPath = model;
+        forgedDir.dir = victimDir;
+        forgedDir.origin = ModelOrigin::Managed;
+
+        ModelEntry forgedMmproj = forgedDir;
+        forgedMmproj.id = QStringLiteral("forged_mmproj");
+        forgedMmproj.dir = QDir(modelsDir).filePath(QStringLiteral("org__repo"));
+        QVERIFY(QDir().mkpath(forgedMmproj.dir));
+        forgedMmproj.mmprojPath = victimFile;
+
+        ModelEntry forgedPart = forgedDir;
+        forgedPart.id = QStringLiteral("forged_part");
+        forgedPart.dir = QDir(modelsDir).filePath(QStringLiteral("org__other"));
+        QVERIFY(QDir().mkpath(forgedPart.dir));
+        forgedPart.parts = {victimFile};
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {forgedDir, forgedMmproj, forgedPart}, err), qPrintable(err));
+
+        // An empty built-in catalog (test binaries embed no resources).
+        const QString presetsPath = QDir(root.path()).filePath(QStringLiteral("launch-presets.json"));
+        {
+            QFile f(presetsPath);
+            if (f.open(QIODevice::WriteOnly))
+                f.write(QByteArrayLiteral("{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
+        }
+        LaunchProfileStore launchProfiles(settings, presetsPath);
+        RuntimeController runtime(settings, launchProfiles);
+        InstalledState installed(settings);
+        ModelInstaller installer(settings, runtime, installed);
+
+        QCOMPARE(installer.installedCount(), 3);
+        QVERIFY2(!installer.removeModel(0).isEmpty(), "removal of the entry with a forged dir was not refused");
+        QVERIFY2(!installer.removeModel(1).isEmpty(), "removal of the entry with a forged mmproj was not refused");
+        QVERIFY2(!installer.removeModel(2).isEmpty(), "removal of the entry with a forged part was not refused");
+        QVERIFY(!installer.removeInstalledEntry(QStringLiteral("forged_dir")).isEmpty());
+
+        QVERIFY(QDir(victimDir).exists());
+        QVERIFY(QFile::exists(victimFile));
+        QVERIFY(QFile::exists(model));
+    }
+
     // One row per model, carrying the quantizations the profile offers. What is
     // installed flips only its own quantization, never its sibling's, and the row
     // the models dialog shows is the row the action button acts on.

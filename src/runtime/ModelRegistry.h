@@ -73,6 +73,10 @@ public:
 
     static QString removalError(const ModelEntry &e, const QString &modelsDir, bool active, bool runtimeReady);
 
+    // The removal boundary for one path — the guard behind removalError and the
+    // last check before removeModel deletes anything.
+    static QString outsideModelsDirError(const QString &path, const QString &modelsDir);
+
     static QString canonicalPath(const QString &p);
 
 public:

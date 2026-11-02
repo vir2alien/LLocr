@@ -81,6 +81,10 @@ private slots:
     void allowsManagedDeleteWhenNotActive();
     void canonicalPathCheck();
     void refusesSymlinkEscapeFromModelsDir();
+    void refusesDeleteWhenEntryDirEscapesModelsDir();
+    void refusesDeleteWhenMmprojEscapesModelsDir();
+    void refusesDeleteWhenAPartEscapesModelsDir();
+    void allowsManagedDeleteWithAllPathsInsideModelsDir();
 
     // The reconciliation policy (ADR 116): what each of the three sources of
     // truth is allowed to decide.
@@ -515,6 +519,86 @@ void TestModelRegistry::refusesSymlinkEscapeFromModelsDir()
     QVERIFY(!reason.isEmpty());
     QVERIFY(reason.contains(QStringLiteral("outside")));
 #endif
+}
+
+// The delete acts on every path the entry carries, and index.json is data an
+// attacker can plant: an entry whose dir escapes the models directory while
+// modelPath stays inside must be refused like a symlink escape.
+void TestModelRegistry::refusesDeleteWhenEntryDirEscapesModelsDir()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString modelsDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+    QVERIFY(QDir().mkpath(modelsDir));
+    const QString victim = QDir(dir.path()).filePath(QStringLiteral("victim"));
+    QVERIFY(QDir().mkpath(victim));
+    QVERIFY(!writeFile(modelsDir, QStringLiteral("dummy-Q4_K_M.gguf")).isEmpty());
+
+    ModelEntry e;
+    e.origin = ModelOrigin::Managed;
+    e.modelPath = QDir(modelsDir).filePath(QStringLiteral("dummy-Q4_K_M.gguf"));
+    e.dir = victim;
+    const QString reason = ModelRegistry::removalError(e, modelsDir, false, false);
+    QVERIFY(!reason.isEmpty());
+    QVERIFY(reason.contains(QStringLiteral("outside")));
+}
+
+void TestModelRegistry::refusesDeleteWhenMmprojEscapesModelsDir()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString modelsDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+    QVERIFY(QDir().mkpath(modelsDir));
+    const QString repo = makeRepoDir(modelsDir, QStringLiteral("org__repo"));
+    const QString mmproj = writeFile(dir.path(), QStringLiteral("mmproj-outside.gguf"));
+    QVERIFY(!mmproj.isEmpty());
+
+    ModelEntry e;
+    e.origin = ModelOrigin::Managed;
+    e.dir = repo;
+    e.modelPath = QDir(repo).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+    e.mmprojPath = mmproj;
+    QVERIFY(!ModelRegistry::removalError(e, modelsDir, false, false).isEmpty());
+}
+
+void TestModelRegistry::refusesDeleteWhenAPartEscapesModelsDir()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString modelsDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+    QVERIFY(QDir().mkpath(modelsDir));
+    const QString repo = makeRepoDir(modelsDir, QStringLiteral("org__repo"));
+    const QString part = writeFile(dir.path(), QStringLiteral("part-outside.gguf"));
+    QVERIFY(!part.isEmpty());
+
+    ModelEntry e;
+    e.origin = ModelOrigin::Managed;
+    e.dir = repo;
+    e.modelPath = QDir(repo).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+    e.parts = {part};
+    QVERIFY(!ModelRegistry::removalError(e, modelsDir, false, false).isEmpty());
+}
+
+void TestModelRegistry::allowsManagedDeleteWithAllPathsInsideModelsDir()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString modelsDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+    QVERIFY(QDir().mkpath(modelsDir));
+    const QString repo = makeRepoDir(modelsDir, QStringLiteral("org__repo"));
+    const QString part = writeFile(repo, QStringLiteral("model-Q8_0-00002-of-00002.gguf"));
+    const QString mmproj = writeFile(repo, QStringLiteral("mmproj-model-F16.gguf"));
+    const QString draft = writeFile(repo, QStringLiteral("draft-DSpark-F16.gguf"));
+    QVERIFY(!part.isEmpty() && !mmproj.isEmpty() && !draft.isEmpty());
+
+    ModelEntry e;
+    e.origin = ModelOrigin::Managed;
+    e.dir = repo;
+    e.modelPath = QDir(repo).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+    e.parts = {part};
+    e.mmprojPath = mmproj;
+    e.draftPath = draft;
+    QVERIFY(ModelRegistry::removalError(e, modelsDir, false, false).isEmpty());
 }
 
 // A model the user deleted by hand stayed in the list and offered an «Activate»

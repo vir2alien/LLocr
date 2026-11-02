@@ -420,6 +420,11 @@ QString ModelInstaller::removeModel(int index)
 
     QDir d(e.dir);
 
+    // The guard judged the entry as a whole; every destructive step re-checks
+    // its own path against the models directory it is about to delete from.
+    const QString modelsDir = currentPaths.modelsDir();
+    const auto outsideError = [&modelsDir](const QString &path) { return ModelRegistry::outsideModelsDirError(path, modelsDir); };
+
     bool sharedDir = false;
     for (const ModelEntry &x : std::as_const(m_installed)) {
         if (&x == &e)
@@ -460,13 +465,23 @@ QString ModelInstaller::removeModel(int index)
                 owned << e.draftPath;
         }
         for (const QString &path : std::as_const(owned)) {
+            const QString outside = outsideError(path);
+            if (!outside.isEmpty())
+                return outside;
             QFile f(path);
             if (f.exists() && !f.remove())
                 return tr("Unable to remove model file: %1").arg(path);
         }
-        if (d.isEmpty())
+        if (d.isEmpty()) {
+            const QString outside = outsideError(e.dir);
+            if (!outside.isEmpty())
+                return outside;
             QDir().rmdir(e.dir);
+        }
     } else if (!d.isEmpty()) {
+        const QString outside = outsideError(e.dir);
+        if (!outside.isEmpty())
+            return outside;
         if (!d.removeRecursively())
             return tr("Unable to remove model directory: %1").arg(e.dir);
     }
