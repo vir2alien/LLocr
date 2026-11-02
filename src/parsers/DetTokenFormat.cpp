@@ -71,7 +71,10 @@ QString convertMath(const QString &text)
     out.replace(inlineRe, QStringLiteral("$\\1$"));
     out.replace(danglingInlineRe, QStringLiteral("$\\1$"));
 
-    // Restore the protected display blocks.
+    // Restore the protected display blocks. A \x01<digits>\x01 run the model
+    // transcribed from the page (JSON "\u0001" survives every cleanup) is not
+    // a placeholder of ours — an index without a display block behind it is
+    // dropped, not read from the list.
     static const QRegularExpression placeholderRe(QStringLiteral(R"(\x01(\d+)\x01)"));
     {
         QString restored;
@@ -80,7 +83,12 @@ QString convertMath(const QString &text)
         while (pit.hasNext()) {
             const QRegularExpressionMatch m = pit.next();
             restored += out.mid(last, m.capturedStart() - last);
-            restored += displayBlocks.at(m.captured(1).toInt());
+            const int idx = m.captured(1).toInt();
+            if (idx < 0 || idx >= displayBlocks.size()) {
+                last = m.capturedEnd();
+                continue;
+            }
+            restored += displayBlocks.at(idx);
             last = m.capturedEnd();
         }
         restored += out.mid(last);

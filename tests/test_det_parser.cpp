@@ -2,7 +2,9 @@
 
 #include "core/ModelProfiles.h"
 #include "core/OcrResult.h"
+#include "parsers/BlockRender.h"
 #include "parsers/BlockStyle.h"
+#include "parsers/DetTokenFormat.h"
 #include "parsers/MinerULayoutParser.h"
 #include "parsers/ParserFactory.h"
 #include "parsers/ParserOptions.h"
@@ -329,6 +331,42 @@ private slots:
         QVERIFY(!map.knowsLabel(QStringLiteral("doc_title"), QStringLiteral("glm-ocr")));
         // A label the model does not name still falls through to the base map.
         QCOMPARE(map.styleForLabel(QStringLiteral("image"), QStringLiteral("mineru")).style, BlockStyle::ImagePlaceholder);
+    }
+
+    // --- Math placeholders (DetTokenFormat::convertMath) ----------------------
+
+    // A model reply may carry literal U+0001 bytes (JSON "\u0001" from
+    // llama.cpp survives stripServiceTokens): a \x01<digits>\x01 run with no
+    // display math behind it is not this app's placeholder, and convertMath
+    // must skip it instead of indexing the empty display-block list
+    // (out-of-bounds read, abort in debug). A fix/read correction renders the
+    // same bytes through renderBlockText, so that entrance is exercised too —
+    // the layout parser's own parse() carries no block text.
+    void mathPlaceholderOutsideDisplayMathIsSkipped()
+    {
+        const QString reply = QStringLiteral("before \x01"
+                                             "99"
+                                             "\x01 after");
+
+        const QString rendered = renderBlockText(reply, BlockStyleInfo{}, ParserOptions{});
+        QVERIFY(rendered.contains(QStringLiteral("before")));
+        QVERIFY(rendered.contains(QStringLiteral("after")));
+        QVERIFY(!rendered.contains(QStringLiteral("\x01"
+                                                  "99"
+                                                  "\x01")));
+
+        // A placeholder with a valid index is still restored; an index past
+        // the display blocks that exist is dropped.
+        QCOMPARE(convertMath(QStringLiteral("$$E=mc^2$$ and \x01"
+                                            "0"
+                                            "\x01")),
+                 QStringLiteral("$$E=mc^2$$ and $$E=mc^2$$"));
+        const QString mixed = convertMath(QStringLiteral("$$a$$ \x01"
+                                                         "5"
+                                                         "\x01 tail"));
+        QVERIFY(mixed.contains(QStringLiteral("$$a$$")));
+        QVERIFY(mixed.contains(QStringLiteral("tail")));
+        QVERIFY(!mixed.contains(QChar(u'\x01')));
     }
 };
 
