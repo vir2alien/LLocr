@@ -143,6 +143,7 @@ Rectangle {
                     id: textArea
                     width: textFlickable.width
                     readOnly: !Controller.currentPageEditable
+                    textFormat: TextArea.PlainText
                     wrapMode: TextArea.Wrap
                     selectByMouse: true
                     color: Theme.textPrimary

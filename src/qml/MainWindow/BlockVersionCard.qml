@@ -213,6 +213,7 @@ Rectangle {
                 TextArea {
                     id: editArea
                     width: parent.width
+                    textFormat: TextArea.PlainText
                     wrapMode: TextArea.Wrap
                     selectByMouse: true
                     color: Theme.textPrimary

@@ -59,8 +59,7 @@ Item {
 
         onContextMenuRequested: (request) => request.accepted = true
         onNavigationRequested: (request) => {
-            if (request.navigationType !== WebEngineNavigationRequest.TypedNavigation
-                && !request.url.toString().startsWith("qrc:/preview/"))
+            if (!request.url.toString().startsWith("qrc:/preview/"))
                 request.action = WebEngineNavigationRequest.IgnoreRequest
         }
 
