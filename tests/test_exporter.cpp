@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include <QImage>
+#include <QProcess>
 
 #include "app/Exporter.h"
 
@@ -43,6 +44,9 @@ private slots:
     void exportStyleSheetHasPrintRules();
     void pandocDetectionConsistent();
     void splitPagesOffOmitsPageLabels();
+    void pandocArgsDisableRawTex();
+    void pandocArgsOutputIsSingleToken();
+    void exportDocxKeepsTexCommandsAsText();
 };
 
 void ExporterTest::suffixMapping_data()
@@ -368,6 +372,66 @@ void ExporterTest::splitPagesOffOmitsPageLabels()
     // The stylesheet only forces a page break per section while splitting.
     QVERIFY(Exporter::exportStyleSheet(true).contains("break-before:page"));
     QVERIFY(!Exporter::exportStyleSheet(false).contains("break-before:page"));
+}
+
+void ExporterTest::pandocArgsDisableRawTex()
+{
+    const QStringList args = Exporter::pandocArgs(QStringLiteral("/tmp/out.docx"), {});
+    QVERIFY2(args.contains(QStringLiteral("--from=markdown-raw_tex")), qPrintable(args.join(QLatin1Char(' '))));
+    QVERIFY(!args.contains(QStringLiteral("--from=markdown")));
+
+    // The rest of the invocation keeps its shape: standalone flag, then the
+    // output token, then the caller's extra args last.
+    QVERIFY(args.contains(QStringLiteral("--standalone")));
+    const QStringList extra = Exporter::pandocArgs(QStringLiteral("/tmp/out.docx"), {QStringLiteral("--resource-path=/tmp/media")});
+    QCOMPARE(extra.last(), QStringLiteral("--resource-path=/tmp/media"));
+}
+
+void ExporterTest::pandocArgsOutputIsSingleToken()
+{
+    const QStringList args = Exporter::pandocArgs(QStringLiteral("/tmp/x/-oRCE"), {});
+    QVERIFY2(args.contains(QStringLiteral("--output=/tmp/x/-oRCE")), qPrintable(args.join(QLatin1Char(' '))));
+    QVERIFY(!args.contains(QStringLiteral("--output")));
+    QCOMPARE(args.filter(QStringLiteral("--output")).size(), 1);
+
+    // A path that itself starts with '-' must not become a separate token
+    // pandoc would parse as an option.
+    const QStringList dashArgs = Exporter::pandocArgs(QStringLiteral("-oRCE"), {});
+    QCOMPARE(dashArgs.filter(QStringLiteral("--output")).size(), 1);
+    QVERIFY2(dashArgs.contains(QStringLiteral("--output=-oRCE")), qPrintable(dashArgs.join(QLatin1Char(' '))));
+    QVERIFY(!dashArgs.contains(QStringLiteral("--output")));
+}
+
+void ExporterTest::exportDocxKeepsTexCommandsAsText()
+{
+    if (!Exporter::isPandocAvailable())
+        QSKIP("pandoc is not available on this machine");
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath("result.docx");
+
+    const QList<Exporter::Page> pages = {{1, QStringLiteral("Body\n\n\\input{/etc/passwd}\n\n\\includegraphics{/etc/passwd}")}, {2, QStringLiteral("Second page")}};
+    Exporter exporter;
+    const Exporter::Result r = exporter.exportToFile(pages, path);
+    QVERIFY2(r.success, qPrintable(r.message.text()));
+
+    // Read the produced DOCX back through pandoc: with raw_tex disabled the
+    // TeX commands must survive as literal text (with raw_tex they parse as
+    // raw tex and the docx writer drops them, so the text vanishes), while
+    // the raw_attribute page break between the pages is still parsed as raw
+    // openxml — not leaked through as literal code-block text.
+    QProcess pandoc;
+    pandoc.start(Exporter::pandocExecutable(), {QStringLiteral("--from=docx"), QStringLiteral("--to=plain"), path});
+    QVERIFY(pandoc.waitForStarted(5000));
+    QVERIFY(pandoc.waitForFinished(30000));
+    QCOMPARE(pandoc.exitCode(), 0);
+    const QString plain = QString::fromUtf8(pandoc.readAllStandardOutput());
+    QVERIFY2(plain.contains(QStringLiteral("\\input{/etc/passwd}")), qPrintable(plain));
+    QVERIFY2(plain.contains(QStringLiteral("\\includegraphics{/etc/passwd}")), qPrintable(plain));
+    QVERIFY2(plain.contains(QStringLiteral("Second page")), qPrintable(plain));
+    QVERIFY2(!plain.contains(QStringLiteral("openxml")), qPrintable(plain));
+    QVERIFY2(!plain.contains(QStringLiteral("<w:p>")), qPrintable(plain));
 }
 
 QTEST_MAIN(ExporterTest)

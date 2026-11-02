@@ -47,6 +47,7 @@ public:
     static Format formatForSuffix(const QString &suffix);
     static bool isPandocAvailable();
     static QString pandocExecutable();
+    static QStringList pandocArgs(const QString &outputPath, const QStringList &extraArgs);
     static QString buildMarkdown(const QList<Page> &pages, bool splitPages = true);
     static QString buildPlainText(const QList<Page> &pages, bool splitPages = true);
     static QString buildHtml(const QList<Page> &pages, bool splitPages = true);

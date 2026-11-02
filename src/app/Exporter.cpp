@@ -476,14 +476,20 @@ Exporter::Result Exporter::writeTextFile(const QString &path, const QString &con
     return Result::ok(StatusMessage::translate("Exporter", "Exported to %1").arg(QFileInfo(path).fileName()));
 }
 
+QStringList Exporter::pandocArgs(const QString &outputPath, const QStringList &extraArgs)
+{
+    QStringList args;
+    args << QStringLiteral("--from=markdown-raw_tex") << QStringLiteral("--standalone") << QStringLiteral("--output=%1").arg(outputPath) << extraArgs;
+    return args;
+}
+
 Exporter::Result Exporter::runPandoc(const QString &markdown, const QString &outputPath, const QStringList &extraArgs)
 {
     const QString exe = pandocExecutable();
     if (exe.isEmpty())
         return Result::fail(StatusMessage::translate("Exporter", "Pandoc not found."));
 
-    QStringList args;
-    args << QStringLiteral("--from=markdown") << QStringLiteral("--standalone") << QStringLiteral("--output") << outputPath << extraArgs;
+    const QStringList args = pandocArgs(outputPath, extraArgs);
 
     QProcess process;
     process.start(exe, args);
