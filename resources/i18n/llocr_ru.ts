@@ -2108,8 +2108,13 @@
     </message>
     <message>
         <location line="+16"/>
+        <source>The server did not report the file size — the download was refused</source>
+        <translation>Сервер не сообщил размер файла — скачивание отклонено</translation>
+    </message>
+    <message>
+        <location line="+12"/>
         <source>No sha256 digest was published for %1 — the download was refused.</source>
-        <translation type="unfinished"></translation>
+        <translation>Для %1 не опубликована контрольная сумма sha256 — скачивание отклонено.</translation>
     </message>
     <message>
         <location line="+12"/>

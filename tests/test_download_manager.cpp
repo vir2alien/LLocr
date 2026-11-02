@@ -38,7 +38,8 @@ public:
     bool corruptContentRange = false;
     bool streamPartialThenHold = false;
     bool dropMidBody = false;
-    int forcedStatus = 0;  // non-zero: answer this status with an empty body
+    bool chunkedNoLength = false;  // 200 with Transfer-Encoding: chunked, no Content-Length
+    int forcedStatus = 0;          // non-zero: answer this status with an empty body
 
     QList<RecordedRequest> requests;
 
@@ -165,6 +166,22 @@ private:
             return;
         }
 
+        if (chunkedNoLength) {
+            // A valid chunked body: the transfer itself succeeds, but the
+            // client never learns the total size from the headers.
+            QByteArray raw;
+            raw += "HTTP/1.1 200 OK\r\n";
+            for (const QByteArray &header : baseHeaders())
+                raw += header + "\r\n";
+            raw += "Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n";
+            raw += QByteArray::number(content.size(), 16) + "\r\n";
+            raw += content + "\r\n0\r\n\r\n";
+            socket->write(raw);
+            socket->flush();
+            socket->disconnectFromHost();
+            return;
+        }
+
         if (dropMidBody) {
             // The 200 headers promise the full length, half the body arrives,
             // then the connection closes — the transfer breaks mid-stream.
@@ -266,6 +283,13 @@ private slots:
     void cancelKeepsPartial();
     void cancelDeletesPartial();
     void insufficientSpaceFails();
+    // A chunked response (no Content-Length) leaves the transfer size
+    // unbounded: the downloader refuses it instead of writing to disk without
+    // a limit; a normal Content-Length response still works.
+    void chunkedWithoutContentLengthIsRefused();
+    // A file nobody published a checksum for is refused when the caller
+    // insists on one (ADR 212), and accepted when they do not.
+    void noDigestIsRefusedWhenRequired();
     void parallelLimitRespectsTwoSlots();
     void refusesInsecureUrlByDefault();
     // A mid-stream connection drop is retried on its own: the retry resumes
@@ -504,6 +528,64 @@ void TestDownloadManager::insufficientSpaceFails()
     DownloadTask *task = mgr.taskAt(row);
     QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 5000);
     QVERIFY(task->error().contains(QStringLiteral("space"), Qt::CaseInsensitive));
+}
+
+void TestDownloadManager::chunkedWithoutContentLengthIsRefused()
+{
+    QTemporaryDir dir;
+    TestServer server;
+    const QByteArray data = pattern(4096);
+    server.content = data;
+    server.chunkedNoLength = true;
+    QVERIFY(server.start());
+
+    DownloadManager mgr;
+    mgr.setAllowLoopbackHttp(true);
+    const int row = mgr.enqueue(makeReq(server.url("f.bin"), dir.path(), "f.bin", sha256Hex(data)));
+    DownloadTask *task = mgr.taskAt(row);
+    QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 5000);
+    QVERIFY(task->error().contains(QStringLiteral("file size"), Qt::CaseInsensitive));
+
+    // The refusal happens before the body is written: nothing on disk.
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("f.bin")));
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("f.bin.part")));
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("f.bin.part.meta")));
+
+    // The same file with a declared length downloads as before.
+    server.chunkedNoLength = false;
+    const int okRow = mgr.enqueue(makeReq(server.url("ok.bin"), dir.path(), "ok.bin", sha256Hex(data)));
+    DownloadTask *ok = mgr.taskAt(okRow);
+    QTRY_COMPARE_WITH_TIMEOUT(int(ok->state()), int(DownloadTask::State::Completed), 5000);
+    QCOMPARE(readFile(QDir(dir.path()).filePath("ok.bin")), data);
+}
+
+void TestDownloadManager::noDigestIsRefusedWhenRequired()
+{
+    QTemporaryDir dir;
+    TestServer server;
+    const QByteArray data = pattern(2048);
+    server.content = data;
+    QVERIFY(server.start());
+
+    DownloadManager mgr;
+    mgr.setAllowLoopbackHttp(true);
+
+    DownloadTask::Request required = makeReq(server.url("n.bin"), dir.path(), "n.bin");
+    required.requireSha256 = true;
+    const int row = mgr.enqueue(required);
+    DownloadTask *task = mgr.taskAt(row);
+    QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 5000);
+    QCOMPARE(task->error(), QStringLiteral("No sha256 digest was published for %1 — the download was refused.").arg(QStringLiteral("n.bin")));
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("n.bin")));
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("n.bin.part")));
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("n.bin.part.meta")));
+
+    // Without the requirement an unpublished digest is still accepted —
+    // the behaviour every pre-existing no-sha download relies on.
+    const int okRow = mgr.enqueue(makeReq(server.url("u.bin"), dir.path(), "u.bin"));
+    DownloadTask *ok = mgr.taskAt(okRow);
+    QTRY_COMPARE_WITH_TIMEOUT(int(ok->state()), int(DownloadTask::State::Completed), 5000);
+    QCOMPARE(readFile(QDir(dir.path()).filePath("u.bin")), data);
 }
 
 void TestDownloadManager::parallelLimitRespectsTwoSlots()

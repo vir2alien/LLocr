@@ -439,6 +439,7 @@ void ModelInstallTransaction::enqueueFile(const QString &repoPath, const QString
     req.fileName = leaf;
     req.sha256 = expectedShaFor(repoPath);
     req.authorization = auth;
+    req.requireSha256 = true;  // ADR 212: the same rule the runtime downloads follow
 
     m_group->enqueue(req);
 }
