@@ -294,6 +294,10 @@ void ExporterTest::assembleHtmlDocumentIsSelfContained()
 
     QVERIFY(html.startsWith(QStringLiteral("<!DOCTYPE html>")));
     QVERIFY(html.contains(QStringLiteral("<meta charset=\"utf-8\">")));
+    const QLatin1String csp("<meta http-equiv=\"Content-Security-Policy\" "
+                            "content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:\">");
+    QVERIFY(html.contains(csp));
+    QVERIFY(html.indexOf(csp) < html.indexOf(QStringLiteral("<style")));
     QVERIFY(html.contains(QStringLiteral("<section><h2>Page 1</h2><p>hi</p></section>")));
     // KaTeX CSS is inlined with the bundled font as a data: URI…
     QVERIFY(html.contains(QStringLiteral("data:font/woff2;base64,")));
@@ -302,6 +306,7 @@ void ExporterTest::assembleHtmlDocumentIsSelfContained()
     QVERIFY(!html.contains(QStringLiteral("truetype")));
     // The shared stylesheet (with the print rules) is embedded as well.
     QVERIFY(html.contains(QStringLiteral("@media print")));
+    QVERIFY(!html.contains(QStringLiteral("<script"), Qt::CaseInsensitive));
     QVERIFY(html.trimmed().endsWith(QStringLiteral("</html>")));
 }
 

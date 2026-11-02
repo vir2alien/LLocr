@@ -304,7 +304,9 @@ QString Exporter::assembleHtmlDocument(const QStringList &pageSections)
 {
     QString html;
     html += QStringLiteral("<!DOCTYPE html>\n<html>\n<head>\n"
-                           "<meta charset=\"utf-8\">\n<title>OCR result</title>\n");
+                           "<meta charset=\"utf-8\">\n<title>OCR result</title>\n"
+                           "<meta http-equiv=\"Content-Security-Policy\" "
+                           "content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:\">\n");
     html += QLatin1String("<style>") + katexCssForExport() + QLatin1String("</style>\n");
     html += QLatin1String("<style>") + exportStyleSheet() + QLatin1String("</style>\n");
     html += QLatin1String("</head>\n<body>\n");
