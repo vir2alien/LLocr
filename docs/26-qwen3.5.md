@@ -120,7 +120,7 @@ parameter (ADR 268): Настройки → Проверка holds two budgets �
 (`check/readReasoningBudgetTokens`), both with the same four steps off / low
 512 / med 1024 / high 1536 — and `FixController` injects the budget into the
 request per protocol right before the `RequestBudget` computation (the fix
-budget for `full_block`, the read budget for «Распознать точно»). The request
+budget for `full_block`, the read budget for «Перераспознать»). The request
 profiles no longer carry the parameter (`reasoningModes` removed from
 `fix-requests.json` and `read-requests.json`; stored per-model budgets —
 qwen3.5-4b 512, qwen3.5-9b 1024 — were dropped on migration, the default is

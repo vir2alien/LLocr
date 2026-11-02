@@ -97,6 +97,18 @@ QtObject {
         pointSize: captionSize
     })
 
+    // The section labels of the toolbar: uppercase and a hair apart — they
+    // read as headings over the buttons, not as a caption of one. A step
+    // below the button font, so the buttons stay the voice of the toolbar.
+    readonly property font captionUpper: {
+        const f = Qt.font({
+            pointSize: captionSize
+        })
+        f.capitalization = Font.AllUppercase
+        f.letterSpacing = 0.6
+        return f
+    }
+
     // The code-like blocks — a formula, a table, a snippet — are read in a
     // monospace face: the brackets, the subscripts and the spaces must not
     // drift apart.

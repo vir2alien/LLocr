@@ -36,7 +36,8 @@ ToolBar {
     }
 
     // The page count the pipeline acts on: an empty selection means the whole
-    // document; the «Авто» field is the same selection written as a range.
+    // document; the «Целевые страницы» field is the same selection written as
+    // a range.
     readonly property int scopePageCount: Controller.selectedPageCount > 0
                                           ? Controller.selectedPageCount
                                           : Controller.pageCount
@@ -67,115 +68,37 @@ ToolBar {
         spacing: Theme.spacingSmall
 
         ToolGroup {
-            captionLine: false
+            title: qsTr("Document")
 
-            IconToolButton {
-                id: fileButton
-                text: qsTr("File")
-                iconName: "file-text"
-                Layout.fillWidth: true
-                onClicked: fileMenu.popup(fileButton, 0, fileButton.height + 2)
-            }
+            RowLayout {
+                spacing: 4
 
-            IconToolButton {
-                id: importButton
-                text: qsTr("Import")
-                iconName: "image"
-                Layout.fillWidth: true
-                enabled: !Controller.busy && !Controller.importing && !Controller.exporting
-                         && !Controller.checkBusy
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Open images, PDF or DjVu")
-                onClicked: headerRoot.openFileRequested()
-            }
-        }
-
-        ToolDivider {}
-
-        ToolGroup {
-            title: qsTr("Auto")
-
-            TextField {
-                id: pagesField
-
-                implicitWidth: 110
-                implicitHeight: 26
-                // The Fusion field pads the text by 4 px above and below, and
-                // the system font's line is 21 px on macOS: 26 px of height
-                // needs 2 px of padding, or the text is cut.
-                topPadding: 2
-                bottomPadding: 2
-                // The text starts where the group's caption and the buttons'
-                // captions start.
-                leftPadding: 6
-                enabled: Controller.hasImage
-                placeholderText: qsTr("All")
-                ToolTip.visible: hovered && enabled
-                ToolTip.text: qsTr("Pages to process: follows the selection in the thumbnail panel, or type a range like 1-10, 15")
-
-                function applyRange() {
-                    Controller.pageModel.applyPagesRange(pagesField.text)
-                    pagesField.text = Controller.pageModel.selectedPagesRange()
-                }
-
-                onAccepted: applyRange()
-                onActiveFocusChanged: {
-                    if (activeFocus)
-                        selectAll()
-                    else
-                        applyRange()
-                }
-
-                Connections {
-                    target: Controller.pageModel
-                    function onSelectionChanged() {
-                        if (!pagesField.activeFocus)
-                            pagesField.text = Controller.pageModel.selectedPagesRange()
-                    }
-                }
-            }
-
-            // The button can be off while its reason must still be readable: a
-            // disabled control gets no hover events, so the pointer handler
-            // lives on a wrapper that stays enabled.
-            Item {
-                id: autoButtonArea
-
-                implicitWidth: autoButton.implicitWidth
-                implicitHeight: autoButton.implicitHeight
-                Layout.fillWidth: true
-                Layout.minimumWidth: autoButton.implicitWidth
-
-                HoverHandler {
-                    id: autoAreaHover
+                IconToolButton {
+                    id: fileButton
+                    text: qsTr("File")
+                    iconName: "file-text"
+                    onClicked: fileMenu.popup(fileButton, 0, fileButton.height + 2)
                 }
 
                 IconToolButton {
-                    id: autoButton
+                    id: importButton
+                    text: qsTr("Import")
+                    iconName: "image"
+                    enabled: !Controller.busy && !Controller.importing && !Controller.exporting
+                             && !Controller.checkBusy
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Open images, PDF or DjVu")
+                    onClicked: headerRoot.openFileRequested()
+                }
 
-                    anchors.fill: parent
-                    text: qsTr("Recognize %1 pg.").arg(headerRoot.scopePageCount)
-                    iconName: "zap"
-                    stopMode: Controller.autoPipelineRunning
-                    enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                             && Controller.autoPipelineAvailable)
-                    ToolTip.visible: hovered || autoAreaHover.hovered
-                    ToolTip.text: {
-                        // The C++ owns the reason and the wording; the button only
-                        // shows it. One read: the reason scans the scope.
-                        const reason = Controller.autoPipelineBlockedReason
-                        return stopMode ? qsTr("Stop the automatic pipeline")
-                                        : (reason.length > 0
-                                           ? reason
-                                           : qsTr("Mark up, recognize, verify and fix the selected pages"))
-                    }
-                    onClicked: {
-                        if (stopMode) {
-                            Controller.stopAutoPipeline()
-                            return
-                        }
-                        autoConfirmDialog.requestAutoPipeline()
-                    }
+                IconToolButton {
+                    text: qsTr("Export")
+                    iconName: "upload"
+                    enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
+                             && !Controller.checkBusy
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Export the recognized text")
+                    onClicked: headerRoot.exportRequested(0)
                 }
             }
         }
@@ -183,64 +106,167 @@ ToolBar {
         ToolDivider {}
 
         ToolGroup {
-            title: qsTr("Recognition")
+            title: qsTr("Target pages")
 
-            IconToolButton {
-                text: qsTr("Mark up")
-                iconName: "layout-template"
-                Layout.fillWidth: true
-                stopMode: Controller.layoutBusy
-                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.layoutAvailable && Controller.layoutModelAvailable)
-                ToolTip.visible: hovered
-                ToolTip.text: stopMode ? qsTr("Stop the layout pass")
-                                       : qsTr("Find the blocks on the selected pages")
-                onClicked: {
-                    if (stopMode) {
-                        Controller.stopLayout()
-                        return
-                    }
-                    markupConfirmDialog.requestMarkup()
-                }
-            }
-
-            IconToolButton {
-                text: qsTr("Recognize")
-                iconName: "scan-text"
-                Layout.fillWidth: true
-                stopMode: Controller.checkBusy && Controller.checkRecheckPhase
-                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.scopeBlocksRecognitionSupported
-                         && Controller.blockRecognitionModelAvailable)
-                ToolTip.visible: hovered
-                ToolTip.text: stopMode ? qsTr("Stop the block recognition")
-                                       : qsTr("Recognize the marked blocks that still have no text")
-                onClicked: {
-                    if (stopMode) {
-                        Controller.stopCheck()
-                        return
-                    }
-                    Controller.recognizeScopeBlocks()
-                }
-            }
-        }
-
-        ToolDivider {}
-
-        ToolGroup {
-            title: qsTr("Verification and fixing")
-
-            // The verify and the re-read share a row: the group stays three
-            // rows tall (the caption, this row, the fix), and the menu does
-            // not grow with every new action.
             RowLayout {
                 spacing: 4
-                Layout.fillWidth: true
+
+                TextField {
+                    id: pagesField
+
+                    implicitWidth: 120
+                    implicitHeight: 28
+                    // The Fusion field pads the text by 4 px above and below, and
+                    // the system font's line is 21 px on macOS: 26 px of height
+                    // needs 2 px of padding, or the text is cut.
+                    topPadding: 2
+                    bottomPadding: 2
+                    // The text starts where the prefix and the buttons'
+                    // captions start.
+                    leftPadding: 5 + pagesPrefix.width + 4
+                    rightPadding: 5
+                    enabled: Controller.hasImage
+                    placeholderText: qsTr("All")
+                    ToolTip.visible: hovered && enabled
+                    ToolTip.text: qsTr("Pages to process: follows the selection in the thumbnail panel, or type a range like 1-10, 15")
+
+                    // The prefix names the field: a bare number would be read
+                    // as a page of the document, not as the scope of the run.
+                    Text {
+                        id: pagesPrefix
+                        anchors.left: parent.left
+                        anchors.leftMargin: 5
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("Pages:")
+                        font: pagesField.font
+                        color: Theme.textMuted
+                    }
+
+                    function applyRange() {
+                        Controller.pageModel.applyPagesRange(pagesField.text)
+                        pagesField.text = Controller.pageModel.selectedPagesRange()
+                    }
+
+                    onAccepted: applyRange()
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            selectAll()
+                        else
+                            applyRange()
+                    }
+
+                    Connections {
+                        target: Controller.pageModel
+                        function onSelectionChanged() {
+                            if (!pagesField.activeFocus)
+                                pagesField.text = Controller.pageModel.selectedPagesRange()
+                        }
+                    }
+                }
+
+                // The button can be off while its reason must still be readable: a
+                // disabled control gets no hover events, so the pointer handler
+                // lives on a wrapper that stays enabled.
+                Item {
+                    id: autoButtonArea
+
+                    implicitWidth: autoButton.implicitWidth
+                    implicitHeight: autoButton.implicitHeight
+                    Layout.minimumWidth: autoButton.implicitWidth
+
+                    HoverHandler {
+                        id: autoAreaHover
+                    }
+
+                    IconToolButton {
+                        id: autoButton
+
+                        anchors.fill: parent
+                        text: qsTr("Auto pass")
+                        iconName: "zap"
+                        stopMode: Controller.autoPipelineRunning
+                        enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                                 && Controller.autoPipelineAvailable)
+                        ToolTip.visible: hovered || autoAreaHover.hovered
+                        ToolTip.text: {
+                            // The C++ owns the reason and the wording; the button only
+                            // shows it. One read: the reason scans the scope.
+                            const reason = Controller.autoPipelineBlockedReason
+                            return stopMode ? qsTr("Stop the automatic pipeline")
+                                            : (reason.length > 0
+                                               ? reason
+                                               : qsTr("Mark up, recognize, verify and fix %1 pages").arg(headerRoot.scopePageCount))
+                        }
+                        onClicked: {
+                            if (stopMode) {
+                                Controller.stopAutoPipeline()
+                                return
+                            }
+                            autoConfirmDialog.requestAutoPipeline()
+                        }
+                    }
+                }
+            }
+        }
+
+        ToolDivider {}
+
+        ToolGroup {
+            title: qsTr("Markup and OCR")
+
+            RowLayout {
+                spacing: 4
+
+                IconToolButton {
+                    text: qsTr("Mark up")
+                    iconName: "layout-template"
+                    stopMode: Controller.layoutBusy
+                    enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                             && Controller.layoutAvailable && Controller.layoutModelAvailable)
+                    ToolTip.visible: hovered
+                    ToolTip.text: stopMode ? qsTr("Stop the layout pass")
+                                           : qsTr("Find the blocks on the selected pages")
+                    onClicked: {
+                        if (stopMode) {
+                            Controller.stopLayout()
+                            return
+                        }
+                        markupConfirmDialog.requestMarkup()
+                    }
+                }
+
+                IconToolButton {
+                    text: qsTr("Recognize blocks")
+                    iconName: "scan-text"
+                    stopMode: Controller.checkBusy && Controller.checkRecheckPhase
+                    enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                             && Controller.scopeBlocksRecognitionSupported
+                             && Controller.blockRecognitionModelAvailable)
+                    ToolTip.visible: hovered
+                    ToolTip.text: stopMode ? qsTr("Stop the block recognition")
+                                           : qsTr("Recognize the marked blocks that still have no text")
+                    onClicked: {
+                        if (stopMode) {
+                            Controller.stopCheck()
+                            return
+                        }
+                        Controller.recognizeScopeBlocks()
+                    }
+                }
+            }
+        }
+
+        ToolDivider {}
+
+        ToolGroup {
+            title: qsTr("Verification and AI correction")
+
+            RowLayout {
+                spacing: 4
 
                 IconToolButton {
                     text: qsTr("Verify")
                     iconName: "circle-check"
-                    Layout.fillWidth: true
                     stopMode: Controller.checkBusy && Controller.checkDecisionPhase
                     enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
                              && Controller.scopeVerificationSupported && Controller.decisionModelAvailable)
@@ -257,11 +283,31 @@ ToolBar {
                 }
 
                 IconToolButton {
+                    text: Controller.scopedPendingFixCount > 0
+                          ? qsTr("Fix") + " (" + Controller.scopedPendingFixCount + ")"
+                          : qsTr("Fix")
+                    iconName: "wand-sparkles"
+                    highlight: Controller.scopedPendingFixCount > 0
+                    stopMode: Controller.checkBusy && Controller.checkFixPhase
+                    enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                             && Controller.fixModelAvailable && Controller.scopedPendingFixCount > 0)
+                    ToolTip.visible: hovered
+                    ToolTip.text: stopMode ? qsTr("Stop the fix")
+                                           : qsTr("Fix the blocks that wait for a fix on the selected pages")
+                    onClicked: {
+                        if (stopMode) {
+                            Controller.stopCheck()
+                            return
+                        }
+                        Controller.fixScopeProblemBlocks()
+                    }
+                }
+
+                IconToolButton {
                     text: Controller.scopedReadBlockCount > 0
-                          ? qsTr("Recognize exactly") + " (" + Controller.scopedReadBlockCount + ")"
-                          : qsTr("Recognize exactly")
+                          ? qsTr("Re-recognize") + " (" + Controller.scopedReadBlockCount + ")"
+                          : qsTr("Re-recognize")
                     iconName: "file-search"
-                    Layout.fillWidth: true
                     stopMode: Controller.checkBusy && Controller.checkReadPhase
                     enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
                              && Controller.fixModelAvailable && Controller.scopedReadBlockCount > 0)
@@ -277,54 +323,24 @@ ToolBar {
                     }
                 }
             }
-
-            IconToolButton {
-                text: Controller.scopedPendingFixCount > 0
-                      ? qsTr("Fix") + " (" + Controller.scopedPendingFixCount + ")"
-                      : qsTr("Fix")
-                iconName: "wand-sparkles"
-                Layout.fillWidth: true
-                highlight: Controller.scopedPendingFixCount > 0
-                stopMode: Controller.checkBusy && Controller.checkFixPhase
-                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.fixModelAvailable && Controller.scopedPendingFixCount > 0)
-                ToolTip.visible: hovered
-                ToolTip.text: stopMode ? qsTr("Stop the fix")
-                                       : qsTr("Fix the blocks that wait for a fix on the selected pages")
-                onClicked: {
-                    if (stopMode) {
-                        Controller.stopCheck()
-                        return
-                    }
-                    Controller.fixScopeProblemBlocks()
-                }
-            }
         }
 
         ToolDivider {}
-
-        ToolGroup {
-            IconToolButton {
-                text: qsTr("Export")
-                iconName: "upload"
-                enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-                         && !Controller.checkBusy
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Export the recognized text")
-                onClicked: headerRoot.exportRequested(0)
-            }
-        }
 
         Item { Layout.fillWidth: true }
 
         ToolGroup {
             captionLine: false
 
-            IconToolButton {
-                id: settingsButton
-                text: qsTr("Settings")
-                iconName: "settings"
-                onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
+            RowLayout {
+                spacing: 4
+
+                IconToolButton {
+                    id: settingsButton
+                    text: qsTr("Settings")
+                    iconName: "settings"
+                    onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
+                }
             }
         }
     }//RowLayout
@@ -354,8 +370,8 @@ ToolBar {
 
         implicitHeight: 28
         implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
-        leftPadding: 6
-        rightPadding: 6
+        leftPadding: 5
+        rightPadding: 5
         Layout.minimumWidth: implicitWidth
 
         contentItem: Item {
@@ -370,7 +386,7 @@ ToolBar {
                 opacity: iconButton.stopMode ? 0 : 1
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 5
+                spacing: 4
 
                 Icon {
                     visible: iconButton.iconName.length > 0
@@ -425,12 +441,11 @@ ToolBar {
         }
     }
 
-    // A caption over a stack of pipeline buttons; the children declared at the
-    // use site stack vertically below it. The caption line exists even when
-    // the title is empty (Экспорт rides on the pipeline buttons' first row);
-    // groups that opt out start at the very top of the toolbar (Файл/Импорт,
-    // Настройки). fillWidth must be explicit: a nested layout is widened by
-    // default, and the groups would spread over the whole toolbar.
+    // A section label over a row of buttons. The group without a label (the
+    // settings button) has no caption row to sit under, so it aligns to the
+    // bottom of the toolbar — the row the labelled groups' buttons stand on.
+    // fillWidth must be explicit: a nested layout is widened by default, and
+    // the groups would spread over the whole toolbar.
     component ToolGroup: ColumnLayout {
         id: groupRoot
 
@@ -439,15 +454,15 @@ ToolBar {
 
         spacing: 3
         Layout.fillWidth: false
-        Layout.alignment: Qt.AlignTop
+        Layout.alignment: groupRoot.captionLine ? Qt.AlignTop : Qt.AlignBottom
 
         LLOLabel {
             visible: groupRoot.captionLine
             // The caption's text edge follows the buttons' leftPadding, so it
             // never sticks out to the left of the content under it.
-            leftPadding: 6
+            leftPadding: 5
             text: groupRoot.title
-            font: Theme.caption
+            font: Theme.captionUpper
             color: Theme.textMuted
         }
     }

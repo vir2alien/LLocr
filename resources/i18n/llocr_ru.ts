@@ -1058,6 +1058,21 @@
         <translation>Файл</translation>
     </message>
     <message>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+71"/>
+        <source>Document</source>
+        <translation>Документ</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+109"/>
+        <source>Target pages</source>
+        <translation>Целевые страницы</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+140"/>
+        <source>Pages:</source>
+        <translation>Стр:</translation>
+    </message>
+    <message>
         <location line="+394"/>
         <source>Open project…</source>
         <translation>Открыть проект…</translation>
@@ -1131,8 +1146,8 @@
     <message>
         <location line="-32"/>
         <location line="+1"/>
-        <source>Recognize exactly</source>
-        <translation>Распознать точно</translation>
+        <source>Re-recognize</source>
+        <translation>Перераспознать</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -1167,7 +1182,12 @@
     <message>
         <location line="-307"/>
         <source>Verification and fixing</source>
-        <translation>Проверка и исправление</translation>
+        <translation type="vanished">Проверка и исправление</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+262"/>
+        <source>Verification and AI correction</source>
+        <translation>Проверки и AI-коррекция</translation>
     </message>
     <message>
         <location line="+311"/>
@@ -1202,7 +1222,12 @@
     <message>
         <location line="-18"/>
         <source>Auto</source>
-        <translation>Авто</translation>
+        <translation type="vanished">Авто</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+185"/>
+        <source>Auto pass</source>
+        <translation>Авто-проход</translation>
     </message>
     <message>
         <location line="+37"/>
@@ -1222,12 +1247,17 @@
     <message>
         <location line="+24"/>
         <source>Recognize %1 pg.</source>
-        <translation>Распознать %1 стр.</translation>
+        <translation type="vanished">Распознать %1 стр.</translation>
     </message>
     <message>
         <location line="+29"/>
         <source>Recognition</source>
-        <translation>Распознавание</translation>
+        <translation type="vanished">Распознавание</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+215"/>
+        <source>Markup and OCR</source>
+        <translation>Разметка и OCR</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -1236,8 +1266,8 @@
     </message>
     <message>
         <location line="+12"/>
-        <source>Recognize</source>
-        <translation>Распознать</translation>
+        <source>Recognize blocks</source>
+        <translation>Распознать блоки</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -1307,8 +1337,8 @@
     </message>
     <message>
         <location line="+3"/>
-        <source>Mark up, recognize, verify and fix the selected pages</source>
-        <translation>Разметить, распознать, проверить и исправить выбранные страницы</translation>
+        <source>Mark up, recognize, verify and fix %1 pages</source>
+        <translation>Разметить, распознать, проверить и исправить %1 стр.</translation>
     </message>
     <message>
         <location line="+423"/>

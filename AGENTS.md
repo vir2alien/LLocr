@@ -458,7 +458,7 @@
     profile** (`fix-requests.json`), one copy for all six fix models; a model
     profile may still ship its own entry for a block type and it wins. The
     **read** protocol (ADR 259, ADR 260, ADR 266) is the same task with
-    another contract: the «Распознать точно» button sends the image, the
+    another contract: the «Перераспознать» button sends the image, the
     system prompt and the block prompt — and nothing else; the recognized text
     of the block never travels (ADR 266), so the reader has one source of
     truth and writes the block from the image (`FIX` with the whole block, or
@@ -490,7 +490,7 @@
     `check/readReasoningBudgetTokens`, edited in Настройки → Проверка — and
     `FixController` injects the per-protocol one into the request right before
     the `RequestBudget` computation (the fix budget for the fix protocol, the
-    read budget for «Распознать точно»); the parameter no longer sits in the
+    read budget for «Перераспознать»); the parameter no longer sits in the
     request profiles. The model profile still says whether the model can think
     at all (`reasoning: true`), the budget rides the request (llama.cpp reads
     it per request — no server restart) and it is also the switch:
@@ -596,20 +596,23 @@
     the upstream calibration. Manual only — not wired into the automatic
     pipeline. Model manual: `docs/24-mineru.md` (the archive's TeleOCR
     carried the pass first — `archive/models/docs/15-teleocr.md`).
-  - **Interface rework (ADR 151, Oct 2026; toolbar ADR 167 → ADR 171)** — the
-    header is one row of labeled groups: «Файл / Импорт» (stacked; «Файл» is
-    the project menu — open / save / save-as project, Ctrl+O moved to
-    «Импорт»), «Страницы» (a page-range field in the compact 1-based form
-    "1-10, 15" — a two-way editor of the thumbnail selection through
+  - **Interface rework (ADR 151, Oct 2026; toolbar ADR 167 → ADR 171; the
+    blocks and the button names — ADR 270)** — the
+    header is one row of **blocks with section labels**
+    (`MainWindow/Header.qml`): «Документ» (Файл — the project menu: open /
+    save / save-as project, Ctrl+O moved to «Импорт»; Импорт; Экспорт),
+    «Целевые страницы» (a page-range field in the compact 1-based form
+    "1-10, 15" with the «Стр:» prefix inside it — a two-way editor of the
+    thumbnail selection through
     `PageListModel::selectedPagesRange()` / `applyPagesRange()`: the
     thumbnails update the field, typing a range replaces the selection,
     an empty input = the whole document, garbage changes nothing; empty
-    selection = the whole document as before), «Авто» (the
-    Fast/Balanced/Accurate segmented switch is live, its «Распознать N стр»
-    button stays disabled until the automatic pipelines land), «Разметка»
-    (Разметить / Распознать блоки), «Распознать» (С разметкой / Без
-    разметки — the ADR 167 three-mode picker dissolved into explicit
-    buttons) and «Верификация» (Проверить / Перечитать / Исправить) — all acting on the
+    selection = the whole document as before; and «Авто-проход» — the whole
+    pipeline over that scope, the page count in its tooltip), «Разметка и
+    OCR» (Разметить / Распознать блоки), «Проверки и AI-коррекция»
+    (Проверить / Исправить / Перераспознать) and «Настройки» (the settings
+    menu — its button carries no label and stands on the buttons' row, not on
+    the labels' row) — all acting on the
     **thumbnail selection** (Ctrl/Cmd+click toggles, «Выбрать все» in the
     column header; «Исправить» lights `Theme.accentAttention` with a `(N)`
     badge of `scopedPendingFixCount` — the blocks that still wait for the
@@ -618,9 +621,9 @@
     back into it). «Проверить» runs the decision pass
     only (`checkScopeEnabledBlocks()`) — verify and fix are separate buttons
     in the manual pipeline; the automatic check/fix switches are gone
-    (ADR 178). «Распознать точно» (the magnifier over a page) sits in the same row
-    as «Проверить» — the group keeps its three rows, so the menu does not grow
-    with every new action. It takes **every text block of the selected pages**
+    (ADR 178). «Перераспознать» (the magnifier over a page; ADR 270 — was
+    «Распознать точно») sits in the same row
+    as «Проверить» and «Исправить». It takes **every text block of the selected pages**
     (`scopedReadBlockCount`, shown as a `(N)` badge) — except the blocks the
     user owns (hand-written or confirmed by hand): the fix model writes the
     block from the image, and the recognized text of the block never travels
@@ -636,14 +639,14 @@
     `busy` + the last-used page-recognition button, `checkBusy` +
     `checkDecisionPhase`/`checkRecheckPhase`/`checkFixPhase`/`checkReadPhase` →
     «Проверить» /
-    «Распознать блоки» / «Исправить» / «Перечитать»), so a run started elsewhere still shows
+    «Распознать блоки» / «Исправить» / «Перераспознать»), so a run started elsewhere still shows
     its stop on the matching button. The model-download queue has no toolbar
     stop — it is cancelled where it starts (Models window, wizard). The
-    progress text stays in the footer (the `TaskStatus` singleton). On the
-    right — Экспорт (opens the
-    export dialog, the scope is chosen there) and «Настройки» (the settings
-    menu). The ADR 167 preset stub («Ручной (Пошаговый)» + three grey
-    presets) is deleted — the «Авто» switch is its successor. The **page
+    progress text stays in the footer (the `TaskStatus` singleton). Экспорт
+    sits in the «Документ» block (it opens the
+    export dialog, the scope is chosen there). The ADR 167 preset stub
+    («Ручной (Пошаговый)» + three grey
+    presets) is deleted — the «Авто-проход» button is its successor. The **page
     toolbar**
     (`MainWindow/PageToolBar.qml`) collapses to one row: «Стр. ‹ n / N ›»
     page navigation plus the block-add buttons (T / image / table / Σ / code
