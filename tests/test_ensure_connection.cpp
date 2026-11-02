@@ -1052,8 +1052,86 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(finished == 1, 15000);
         QVERIFY(resolved.baseUrl.startsWith(QStringLiteral("http://127.0.0.1:")));
         QCOMPARE(resolved.modelId, QStringLiteral("llocr-local"));
-        QVERIFY(resolved.apiKey.isEmpty());
+        QVERIFY(!resolved.apiKey.isEmpty());
         QVERIFY(resolved.error.isEmpty());
+
+        runtime.stopServer();
+    }
+
+    // The managed server authenticates its callers with the per-start token:
+    // the mock refuses every request without the Bearer key it was started
+    // with, so only the probes and the resolve that carry the token get
+    // through to Ready.
+    void managedBearerRequiredServerAuthenticates()
+    {
+        QTemporaryDir dir;
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        ::qputenv("LLOCR_MOCK_REQUIRE_BEARER", "argv");
+        int done = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 20000);
+        ::qunsetenv("LLOCR_MOCK_REQUIRE_BEARER");
+        QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
+        QCOMPARE(resolved.modelId, QStringLiteral("llocr-local"));
+        QVERIFY(!resolved.apiKey.isEmpty());
+
+        runtime.stopServer();
+    }
+
+    // A server whose token the app does not hold must fail the resolve with a
+    // readable error, not hang until the watchdog or resolve silently.
+    void managedBearerMismatchFailsWithReadableError()
+    {
+        QTemporaryDir dir;
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setAutoRestart(false);
+        store.setStartupTimeoutMs(1200);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        ::qputenv("LLOCR_MOCK_REQUIRE_BEARER", "not-the-app-token");
+        int done = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 20000);
+        ::qunsetenv("LLOCR_MOCK_REQUIRE_BEARER");
+        QVERIFY(resolved.baseUrl.isEmpty());
+        QVERIFY2(!resolved.error.isEmpty(), "a rejected client must surface an error");
 
         runtime.stopServer();
     }

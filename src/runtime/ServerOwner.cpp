@@ -33,6 +33,7 @@ ServerOwnerRecord ServerOwner::read(const QString &ownerJsonPath)
     record.parentPid = static_cast<qint64>(object.value(QStringLiteral("parentPid")).toDouble());
     record.port = object.value(QStringLiteral("port")).toInt();
     record.program = object.value(QStringLiteral("program")).toString();
+    record.token = object.value(QStringLiteral("token")).toString();
     return record;
 }
 

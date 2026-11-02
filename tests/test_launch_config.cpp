@@ -147,11 +147,13 @@ void TestLaunchConfig::argvSkipsReservedNames()
     cfg.parameters.append(makeParameter(QStringLiteral("port"), LaunchValueKind::Number, QVariant(1.0), 1));
     cfg.parameters.append(makeParameter(QStringLiteral("model"), LaunchValueKind::Text, QVariant(QStringLiteral("evil.gguf")), 2));
     cfg.parameters.append(makeParameter(QStringLiteral("host"), LaunchValueKind::Text, QVariant(QStringLiteral("0.0.0.0")), 3));
+    cfg.parameters.append(makeParameter(QStringLiteral("api-key"), LaunchValueKind::Text, QVariant(QStringLiteral("evil-key")), 4));
 
     const QStringList args = cfg.toArguments(modernCaps());
     QCOMPARE(args.count(QStringLiteral("--port")), 1);
     QCOMPARE(args.count(QStringLiteral("--model")), 1);
     QCOMPARE(args.count(QStringLiteral("--host")), 1);
+    QCOMPARE(args.count(QStringLiteral("--api-key")), 0);
     QCOMPARE(args.at(args.indexOf(QStringLiteral("--port")) + 1), QStringLiteral("9000"));
     QCOMPARE(args.at(args.indexOf(QStringLiteral("--host")) + 1), QStringLiteral("127.0.0.1"));
     QCOMPARE(args.at(args.indexOf(QStringLiteral("--model")) + 1), QStringLiteral("/m.gguf"));

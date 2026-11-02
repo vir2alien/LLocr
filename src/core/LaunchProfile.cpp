@@ -34,6 +34,7 @@ const QStringList &LaunchProfile::reservedArgNames()
         QStringLiteral("alias"),
         QStringLiteral("host"),
         QStringLiteral("port"),
+        QStringLiteral("api-key"),
     };
     return names;
 }

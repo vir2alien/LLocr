@@ -13,6 +13,7 @@
 #include <QTcpServer>
 #include <QTextStream>
 #include <QUrl>
+#include <QUuid>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -29,6 +30,11 @@ constexpr int kLogRotateCheckEveryLines = 256;           // check each N lines
 constexpr qint64 kRestartWindowMs = 5 * 60 * 1000;       // bounded auto-restart
 constexpr int kMaxRestartsInWindow = 3;                  //   ≤3 per window
 constexpr int kRestartDelayMs = 500;                     // grace before respawn
+
+QString generateToken()
+{
+    return QUuid::createUuid().toString(QUuid::WithoutBraces);
+}
 }  // namespace
 
 int LlamaServerProcess::pickFreePort()
@@ -69,6 +75,7 @@ bool LlamaServerProcess::parseModelsResponse(const QByteArray &body, QJsonArray 
 
 LlamaServerProcess::LlamaServerProcess(const Options &opts, QObject *parent) : QObject(parent), m_opts(opts)
 {
+    m_authToken = generateToken();
     m_process.setProcessChannelMode(QProcess::MergedChannels);
     m_process.setProgram(m_opts.program);
 #ifdef Q_OS_WIN
@@ -140,6 +147,7 @@ void LlamaServerProcess::spawn()
 {
     m_modelsProbeInFlight = false;
     m_healthInFlight = false;
+    m_authToken = generateToken();
     if (m_opts.port == 0)
         m_port = pickFreePort();
     else
@@ -176,6 +184,8 @@ void LlamaServerProcess::spawn()
         args.append(QStringLiteral("--port"));
         args.append(QString::number(m_port));
     }
+    args.append(QStringLiteral("--api-key"));
+    args.append(m_authToken);
     m_process.setArguments(args);
     if (!m_opts.workingDirectory.isEmpty())
         m_process.setWorkingDirectory(m_opts.workingDirectory);
@@ -218,6 +228,7 @@ void LlamaServerProcess::armHealthPolling()
             m_healthInFlight = true;
             QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/health")));
             req.setTransferTimeout(500);
+            req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
             QNetworkReply *reply = m_net->get(req);
             connect(reply, &QNetworkReply::finished, this, [this, reply]() { onHealthReply(reply); });
         });
@@ -247,6 +258,7 @@ void LlamaServerProcess::tryModelsFallback()
     m_modelsProbeInFlight = true;
     QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/v1/models")));
     req.setTransferTimeout(3000);
+    req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
     QNetworkReply *reply = m_net->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
@@ -565,6 +577,11 @@ int LlamaServerProcess::resolvedPort() const
     return m_port;
 }
 
+QString LlamaServerProcess::authToken() const
+{
+    return m_authToken;
+}
+
 void LlamaServerProcess::writeOwnerJson()
 {
     if (m_opts.ownerJsonPath.isEmpty())
@@ -574,6 +591,7 @@ void LlamaServerProcess::writeOwnerJson()
     o.insert(QStringLiteral("parentPid"), double(ProcessGuard::currentPid()));
     o.insert(QStringLiteral("port"), m_port);
     o.insert(QStringLiteral("program"), m_process.program());
+    o.insert(QStringLiteral("token"), m_authToken);
     // Atomic write (§7.2).
     QSaveFile f(m_opts.ownerJsonPath);
     if (!f.open(QIODevice::WriteOnly))

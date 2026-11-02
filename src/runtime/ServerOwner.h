@@ -9,6 +9,7 @@ struct ServerOwnerRecord {
     qint64 parentPid = 0;  ///< the LLocr process that started it
     int port = 0;          ///< port it was serving on
     QString program;       ///< absolute path of the binary
+    QString token;         ///< the per-start api-key token (absent in older records)
 
     bool isValid() const { return pid > 0; }
 };

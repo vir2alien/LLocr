@@ -57,6 +57,7 @@ public:
     int startCount() const;
     int restartCount() const;
     int resolvedPort() const;
+    QString authToken() const;
     static int pickFreePort();
 
     static bool parseModelsResponse(const QByteArray &body, QJsonArray &models, QString *error = nullptr);
@@ -120,6 +121,7 @@ private:
 
     QString m_healthUrl;
     int m_port = 0;
+    QString m_authToken;
     QString m_lineBuffer;
     QStringList m_ring;
     int m_ringMaxLines = 2000;

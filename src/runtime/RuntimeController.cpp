@@ -706,7 +706,16 @@ ResolvedConnection RuntimeController::buildManagedConnection() const
     url.setHost(m_settings.launchHost());
     url.setPort(port);
     conn.baseUrl = url.toString();
-    conn.apiKey.clear();  // Managed server is loopback-only, no auth
+    // A server this process spawned authenticates with its per-start token; a
+    // server adopted from a previous run carries the token of its own start in
+    // owner.json, and a record without one (an older build, a hand start) gets
+    // keyless requests.
+    if (m_server) {
+        conn.apiKey = m_server->authToken();
+    } else {
+        const RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
+        conn.apiKey = ServerOwner::read(QDir(paths.runtimeDir()).filePath(QStringLiteral("owner.json"))).token;
+    }
     if (!m_startedConfig.modelAlias.isEmpty())
         conn.modelId = m_startedConfig.modelAlias;
     else if (const ModelProfiles::Role *role = ModelProfiles::roleFor(m_settings.requestProfileIdForRole(connectionRoleName(m_startedRole)), connectionRoleName(m_startedRole)))
@@ -720,12 +729,14 @@ ResolvedConnection RuntimeController::buildManagedConnection() const
 
 void RuntimeController::fetchManagedModels()
 {
-    m_modelsBaseUrl = buildManagedConnection().baseUrl;
+    const ResolvedConnection conn = buildManagedConnection();
+    m_modelsBaseUrl = conn.baseUrl;
     if (!m_modelsNet)
         m_modelsNet = new QNetworkAccessManager(this);
 
     HttpClient::Options options;
     options.timeoutMs = kModelsRequestTimeoutMs;
+    options.authorization = "Bearer " + conn.apiKey.toUtf8();
     QNetworkRequest req = HttpClient::makeRequest(QUrl(m_modelsBaseUrl + QStringLiteral("/v1/models")), options);
     QNetworkReply *reply = m_modelsNet->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onModelsReply(reply); });

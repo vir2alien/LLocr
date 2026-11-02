@@ -2,8 +2,10 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "core/LaunchProfile.h"
 #include "runtime/LlamaServerProcess.h"
 #include "runtime/RuntimeState.h"
+#include "runtime/ServerOwner.h"
 
 using namespace llocr;
 
@@ -27,11 +29,15 @@ private slots:
     void reportsTensorLoadPercent();
     void benignWarningNoiseIsFiltered();
     void samplerDumpIsFiltered();
+    void startPassesApiTokenToTheServer();
+    void tokenDiffersBetweenStarts();
+    void ownerJsonCarriesTheToken();
+    void reservedArgNamesIncludeApikey();
 };
 
 // Helper that builds a server pointed at the mock binary. Timers/network need
 // the event loop: QTRY_VERIFY_WITH_TIMEOUT drives it while waiting.
-static LlamaServerProcess *makeServer(const QStringList &extraArgs, int timeoutMs, bool autoRestart, QTemporaryDir &dir, QString &logFile)
+static LlamaServerProcess *makeServer(const QStringList &extraArgs, int timeoutMs, bool autoRestart, QTemporaryDir &dir, QString &logFile, const QString &ownerJsonPath = QString())
 {
     LlamaServerProcess::Options opts;
     opts.program = QString::fromUtf8(LLOCR_MOCK_SERVER);
@@ -42,6 +48,7 @@ static LlamaServerProcess *makeServer(const QStringList &extraArgs, int timeoutM
     opts.startupTimeoutMs = timeoutMs;
     opts.autoRestart = autoRestart;
     opts.logFile = QStringLiteral("%1/llama.log").arg(dir.path());
+    opts.ownerJsonPath = ownerJsonPath;
     logFile = opts.logFile;
     return new LlamaServerProcess(opts);
 }
@@ -239,6 +246,78 @@ void TestServerProcess::samplerDumpIsFiltered()
     QVERIFY(!content.contains("sampler params"));
     QVERIFY(!content.contains("dry_multiplier"));
     QVERIFY(content.contains("total time"));
+}
+
+void TestServerProcess::startPassesApiTokenToTheServer()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    const QString argvFile = dir.filePath(QStringLiteral("argv.log"));
+    QScopedPointer<LlamaServerProcess> s(makeServer({}, 60000, true, dir, logFile));
+    ::qputenv("LLOCR_MOCK_ARGV_FILE", argvFile.toUtf8());
+    QVERIFY(s->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(s->state() == RuntimeState::Ready, 12000);
+    ::qunsetenv("LLOCR_MOCK_ARGV_FILE");
+
+    const QString token = s->authToken();
+    QVERIFY(!token.isEmpty());
+    QFile f(argvFile);
+    QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QStringList argv = QString::fromUtf8(f.readAll()).split(u'\n');
+    const int idx = argv.indexOf(QStringLiteral("--api-key"));
+    QVERIFY2(idx >= 0, "the server was started without --api-key");
+    QCOMPARE(argv.at(idx + 1), token);
+    s->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(s->state()), int(RuntimeState::Stopped), 8000);
+}
+
+void TestServerProcess::tokenDiffersBetweenStarts()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    QScopedPointer<LlamaServerProcess> s(makeServer({}, 60000, true, dir, logFile));
+    QVERIFY(s->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(s->state() == RuntimeState::Ready, 12000);
+    const QString first = s->authToken();
+    QVERIFY(!first.isEmpty());
+    s->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(s->state()), int(RuntimeState::Stopped), 8000);
+
+    QVERIFY(s->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(s->state() == RuntimeState::Ready, 12000);
+    QVERIFY2(s->authToken() != first, "a new start must mint a new token");
+    s->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(s->state()), int(RuntimeState::Stopped), 8000);
+}
+
+void TestServerProcess::ownerJsonCarriesTheToken()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    const QString ownerPath = dir.filePath(QStringLiteral("owner.json"));
+    QScopedPointer<LlamaServerProcess> s(makeServer({}, 60000, true, dir, logFile, ownerPath));
+    QVERIFY(s->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(s->state() == RuntimeState::Ready, 12000);
+
+    const ServerOwnerRecord record = ServerOwner::read(ownerPath);
+    QVERIFY(record.isValid());
+    QCOMPARE(record.token, s->authToken());
+    s->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(s->state()), int(RuntimeState::Stopped), 8000);
+    QVERIFY(!QFile::exists(ownerPath));
+
+    // A record written by a build without the token (or a hand-started server)
+    // reads as an empty token: the attach path then sends no key.
+    QFile f(ownerPath);
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write("{\"pid\":1,\"parentPid\":2,\"port\":8080,\"program\":\"/x\"}");
+    f.close();
+    QVERIFY(ServerOwner::read(ownerPath).token.isEmpty());
+}
+
+void TestServerProcess::reservedArgNamesIncludeApikey()
+{
+    QVERIFY(LaunchProfile::reservedArgNames().contains(QStringLiteral("api-key")));
 }
 
 QTEST_MAIN(TestServerProcess)

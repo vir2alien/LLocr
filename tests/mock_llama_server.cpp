@@ -6,6 +6,7 @@
 // Flags (all optional):
 //   --port N            listen on N (default: 0 → ephemeral)
 //   --version-out X     override --version stdout (for probe tests)
+//   --api-key X         require `Authorization: Bearer X` on every HTTP route
 //   --never-healthy     /health always returns 503
 //   --no-models         /v1/models always returns 404 (checks the fallback off)
 //   --delay-start MS    sleep before binding the socket
@@ -20,7 +21,11 @@
 //
 // Environment:
 //   LLOCR_MOCK_MARKER            append one "invoke" line per spawn
+//   LLOCR_MOCK_ARGV_FILE         append the spawn's argv, one token per line
 //   LLOCR_MOCK_VERSION_DELAY_MS  delay the --version/--help answer by N ms
+//   LLOCR_MOCK_REQUIRE_BEARER    enforce auth even without --api-key: "argv"
+//                                requires the token the spawn was given, any
+//                                other value requires that exact token
 
 #include <QCoreApplication>
 #include <QFile>
@@ -51,11 +56,20 @@ int main(int argc, char *argv[])
             f.close();
         }
     }
+    if (const char *argvFile = ::getenv("LLOCR_MOCK_ARGV_FILE")) {
+        QFile f(QString::fromUtf8(argvFile));
+        if (f.open(QIODevice::WriteOnly | QIODevice::Append)) {
+            for (const QString &arg : QCoreApplication::arguments())
+                f.write(arg.toUtf8() + '\n');
+            f.close();
+        }
+    }
 
     int port = 0;
     // A modern build: shipped model profiles pin minBuild (MiniCPM-OCR Jev
     // wants b11928), so an old fake version would fail every role-switch test.
     QString versionOut = QStringLiteral("build: 11928 (b11928)");
+    QString apiKey;
     bool neverHealthy = false;
     bool noModels = false;
     int delayStartMs = 0;
@@ -74,6 +88,8 @@ int main(int argc, char *argv[])
             port = value().toInt();
         else if (a == QStringLiteral("--version-out"))
             versionOut = value();
+        else if (a == QStringLiteral("--api-key"))
+            apiKey = value();
         else if (a == QStringLiteral("--never-healthy"))
             neverHealthy = true;
         else if (a == QStringLiteral("--no-models"))
@@ -165,6 +181,14 @@ int main(int argc, char *argv[])
     fflush(stderr);
 
     int healthHits = 0;
+    // LLOCR_MOCK_REQUIRE_BEARER turns the auth on even when the spawn carried
+    // no --api-key (the mismatch test needs a key the client cannot know).
+    const QString requiredKey = [] {
+        const QString mode = QString::fromUtf8(::getenv("LLOCR_MOCK_REQUIRE_BEARER"));
+        return mode == QLatin1String("argv") ? QString() : mode;
+    }();
+    const QString expectedBearer = QStringLiteral("Bearer ") + (requiredKey.isEmpty() ? apiKey : requiredKey);
+    const bool authRequired = !requiredKey.isEmpty() || !apiKey.isEmpty();
     // Per-socket request buffer: a request may be split across TCP segments,
     // so only route once a full request head (headers terminated by \r\n\r\n)
     // has arrived. TestServer in test_download_manager.cpp buffers the same way.
@@ -172,6 +196,21 @@ int main(int argc, char *argv[])
 
     // Routes a complete request once its header block is available.
     const auto handleRequest = [&](QTcpSocket *s, const QByteArray &req) {
+        if (authRequired) {
+            QByteArray authorization;
+            const QList<QByteArray> lines = req.split('\n');
+            for (const QByteArray &line : lines) {
+                if (line.left(14).compare("Authorization:", Qt::CaseInsensitive) == 0) {
+                    authorization = line.mid(14).trimmed();
+                    break;
+                }
+            }
+            if (authorization != expectedBearer.toUtf8()) {
+                s->write("HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                s->flush();
+                return;
+            }
+        }
         if (req.contains("GET /health")) {
             healthHits++;
             if (crashOnHealth && healthHits == 1) {
