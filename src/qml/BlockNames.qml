@@ -36,11 +36,7 @@ QtObject {
         return out
     }
 
-    readonly property var hintMap: ({
-        "Equation": qsTr("numbered display equations"),
-        "Formula": qsTr("isolated formulas (LaTeX)")
-    })
-
+    // The display name of a block type, by the C++ name the model carries.
     function displayName(name, type) {
         return nameMap[name] || (name.length > 0 ? name : type)
     }
@@ -50,15 +46,11 @@ QtObject {
         return blockTypes[name] ? blockTypes[name].type : "text"
     }
 
-    function hint(type) {
-        return hintMap[type] || ""
-    }
-
     function groupTitle(group) {
         if (group === "content")
             return qsTr("Main content")
         if (group === "captions")
-            return qsTr("Captions, footnotes and references")
+            return qsTr("Captions and footnotes")
         if (group === "service")
             return qsTr("Service")
         return group

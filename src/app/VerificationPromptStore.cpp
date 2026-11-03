@@ -12,6 +12,7 @@
 #include "config/ProfileStorage.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/LatexText.h"
 
 namespace llocr {
 
@@ -26,7 +27,6 @@ QList<VerificationBlock> builtInBlocks()
         {QStringLiteral("text"), QStringLiteral("Text"), QStringLiteral("content"), true},
         {QStringLiteral("title"), QStringLiteral("Title"), QStringLiteral("content"), true},
         {QStringLiteral("table"), QStringLiteral("Table"), QStringLiteral("content"), true},
-        {QStringLiteral("equation"), QStringLiteral("Equation"), QStringLiteral("content"), true},
         {QStringLiteral("formula"), QStringLiteral("Formula"), QStringLiteral("content"), true},
         {QStringLiteral("list"), QStringLiteral("List"), QStringLiteral("content"), true},
         {QStringLiteral("code"), QStringLiteral("Code"), QStringLiteral("content"), true},
@@ -168,6 +168,9 @@ VerificationPromptStore::VerificationPromptStore(SettingsStore &settings, QObjec
     m_serviceModel->setSourceModel(m_model);
     m_serviceModel->setGroup(QStringLiteral("service"));
 
+    connect(m_model, &VerificationBlocksModel::countsChanged,
+            this, &VerificationPromptStore::countsChanged);
+
     loadBuiltIn();
     loadUser();
     rebuildModel();
@@ -195,11 +198,24 @@ QAbstractItemModel *VerificationPromptStore::blockModelService() const
 
 int VerificationPromptStore::indexOfType(const QString &type) const
 {
+    const QString canonical = canonicalType(type);
     for (int i = 0; i < m_blocks.size(); ++i) {
-        if (m_blocks.at(i).type == type)
+        if (m_blocks.at(i).type == canonical)
             return i;
     }
     return -1;
+}
+
+QString VerificationPromptStore::canonicalType(const QString &type) const
+{
+    // The math labels are one item for the user: the styles send every one of
+    // them to BlockStyle::Equation, the models read them as one kind of block
+    // (the decision profile even aliases "formula" to "equation"), and the
+    // LaTeX rules know them as one (LatexText::isMathLabel). The canonical key
+    // is "formula"; the other math labels are its aliases.
+    if (type != QLatin1String("formula") && LatexText::isMathLabel(type))
+        return QStringLiteral("formula");
+    return type;
 }
 
 VerificationBlock *VerificationPromptStore::findBlock(const QString &type)
@@ -212,8 +228,9 @@ bool VerificationPromptStore::isTypeEnabled(const QString &type) const
 {
     // The model is the single source of truth: the settings window edits it
     // live, and loadValues()/save() keep it in step with the user file.
+    const QString canonical = canonicalType(type);
     for (const VerificationBlock &block : m_model->blocks()) {
-        if (block.type == type)
+        if (block.type == canonical)
             return block.enabled;
     }
     return false;
@@ -225,6 +242,19 @@ QSet<QString> VerificationPromptStore::enabledTypes() const
     for (const VerificationBlock &block : m_model->blocks()) {
         if (block.enabled)
             out.insert(block.type);
+    }
+    return out;
+}
+
+QVariantMap VerificationPromptStore::blockGroupCounts() const
+{
+    QVariantMap out;
+    for (const VerificationBlock &block : m_model->blocks()) {
+        QVariantMap entry = out.value(block.group).toMap();
+        entry.insert(QStringLiteral("enabled"),
+                     entry.value(QStringLiteral("enabled")).toInt() + (block.enabled ? 1 : 0));
+        entry.insert(QStringLiteral("total"), entry.value(QStringLiteral("total")).toInt() + 1);
+        out.insert(block.group, entry);
     }
     return out;
 }

@@ -54,6 +54,11 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   `check*` API to QML is unchanged.
   The queue survives page switches (parity with recognition), so a batch check
   keeps running while the user browses (ADR 91).
+  > **How checking works.** Checking is fast: the decision model only answers
+  > how likely the text matches the image, block by block. Matching blocks turn
+  > green; rejected ones turn red. Fixing is a separate step: the «Fix» button
+  > sends the rejected blocks to the fix model. The managed runtime switches its
+  > loaded model between the two tasks; an external runtime serves both.
   The Blocks tab list is backed by group-filtered proxy models
   (`BlockGroupFilterModel` over the shared `VerificationBlocksModel`, exposed
   as `Verification.blockModelContent/Captions/Service`, ADR 82); the embedded
@@ -74,12 +79,12 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
 
 ## 4.2 Settings
 Settings are split into **separate non-modal windows** opened from the Header
-menu (ADR 70): **Interface**, **Output**, **Runtime**, **OCR model** and
-**Check model**. Interface settings apply immediately; the other windows commit
+menu (ADR 70): **Interface**, **Output**, **Verification**, **Runtime** and
+**Models**. Interface settings apply immediately; the other windows commit
 on **Save** and discard on **Cancel**. **Interface**, **Output** and **Runtime**
 windows carry a scoped **«Restore defaults»** (ADR 75) that writes the matching
 rows of the table-driven `kDefaults` registry through the property setters; the
-model windows have per-tab resets instead (profile restore in Launch/Request).
+**Models** window has per-task resets instead (profile restore in Launch/Request).
 
 | Window      | Fields                                                              |
 | ----------- | ------------------------------------------------------------------- |
@@ -93,21 +98,32 @@ model windows have per-tab resets instead (profile restore in Launch/Request).
 |             | model's `<table>` block through verbatim instead of a pipe table, ADR |
 |             | 19); PDF export: orientation (`export/pdfLandscape`), margins in mm   |
 |             | (`export/pdfMarginMm`, 0–50, default 15); «Restore defaults»         |
-| Runtime     | connection mode (`External` / `Managed`, applies immediately);        |
-|             | External: the **shared server** (endpoint base URL + API key) and,   |
+| Verification | the thinking budget of the two tasks — during the fix and during the read — as four levels (off / low / medium / high = 0 / 512 / 1024 / 1536 tokens, `check/fixReasoningBudgetTokens`, `check/readReasoningBudgetTokens`); **show the model confidence** (`check/showConfidence` — the decision model's probability in percent next to a verified block, in the color of the block's frame; a debugging aid for the decision model); **block types to check** — the three groups (main content, captions/footnotes/references, service) as cards with a per-group counter; the lists are not stretched over the card's height, so the rows keep one spacing in every group; the math types are one item, «Formulas» (`type = "formula"` — it covers `equation`, `formula` and `equation_block`, all of them one style, `BlockStyle::Equation`); the user's choice kept in `profiles/verifyPrompts.json` (a legacy `equation` key follows the merged item); «Reset all settings» |
+| Runtime     | connection mode (`External` / `Managed`) as a segmented toggle —      |
+|             | applies immediately;                                                  |
+|             | External: the **shared server** (endpoint base URL + API key) and,    |
 |             | per task, its own endpoint, key and model alias (ADR 226) — an empty  |
-|             | task field takes the shared value; Managed: `llama-server` path +    |
-|             | probe, Start/Stop/Restart, Show log, installer (release/backend,     |
-|             | download+install, updates, cleanup); «Launch setup wizard…»;         |
-|             | «Restore defaults»                                                   |
-| OCR model   | tabs **Location** (model + mmproj paths, installed models, preset     |
-|             | catalog, HF search), **Launch** (launch-parameter profile, ADR 57),   |
-|             | **Request** (OCR model adapter `model/recipeId` + the request         |
-|             | profile, ADR 56/59)                                                   |
-| Check model | the same tab set for the verification model (ADR 71): its own         |
-|             | `check/modelPath` + `check/mmprojPath`, the validate launch profile   |
-|             | and the validate request profile; installs started here activate as   |
-|             | the check model without touching OCR settings                         |
+|             | task field takes the shared value; one «Show» checkbox in the table   |
+|             | header reveals every key of the tab at once; a stored key is shown as |
+|             | a mask in the field itself and is removed by clearing that field —    |
+|             | there is no «Delete» button;                                          |
+|             | Managed: `llama-server` path + probe, Start/Stop/Restart, Show log,   |
+|             | installer — «Clean up unused builds» sits in the «Install llama.cpp»  |
+|             | header, the installed-builds list below shows what is installed       |
+|             | (the «Installed: …» caption was dropped as redundant), and the        |
+|             | release/backend pickers, «Check for updates» and «Download and        |
+|             | install» share one bottom row; «Launch setup wizard…»;                |
+|             | «Restore defaults»                                                    |
+| Models      | the **task table** — one row per task (layout, block recognition,     |
+|             | decision, fix) with the model and its quantization; the gear of the    |
+|             | row opens that task's **Launch** (launch-parameter profile, ADR 57)    |
+|             | and **Request** (the request profile, ADR 56/59) settings in a popup; |
+|             | in the external mode the row shows the model name — read-only, it  |
+|             | is edited in Settings → Runtime (ADR 226) — instead of the       |
+|             | quantization; under the table — the **downloaded model files on disk** |
+|             | with their size, the tasks that use them and a guarded delete. The    |
+|             | window follows its content, the files list scrolls (ADR 284);          |
+|             | «Restore defaults» (the task's profiles), Cancel, Save                |
 
 The single managed llama-server instance serves both roles one at a time:
 `RuntimeController` (re)loads the model per task (ADR 74). Parallel roles are
@@ -446,9 +462,9 @@ local **`llama-server`** process (stages A/B, D of `docs/09-local-runtime-plan.m
   `docs/09-local-runtime-plan.md`. ✅
 
 ## 4.17 Models and catalog (Hugging Face)
-Model management lives in the **OCR model / Check model settings windows**
-(via the role-aware `ModelInstaller` singleton, stage E): the installed-models
-table, the preset catalog and the HF search are part of the **Location** tab
+Model management lives in the **Models** settings window
+(via the role-aware `ModelInstaller` singleton, stage E): the task table with
+the installed models, the preset catalog and the HF search are part of it
 (see 4.2).
 
 - **`ModelCatalog`** — Hugging Face tree API with `Link: rel=next` pagination,
@@ -548,8 +564,8 @@ Once the runtime is wired, the main window surfaces its state:
   «Launch settings changed — restart required» with a **Restart** button. ✅
 - **Error surfacing** — `Failed` messages follow the §7.5 matrix. ✅
 - **Settings → Runtime** carries Start/Stop/Restart, probe status, Show log,
-  and the stage-D installer; the model windows (OCR/Check) carry the model
-  table/presets/HF (Location tab). ✅
+  and the stage-D installer; the **Models** window carries the task table with
+  the installed models, the preset catalog and the HF search. ✅
 
 ## 4.20 Project file (`.llocr`)
 The whole working state can be saved to and reopened from a single

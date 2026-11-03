@@ -7,6 +7,7 @@
 #include <QSet>
 #include <QString>
 #include <QStringList>
+#include <QVariantMap>
 
 namespace llocr {
 
@@ -76,6 +77,8 @@ class VerificationPromptStore : public QObject
     Q_PROPERTY(QAbstractItemModel *blockModelContent READ blockModelContent CONSTANT)
     Q_PROPERTY(QAbstractItemModel *blockModelCaptions READ blockModelCaptions CONSTANT)
     Q_PROPERTY(QAbstractItemModel *blockModelService READ blockModelService CONSTANT)
+    // Enabled/total per group, for the counters in the settings cards.
+    Q_PROPERTY(QVariantMap blockGroupCounts READ blockGroupCounts NOTIFY countsChanged)
 
 public:
     explicit VerificationPromptStore(SettingsStore &settings, QObject *parent = nullptr);
@@ -87,6 +90,16 @@ public:
 
     bool isTypeEnabled(const QString &type) const;
 
+    // The canonical key of a block type: the math labels ("equation",
+    // "equation_block") are the "formula" item. The labels differ, the block
+    // is one (BlockStyle::Equation), so the user gets one checkbox.
+    QString canonicalType(const QString &type) const;
+
+    // The enabled and the total count of every group: {"content": {"enabled":
+    // 9, "total": 9}, ...}. The settings window shows them as the counters
+    // in the group cards.
+    QVariantMap blockGroupCounts() const;
+
     // The enabled type names, straight from the live model: while the settings
     // window is open its edits are the truth, before any save.
     QSet<QString> enabledTypes() const;
@@ -97,6 +110,7 @@ public:
 
 signals:
     void modelChanged();
+    void countsChanged();
 
 private:
     QString userPath() const;

@@ -30,6 +30,7 @@ ComboBox {
 
     contentItem: Text {
         text: control.displayText
+        font: control.font
         color: control.enabled ? Theme.textPrimary : Theme.textMuted
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

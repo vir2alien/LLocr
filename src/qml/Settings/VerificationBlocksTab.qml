@@ -12,11 +12,20 @@ Item {
 
     signal edited()
 
-    property bool showHelp: false
     property bool loading: false
 
-    readonly property var reasoningBudgetModel: ["off", "low", "med", "high"]
+    // The thinking budget is a level, not a token count: the row of buttons
+    // picks the level, the level maps onto the tokens the model may spend.
+    property int fixReasoningIndex: 0
+    property int readReasoningIndex: 0
+
     readonly property var reasoningBudgetSteps: [0, 512, 1024, 1536]
+    readonly property var reasoningOptions: [
+        { label: qsTr("Off") },
+        { label: qsTr("Low") },
+        { label: qsTr("Medium") },
+        { label: qsTr("High") }
+    ]
 
     function reasoningIndexFor(tokens) {
         const index = root.reasoningBudgetSteps.indexOf(tokens)
@@ -26,15 +35,15 @@ Item {
     function loadValues() {
         loading = true
         showConfidenceCheckBox.checked = Settings.showConfidence
-        fixReasoningBox.currentIndex = root.reasoningIndexFor(Settings.fixReasoningBudgetTokens)
-        readReasoningBox.currentIndex = root.reasoningIndexFor(Settings.readReasoningBudgetTokens)
+        root.fixReasoningIndex = root.reasoningIndexFor(Settings.fixReasoningBudgetTokens)
+        root.readReasoningIndex = root.reasoningIndexFor(Settings.readReasoningBudgetTokens)
         loading = false
     }
 
     function saveValues() {
         Settings.showConfidence = showConfidenceCheckBox.checked
-        Settings.fixReasoningBudgetTokens = root.reasoningBudgetSteps[fixReasoningBox.currentIndex]
-        Settings.readReasoningBudgetTokens = root.reasoningBudgetSteps[readReasoningBox.currentIndex]
+        Settings.fixReasoningBudgetTokens = root.reasoningBudgetSteps[root.fixReasoningIndex]
+        Settings.readReasoningBudgetTokens = root.reasoningBudgetSteps[root.readReasoningIndex]
     }
 
     function resetValues() {
@@ -42,8 +51,8 @@ Item {
         // Cancel after Reset must not resurrect the old values from settings.
         Settings.fixReasoningBudgetTokens = 0
         Settings.readReasoningBudgetTokens = 0
-        fixReasoningBox.currentIndex = 0
-        readReasoningBox.currentIndex = 0
+        root.fixReasoningIndex = 0
+        root.readReasoningIndex = 0
     }
 
     component BlockTypeRow: Item {
@@ -60,7 +69,7 @@ Item {
         required property bool checkEnabled
 
         Layout.fillWidth: true
-        Layout.preferredHeight: Theme.rowHeightLarge
+        Layout.preferredHeight: Theme.rowHeightCompact
 
         Rectangle {
             anchors.fill: parent
@@ -71,7 +80,8 @@ Item {
         Rectangle {
             id: box
             x: 4
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.top: parent.top
+            anchors.topMargin: (Theme.rowHeightCompact - 16) / 2
             width: 16
             height: 16
             radius: Theme.controlRadius
@@ -93,24 +103,13 @@ Item {
             id: nameLabel
             anchors.left: box.right
             anchors.leftMargin: 10
-            anchors.right: hintLabel.visible ? hintLabel.left : parent.right
-            anchors.rightMargin: Theme.spacingSmall
-            anchors.verticalCenter: parent.verticalCenter
-            text: BlockNames.displayName(typeRow.name, typeRow.type)
-            color: Theme.textPrimary
-            elide: Text.ElideRight
-        }
-
-        LLOLabel {
-            id: hintLabel
             anchors.right: parent.right
             anchors.rightMargin: Theme.spacingSmall
-            anchors.verticalCenter: parent.verticalCenter
-            visible: BlockNames.hint(typeRow.type).length > 0
-            width: Math.min(implicitWidth, parent.width / 2)
-            text: BlockNames.hint(typeRow.type)
-            font.pointSize: Theme.footnoteSize
-            color: Theme.helpColor
+            anchors.top: parent.top
+            anchors.topMargin: (Theme.rowHeightCompact - nameLabel.implicitHeight) / 2
+            text: BlockNames.displayName(typeRow.name, typeRow.type)
+            font.pointSize: Theme.bodySmallSize
+            color: Theme.textPrimary
             elide: Text.ElideRight
         }
 
@@ -142,13 +141,17 @@ Item {
 
             LLOLabel {
                 text: qsTr("Thinking during fix")
+                font.pointSize: Theme.bodySmallSize
                 color: Theme.textPrimary
             }
             Item { Layout.fillWidth: true }
-            LLOComboBox {
-                id: fixReasoningBox
-                model: root.reasoningBudgetModel
-                onActivated: root.edited()
+            SegmentedToggle {
+                currentIndex: root.fixReasoningIndex
+                options: root.reasoningOptions
+                onActivated: (idx) => {
+                    root.fixReasoningIndex = idx
+                    root.edited()
+                }
             }
         }
         RowLayout {
@@ -158,17 +161,22 @@ Item {
 
             LLOLabel {
                 text: qsTr("Thinking during read")
+                font.pointSize: Theme.bodySmallSize
                 color: Theme.textPrimary
             }
             Item { Layout.fillWidth: true }
-            LLOComboBox {
-                id: readReasoningBox
-                model: root.reasoningBudgetModel
-                onActivated: root.edited()
+            SegmentedToggle {
+                currentIndex: root.readReasoningIndex
+                options: root.reasoningOptions
+                onActivated: (idx) => {
+                    root.readReasoningIndex = idx
+                    root.edited()
+                }
             }
         }
         LLOLabel {
             Layout.fillWidth: true
+            Layout.topMargin: Theme.spacingSmall
             font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             wrapMode: Text.WordWrap
@@ -181,74 +189,22 @@ Item {
         LLOCheckBox {
             id: showConfidenceCheckBox
             Layout.fillWidth: true
-            Layout.topMargin: Theme.spacingSmall
+            Layout.topMargin: Theme.spacing
             text: qsTr("Show model confidence")
             font.pointSize: Theme.bodySmallSize
             onToggled: if (!loading) root.edited()
         }
-        LLOLabel {
-            Layout.fillWidth: true
-            Layout.leftMargin: 4
-            font.pointSize: Theme.footnoteSize
-            color: Theme.helpColor
-            wrapMode: Text.WordWrap
-            text: qsTr("Next to a verified block the decision model's probability in percent appears, in the color of the block's frame. A debugging aid for the decision model.")
-        }
-
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: detailsLabel.implicitHeight
-            Layout.topMargin: Theme.spacingSmall
-
-            TapHandler {
-                onTapped: root.showHelp = !root.showHelp
-            }
-            HoverHandler { id: helpHover }
-
-            LLOLabel {
-                id: detailsLabel
-                text: (root.showHelp ? "\u25be " : "\u25b8 ")
-                      + qsTr("How checking works")
-                font.pointSize: Theme.footnoteSize
-                color: helpHover.hovered ? Theme.textPrimary : Theme.linkColor
-            }
-        }
-        LLOLabel {
-            Layout.fillWidth: true
-            visible: root.showHelp
-            font.pointSize: Theme.footnoteSize
-            color: Theme.helpColor
-            wrapMode: Text.WordWrap
-            text: qsTr("Checking is fast: the decision model only answers how likely "
-                       + "the text matches the image, block by block. Matching blocks turn "
-                       + "green; rejected ones turn red. Fixing is a separate step: the "
-                       + "«Fix» button sends the rejected blocks to the fix model. The "
-                       + "managed runtime switches its loaded model between the two tasks; "
-                       + "an external runtime serves both.")
-        }
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: Theme.spacingXLarge
+            Layout.topMargin: Theme.spacingLarge
             spacing: Theme.spacing
 
             LLOLabel {
                 text: qsTr("Block types to check")
-                font.bold: true
+                font.pointSize: Theme.bodySize
                 color: Theme.textPrimary
             }
-            Item { Layout.fillWidth: true }
-            LLOLabel {
-                font.pointSize: Theme.footnoteSize
-                color: Theme.helpColor
-                text: qsTr("Selected %1 of %2")
-                      .arg(Verification.blockModel.enabledCount)
-                      .arg(Verification.blockModel.totalCount)
-            }
-        }
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacing
             LLOLabel {
                 text: qsTr("Select all")
                 font.pointSize: Theme.footnoteSize
@@ -278,6 +234,14 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                 }
             }
+            Item { Layout.fillWidth: true }
+            LLOLabel {
+                font.pointSize: Theme.footnoteSize
+                color: Theme.helpColor
+                text: qsTr("Selected %1 of %2")
+                      .arg(Verification.blockModel.enabledCount)
+                      .arg(Verification.blockModel.totalCount)
+            }
         }
 
         ScrollView {
@@ -286,12 +250,17 @@ Item {
             Layout.fillHeight: true
             Layout.topMargin: Theme.spacing
             contentWidth: availableWidth
-            contentHeight: columnsRow.implicitHeight
+            // The content is at least the tallest card, and at least the
+            // viewport: a language with taller lines must not clip the last
+            // row of the tallest group, and a shorter content must not leave
+            // a gap under the cards.
+            contentHeight: Math.max(columnsRow.implicitHeight, typesScroll.availableHeight)
 
             RowLayout {
                 id: columnsRow
                 width: typesScroll.availableWidth
-                spacing: 0
+                height: Math.max(implicitHeight, typesScroll.availableHeight)
+                spacing: Theme.spacing
 
                 Repeater {
                     model: [
@@ -299,41 +268,86 @@ Item {
                         { group: "captions", source: Verification.blockModelCaptions },
                         { group: "service", source: Verification.blockModelService }
                     ]
-                    delegate: ColumnLayout {
+                    delegate: Rectangle {
+                        id: groupCard
                         required property var modelData
 
                         Layout.fillWidth: true
                         Layout.preferredWidth: columnsRow.width / 3
                         Layout.minimumWidth: 0
-                        Layout.alignment: Qt.AlignTop
-                        spacing: 0
+                        Layout.fillHeight: true
+                        Layout.preferredHeight: cardColumn.implicitHeight + Theme.spacing * 2
 
-                        LLOLabel {
-                            Layout.fillWidth: true
-                            topPadding: Theme.spacingSmall
-                            bottomPadding: Theme.spacingSmall
-                            text: BlockNames.groupTitle(modelData.group)
-                            font.pointSize: Theme.footnoteSize
-                            font.bold: true
-                            color: Theme.textSecondary
-                            elide: Text.ElideRight
-                        }
-                        Repeater {
-                            model: modelData.source
-                            delegate: BlockTypeRow {}
+                        color: Theme.surfaceAlt
+                        border.color: Theme.border
+                        border.width: 1
+                        radius: Theme.controlRadius + 2
+
+                        // The column takes its natural height and hangs from the
+                        // top of the card: the rows keep their own distance,
+                        // and the card that is taller than its list leaves the
+                        // slack at the bottom instead of spreading the rows.
+                        ColumnLayout {
+                            id: cardColumn
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: Theme.spacing
+                            spacing: Theme.spacingSmall
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.spacingSmall
+
+                                LLOLabel {
+                                    Layout.fillWidth: true
+                                    text: BlockNames.groupTitle(groupCard.modelData.group)
+                                    font.pointSize: Theme.bodySmallSize
+                                    font.bold: true
+                                    color: Theme.textPrimary
+                                    elide: Text.ElideRight
+                                }
+                                LLOLabel {
+                                    text: {
+                                        const counts = Verification.blockGroupCounts[groupCard.modelData.group]
+                                        return counts ? counts.enabled + "/" + counts.total : ""
+                                    }
+                                    font.pointSize: Theme.footnoteSize
+                                    color: Theme.helpColor
+                                }
+                            }
+
+                            Repeater {
+                                model: groupCard.modelData.source
+                                delegate: BlockTypeRow {}
+                            }
                         }
                     }
                 }
             }
         }
 
-        LLOLabel {
+        RowLayout {
             Layout.fillWidth: true
             Layout.topMargin: Theme.spacing
-            font.pointSize: Theme.footnoteSize
-            color: Theme.helpColor
-            wrapMode: Text.WordWrap
-            text: qsTr("Blocks without OCR text are not checked.")
+            spacing: Theme.spacingSmall
+
+            Icon {
+                name: "info"
+                size: 14
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                Layout.alignment: Qt.AlignVCenter
+                color: Theme.helpColor
+                Accessible.ignored: true
+            }
+            LLOLabel {
+                Layout.fillWidth: true
+                font.pointSize: Theme.footnoteSize
+                color: Theme.helpColor
+                wrapMode: Text.WordWrap
+                text: qsTr("Blocks without OCR text are not checked.")
+            }
         }
     }
 }

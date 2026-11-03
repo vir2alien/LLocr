@@ -10,8 +10,8 @@ import "../Common"
 ApplicationWindow {
     id: window
     title: qsTr("Runtime settings")
-    width: 860
-    height: 680
+    width: 700
+    height: 640
     modality: Qt.NonModal
 
     // The combos in this window (mode, backend, release) apply immediately;
@@ -58,6 +58,7 @@ ApplicationWindow {
         Item { Layout.fillWidth: true }
         LLOButton {
             text: qsTr("Cancel")
+            font: Theme.bodySmall
             onClicked: {
                 window.restoreApplySnapshot()
                 rtTab.loadValues()
@@ -67,6 +68,7 @@ ApplicationWindow {
         LLOButton {
             emphasis: true
             text: qsTr("Save")
+            font: Theme.bodySmall
             onClicked: {
                 rtTab.saveValues()
                 Settings.forceSave()

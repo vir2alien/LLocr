@@ -11,10 +11,12 @@ ApplicationWindow {
     id: window
 
     title: qsTr("Models")
-    width: 680
-    height: 620
-    minimumWidth: 680
-    minimumHeight: 500
+    width: 640
+    // The window follows its content: the task table plus the list of the
+    // files on disk. A long list scrolls instead of stretching the window.
+    height: Math.max(420, Math.min(600, contentColumn.implicitHeight + windowFooter.implicitHeight + Theme.paddingWindow * 2))
+    minimumWidth: 560
+    minimumHeight: 420
     modality: Qt.NonModal
 
     property var runtimeSettingsRef: null
@@ -42,6 +44,8 @@ ApplicationWindow {
     }
 
     footer: SettingsFooter {
+        id: windowFooter
+
         Item { Layout.fillWidth: true }
         LLOButton {
             subtle: true
@@ -85,12 +89,15 @@ ApplicationWindow {
     }
 
     ColumnLayout {
+        id: contentColumn
+
         anchors.fill: parent
         anchors.margins: Theme.paddingWindow
         spacing: 8
 
-        // The six tasks: model + quantization per row (model name in the
-        // external mode); the gear opens that task's Launch/Request settings.
+        // The tasks of the app: model + quantization per row (model name in
+        // the external mode); the gear opens that task's Launch/Request
+        // settings.
         TaskModelsTable {
             id: taskTable
             Layout.fillWidth: true
@@ -124,13 +131,12 @@ ApplicationWindow {
         // its size, how many tasks use it and a guarded delete.
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
             spacing: Theme.spacingSmall
 
             LLOLabel {
                 Layout.fillWidth: true
-                font.bold: true
-                color: Theme.textMuted
+                font.pointSize: Theme.bodySize
+                color: Theme.textPrimary
                 text: qsTr("Downloaded model files on disk")
             }
 
@@ -140,7 +146,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: text.length > 0
                 wrapMode: Text.WordWrap
-                font.pointSize: Theme.captionSize
+                font.pointSize: Theme.footnoteSize
                 color: Theme.error
             }
 
@@ -148,7 +154,9 @@ ApplicationWindow {
                 id: filesList
 
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                // The list is as tall as its rows: the window follows the
+                // content, and a long list scrolls instead of stretching.
+                implicitHeight: Math.min(contentHeight, 300)
                 clip: true
                 spacing: 2
                 visible: ModelInstaller.installedCount > 0
@@ -174,23 +182,29 @@ ApplicationWindow {
                     LLOLabel {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.bodySmallSize
                         text: fileRow.title
                         color: Theme.textPrimary
                     }
                     LLOLabel {
                         Layout.preferredWidth: 64
+                        font.pointSize: Theme.bodySmallSize
                         text: fileRow.quant
                         color: Theme.textSecondary
                     }
                     LLOLabel {
                         Layout.preferredWidth: 76
                         horizontalAlignment: Text.AlignRight
+                        font.pointSize: Theme.bodySmallSize
                         text: fileRow.sizeLabel
                         color: Theme.textSecondary
                     }
                     LLOLabel {
-                        Layout.preferredWidth: 190
+                        Layout.preferredWidth: 165
                         elide: Text.ElideRight
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.bodySmallSize
                         text: fileRow.usageText
                         color: fileRow.usageCount > 0 ? Theme.textPrimary : Theme.textMuted
                     }
@@ -255,10 +269,9 @@ ApplicationWindow {
 
             LLOLabel {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
                 visible: ModelInstaller.installedCount === 0
                 wrapMode: Text.WordWrap
-                font.pointSize: Theme.captionSize
+                font.pointSize: Theme.footnoteSize
                 color: Theme.helpColor
                 text: qsTr("Downloaded models will appear here — pick a quantization in the rows above and save.")
             }

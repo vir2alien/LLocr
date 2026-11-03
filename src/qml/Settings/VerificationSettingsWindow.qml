@@ -11,7 +11,7 @@ ApplicationWindow {
     id: window
     title: qsTr("Verification settings")
     width: 720
-    height: 620
+    height: 640
     modality: Qt.NonModal
 
     function bringToFront() {
@@ -43,6 +43,7 @@ ApplicationWindow {
         Item { Layout.fillWidth: true }
         LLOButton {
             text: qsTr("Cancel")
+            font: Theme.bodySmall
             onClicked: {
                 Verification.loadValues()
                 window.unsavedChanges = false
@@ -52,6 +53,7 @@ ApplicationWindow {
         LLOButton {
             emphasis: true
             text: qsTr("Save")
+            font: Theme.bodySmall
             onClicked: {
                 saveAll()
                 Verification.save()

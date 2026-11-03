@@ -14,9 +14,13 @@ Item {
     property string role: "blockRecognition"
     readonly property bool decisionRole: role === "decision"
     readonly property bool hasParams: profiles.draftModel.count > 0
-    readonly property real nameWidth: 0.28
-    readonly property real valueWidth: 0.26
+    readonly property real nameWidth: 0.2
+    readonly property real valueWidth: 0.2
     readonly property var profiles: RoleProfiles.profiles(role)
+
+    // The height of the tab's content: the popup that holds the tabs sizes
+    // itself by the taller of them.
+    readonly property real contentHeight: requestColumn.implicitHeight
 
     function loadValues() {
         root.profiles.reloadDraft()
@@ -36,6 +40,7 @@ Item {
     }
 
     ColumnLayout {
+        id: requestColumn
         anchors.fill: parent
         spacing: Theme.spacingSmall
 
@@ -47,10 +52,12 @@ Item {
 
             LLOLabel {
                 text: qsTr("Match threshold (%)")
+                font.pointSize: Theme.bodySmallSize
             }
             SpinBox {
                 id: thresholdSpin
                 implicitHeight: Theme.controlHeight
+                font.pointSize: Theme.bodySmallSize
                 from: 0
                 to: 100
                 stepSize: 5
@@ -63,7 +70,7 @@ Item {
             Layout.fillWidth: true
             visible: root.decisionRole
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("The decision model answers with the probability that the text matches the image. A block counts as correct when the probability reaches this threshold; the rest are re-recognized when automatic re-recognition is on.")
         }
@@ -82,7 +89,7 @@ Item {
             Layout.fillWidth: true
             visible: root.decisionRole && !root.hasParams
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("The decision model answers in a single forward pass and generates no text, so it has no sampling parameters — the threshold above is its only setting here.")
         }
@@ -90,7 +97,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             visible: root.hasParams
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             wrapMode: Text.WordWrap
             text: RoleProfiles.samplingHint(role)

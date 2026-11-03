@@ -9,6 +9,10 @@ Item {
 
     required property var model
 
+    // The table is an Item, so the layout inside does not speak for it: the
+    // host that sizes itself by the content reads this height.
+    implicitHeight: contentLayout.implicitHeight
+
     property real nameWidth: 0.24
     property real valueWidth: 0.24
     property string valuePlaceholder: qsTr("value")
@@ -16,6 +20,7 @@ Item {
     property var setValue: null
 
     ColumnLayout {
+        id: contentLayout
         anchors.fill: parent
         spacing: Theme.spacingSmall
 
@@ -26,7 +31,8 @@ Item {
             LLOLabel {
                 anchors.left: parent.left
                 width: parent.width * root.nameWidth
-                font.bold: true
+                font.pointSize: Theme.footnoteSize
+                color: Theme.textMuted
                 text: qsTr("Parameter")
             }
             LLOLabel {
@@ -34,14 +40,16 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: parent.width * root.nameWidth + Theme.spacing
                 width: parent.width * root.valueWidth
-                font.bold: true
+                font.pointSize: Theme.footnoteSize
+                color: Theme.textMuted
                 text: qsTr("Value")
             }
             LLOLabel {
                 anchors.left: headerValue.right
                 anchors.leftMargin: Theme.spacing
                 anchors.right: parent.right
-                font.bold: true
+                font.pointSize: Theme.footnoteSize
+                color: Theme.textMuted
                 text: qsTr("Description")
             }
         }
@@ -50,9 +58,15 @@ Item {
             id: paramsList
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // The list is as tall as its rows: the popup that holds the
+            // table follows the content, and a long list scrolls.
+            implicitHeight: Math.min(contentHeight, 440)
             clip: true
-            spacing: Theme.spacingSmall
+            // The rows are a table: the descriptions wrap, and the space
+            // between the rows keeps them apart.
+            spacing: Theme.spacing
             model: root.model
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
             delegate: Item {
                 id: paramRow
@@ -74,6 +88,8 @@ Item {
                     width: parent.width * root.nameWidth
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
+                    font.pointSize: Theme.bodySmallSize
+                    color: Theme.textPrimary
                     text: paramRow.model.name
                 }
 
@@ -84,6 +100,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width * root.valueWidth
                     implicitHeight: Theme.controlHeight
+                    font.pointSize: Theme.bodySmallSize
                     selectByMouse: true
                     placeholderText: root.valuePlaceholder
                     text: paramRow.model.valueText
@@ -135,7 +152,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: Theme.spacing
                     anchors.verticalCenter: parent.verticalCenter
-                    font.pointSize: Theme.captionSize
+                    font.pointSize: Theme.footnoteSize
                     color: Theme.textMuted
                     text: paramRow.model.description
                 }

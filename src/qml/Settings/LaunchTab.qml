@@ -19,6 +19,10 @@ Item {
 
     readonly property string runtimeNote: RoleProfiles.runtimeNote(role)
 
+    // The height of the tab's content: the popup that holds the tabs sizes
+    // itself by the taller of them.
+    readonly property real contentHeight: launchColumn.implicitHeight
+
     property var memoryEstimate: ({})
 
     function loadValues() {
@@ -38,10 +42,11 @@ Item {
         root.profiles.loadDefaultDraft()
     }
 
-    readonly property real nameWidth: 0.24
-    readonly property real valueWidth: 0.24
+    readonly property real nameWidth: 0.2
+    readonly property real valueWidth: 0.2
 
     ColumnLayout {
+        id: launchColumn
         anchors.fill: parent
         visible: !root.externalMode
         spacing: Theme.spacingSmall
@@ -65,7 +70,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             visible: root.memoryEstimate.valid === true
             text: {
@@ -100,7 +105,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.error
             visible: root.memoryEstimate.overVramBudget === true
             text: qsTr("The model does not fit in this card's video memory. Lower the number of GPU layers or the context window, or pick a smaller quantization.")
@@ -109,7 +114,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("The machine's parameters: how much of the model goes to the GPU, flash attention, and the context window. Everything else — the server policy and the model's own parameters — is tuned by the app and its model profiles.")
         }
@@ -123,7 +128,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("The model is managed by the external server. Location and download settings are not available in this mode.")
         }

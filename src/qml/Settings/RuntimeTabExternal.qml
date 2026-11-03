@@ -24,10 +24,16 @@ ColumnLayout {
     // task table shows, and the tab keeps no copy of it.
     readonly property var taskIds: Settings.taskRoles
 
-    readonly property int titleWidth: 160
-    readonly property int endpointWidth: 190
-    readonly property int keyWidth: 190
-    readonly property int aliasWidth: 140
+    readonly property int titleWidth: 120
+    readonly property int endpointWidth: 165
+    readonly property int keyWidth: 180
+    readonly property int aliasWidth: 155
+
+    // One switch for every key of the tab: the shared key and the key of
+    // each task. It stands in the table header, where the keys it governs
+    // are; the wizard's compact mode has no table, so there the switch
+    // stands next to the only key it has.
+    property bool revealKeys: false
 
     property bool sharedKeyPresent: false
 
@@ -39,8 +45,8 @@ ColumnLayout {
 
     function loadValues() {
         baseUrlField.text = Settings.baseUrl
-        sharedKey.load()
         sharedKeyPresent = Settings.apiKeySet
+        sharedKey.load()
         Settings.refreshSecretState()
         reloadToken++
     }
@@ -69,17 +75,19 @@ ColumnLayout {
 
     LLOLabel {
         text: qsTr("Shared server — the default for every task")
-        font.bold: true
+        font.pointSize: Theme.bodySize
         color: Theme.textPrimary
     }
 
     LLOLabel {
         text: qsTr("Endpoint base URL")
+        font: Theme.bodySmall
     }
     TextField {
         id: baseUrlField
         Layout.fillWidth: true
         implicitHeight: Theme.controlHeight
+        font.pointSize: Theme.bodySmallSize
         placeholderText: "http://localhost:8080"
         selectByMouse: true
     }
@@ -87,34 +95,49 @@ ColumnLayout {
     LLOLabel {
         id: plaintextKeyWarning
         Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
+        font.pointSize: Theme.footnoteSize
         color: Theme.accentAttention
         visible: Settings.isPlaintextKeyEndpoint(baseUrlField.text)
         wrapMode: Text.WordWrap
         text: qsTr("The key will be sent in plain text (http outside the local machine).")
     }
 
-    LLOLabel {
-        text: qsTr("API key")
+    // The wizard's compact mode has no task table, so the switch stands
+    // next to the only key it has.
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: Theme.spacing
+
+        LLOLabel {
+            text: qsTr("API key")
+            font: Theme.bodySmall
+        }
+        LLOCheckBox {
+            visible: extRoot.compact
+            text: qsTr("Show")
+            checked: extRoot.revealKeys
+            onToggled: extRoot.revealKeys = checked
+        }
+        Item { Layout.fillWidth: true }
     }
     SecretKeyField {
         id: sharedKey
         Layout.fillWidth: true
         keySet: extRoot.sharedKeyPresent
+        revealed: extRoot.revealKeys
         commit: function(text) { Settings.setApiKey(text) }
-        clear: function() { Settings.clearApiKey() }
     }
 
     LLOLabel {
         Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
+        font.pointSize: Theme.footnoteSize
         color: Theme.helpColor
         text: extRoot.storeNote()
     }
 
     LLOLabel {
         Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
+        font.pointSize: Theme.footnoteSize
         color: Theme.helpColor
         visible: Settings.secretError.length > 0
         wrapMode: Text.WordWrap
@@ -130,7 +153,7 @@ ColumnLayout {
     LLOLabel {
         visible: !extRoot.compact
         text: qsTr("Tasks — an empty field takes the shared value")
-        font.bold: true
+        font.pointSize: Theme.bodySize
         color: Theme.textPrimary
     }
 
@@ -141,25 +164,35 @@ ColumnLayout {
 
         LLOLabel {
             Layout.preferredWidth: extRoot.titleWidth
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("Task")
         }
         LLOLabel {
             Layout.preferredWidth: extRoot.endpointWidth
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("Endpoint")
         }
-        LLOLabel {
+        RowLayout {
             Layout.preferredWidth: extRoot.keyWidth
-            font.pointSize: Theme.captionSize
-            color: Theme.helpColor
-            text: qsTr("API key")
+            spacing: Theme.spacingSmall
+            LLOLabel {
+                font.pointSize: Theme.footnoteSize
+                color: Theme.helpColor
+                text: qsTr("API key")
+            }
+            LLOCheckBox {
+                text: qsTr("Show")
+                font.pointSize: Theme.footnoteSize
+                checked: extRoot.revealKeys
+                onToggled: extRoot.revealKeys = checked
+            }
+            Item { Layout.fillWidth: true }
         }
         LLOLabel {
             Layout.preferredWidth: extRoot.aliasWidth
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("Model alias")
         }
@@ -177,6 +210,7 @@ ColumnLayout {
             endpointWidth: extRoot.endpointWidth
             keyWidth: extRoot.keyWidth
             aliasWidth: extRoot.aliasWidth
+            revealed: extRoot.revealKeys
             reloadToken: extRoot.reloadToken
             commitToken: extRoot.commitToken
         }

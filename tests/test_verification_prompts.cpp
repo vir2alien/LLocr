@@ -75,7 +75,17 @@ private slots:
         QVERIFY(types.contains(QStringLiteral("text")));
         QVERIFY(types.contains(QStringLiteral("title")));
         QVERIFY(types.contains(QStringLiteral("table")));
-        QVERIFY(types.contains(QStringLiteral("equation")));
+
+        // The math labels are one item: the styles send every one of them to
+        // BlockStyle::Equation, so the user gets a single "Formulas" entry.
+        QVERIFY(types.contains(QStringLiteral("formula")));
+        QVERIFY(!types.contains(QStringLiteral("equation")));
+        QVERIFY(!types.contains(QStringLiteral("equation_block")));
+
+        // A block that arrives under any math label follows that one item.
+        QVERIFY(store->isTypeEnabled(QStringLiteral("formula")));
+        QVERIFY(store->isTypeEnabled(QStringLiteral("equation")));
+        QVERIFY(store->isTypeEnabled(QStringLiteral("equation_block")));
 
         // Content types ship enabled; service types do not.
         QVERIFY(store->isTypeEnabled(QStringLiteral("text")));
@@ -234,6 +244,36 @@ private slots:
         }
         // Unknown types resolve to -1.
         QCOMPARE(src->rowOfType(QStringLiteral("no-such-type")), -1);
+    }
+
+    // A user file written before the math labels were merged carries the
+    // "equation" type; it must land on the merged item, not be dropped.
+    void aLegacyEquationEntryFollowsTheMergedItem()
+    {
+        const QString userPath = userPromptsPath(m_dir);
+        QDir().mkpath(QFileInfo(userPath).absolutePath());
+        QFile legacy(userPath);
+        QVERIFY(legacy.open(QIODevice::WriteOnly));
+        legacy.write("{\n"
+                     "  \"schemaVersion\": 1,\n"
+                     "  \"blocks\": [\n"
+                     "    {\"type\": \"equation\", \"enabled\": false}\n"
+                     "  ]\n"
+                     "}\n");
+        legacy.close();
+
+        auto store = makeStore();
+        QVERIFY(store);
+        QVERIFY(!store->isTypeEnabled(QStringLiteral("equation")));
+        QVERIFY(!store->isTypeEnabled(QStringLiteral("formula")));
+
+        // Saving rewrites the file with the canonical key.
+        store->save();
+        QFile rewritten(userPath);
+        QVERIFY(rewritten.open(QIODevice::ReadOnly));
+        const QByteArray contents = rewritten.readAll();
+        QVERIFY(contents.contains("formula"));
+        QVERIFY(!contents.contains("equation"));
     }
 
     // The check-state role must not be named "enabled": the QML delegate

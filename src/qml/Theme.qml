@@ -77,6 +77,8 @@ QtObject {
     readonly property int spacingXLarge: 24
     readonly property int paddingWindow: 24
     readonly property int rowHeightLarge: 36
+    // A row of a dense list — the block types in the verification settings.
+    readonly property int rowHeightCompact: 30
     readonly property int radius: 4
     readonly property int dialogRadius: 6
     readonly property int controlHeight: 28

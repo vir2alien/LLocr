@@ -209,7 +209,9 @@ Item {
     }
 
     // The entries exist before the rows are built: the rows are the entries.
-    Component.onCompleted: table.ensureDraft()
+    Component.onCompleted: {
+        table.ensureDraft()
+    }
 
     ColumnLayout {
         id: rowsLayout
@@ -221,10 +223,10 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
-            Item { Layout.preferredWidth: 200 }
+            Item { Layout.preferredWidth: 140 }
             LLOLabel {
                 Layout.fillWidth: true
-                font.bold: true
+                font.pointSize: Theme.footnoteSize
                 color: Theme.textMuted
                 text: qsTr("Model")
             }
@@ -248,7 +250,7 @@ Item {
                 spacing: Theme.spacingSmall
 
                 Item {
-                    Layout.preferredWidth: 200
+                    Layout.preferredWidth: 140
                     implicitHeight: modelBox.implicitHeight
 
                     LLOLabel {
@@ -256,8 +258,10 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                         leftPadding: Theme.spacingSmall
                         elide: Text.ElideRight
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.bodySmallSize
                         text: RoleProfiles.title(taskRow.task)
-                        color: Theme.textSecondary
+                        color: Theme.textPrimary
                     }
                 }
 
@@ -402,6 +406,7 @@ Item {
                     visible: table.externalMode
                     Layout.preferredWidth: 210
                     implicitHeight: Theme.controlHeight
+                    font.pointSize: Theme.bodySmallSize
                     text: taskRow.entry.modelName || ""
                     // The alias belongs to the connection: it is edited in
                     // Settings → Runtime, where the endpoint and the key live
@@ -452,8 +457,13 @@ Item {
         // dialog, and a centered popup fits either host.
         parent: Overlay.overlay
         anchors.centerIn: parent
-        width: 560
-        height: 480
+        width: 620
+        // The popup follows its content: the taller of the two tabs sets the
+        // height, and the notes stay under the table.
+        height: Math.max(340, Math.min(500,
+                                       (popupTabs.currentIndex === 0 ? launchTab.contentHeight : requestTab.contentHeight)
+                                       + popupTitle.implicitHeight + popupTabs.implicitHeight
+                                       + Theme.spacing * 4))
         padding: Theme.spacing
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
@@ -470,15 +480,19 @@ Item {
         }
 
         contentItem: ColumnLayout {
+            id: popupContent
             spacing: Theme.spacingSmall
 
             RowLayout {
+                id: popupTitle
                 Layout.fillWidth: true
                 spacing: Theme.spacingSmall
 
                 LLOLabel {
                     Layout.fillWidth: true
+                    font.pointSize: Theme.bodySize
                     font.bold: true
+                    color: Theme.textPrimary
                     elide: Text.ElideRight
                     text: RoleProfiles.title(taskSettingsPopup.task)
                 }

@@ -16,6 +16,7 @@
 #include <QQuickStyle>
 #include <QtTest>
 
+#include "config/SecretStore.h"
 #include "config/SettingsStore.h"
 #include "testsettings.h"
 
@@ -43,6 +44,7 @@ class TestRuntimeTabExternalQml : public QObject
 
 private slots:
     void initTestCase();
+    void cleanupTestCase();
     void theTabLoadsWithoutWarnings();
     void theFourTasksHaveARow();
     void theCompactModeHidesTheTasks();
@@ -50,6 +52,11 @@ private slots:
     void theSavedValuesComeBackIntoTheFields();
     void theHttpRemoteEndpointWarnsAboutPlaintextKey();
     void theTaskRowWarnsAboutPlaintextKeyOnItsOwnEndpoint();
+    void theStoredKeyIsShownAsAMaskAndNeverAsText();
+    void clearingTheFieldRemovesTheStoredKey();
+    void aTypedKeyReplacesTheStoredOne();
+    void theHeaderSwitchRevealsEveryKey();
+    void theMaskIsNeverMixedWithTheTypedKey();
 
 private:
     void registerModuleTypes();
@@ -57,6 +64,7 @@ private:
     QVariant evaluate(QObject *scope, const QString &expression);
     QObject *rowAt(QObject *tab, int index);
     QObject *rowForTask(QObject *tab, const QString &task);
+    QObject *sharedKeyField(QObject *tab);
 
     std::unique_ptr<FakeUiController> m_uiController;
     std::unique_ptr<SettingsStore> m_settings;
@@ -96,6 +104,19 @@ void TestRuntimeTabExternalQml::initTestCase()
     QObject *theme = m_engine->singletonInstance<QObject *>(QStringLiteral("LLocr"), QStringLiteral("Theme"));
     QVERIFY(theme);
     m_engine->rootContext()->setContextProperty(QStringLiteral("Theme"), theme);
+
+    if (!SecretStore::isAvailable())
+        QSKIP("No OS secret store on this machine");
+    const QString probe = QStringLiteral("org.llocr.test/probe");
+    if (!SecretStore::write(probe, QStringLiteral("probe")))
+        QSKIP(qPrintable(QStringLiteral("The OS secret store is not writable here: %1").arg(SecretStore::lastError())));
+    SecretStore::remove(probe);
+    SecretStore::forgetAllCached();
+}
+
+void TestRuntimeTabExternalQml::cleanupTestCase()
+{
+    m_settingsIsolation.clearSecrets();
 }
 
 void TestRuntimeTabExternalQml::registerModuleTypes()
@@ -319,6 +340,119 @@ void TestRuntimeTabExternalQml::theTaskRowWarnsAboutPlaintextKeyOnItsOwnEndpoint
         QCoreApplication::processEvents();
         QCOMPARE(row->property("plaintextKeyWarningVisible").toBool(), endpoint.second);
     }
+}
+
+// The shared key field of the tab.
+QObject *TestRuntimeTabExternalQml::sharedKeyField(QObject *tab)
+{
+    return evaluate(tab, QStringLiteral("sharedKey")).value<QObject *>();
+}
+
+// A stored key is never shown back (ADR 227): the field carries the mask
+// and takes a new key.
+void TestRuntimeTabExternalQml::theStoredKeyIsShownAsAMaskAndNeverAsText()
+{
+    m_settings->setApiKey(QStringLiteral("super-secret"));
+
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    evaluate(tab.get(), QStringLiteral("loadValues()"));
+    QCoreApplication::processEvents();
+
+    QObject *shared = sharedKeyField(tab.get());
+    QVERIFY(shared);
+    QCOMPARE(shared->property("keySet").toBool(), true);
+
+    const QString mask = shared->property("maskText").toString();
+    QVERIFY(!mask.isEmpty());
+    QCOMPARE(shared->property("text").toString(), mask);
+    QVERIFY(shared->property("text").toString() != QStringLiteral("super-secret"));
+}
+
+// The field is the way to remove a key: an erased mask is an empty field,
+// and an empty field removes the stored key.
+void TestRuntimeTabExternalQml::clearingTheFieldRemovesTheStoredKey()
+{
+    m_settings->setApiKey(QStringLiteral("super-secret"));
+
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    evaluate(tab.get(), QStringLiteral("loadValues()"));
+    QCoreApplication::processEvents();
+
+    QObject *shared = sharedKeyField(tab.get());
+    QVERIFY(shared);
+    QCOMPARE(m_settings->apiKeySet(), true);
+
+    // The user erases the mask.
+    shared->setProperty("text", QString());
+    shared->setProperty("edited", true);
+    evaluate(tab.get(), QStringLiteral("saveValues()"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(m_settings->apiKeySet(), false);
+}
+
+// A typed key replaces the stored one.
+void TestRuntimeTabExternalQml::aTypedKeyReplacesTheStoredOne()
+{
+    m_settings->setApiKey(QStringLiteral("super-secret"));
+
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    evaluate(tab.get(), QStringLiteral("loadValues()"));
+    QCoreApplication::processEvents();
+
+    QObject *shared = sharedKeyField(tab.get());
+    QVERIFY(shared);
+    shared->setProperty("text", QStringLiteral("new-key"));
+    shared->setProperty("edited", true);
+    evaluate(tab.get(), QStringLiteral("saveValues()"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(m_settings->apiKey(), QStringLiteral("new-key"));
+}
+
+// The switch stands in the table header and governs every key of the tab —
+// the shared one and the one of each task.
+void TestRuntimeTabExternalQml::theHeaderSwitchRevealsEveryKey()
+{
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(evaluate(tab.get(), QStringLiteral("revealKeys")).toBool(), false);
+
+    tab->setProperty("revealKeys", true);
+    QCoreApplication::processEvents();
+
+    QObject *shared = sharedKeyField(tab.get());
+    QVERIFY(shared);
+    QCOMPARE(shared->property("revealed").toBool(), true);
+
+    QObject *row = rowForTask(tab.get(), QStringLiteral("blockRecognition"));
+    QVERIFY(row);
+    QCOMPARE(row->property("revealed").toBool(), true);
+}
+
+// The mask is the field's text, so it can be erased — but it must never mix
+// with the key the user types.
+void TestRuntimeTabExternalQml::theMaskIsNeverMixedWithTheTypedKey()
+{
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QObject *shared = sharedKeyField(tab.get());
+    QVERIFY(shared);
+    const QString mask = shared->property("maskText").toString();
+
+    QCOMPARE(evaluate(shared, QStringLiteral("plainText('%1')").arg(mask)).toString(), QString());
+    QCOMPARE(evaluate(shared, QStringLiteral("plainText('%1abc')").arg(mask)).toString(), QStringLiteral("abc"));
+    QCOMPARE(evaluate(shared, QStringLiteral("plainText('abc')")).toString(), QStringLiteral("abc"));
 }
 
 int main(int argc, char *argv[])

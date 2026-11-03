@@ -20,6 +20,9 @@ RowLayout {
     property int keyWidth: 200
     property int aliasWidth: 150
 
+    // The tab owns the "Show" switch: one switch reveals every key.
+    property bool revealed: false
+
     // The tab moves the token; the row reloads and saves itself.
     property int reloadToken: 0
     property int commitToken: 0
@@ -36,8 +39,8 @@ RowLayout {
     function load() {
         endpointField.text = Settings.baseUrlForRole(task)
         aliasField.text = Settings.modelNameForRole(task)
-        keyCell.load()
         root.keyPresent = Settings.apiKeySetForRole(task)
+        keyCell.load()
     }
 
     function save() {
@@ -62,6 +65,8 @@ RowLayout {
         Layout.preferredWidth: root.titleWidth
         Layout.fillHeight: true
         text: RoleProfiles.title(root.task)
+        font.pointSize: Theme.bodySmallSize
+        color: Theme.textPrimary
         wrapMode: Text.WordWrap
         verticalAlignment: Text.AlignVCenter
     }
@@ -75,6 +80,7 @@ RowLayout {
             id: endpointField
             Layout.fillWidth: true
             implicitHeight: Theme.controlHeight
+            font.pointSize: Theme.bodySmallSize
             selectByMouse: true
             placeholderText: Settings.baseUrl
         }
@@ -82,7 +88,7 @@ RowLayout {
         LLOLabel {
             id: plaintextKeyWarning
             Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
+            font.pointSize: Theme.footnoteSize
             color: Theme.accentAttention
             visible: Settings.isPlaintextKeyEndpoint(endpointField.text)
             wrapMode: Text.WordWrap
@@ -94,8 +100,8 @@ RowLayout {
         id: keyCell
         Layout.preferredWidth: root.keyWidth
         keySet: root.keyPresent
+        revealed: root.revealed
         commit: function(text) { Settings.setApiKeyForRole(root.task, text) }
-        clear: function() { Settings.clearApiKeyForRole(root.task) }
     }
 
     TextField {
@@ -103,6 +109,7 @@ RowLayout {
         Layout.preferredWidth: root.aliasWidth
         Layout.fillWidth: true
         implicitHeight: Theme.controlHeight
+        font.pointSize: Theme.bodySmallSize
         selectByMouse: true
         placeholderText: qsTr("the model id")
     }

@@ -480,24 +480,14 @@
         <translation>Печати и штампы</translation>
     </message>
     <message>
-        <location line="+11"/>
-        <source>numbered display equations</source>
-        <translation>выключные уравнения с номером</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>isolated formulas (LaTeX)</source>
-        <translation>изолированные формулы (LaTeX)</translation>
-    </message>
-    <message>
-        <location line="+18"/>
+        <location line="+3"/>
         <source>Main content</source>
         <translation>Основное содержимое</translation>
     </message>
     <message>
         <location line="+2"/>
-        <source>Captions, footnotes and references</source>
-        <translation>Подписи, сноски и ссылки</translation>
+        <source>Captions and footnotes</source>
+        <translation>Подписи и сноски</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -2922,7 +2912,7 @@
         <translation>Активировать</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+50"/>
         <location line="+37"/>
         <source>Open folder</source>
         <translation>Открыть папку</translation>
@@ -2971,12 +2961,12 @@
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+19"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location line="-9"/>
+        <location line="-10"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -2984,32 +2974,32 @@
 <context>
     <name>RuntimeTab</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTab.qml" line="+33"/>
+        <location filename="../../src/qml/Settings/RuntimeTab.qml" line="+37"/>
         <source>Connection mode</source>
         <translation>Режим подключения</translation>
     </message>
     <message>
-        <location line="+9"/>
-        <source>External server</source>
-        <translation>Внешний сервер</translation>
+        <location line="+6"/>
+        <source>External</source>
+        <translation>Внешний</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>Managed local server</source>
-        <translation>Управляемый локальный сервер</translation>
+        <source>Managed</source>
+        <translation>Управляемый</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+18"/>
         <source>Connection timeout (ms)</source>
         <translation>Таймаут подключения (мс)</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+19"/>
         <source>Request timeout (ms)</source>
         <translation>Время ожидания ответа (мс)</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+20"/>
         <source>Connection timeout — how long to wait for the server to accept a connection. Request timeout — how long to wait for the model&apos;s response; raise it if long recognitions are cut off.</source>
         <translation>Таймаут подключения — сколько ждать установления соединения с сервером. Время ожидания ответа — сколько ждать ответ модели; увеличьте его, если длинные распознавания обрываются.</translation>
     </message>
@@ -3017,7 +3007,7 @@
 <context>
     <name>RuntimeTabExternal</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+57"/>
+        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+66"/>
         <source>The key is kept in %1 — not in the settings file.</source>
         <translation>Ключ хранится в %1 — не в файле настроек.</translation>
     </message>
@@ -3037,27 +3027,34 @@
         <translation>Общий сервер — значение по умолчанию для всех задач</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+67"/>
         <source>The system store did not answer: %1</source>
         <translation>Системное хранилище не ответило: %1</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="-61"/>
         <source>Endpoint base URL</source>
         <translation>Базовый URL конечной точки</translation>
     </message>
     <message>
+        <location line="+19"/>
         <source>The key will be sent in plain text (http outside the local machine).</source>
         <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
     <message>
-        <location line="+11"/>
-        <location line="+51"/>
+        <location line="+10"/>
+        <location line="+71"/>
         <source>API key</source>
         <translation>API-ключ</translation>
     </message>
     <message>
-        <location line="-26"/>
+        <location line="-66"/>
+        <location line="+69"/>
+        <source>Show</source>
+        <translation>Показать</translation>
+    </message>
+    <message>
+        <location line="-31"/>
         <source>Tasks — an empty field takes the shared value</source>
         <translation>Задачи — пустое поле берёт общее значение</translation>
     </message>
@@ -3072,7 +3069,7 @@
         <translation>Эндпоинт</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+22"/>
         <source>Model alias</source>
         <translation>Алиас модели</translation>
     </message>
@@ -3080,17 +3077,12 @@
 <context>
     <name>RuntimeTabInternal</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+83"/>
+        <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+90"/>
         <source>Install llama.cpp</source>
         <translation>Установить llama.cpp</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <source>Installed: %1 (%2)</source>
-        <translation>Установлено: %1 (%2)</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+16"/>
         <source>No runtime installed yet</source>
         <translation>Рантайм ещё не установлен</translation>
     </message>
@@ -3100,7 +3092,7 @@
         <translation>Установленные сборки</translation>
     </message>
     <message>
-        <location line="+45"/>
+        <location line="+46"/>
         <source>A newer build %1 is available%2</source>
         <translation>Доступна новая сборка %1%2</translation>
     </message>
@@ -3110,7 +3102,7 @@
         <translation> (проверено %1)</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
         <source>Updating will install it after the running server is stopped.</source>
         <translation>Обновление установится после остановки работающего сервера.</translation>
     </message>
@@ -3140,7 +3132,7 @@
         <translation>Платформа: %1 · рекомендуемый backend: %2</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+29"/>
         <source>Backend</source>
         <translation>Backend</translation>
     </message>
@@ -3150,17 +3142,17 @@
         <translation>Релиз</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+14"/>
         <source>Check for updates</source>
         <translation>Проверить обновления</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="-47"/>
         <source>Open this tab or press “Check for updates” to load releases.</source>
         <translation>Откройте эту вкладку или нажмите «Проверить обновления», чтобы загрузить релизы.</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+53"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -3170,12 +3162,12 @@
         <translation>Скачать и установить</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="-164"/>
         <source>Clean up unused builds</source>
         <translation>Очистить неиспользуемые сборки</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+181"/>
         <source>Press “Check for updates” to see if a newer release is available.</source>
         <translation>Нажмите «Проверить обновления», чтобы узнать о новых релизах.</translation>
     </message>
@@ -3193,19 +3185,9 @@
 <context>
     <name>SecretKeyField</name>
     <message>
-        <location filename="../../src/qml/Common/SecretKeyField.qml" line="+23"/>
+        <location filename="../../src/qml/Common/SecretKeyField.qml" line="+22"/>
         <source>the shared key</source>
         <translation>общий ключ</translation>
-    </message>
-    <message>
-        <location line="+25"/>
-        <source>Show</source>
-        <translation>Показать</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>Delete</source>
-        <translation>Удалить</translation>
     </message>
 </context>
 <context>
@@ -3527,11 +3509,12 @@
 <context>
     <name>TaskConnectionRow</name>
     <message>
+        <location filename="../../src/qml/Settings/TaskConnectionRow.qml" line="+95"/>
         <source>The key will be sent in plain text (http outside the local machine).</source>
         <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/TaskConnectionRow.qml" line="+90"/>
+        <location line="+19"/>
         <source>the model id</source>
         <translation>идентификатор модели</translation>
     </message>
@@ -3784,59 +3767,67 @@
 <context>
     <name>VerificationBlocksTab</name>
     <message>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="24"/>
+        <source>Off</source>
+        <translation>Выкл</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="25"/>
+        <source>Low</source>
+        <translation>Низкое</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="26"/>
+        <source>Medium</source>
+        <translation>Среднее</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="27"/>
+        <source>High</source>
+        <translation>Высокое</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="159"/>
         <source>Thinking during fix</source>
         <translation>Мышление при исправлении</translation>
     </message>
     <message>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="179"/>
         <source>Thinking during read</source>
         <translation>Мышление при чтении</translation>
     </message>
     <message>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="199"/>
         <source>Tokens the model may spend thinking before the answer. Models without a thinking channel ignore this; when the context window cannot fit the thinking, the budget is cut and the status line says so.</source>
         <translation>Сколько токенов модель может потратить на размышления перед ответом. Модели без канала мышления это игнорируют; если размышления не помещаются в контекстное окно, бюджет урезается, и строка состояния об этом сообщает.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="+121"/>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="209"/>
         <source>Show model confidence</source>
         <translation>Показывать уверенность модели</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <source>Next to a verified block the decision model&apos;s probability in percent appears, in the color of the block&apos;s frame. A debugging aid for the decision model.</source>
-        <translation>Рядом с проверенным блоком появляется вероятность decision-модели в процентах, цветом рамки блока. Отладочный инструмент для decision-модели.</translation>
-    </message>
-    <message>
-        <location line="+16"/>
-        <source>How checking works</source>
-        <translation>Как работает проверка</translation>
-    </message>
-    <message>
-        <location line="+11"/>
-        <source>Checking is fast: the decision model only answers how likely the text matches the image, block by block. Matching blocks turn green; rejected ones turn red. Fixing is a separate step: the «Fix» button sends the rejected blocks to the fix model. The managed runtime switches its loaded model between the two tasks; an external runtime serves both.</source>
-        <translation>Проверка быстрая: decision-модель лишь оценивает по блокам, насколько вероятно, что текст соответствует изображению. Совпавшие блоки становятся зелёными, отклонённые — красными. Исправление — отдельный шаг: кнопка «Исправить» отправляет отклонённые блоки модели fix. Управляемый рантайм переключает загруженную модель между двумя задачами; внешний обслуживает обе.</translation>
-    </message>
-    <message>
-        <location line="+14"/>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="220"/>
         <source>Block types to check</source>
         <translation>Типы блоков для проверки</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Selected %1 of %2</source>
-        <translation>Выбрано %1 из %2</translation>
-    </message>
-    <message>
-        <location line="+9"/>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="225"/>
         <source>Select all</source>
         <translation>Выбрать все</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="242"/>
         <source>Deselect all</source>
         <translation>Снять выбор</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="257"/>
+        <source>Selected %1 of %2</source>
+        <translation>Выбрано %1 из %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="351"/>
         <source>Blocks without OCR text are not checked.</source>
         <translation>Блоки без OCR-текста не проверяются.</translation>
     </message>
