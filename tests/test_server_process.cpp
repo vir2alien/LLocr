@@ -1,4 +1,5 @@
 #include <QFile>
+#include <QFileInfo>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -302,6 +303,13 @@ void TestServerProcess::ownerJsonCarriesTheToken()
     const ServerOwnerRecord record = ServerOwner::read(ownerPath);
     QVERIFY(record.isValid());
     QCOMPARE(record.token, s->authToken());
+#ifdef Q_OS_UNIX
+    // The token is a per-start secret: the record must not be readable by
+    // other local users.
+    const QFileInfo info(ownerPath);
+    QVERIFY(info.permissions() & QFileDevice::ReadOwner);
+    QVERIFY(!(info.permissions() & (QFileDevice::ReadGroup | QFileDevice::ReadOther)));
+#endif
     s->stop();
     QTRY_COMPARE_WITH_TIMEOUT(int(s->state()), int(RuntimeState::Stopped), 8000);
     QVERIFY(!QFile::exists(ownerPath));

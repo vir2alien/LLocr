@@ -39,6 +39,7 @@ public:
     bool streamPartialThenHold = false;
     bool dropMidBody = false;
     bool chunkedNoLength = false;  // 200 with Transfer-Encoding: chunked, no Content-Length
+    bool zeroLength = false;       // 200 with Content-Length: 0
     int forcedStatus = 0;          // non-zero: answer this status with an empty body
 
     QList<RecordedRequest> requests;
@@ -182,6 +183,11 @@ private:
             return;
         }
 
+        if (zeroLength) {
+            respond(socket, "HTTP/1.1 200 OK", baseHeaders(), QByteArray(), 0, false);
+            return;
+        }
+
         if (dropMidBody) {
             // The 200 headers promise the full length, half the body arrives,
             // then the connection closes — the transfer breaks mid-stream.
@@ -287,6 +293,10 @@ private slots:
     // unbounded: the downloader refuses it instead of writing to disk without
     // a limit; a normal Content-Length response still works.
     void chunkedWithoutContentLengthIsRefused();
+    // A declared Content-Length of 0 is the same refusal as a missing one: an
+    // "empty file" is never a real model artifact, so accepting it would only
+    // hand the install pipeline a truncated file.
+    void zeroContentLengthIsRefused();
     // A file nobody published a checksum for is refused when the caller
     // insists on one (ADR 212), and accepted when they do not.
     void noDigestIsRefusedWhenRequired();
@@ -557,6 +567,27 @@ void TestDownloadManager::chunkedWithoutContentLengthIsRefused()
     DownloadTask *ok = mgr.taskAt(okRow);
     QTRY_COMPARE_WITH_TIMEOUT(int(ok->state()), int(DownloadTask::State::Completed), 5000);
     QCOMPARE(readFile(QDir(dir.path()).filePath("ok.bin")), data);
+}
+
+void TestDownloadManager::zeroContentLengthIsRefused()
+{
+    QTemporaryDir dir;
+    TestServer server;
+    server.content = pattern(4096);
+    server.zeroLength = true;
+    QVERIFY(server.start());
+
+    DownloadManager mgr;
+    mgr.setAllowLoopbackHttp(true);
+    const int row = mgr.enqueue(makeReq(server.url("f.bin"), dir.path(), "f.bin"));
+    DownloadTask *task = mgr.taskAt(row);
+    QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 5000);
+    QVERIFY(task->error().contains(QStringLiteral("file size"), Qt::CaseInsensitive));
+
+    // Nothing on disk — not even a .part for the resume path.
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("f.bin")));
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("f.bin.part")));
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("f.bin.part.meta")));
 }
 
 void TestDownloadManager::noDigestIsRefusedWhenRequired()

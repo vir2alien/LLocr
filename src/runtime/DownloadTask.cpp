@@ -304,7 +304,7 @@ void DownloadTask::onMetadata(QNetworkReply *reply)
         }
         if (total > 0)
             m_totalBytes = total;
-        if (m_totalBytes < 0) {
+        if (m_totalBytes <= 0) {
             fail(QObject::tr("The server did not report the file size — the download was refused"));
             reply->abort();
             return;
@@ -315,7 +315,7 @@ void DownloadTask::onMetadata(QNetworkReply *reply)
     } else if (status == 200) {
         bool lengthKnown = false;
         const qint64 contentLength = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(&lengthKnown);
-        if (!lengthKnown || contentLength < 0) {
+        if (!lengthKnown || contentLength <= 0) {
             // A chunked (or otherwise unbounded) answer fills the disk with no
             // limit; HF and GitHub always send the length.
             fail(QObject::tr("The server did not report the file size — the download was refused"));

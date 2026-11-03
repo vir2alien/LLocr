@@ -228,7 +228,8 @@ void LlamaServerProcess::armHealthPolling()
             m_healthInFlight = true;
             QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/health")));
             req.setTransferTimeout(500);
-            req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
+            if (!m_authToken.isEmpty())
+                req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
             QNetworkReply *reply = m_net->get(req);
             connect(reply, &QNetworkReply::finished, this, [this, reply]() { onHealthReply(reply); });
         });
@@ -258,7 +259,8 @@ void LlamaServerProcess::tryModelsFallback()
     m_modelsProbeInFlight = true;
     QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/v1/models")));
     req.setTransferTimeout(3000);
-    req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
+    if (!m_authToken.isEmpty())
+        req.setRawHeader("Authorization", "Bearer " + m_authToken.toUtf8());
     QNetworkReply *reply = m_net->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
@@ -592,10 +594,12 @@ void LlamaServerProcess::writeOwnerJson()
     o.insert(QStringLiteral("port"), m_port);
     o.insert(QStringLiteral("program"), m_process.program());
     o.insert(QStringLiteral("token"), m_authToken);
-    // Atomic write (§7.2).
+    // Atomic write (§7.2). The token is a per-start secret: only the owner may
+    // read it — the record can live in a shared runtime dir.
     QSaveFile f(m_opts.ownerJsonPath);
     if (!f.open(QIODevice::WriteOnly))
         return;
+    f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     QTextStream out(&f);
     out << QJsonDocument(o).toJson(QJsonDocument::Compact);
     out.flush();

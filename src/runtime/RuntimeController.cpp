@@ -753,7 +753,8 @@ void RuntimeController::fetchManagedModels()
 
     HttpClient::Options options;
     options.timeoutMs = kModelsRequestTimeoutMs;
-    options.authorization = "Bearer " + conn.apiKey.toUtf8();
+    if (!conn.apiKey.isEmpty())
+        options.authorization = "Bearer " + conn.apiKey.toUtf8();
     QNetworkRequest req = HttpClient::makeRequest(QUrl(m_modelsBaseUrl + QStringLiteral("/v1/models")), options);
     QNetworkReply *reply = m_modelsNet->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onModelsReply(reply); });

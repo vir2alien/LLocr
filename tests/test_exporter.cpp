@@ -299,7 +299,7 @@ void ExporterTest::assembleHtmlDocumentIsSelfContained()
     QVERIFY(html.startsWith(QStringLiteral("<!DOCTYPE html>")));
     QVERIFY(html.contains(QStringLiteral("<meta charset=\"utf-8\">")));
     const QLatin1String csp("<meta http-equiv=\"Content-Security-Policy\" "
-                            "content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:\">");
+                            "content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'; base-uri 'none'\">");
     QVERIFY(html.contains(csp));
     QVERIFY(html.indexOf(csp) < html.indexOf(QStringLiteral("<style")));
     QVERIFY(html.contains(QStringLiteral("<section><h2>Page 1</h2><p>hi</p></section>")));
