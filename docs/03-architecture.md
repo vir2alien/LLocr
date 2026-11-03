@@ -162,7 +162,7 @@ store.
   (`auto` | `raw` | the layout markup parser `mineru-layout`; key
   `parser/id`; default **`auto`**, which resolves to the
   selected model's `defaultParserId()` — ADR 88). The parser is configured
-  through `ParserOptions` (`keepPageNumbers`, `tablesAsHtml`, `bboxRange`,
+  through `ParserOptions` (`keepHeadersAndPageNumbers`, `tablesAsHtml`, `bboxRange`,
   `modelId`) and `IOutputParser::rebuildText()` re-renders a page's Markdown
   after its structured fragments change.
 - In `Managed` mode the *connection* is **computed**, not configured: the

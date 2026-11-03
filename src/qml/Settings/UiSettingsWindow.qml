@@ -10,8 +10,8 @@ import "../Common"
 ApplicationWindow {
     id: window
     title: qsTr("Interface settings")
-    width: 440
-    height: 340
+    width: 380
+    height: 268
     modality: Qt.NonModal
 
     function bringToFront() {
@@ -29,6 +29,7 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Restore defaults")
+            font: Theme.bodySmall
             onClicked: {
                 Settings.language = "system"
                 I18n.setLanguage(Settings.language)

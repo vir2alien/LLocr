@@ -3,6 +3,7 @@
 #include "parsers/DetTokenFormat.h"
 
 #include "core/ServiceMarkers.h"
+#include "core/ServiceLabels.h"
 
 #include <QCoreApplication>
 #include <QSet>
@@ -218,7 +219,7 @@ OcrResult DetTokenParserBase::parse(const QString &rawText) const
 
     for (int i = 0; i < tokens.size(); ++i) {
         const Token &t = tokens.at(i);
-        if (!m_options.keepPageNumbers && t.label == QLatin1String("page_number"))
+        if (!m_options.keepHeadersAndPageNumbers && isPageFurnitureLabel(t.label))
             continue;
         const int spanEnd = (i + 1 < tokens.size()) ? tokens.at(i + 1).tokenStart : text.size();
         QString boxText = stripServiceTokens(decode(text.mid(t.textStart, spanEnd - t.textStart))).trimmed();

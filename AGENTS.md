@@ -294,7 +294,7 @@
       recorded model path.
       ADR 88 (**output parsers are now per-model and data-driven**): parser
       options moved out of the app layer into `ParserOptions`
-      (`keepPageNumbers`/`tablesAsHtml`/`bboxRange`/`modelId`, passed to
+      (`keepHeadersAndPageNumbers`/`tablesAsHtml`/`bboxRange`/`modelId`, passed to
       `ParserFactory::create`), so `AppController` no longer `dynamic_cast`es a
       concrete parser; `rebuildText(page)` + `displayName()` joined
       `IOutputParser` (the free `rebuildPageText()` is gone — `RawParser`

@@ -194,10 +194,9 @@ ScrollView {
             LLOLabel {
                 text: qsTr("Backend")
             }
-            ComboBox {
+            LLOComboBox {
                 id: backendBox
                 Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
                 model: backendOptions
                 enabled: !RuntimeInstaller.busy
                 onActivated: RuntimeInstaller.backend =
@@ -208,10 +207,9 @@ ScrollView {
                 text: qsTr("Release")
             }
             RowLayout {
-                ComboBox {
+                LLOComboBox {
                     id: releaseBox
                     Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
                     model: releaseOptions
                     enabled: !RuntimeInstaller.busy
                     onActivated: RuntimeInstaller.selectedRelease = currentIndex

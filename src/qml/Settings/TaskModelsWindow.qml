@@ -46,10 +46,12 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Restore defaults")
+            font: Theme.bodySmall
             onClicked: taskTable.resetTabs()
         }
         LLOButton {
             text: qsTr("Cancel")
+            font: Theme.bodySmall
             enabled: !ModelInstaller.taskQueueActive
             onClicked: {
                 taskTable.resetDraft()

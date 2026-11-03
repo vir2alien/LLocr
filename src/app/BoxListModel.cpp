@@ -1,5 +1,6 @@
 #include "app/BoxListModel.h"
 
+#include "core/ServiceLabels.h"
 #include "parsers/BlockStyle.h"
 
 namespace llocr {
@@ -8,12 +9,11 @@ namespace {
 
 // The page furniture: running heads, running feet, page numbers and seals.
 // They carry no content, so the overlay draws them grey instead of the text
-// hue. The shipped vocabularies spell them header/footer/page_number
-// (LFM says page_header/page_footer).
+// hue. The heads and the feet come with the shared vocabulary; a seal is
+// the app's own addition to it.
 bool isServiceLabel(const QString &label)
 {
-    return label == QLatin1String("header") || label == QLatin1String("footer") || label == QLatin1String("page_header") || label == QLatin1String("page_footer") ||
-           label == QLatin1String("page_number") || label == QLatin1String("seal");
+    return isPageFurnitureLabel(label) || label == QLatin1String("seal");
 }
 
 }  // namespace

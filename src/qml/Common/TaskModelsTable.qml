@@ -261,10 +261,9 @@ Item {
                     }
                 }
 
-                ComboBox {
+                LLOComboBox {
                     id: modelBox
                     Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
                     model: taskRow.quantModel
                     textRole: "title"
                     valueRole: "key"
@@ -301,11 +300,10 @@ Item {
                     }
                 }
 
-                ComboBox {
+                LLOComboBox {
                     id: quantBox
                     visible: !table.externalMode
                     Layout.preferredWidth: 105
-                    implicitHeight: Theme.controlHeight
                     textRole: "id"
 
                     // The dropdown is wider than the control and hangs off

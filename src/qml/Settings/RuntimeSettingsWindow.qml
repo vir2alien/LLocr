@@ -49,6 +49,7 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Restore defaults")
+            font: Theme.bodySmall
             onClicked: {
                 Settings.resetRuntimeDefaults()
                 rtTab.loadValues()

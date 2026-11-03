@@ -99,13 +99,12 @@ Item {
 
                 // A parameter with named options is a closed set: the choices
                 // come from the request profile, the value from the model.
-                ComboBox {
+                LLOComboBox {
                     id: choiceBox
                     anchors.left: nameLabel.right
                     anchors.leftMargin: Theme.spacing
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width * root.valueWidth
-                    implicitHeight: Theme.controlHeight
                     visible: paramRow.choices.length > 0
                     model: paramRow.choices
                     textRole: "label"

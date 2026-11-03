@@ -32,6 +32,7 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Reset all settings")
+            font: Theme.bodySmall
             onClicked: {
                 Verification.resetToDefaults()
                 blocksTab.resetValues()

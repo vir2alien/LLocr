@@ -44,6 +44,7 @@ qt_add_library(llocr_core STATIC
     core/RequestJournal.h
     core/RequestJournal.cpp
     core/ServiceMarkers.h
+    core/ServiceLabels.h
     core/RequestProfile.h
     core/RequestProfile.cpp
     core/RequestBudget.h

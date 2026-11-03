@@ -5,6 +5,7 @@
 
 #include "core/BoxTransitions.h"
 #include "core/ServiceMarkers.h"
+#include "core/ServiceLabels.h"
 #include "parsers/HtmlMarkup.h"
 
 #include <QRegularExpression>
@@ -196,7 +197,7 @@ IOutputParser::RebuiltPageText renderPageText(const OcrPage &page, const ParserO
     int offset = 0;
     for (int i = 0; i < page.boxes.size(); ++i) {
         const BoundingBox &box = page.boxes.at(i);
-        if (!options.keepPageNumbers && box.label == QLatin1String("page_number"))
+        if (!options.keepHeadersAndPageNumbers && isPageFurnitureLabel(box.label))
             continue;
         BlockStyleInfo style = blockStyleForLabel(box.label, options.modelId);
         if (style.style == BlockStyle::ImagePlaceholder)

@@ -114,7 +114,7 @@ private slots:
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
         QCOMPARE(store.splitPages(), true);
-        QCOMPARE(store.keepPageNumbers(), true);
+        QCOMPARE(store.keepHeadersAndPageNumbers(), true);
         QCOMPARE(store.pdfLandscape(), false);
         QCOMPARE(store.pdfMarginMm(), 15);
     }
@@ -261,7 +261,7 @@ private slots:
         SettingsStore store;
         store.setParserId(QStringLiteral("raw"));
         store.setSplitPages(false);
-        store.setKeepPageNumbers(false);
+        store.setKeepHeadersAndPageNumbers(false);
         store.setPdfLandscape(true);
         store.setPdfMarginMm(40);
         store.setBaseUrl(QStringLiteral("http://custom:1"));
@@ -272,7 +272,7 @@ private slots:
         // "auto" — the OCR model adapter declares its parser (ADR 88).
         QCOMPARE(store.parserId(), QStringLiteral("auto"));
         QCOMPARE(store.splitPages(), true);
-        QCOMPARE(store.keepPageNumbers(), true);
+        QCOMPARE(store.keepHeadersAndPageNumbers(), true);
         QCOMPARE(store.pdfLandscape(), false);
         QCOMPARE(store.pdfMarginMm(), 15);
         // Outside the group — untouched.
@@ -312,12 +312,12 @@ private slots:
     {
         SettingsStore store;
         store.setSplitPages(false);
-        store.setKeepPageNumbers(false);
+        store.setKeepHeadersAndPageNumbers(false);
         store.setTablesAsHtml(true);
         store.setPdfLandscape(true);
         store.setPdfMarginMm(25);
         QCOMPARE(store.splitPages(), false);
-        QCOMPARE(store.keepPageNumbers(), false);
+        QCOMPARE(store.keepHeadersAndPageNumbers(), false);
         QCOMPARE(store.tablesAsHtml(), true);
         QCOMPARE(store.pdfLandscape(), true);
         QCOMPARE(store.pdfMarginMm(), 25);
@@ -330,7 +330,7 @@ private slots:
 
         store.resetToDefaults();
         QCOMPARE(store.splitPages(), true);
-        QCOMPARE(store.keepPageNumbers(), true);
+        QCOMPARE(store.keepHeadersAndPageNumbers(), true);
         QCOMPARE(store.tablesAsHtml(), false);
         QCOMPARE(store.pdfLandscape(), false);
         QCOMPARE(store.pdfMarginMm(), 15);

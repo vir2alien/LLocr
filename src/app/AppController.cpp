@@ -295,7 +295,7 @@ AppController::AppController(SettingsStore &settings,
     // has no revision to key on for them.
     connect(&m_settings, &SettingsStore::parserIdChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
     connect(&m_settings, &SettingsStore::modelRecipeIdChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
-    connect(&m_settings, &SettingsStore::keepPageNumbersChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
+    connect(&m_settings, &SettingsStore::keepHeadersAndPageNumbersChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
     connect(&m_settings, &SettingsStore::tablesAsHtmlChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
 }
 
@@ -346,7 +346,7 @@ ParserOptions AppController::parserOptions() const
 {
     ParserOptions options;
     options.modelId = m_settings.modelRecipeId();
-    options.keepPageNumbers = m_settings.keepPageNumbers();
+    options.keepHeadersAndPageNumbers = m_settings.keepHeadersAndPageNumbers();
     options.tablesAsHtml = m_settings.tablesAsHtml();
     return options;
 }
@@ -1522,7 +1522,7 @@ bool AppController::applyLayout(int pageIndex, const QString &rawText)
 
     ParserOptions options;
     options.modelId = m_layoutRequestProfiles.activeProfileId();
-    options.keepPageNumbers = true;
+    options.keepHeadersAndPageNumbers = true;
     m_boxModel.setStyleModelId(options.modelId);
     OcrResult parsed;
     if (auto parser = ParserFactory::create(role->parser, options)) {

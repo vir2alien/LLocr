@@ -1,5 +1,7 @@
 #include "parsers/MinerULayoutParser.h"
 
+#include "core/ServiceLabels.h"
+
 #include <algorithm>
 
 namespace llocr {
@@ -129,13 +131,13 @@ OcrResult MinerULayoutParser::parse(const QString &rawText) const
     const auto [voteTurn, voteShare] = orientationVote(orientations);
     page.orientationVote = voteTurn;
     page.orientationVoteShare = voteShare;
-    const int kept = m_options.keepPageNumbers ? lines.size() : int(std::count_if(lines.cbegin(), lines.cend(), [](const LayoutLine &line) { return line.label != QLatin1String("page_number"); }));
+    const int kept = m_options.keepHeadersAndPageNumbers ? lines.size() : int(std::count_if(lines.cbegin(), lines.cend(), [](const LayoutLine &line) { return !isPageFurnitureLabel(line.label); }));
     // The base prepends a preamble box when the reply opens with text: a
     // mismatch means the lists do not line up and nothing is zipped.
     if (kept == page.boxes.size()) {
         int boxIndex = 0;
         for (const LayoutLine &line : lines) {
-            if (!m_options.keepPageNumbers && line.label == QLatin1String("page_number"))
+            if (!m_options.keepHeadersAndPageNumbers && isPageFurnitureLabel(line.label))
                 continue;
             page.boxes[boxIndex].orientation = line.orientation;
             ++boxIndex;

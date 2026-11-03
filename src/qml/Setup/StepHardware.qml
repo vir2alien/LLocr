@@ -104,11 +104,10 @@ Item {
                 Layout.fillWidth: true
                 spacing: Theme.spacing
 
-                ComboBox {
+                LLOComboBox {
                     id: backendBox
 
                     Layout.preferredWidth: 220
-                    implicitHeight: Theme.controlHeight
                     model: RuntimeInstaller.availableBackends
                     displayText: RuntimeInstaller.backendDisplayName(RuntimeInstaller.backend)
 

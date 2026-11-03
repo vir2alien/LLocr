@@ -15,7 +15,7 @@ ColumnLayout {
     LLOCheckBox {
         id: box
         Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
+        font.pointSize: Theme.bodySmallSize
         text: root.label
         onToggled: root.toggled(checked)
     }

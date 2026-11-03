@@ -145,9 +145,8 @@ Item {
                 color: Theme.textPrimary
             }
             Item { Layout.fillWidth: true }
-            ComboBox {
+            LLOComboBox {
                 id: fixReasoningBox
-                implicitHeight: Theme.controlHeight
                 model: root.reasoningBudgetModel
                 onActivated: root.edited()
             }
@@ -162,9 +161,8 @@ Item {
                 color: Theme.textPrimary
             }
             Item { Layout.fillWidth: true }
-            ComboBox {
+            LLOComboBox {
                 id: readReasoningBox
-                implicitHeight: Theme.controlHeight
                 model: root.reasoningBudgetModel
                 onActivated: root.edited()
             }

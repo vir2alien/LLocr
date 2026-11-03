@@ -33,10 +33,9 @@ ColumnLayout {
         text: qsTr("Connection mode")
     }
 
-    ComboBox {
+    LLOComboBox {
         id: connectionModeBox
         Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
         textRole: "text"
         model: [
             { value: "external", text: qsTr("External server") },

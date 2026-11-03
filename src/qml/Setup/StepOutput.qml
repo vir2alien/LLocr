@@ -44,11 +44,12 @@ Item {
         }
 
         OptionCheck {
-            label: qsTr("Keep page numbers")
-            help: qsTr("When off, page_number blocks from the model are ignored "
-                       + "during recognition. Applies to newly recognized pages.")
-            checked: Settings.keepPageNumbers
-            onToggled: (value) => Settings.keepPageNumbers = value
+            label: qsTr("Keep headers and page numbers")
+            help: qsTr("When off, the running heads, the running feet and the "
+                       + "page numbers from the model are ignored during "
+                       + "recognition. Applies to newly recognized pages.")
+            checked: Settings.keepHeadersAndPageNumbers
+            onToggled: (value) => Settings.keepHeadersAndPageNumbers = value
         }
 
         OptionCheck {
@@ -72,20 +73,16 @@ Item {
 
             LLOLabel {
                 text: qsTr("Orientation")
+                font: Theme.bodySmall
             }
-            ComboBox {
-                id: orientationBox
+            SegmentedToggle {
                 Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                model: [qsTr("Portrait"), qsTr("Landscape")]
-                function sync() { currentIndex = Settings.pdfLandscape ? 1 : 0 }
-                onModelChanged: sync()
-                Component.onCompleted: sync()
+                options: [
+                    { label: qsTr("Portrait") },
+                    { label: qsTr("Landscape") }
+                ]
+                currentIndex: Settings.pdfLandscape ? 1 : 0
                 onActivated: (idx) => Settings.pdfLandscape = (idx === 1)
-                Connections {
-                    target: Settings
-                    function onPdfLandscapeChanged() { orientationBox.sync() }
-                }
             }
         }
 
@@ -95,11 +92,13 @@ Item {
 
             LLOLabel {
                 text: qsTr("Margins (mm)")
+                font: Theme.bodySmall
             }
             SpinBox {
                 id: marginSpin
-                Layout.fillWidth: true
+                Layout.preferredWidth: 110
                 implicitHeight: Theme.controlHeight
+                font.pointSize: Theme.bodySmallSize
                 from: 0
                 to: 50
                 editable: true
@@ -110,6 +109,7 @@ Item {
                     function onPdfMarginMmChanged() { marginSpin.value = Settings.pdfMarginMm }
                 }
             }
+            Item { Layout.fillWidth: true }
         }
 
         Item { Layout.fillHeight: true }

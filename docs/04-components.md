@@ -88,8 +88,7 @@ model windows have per-tab resets instead (profile restore in Launch/Request).
 |             | selected model's `defaultParserId()`, ADR 88, 112); **split   |
 |             | pages** (`output/splitPages`, default on — `---` rule in MD, dash     |
 |             | line in TXT, `<hr>` in HTML, page break in PDF/DOCX — no “Page N”     |
-|             | headings, ADR 64); **keep page numbers** (`output/keepPageNumbers`,   |
-|             | default on — off drops `page_number` blocks at parse time); **keep    |
+|             | headings, ADR 64); **keep headers and page numbers** (`output/keepPageNumbers`, default on — off drops the page furniture at parse time: the running heads, the running feet and the page numbers, ADR 280); **keep    |
 |             | tables as HTML** (`output/tablesAsHtml`, default off — on passes the  |
 |             | model's `<table>` block through verbatim instead of a pipe table, ADR |
 |             | 19); PDF export: orientation (`export/pdfLandscape`), margins in mm   |

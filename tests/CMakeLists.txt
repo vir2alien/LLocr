@@ -54,6 +54,21 @@ function(llocr_add_profile_resources target)
     )
 endfunction()
 
+# The app's icon set (Lucide): a QML file that draws an Icon needs the SVG in
+# the binary, or every icon warns about a missing file. The whole set goes in
+# — a shared component may draw any glyph, and a test must not break because
+# a new icon was added.
+file(GLOB UI_ICON_FILES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/resources/icons/ui/*.svg")
+
+function(llocr_add_ui_icons target)
+    qt_add_resources(${target} "${target}_ui_icons"
+        PREFIX "/icons/ui"
+        BASE "${CMAKE_SOURCE_DIR}/resources/icons/ui"
+        FILES ${UI_ICON_FILES}
+    )
+endfunction()
+
 # Test double: a local llama-server stand-in. It is NOT registered via add_test;
 # the runtime tests spawn it as a real child process to exercise probe/health.
 qt_add_executable(mock_llama_server mock_llama_server.cpp)
@@ -426,13 +441,7 @@ target_link_libraries(test_task_models_table_qml PRIVATE
 )
 # The table's icons come from the app's icon set; without them every Icon
 # would warn about a missing file.
-qt_add_resources(test_task_models_table_qml "task_models_table_ui_icons"
-    PREFIX "/icons/ui"
-    BASE "${CMAKE_SOURCE_DIR}/resources/icons/ui"
-    FILES
-        "${CMAKE_SOURCE_DIR}/resources/icons/ui/x.svg"
-        "${CMAKE_SOURCE_DIR}/resources/icons/ui/settings.svg"
-)
+llocr_add_ui_icons(test_task_models_table_qml)
 add_test(NAME test_task_models_table_qml COMMAND test_task_models_table_qml)
 
 # The setup wizard's steps: the check step must not report a failure where
@@ -448,6 +457,9 @@ target_link_libraries(test_setup_wizard_qml PRIVATE
     llocr_app
 )
 llocr_add_profile_resources(test_setup_wizard_qml)
+# The wizard's first step shows the language and theme pickers, and the theme
+# picker draws icons.
+llocr_add_ui_icons(test_setup_wizard_qml)
 add_test(NAME test_setup_wizard_qml COMMAND test_setup_wizard_qml)
 
 qt_add_executable(test_runtime_installer test_runtime_installer.cpp)

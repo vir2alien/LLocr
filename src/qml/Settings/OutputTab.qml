@@ -23,6 +23,10 @@ ColumnLayout {
         return out;
     }
 
+    // The orientation lives here, not in the Settings: the window edits the
+    // controls and writes them on Save.
+    property int orientationIndex: 0
+
     function syncParser() {
         var idx = -1;
         for (var i = 0; i < root.parserModel.length; i++) {
@@ -37,22 +41,22 @@ ColumnLayout {
     function loadValues() {
         syncParser()
         splitPagesCheck.checked = Settings.splitPages
-        pageNumbersCheck.checked = Settings.keepPageNumbers
+        pageNumbersCheck.checked = Settings.keepHeadersAndPageNumbers
         tablesAsHtmlCheck.checked = Settings.tablesAsHtml
         orientationCheckBox.checked = Settings.orientationCheckEnabled
         orientationAutoTurnCheck.checked = Settings.orientationAutoTurnEnabled
-        orientationBox.currentIndex = Settings.pdfLandscape ? 1 : 0
+        root.orientationIndex = Settings.pdfLandscape ? 1 : 0
         marginSpin.value = Settings.pdfMarginMm
     }
 
     function saveValues() {
         Settings.parserId = root.parserModel[parserBox.currentIndex].id
         Settings.splitPages = splitPagesCheck.checked
-        Settings.keepPageNumbers = pageNumbersCheck.checked
+        Settings.keepHeadersAndPageNumbers = pageNumbersCheck.checked
         Settings.tablesAsHtml = tablesAsHtmlCheck.checked
         Settings.orientationCheckEnabled = orientationCheckBox.checked
         Settings.orientationAutoTurnEnabled = orientationAutoTurnCheck.checked
-        Settings.pdfLandscape = orientationBox.currentIndex === 1
+        Settings.pdfLandscape = root.orientationIndex === 1
         Settings.pdfMarginMm = marginSpin.value
     }
 
@@ -62,32 +66,24 @@ ColumnLayout {
         target: Settings
         function onParserIdChanged() { root.syncParser() }
         function onSplitPagesChanged() { splitPagesCheck.checked = Settings.splitPages }
-        function onKeepPageNumbersChanged() { pageNumbersCheck.checked = Settings.keepPageNumbers }
+        function onKeepHeadersAndPageNumbersChanged() { pageNumbersCheck.checked = Settings.keepHeadersAndPageNumbers }
         function onTablesAsHtmlChanged() { tablesAsHtmlCheck.checked = Settings.tablesAsHtml }
         function onOrientationCheckEnabledChanged() { orientationCheckBox.checked = Settings.orientationCheckEnabled }
         function onOrientationAutoTurnEnabledChanged() { orientationAutoTurnCheck.checked = Settings.orientationAutoTurnEnabled }
-        function onPdfLandscapeChanged() { orientationBox.currentIndex = Settings.pdfLandscape ? 1 : 0 }
+        function onPdfLandscapeChanged() { root.orientationIndex = Settings.pdfLandscape ? 1 : 0 }
         function onPdfMarginMmChanged() { marginSpin.value = Settings.pdfMarginMm }
     }
 
     LLOLabel {
         text: qsTr("Output parser")
+        font.pointSize: Theme.bodySize
+        color: Theme.textPrimary
     }
-    ComboBox {
+    LLOComboBox {
         id: parserBox
         Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
         model: root.parserModel
         textRole: "label"
-    }
-
-    LLOLabel {
-        Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
-        color: Theme.helpColor
-        text: qsTr("“Automatic” uses the parser the selected OCR model expects. "
-                   + "“Raw text” keeps the model reply as-is; “Layout tokens” "
-                   + "extracts positioned fragments (bounding boxes) for the overlay.")
     }
 
     Item { implicitHeight: 6 }
@@ -95,81 +91,74 @@ ColumnLayout {
     OptionCheck {
         id: splitPagesCheck
         label: qsTr("Split pages")
-        help: qsTr("When off, exported pages are joined without the "
-                   + "“Page 1”, “Page 2” … headings.")
     }
 
     OptionCheck {
         id: pageNumbersCheck
-        label: qsTr("Keep page numbers")
-        help: qsTr("When off, page_number blocks from the model are ignored "
-                   + "during recognition. Applies to newly recognized pages.")
+        label: qsTr("Keep headers and page numbers")
     }
 
     OptionCheck {
         id: tablesAsHtmlCheck
         label: qsTr("Keep tables as HTML")
-        help: qsTr("When on, recognized tables are kept as the model's <table> "
-                   + "HTML instead of being converted to a Markdown pipe table. "
-                   + "Most Markdown editors render this.")
     }
 
     OptionCheck {
         id: orientationCheckBox
         label: qsTr("Check the page orientation")
-        help: qsTr("Before a page is recognized, the picture reads the way its text "
-                   + "lies. A page that lies on its side, or one the picture cannot "
-                   + "read, is marked in red and left as it is — turn it by hand. "
-                   + "The pages you turn by hand are left alone.")
     }
 
     OptionCheck {
         id: orientationAutoTurnCheck
         visible: orientationCheckBox.checked
         label: qsTr("Turn a sideways page after markup automatically")
-        help: qsTr("The markup model names the direction each block points. When "
-                   + "nearly all blocks of a marked page agree, the page is turned "
-                   + "and the markup runs again on the straightened page. The "
-                   + "direction is the model's guess — check the result.")
     }
 
     Item { implicitHeight: 6 }
 
     LLOLabel {
         text: qsTr("PDF export")
-        font.bold: true
+        font.pointSize: Theme.bodySize
+        color: Theme.textPrimary
     }
 
     RowLayout {
         Layout.fillWidth: true
-        spacing: 8
+        spacing: Theme.spacing
 
         LLOLabel {
             text: qsTr("Orientation")
+            font: Theme.bodySmall
         }
-        ComboBox {
-            id: orientationBox
+        SegmentedToggle {
             Layout.fillWidth: true
-            implicitHeight: Theme.controlHeight
-            model: [qsTr("Portrait"), qsTr("Landscape")]
+            options: [
+                { label: qsTr("Portrait") },
+                { label: qsTr("Landscape") }
+            ]
+            currentIndex: root.orientationIndex
+            onActivated: (idx) => root.orientationIndex = idx
         }
     }
 
     RowLayout {
         Layout.fillWidth: true
-        spacing: 8
+        spacing: Theme.spacing
 
         LLOLabel {
             text: qsTr("Margins (mm)")
+            font: Theme.bodySmall
         }
         SpinBox {
             id: marginSpin
-            Layout.fillWidth: true
+            Layout.preferredWidth: 110
             implicitHeight: Theme.controlHeight
+            font.pointSize: Theme.bodySmallSize
             from: 0
             to: 50
             editable: true
         }
+        Item { Layout.fillWidth: true }
     }
 
     Item { Layout.fillHeight: true }

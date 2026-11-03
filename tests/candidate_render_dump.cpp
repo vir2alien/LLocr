@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
     ParserOptions options;
     options.modelId = modelId;
-    options.keepPageNumbers = true;
+    options.keepHeadersAndPageNumbers = true;
     options.tablesAsHtml = false;
 
     CandidateRenderer renderer;

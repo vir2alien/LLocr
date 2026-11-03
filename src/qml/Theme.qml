@@ -97,6 +97,12 @@ QtObject {
         pointSize: captionSize
     })
 
+    // The size of the values: the text of a control, of a button in a
+    // settings footer, of a row in a table.
+    readonly property font bodySmall: Qt.font({
+        pointSize: bodySmallSize
+    })
+
     // The section labels of the toolbar: uppercase and a hair apart — they
     // read as headings over the buttons, not as a caption of one. A step
     // below the button font, so the buttons stay the voice of the toolbar.

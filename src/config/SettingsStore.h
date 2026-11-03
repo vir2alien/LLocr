@@ -37,7 +37,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(bool orientationCheckEnabled READ orientationCheckEnabled WRITE setOrientationCheckEnabled NOTIFY orientationCheckEnabledChanged)
     Q_PROPERTY(bool orientationAutoTurnEnabled READ orientationAutoTurnEnabled WRITE setOrientationAutoTurnEnabled NOTIFY orientationAutoTurnEnabledChanged)
     Q_PROPERTY(bool splitPages READ splitPages WRITE setSplitPages NOTIFY splitPagesChanged)
-    Q_PROPERTY(bool keepPageNumbers READ keepPageNumbers WRITE setKeepPageNumbers NOTIFY keepPageNumbersChanged)
+    Q_PROPERTY(bool keepHeadersAndPageNumbers READ keepHeadersAndPageNumbers WRITE setKeepHeadersAndPageNumbers NOTIFY keepHeadersAndPageNumbersChanged)
     Q_PROPERTY(bool tablesAsHtml READ tablesAsHtml WRITE setTablesAsHtml NOTIFY tablesAsHtmlChanged)
     Q_PROPERTY(bool pdfLandscape READ pdfLandscape WRITE setPdfLandscape NOTIFY pdfLandscapeChanged)
     Q_PROPERTY(int pdfMarginMm READ pdfMarginMm WRITE setPdfMarginMm NOTIFY pdfMarginMmChanged)
@@ -188,8 +188,8 @@ public:
 
     bool splitPages() const;
     void setSplitPages(bool on);
-    bool keepPageNumbers() const;
-    void setKeepPageNumbers(bool on);
+    bool keepHeadersAndPageNumbers() const;
+    void setKeepHeadersAndPageNumbers(bool on);
     bool tablesAsHtml() const;
     void setTablesAsHtml(bool on);
     bool pdfLandscape() const;
@@ -340,7 +340,7 @@ signals:
     void orientationCheckEnabledChanged();
     void orientationAutoTurnEnabledChanged();
     void splitPagesChanged();
-    void keepPageNumbersChanged();
+    void keepHeadersAndPageNumbersChanged();
     void tablesAsHtmlChanged();
     void pdfLandscapeChanged();
     void pdfMarginMmChanged();
@@ -409,7 +409,7 @@ public:
     static constexpr const char *kDefaultModelRecipeId = "mineru";
     static constexpr const char *kDefaultParserId = "auto";
     static constexpr bool kDefaultSplitPages = true;
-    static constexpr bool kDefaultKeepPageNumbers = true;
+    static constexpr bool kDefaultKeepHeadersAndPageNumbers = true;
     static constexpr bool kDefaultTablesAsHtml = false;
     static constexpr bool kDefaultPdfLandscape = false;
     static constexpr int kDefaultPdfMarginMm = 15;
@@ -468,7 +468,9 @@ private:
 
     // Output / export
     static constexpr const char *kSplitPages = "output/splitPages";
-    static constexpr const char *kKeepPageNumbers = "output/keepPageNumbers";
+    // The key keeps its old name: the option now drops the running heads and
+    // the feet as well, but the value the user chose must survive the rename.
+    static constexpr const char *kKeepHeadersAndPageNumbers = "output/keepPageNumbers";
     static constexpr const char *kTablesAsHtml = "output/tablesAsHtml";
     static constexpr const char *kPdfLandscape = "export/pdfLandscape";
     static constexpr const char *kPdfMarginMm = "export/pdfMarginMm";

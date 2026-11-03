@@ -106,7 +106,7 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kOrientationCheck, "orientationCheckEnabled", QVariant(QString::fromUtf8(kDefaultOrientationCheck))},
         {kOrientationAutoTurn, "orientationAutoTurnEnabled", QVariant(QString::fromUtf8(kDefaultOrientationAutoTurn))},
         {kSplitPages, "splitPages", QVariant(kDefaultSplitPages)},
-        {kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers)},
+        {kKeepHeadersAndPageNumbers, "keepHeadersAndPageNumbers", QVariant(kDefaultKeepHeadersAndPageNumbers)},
         {kTablesAsHtml, "tablesAsHtml", QVariant(kDefaultTablesAsHtml)},
         {kPdfLandscape, "pdfLandscape", QVariant(kDefaultPdfLandscape)},
         {kPdfMarginMm, "pdfMarginMm", QVariant(kDefaultPdfMarginMm)},
@@ -557,17 +557,17 @@ void SettingsStore::setSplitPages(bool on)
     emit splitPagesChanged();
 }
 
-bool SettingsStore::keepPageNumbers() const
+bool SettingsStore::keepHeadersAndPageNumbers() const
 {
-    return m_settings.value(kKeepPageNumbers, kDefaultKeepPageNumbers).toBool();
+    return m_settings.value(kKeepHeadersAndPageNumbers, kDefaultKeepHeadersAndPageNumbers).toBool();
 }
 
-void SettingsStore::setKeepPageNumbers(bool on)
+void SettingsStore::setKeepHeadersAndPageNumbers(bool on)
 {
-    if (keepPageNumbers() == on)
+    if (keepHeadersAndPageNumbers() == on)
         return;
-    m_settings.setValue(kKeepPageNumbers, on);
-    emit keepPageNumbersChanged();
+    m_settings.setValue(kKeepHeadersAndPageNumbers, on);
+    emit keepHeadersAndPageNumbersChanged();
 }
 
 bool SettingsStore::tablesAsHtml() const

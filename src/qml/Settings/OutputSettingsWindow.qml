@@ -10,8 +10,8 @@ import "../Common"
 ApplicationWindow {
     id: window
     title: qsTr("Output settings")
-    width: 500
-    height: 540
+    width: 420
+    height: 426
     modality: Qt.NonModal
 
     function bringToFront() {
@@ -29,6 +29,7 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Restore defaults")
+            font: Theme.bodySmall
             // Guarded setters skip the NOTIFY when a value already equals
             // the default, so re-read the controls explicitly.
             onClicked: {
@@ -39,6 +40,7 @@ ApplicationWindow {
         Item { Layout.fillWidth: true }
         LLOButton {
             text: qsTr("Cancel")
+            font: Theme.bodySmall
             onClicked: {
                 outputTab.loadValues()
                 window.close()
@@ -47,6 +49,7 @@ ApplicationWindow {
         LLOButton {
             emphasis: true
             text: qsTr("Save")
+            font: Theme.bodySmall
             onClicked: {
                 outputTab.saveValues()
                 Settings.forceSave()

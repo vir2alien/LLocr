@@ -14,11 +14,12 @@ ColumnLayout {
 
     LLOLabel {
         text: qsTr("Language")
+        font.pointSize: Theme.bodySize
+        color: Theme.textPrimary
     }
-    ComboBox {
+    LLOComboBox {
         id: languageBox
         Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
         model: [qsTr("System"), "English", "Русский"]
         function syncFromSettings() {
             var langIdx = ["system", "en", "ru"].indexOf(Settings.language)
@@ -40,26 +41,24 @@ ColumnLayout {
 
     LLOLabel {
         text: qsTr("Theme")
+        font.pointSize: Theme.bodySize
+        color: Theme.textPrimary
     }
-    ComboBox {
-        id: themeBox
+    SegmentedToggle {
         Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        model: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
-        function syncFromSettings() {
-            var themeIdx = [UiController.System, UiController.Light,
-                            UiController.Dark].indexOf(Settings.themeMode)
-            currentIndex = themeIdx >= 0 ? themeIdx : 0
+        options: [
+            { label: qsTr("System"), icon: "monitor" },
+            { label: qsTr("Light"), icon: "sun" },
+            { label: qsTr("Dark"), icon: "moon" }
+        ]
+        currentIndex: {
+            const themeIdx = [UiController.System, UiController.Light,
+                              UiController.Dark].indexOf(Settings.themeMode)
+            return themeIdx >= 0 ? themeIdx : 0
         }
-        onModelChanged: syncFromSettings()
-        Component.onCompleted: syncFromSettings()
         onActivated: (idx) => {
             UiController.mode = [UiController.System, UiController.Light,
                                  UiController.Dark][idx]
-        }
-        Connections {
-            target: Settings
-            function onThemeModeChanged() { themeBox.syncFromSettings() }
         }
     }
 }

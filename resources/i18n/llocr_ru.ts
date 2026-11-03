@@ -1613,66 +1613,42 @@
 <context>
     <name>OutputTab</name>
     <message>
-        <location filename="../../src/qml/Settings/OutputTab.qml" line="+71"/>
+        <location filename="../../src/qml/Settings/OutputTab.qml" line="+78"/>
         <source>Output parser</source>
         <translation>Парсер вывода</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <source>“Automatic” uses the parser the selected OCR model expects. “Raw text” keeps the model reply as-is; “Layout tokens” extracts positioned fragments (bounding boxes) for the overlay.</source>
-        <translation>«Автоматически» использует парсер, ожидаемый выбранной моделью OCR. «Текст как есть» сохраняет ответ модели без изменений; «Токены разметки» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
-    </message>
-    <message>
-        <location line="+9"/>
+        <location line="+15"/>
         <source>Split pages</source>
         <translation>Разбивать на страницы</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>When off, exported pages are joined without the “Page 1”, “Page 2” … headings.</source>
-        <translation>Когда выключено, страницы объединяются без заголовков «Page 1», «Page 2» и т.д.</translation>
+        <location line="+5"/>
+        <source>Keep headers and page numbers</source>
+        <translation>Сохранять колонтитулы и номера страниц</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <source>Keep page numbers</source>
-        <translation>Оставлять номера страниц</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>When off, page_number blocks from the model are ignored during recognition. Applies to newly recognized pages.</source>
-        <translation>Когда выключено, блоки page_number игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
-    </message>
-    <message>
-        <location line="+14"/>
-        <source>Check the page orientation</source>
-        <translation>Проверять ориентацию страницы</translation>
-    </message>
-    <message>
-        <source>Turn a sideways page after markup automatically</source>
-        <translation>Поворачивать боковую страницу после разметки автоматически</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Before a page is recognized, the picture reads the way its text lies. A page that lies on its side, or one the picture cannot read, is marked in red and left as it is — turn it by hand. The pages you turn by hand are left alone.</source>
-        <translation>Перед распознаванием картинка читает, как лежит текст страницы. Страница, лежащая боком, или та, которую картинка прочитать не смогла, помечается красным и остаётся как есть — поверните её вручную. Страницы, повёрнутые вручную, проверка не трогает.</translation>
-    </message>
-    <message>
-        <location line="-9"/>
+        <location line="+5"/>
         <source>Keep tables as HTML</source>
         <translation>Сохранять таблицы в HTML формате</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>When on, recognized tables are kept as the model&apos;s &lt;table&gt; HTML instead of being converted to a Markdown pipe table. Most Markdown editors render this.</source>
-        <translation>Когда включено, распознанные таблицы сохраняются как HTML-разметка &lt;table&gt; модели, а не преобразуются в Markdown-таблицу. Большинство редакторов Markdown это поддерживают.</translation>
+        <location line="+5"/>
+        <source>Check the page orientation</source>
+        <translation>Проверять ориентацию страницы</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+6"/>
+        <source>Turn a sideways page after markup automatically</source>
+        <translation>Поворачивать боковую страницу после разметки автоматически</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>PDF export</source>
         <translation>Экспорт в PDF</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+10"/>
         <source>Orientation</source>
         <translation>Ориентация</translation>
     </message>
@@ -1682,12 +1658,12 @@
         <translation>Книжная</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="+1"/>
         <source>Landscape</source>
         <translation>Альбомная</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+12"/>
         <source>Margins (mm)</source>
         <translation>Поля (мм)</translation>
     </message>
@@ -3476,13 +3452,13 @@
     </message>
     <message>
         <location line="+7"/>
-        <source>Keep page numbers</source>
-        <translation>Оставлять номера страниц</translation>
+        <source>Keep headers and page numbers</source>
+        <translation>Сохранять колонтитулы и номера страниц</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>When off, page_number blocks from the model are ignored during recognition. Applies to newly recognized pages.</source>
-        <translation>Когда выключено, блоки page_number игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
+        <source>When off, the running heads, the running feet and the page numbers from the model are ignored during recognition. Applies to newly recognized pages.</source>
+        <translation>Когда выключено, колонтитулы и номера страниц от модели игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
     </message>
     <message>
         <location line="+7"/>
