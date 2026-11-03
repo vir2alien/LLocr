@@ -125,6 +125,12 @@ rows of the table-driven `kDefaults` registry through the property setters; the
 |             | window follows its content, the files list scrolls (ADR 284);          |
 |             | «Restore defaults» (the task's profiles), Cancel, Save                |
 
+The **segmented toggle** (`Common/SegmentedToggle.qml`) is one component for
+the whole app: one block with a shared background, a card on the chosen
+segment and equal segments inside the block (ADR 285). It is driven from the
+outside — it reports the choice (`activated(index)`) and never sets
+`currentIndex` itself; the arrow keys and the space bar move the choice.
+
 The single managed llama-server instance serves both roles one at a time:
 `RuntimeController` (re)loads the model per task (ADR 74). Parallel roles are
 only possible against external servers, which get per-role model names
