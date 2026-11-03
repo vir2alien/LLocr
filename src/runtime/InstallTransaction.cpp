@@ -155,11 +155,16 @@ InstallOutput InstallTransaction::start(const QString &archivePath, const Releas
 
 void InstallTransaction::cleanupStaging(RuntimePaths paths, bool keepModelStaging)
 {
-    const QStringList names = QDir(paths.stagingDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    const QDir staging(paths.stagingDir());
+    const QStringList names = staging.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QString &name : names) {
         if (keepModelStaging && name.startsWith(QLatin1String("model-")))
             continue;
-        QDir(QDir(paths.stagingDir()).filePath(name)).removeRecursively();
+        // A top-level symlink names a target elsewhere; removeRecursively()
+        // would empty that target, so it is left alone.
+        if (QFileInfo(staging.filePath(name)).isSymLink())
+            continue;
+        QDir(staging.filePath(name)).removeRecursively();
     }
 }
 
@@ -169,11 +174,14 @@ QString InstallTransaction::cleanupUnusedBuilds(RuntimePaths paths, const QStrin
         return QCoreApplication::translate("llocr::InstallTransaction", "Cannot tell which build is in use — nothing was removed. Install or activate a build first.");
     }
     int removed = 0;
-    const QStringList names = QDir(paths.runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    const QDir runtime(paths.runtimeDir());
+    const QStringList names = runtime.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QString &name : names) {
         if (name == keepTag)
             continue;
-        if (!QDir(paths.installDir(name)).removeRecursively())
+        if (QFileInfo(runtime.filePath(name)).isSymLink())
+            continue;
+        if (!QDir(runtime.filePath(name)).removeRecursively())
             return QStringLiteral("Unable to remove %1").arg(name);
         ++removed;
     }

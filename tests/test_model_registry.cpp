@@ -82,6 +82,7 @@ private slots:
     void canonicalPathCheck();
     void refusesSymlinkEscapeFromModelsDir();
     void refusesDeleteWhenEntryDirEscapesModelsDir();
+    void refusesDeleteWhenEntryDirIsModelsDir();
     void refusesDeleteWhenMmprojEscapesModelsDir();
     void refusesDeleteWhenAPartEscapesModelsDir();
     void allowsManagedDeleteWithAllPathsInsideModelsDir();
@@ -541,6 +542,36 @@ void TestModelRegistry::refusesDeleteWhenEntryDirEscapesModelsDir()
     const QString reason = ModelRegistry::removalError(e, modelsDir, false, false);
     QVERIFY(!reason.isEmpty());
     QVERIFY(reason.contains(QStringLiteral("outside")));
+}
+
+// The scan records subdirectories only, so an entry whose dir IS the models
+// root is planted: removing it would take index.json down with the root.
+void TestModelRegistry::refusesDeleteWhenEntryDirIsModelsDir()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString modelsDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+    QVERIFY(QDir().mkpath(modelsDir));
+    QVERIFY(!writeFile(modelsDir, QStringLiteral("dummy-Q4_K_M.gguf")).isEmpty());
+
+    ModelEntry e;
+    e.origin = ModelOrigin::Managed;
+    e.modelPath = QDir(modelsDir).filePath(QStringLiteral("dummy-Q4_K_M.gguf"));
+    e.dir = modelsDir;
+    QVERIFY(!ModelRegistry::removalError(e, modelsDir, false, false).isEmpty());
+
+#ifdef Q_OS_UNIX
+    // The same entry under an alias of the models root — the canonical
+    // comparison must see through the link.
+    const QString alias = QDir(dir.path()).filePath(QStringLiteral("alias"));
+    QVERIFY2(QFile::link(modelsDir, alias), "failed to create symlink");
+
+    ModelEntry aliased;
+    aliased.origin = ModelOrigin::Managed;
+    aliased.modelPath = QDir(alias).filePath(QStringLiteral("dummy-Q4_K_M.gguf"));
+    aliased.dir = alias;
+    QVERIFY(!ModelRegistry::removalError(aliased, modelsDir, false, false).isEmpty());
+#endif
 }
 
 void TestModelRegistry::refusesDeleteWhenMmprojEscapesModelsDir()

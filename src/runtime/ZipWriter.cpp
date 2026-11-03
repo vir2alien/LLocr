@@ -58,25 +58,41 @@ bool validEntryName(const QString &name)
 
 ZipWriter::ZipWriter(const QString &path, QString *error)
 {
-    m_out.setFileName(path);
-    if (!m_out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    m_out = &m_own;
+    m_own.setFileName(path);
+    if (!m_own.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         m_error = QStringLiteral("cannot create %1").arg(path);
         m_failed = true;
         if (error)
             *error = m_error;
+        return;
     }
+}
+
+ZipWriter::ZipWriter(QIODevice *device, QString *error)
+{
+    if (!device || !device->isOpen() || !(device->openMode() & QIODevice::WriteOnly)) {
+        m_error = QStringLiteral("archive device is not writable");
+        m_failed = true;
+        if (error)
+            *error = m_error;
+        return;
+    }
+    m_out = device;
 }
 
 ZipWriter::~ZipWriter()
 {
-    if (!m_finished && m_out.isOpen())
+    if (!m_finished && m_out && m_out->isOpen())
         abortFile();
 }
 
 void ZipWriter::abortFile()
 {
-    m_out.close();
-    m_out.remove();
+    if (m_out != &m_own)
+        return;
+    m_own.close();
+    m_own.remove();
 }
 
 bool ZipWriter::addEntry(const QString &entryName, QIODevice &device)
@@ -120,7 +136,7 @@ bool ZipWriter::streamEntry(const QString &entryName, QIODevice &device)
 
     Entry entry;
     entry.name = entryName;
-    entry.offset = m_out.pos();
+    entry.offset = m_out->pos();
 
     const QDateTime now = QDateTime::currentDateTimeUtc();
     QByteArray header;
@@ -136,7 +152,7 @@ bool ZipWriter::streamEntry(const QString &entryName, QIODevice &device)
     putU32(&header, 0);  // uncompressed size, patched below
     putU16(&header, quint16(name.size()));
     putU16(&header, 0);  // extra length
-    if (m_out.write(header) != header.size() || m_out.write(name) != name.size()) {
+    if (m_out->write(header) != header.size() || m_out->write(name) != name.size()) {
         m_error = QStringLiteral("write failed at %1").arg(entryName);
         m_failed = true;
         return false;
@@ -149,7 +165,7 @@ bool ZipWriter::streamEntry(const QString &entryName, QIODevice &device)
         if (chunk.isEmpty())
             break;
         crc = crc32(crc, reinterpret_cast<const Bytef *>(chunk.constData()), static_cast<uInt>(chunk.size()));
-        if (m_out.write(chunk) != chunk.size()) {
+        if (m_out->write(chunk) != chunk.size()) {
             m_error = QStringLiteral("write failed at %1").arg(entryName);
             m_failed = true;
             return false;
@@ -176,7 +192,7 @@ bool ZipWriter::streamEntry(const QString &entryName, QIODevice &device)
     putU32(&patch, crc);
     putU32(&patch, quint32(total));
     putU32(&patch, quint32(total));
-    if (m_out.seek(entry.offset + 14) && m_out.write(patch) == patch.size() && m_out.seek(m_out.size())) {
+    if (m_out->seek(entry.offset + 14) && m_out->write(patch) == patch.size() && m_out->seek(m_out->size())) {
         return true;
     }
     m_error = QStringLiteral("write failed at %1").arg(entryName);
@@ -188,7 +204,7 @@ bool ZipWriter::finish(QString *error)
 {
     if (m_finished)
         return true;
-    if (m_failed || !m_out.isOpen()) {
+    if (m_failed || !m_out->isOpen()) {
         if (m_error.isEmpty())
             m_error = QStringLiteral("archive is not writable");
         abortFile();
@@ -198,7 +214,7 @@ bool ZipWriter::finish(QString *error)
     }
 
     const QDateTime now = QDateTime::currentDateTimeUtc();
-    const qint64 centralOffset = m_out.pos();
+    const qint64 centralOffset = m_out->pos();
     for (const Entry &entry : std::as_const(m_entries)) {
         const QByteArray name = entry.name.toUtf8();
         QByteArray header;
@@ -220,7 +236,7 @@ bool ZipWriter::finish(QString *error)
         putU16(&header, 0);               // internal attributes
         putU32(&header, 0100644u << 16);  // external attributes: regular file, rw-r--r--
         putU32(&header, quint32(entry.offset));
-        if (m_out.write(header) != header.size() || m_out.write(name) != name.size()) {
+        if (m_out->write(header) != header.size() || m_out->write(name) != name.size()) {
             m_error = QStringLiteral("write failed in central directory");
             m_failed = true;
             abortFile();
@@ -229,7 +245,7 @@ bool ZipWriter::finish(QString *error)
             return false;
         }
     }
-    const qint64 centralSize = m_out.pos() - centralOffset;
+    const qint64 centralSize = m_out->pos() - centralOffset;
 
     QByteArray eocd;
     eocd.reserve(22);
@@ -241,7 +257,7 @@ bool ZipWriter::finish(QString *error)
     putU32(&eocd, quint32(centralSize));
     putU32(&eocd, quint32(centralOffset));
     putU16(&eocd, 0);  // comment length
-    if (m_out.write(eocd) != eocd.size() || !m_out.flush()) {
+    if (m_out->write(eocd) != eocd.size() || (m_out == &m_own && !m_own.flush())) {
         m_error = QStringLiteral("write failed in archive trailer");
         m_failed = true;
         abortFile();
@@ -250,7 +266,8 @@ bool ZipWriter::finish(QString *error)
         return false;
     }
 
-    m_out.close();
+    if (m_out == &m_own)
+        m_own.close();
     m_finished = true;
     return true;
 }

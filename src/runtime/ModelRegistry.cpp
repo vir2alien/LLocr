@@ -429,6 +429,10 @@ QString ModelRegistry::removalError(const ModelEntry &e, const QString &modelsDi
     QString entryDir = e.dir;
     if (canonicalPath(entryDir).isEmpty())
         entryDir = QFileInfo(e.modelPath).absolutePath();
+    // The scan records subdirectories only, so an entry claiming the models
+    // root itself is planted and removing it would take index.json down.
+    if (resolvablePath(entryDir) == resolvablePath(modelsDir))
+        return QObject::tr("This model directory is the models directory itself and cannot be removed.");
     QStringList paths = {entryDir, e.mmprojPath, e.draftPath};
     paths.append(e.parts);
     for (const QString &path : std::as_const(paths)) {

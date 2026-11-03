@@ -374,6 +374,40 @@ private slots:
         QVERIFY(error.contains(QStringLiteral("lost.pdf")));
     }
 
+    void saveReplacesAnExistingProject()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString pngPath = writeFile(dir.filePath(QStringLiteral("scan.png")), pngBytes(8, 8, Qt::red));
+        QVERIFY(!pngPath.isEmpty());
+
+        const QString projectPath = dir.filePath(QStringLiteral("p.llocr"));
+        ProjectData first;
+        ProjectSource firstSource;
+        firstSource.id = 0;
+        firstSource.originalName = QStringLiteral("scan.png");
+        firstSource.typeName = QStringLiteral("image");
+        firstSource.sourcePath = pngPath;
+        first.sources.append(firstSource);
+        ProjectPageData firstPage;
+        firstPage.sourceId = 0;
+        firstPage.text = QStringLiteral("first");
+        first.pages.append(firstPage);
+        QString error;
+        QVERIFY2(ProjectStore::save(projectPath, first, &error), qPrintable(error));
+
+        ProjectData second = first;
+        second.pages.first().text = QStringLiteral("second");
+        QVERIFY2(ProjectStore::save(projectPath, second, &error), qPrintable(error));
+
+        const QString extractDir = dir.filePath(QStringLiteral("x"));
+        QVERIFY(QDir().mkpath(extractDir));
+        const ProjectStore::LoadResult loaded = ProjectStore::load(projectPath, extractDir);
+        QVERIFY2(loaded.error.isEmpty(), qPrintable(loaded.error));
+        QCOMPARE(loaded.data.pages.size(), 1);
+        QCOMPARE(loaded.data.pages.at(0).text, QStringLiteral("second"));
+    }
+
     void loadRejectsFilesThatAreNotProjects()
     {
         QTemporaryDir dir;

@@ -11,6 +11,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QSaveFile>
 #include <QSet>
 
 #include "app/PageRotation.h"
@@ -180,10 +181,10 @@ QString ProjectStore::sourceTypeKey(DocumentSource type)
 
 bool ProjectStore::save(const QString &path, const ProjectData &data, QString *error)
 {
-    const QString tmpPath = path + QStringLiteral(".tmp");
-    if (QFile::exists(tmpPath) && !QFile::remove(tmpPath)) {
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
         if (error)
-            *error = QCoreApplication::translate("ProjectStore", "Cannot overwrite %1.").arg(tmpPath);
+            *error = QCoreApplication::translate("ProjectStore", "Cannot write %1.").arg(path);
         return false;
     }
 
@@ -235,7 +236,7 @@ bool ProjectStore::save(const QString &path, const ProjectData &data, QString *e
     const QByteArray projectJson = QJsonDocument(root).toJson(QJsonDocument::Indented);
 
     QString zipError;
-    ZipWriter zip(tmpPath, &zipError);
+    ZipWriter zip(&file, &zipError);
     if (!zipError.isEmpty()) {
         if (error)
             *error = zipError;
@@ -280,12 +281,7 @@ bool ProjectStore::save(const QString &path, const ProjectData &data, QString *e
         return false;
     }
 
-    if (QFile::exists(path) && !QFile::remove(path)) {
-        if (error)
-            *error = QCoreApplication::translate("ProjectStore", "Cannot overwrite %1.").arg(path);
-        return false;
-    }
-    if (!QFile::rename(tmpPath, path)) {
+    if (!file.commit()) {
         if (error)
             *error = QCoreApplication::translate("ProjectStore", "Cannot write %1.").arg(path);
         return false;

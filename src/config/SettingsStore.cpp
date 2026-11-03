@@ -254,18 +254,6 @@ void SettingsStore::resetGroup(const std::function<bool(const QString &)> &match
     forceSave();
 }
 
-// Every secret the app holds goes back to nothing: the shared key and every
-// task's own key.
-void SettingsStore::clearSecrets()
-{
-    dropSecret(kApiKey);
-    dropSecret(kHfToken);
-    m_settings.remove(QString::fromLatin1(kApiKey));
-    m_settings.remove(QString::fromLatin1(kHfToken));
-    emit secretsChanged();
-    emit hfTokenChanged();
-}
-
 // The per-task endpoints and keys go back to the shared ones.
 void SettingsStore::clearTaskConnections()
 {

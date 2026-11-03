@@ -439,7 +439,6 @@ private:
     QString readSecret(const QString &id) const;
     bool persistSecret(const QString &id, const QString &value);
     void dropSecret(const QString &id);
-    void clearSecrets();
     void clearTaskConnections();
     // The group of the settings a task's connection row reads and writes. The
     // block recognition task keeps the check name its accessors carry; the

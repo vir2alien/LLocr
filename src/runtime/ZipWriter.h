@@ -15,6 +15,9 @@ class ZipWriter
 {
 public:
     ZipWriter(const QString &path, QString *error = nullptr);
+    // Writes into a device the caller opened and owns; the writer never closes
+    // it, so a QSaveFile caller decides between commit() and discard.
+    explicit ZipWriter(QIODevice *device, QString *error = nullptr);
     ~ZipWriter();
 
     ZipWriter(const ZipWriter &) = delete;
@@ -25,8 +28,9 @@ public:
 
     bool addEntry(const QString &entryName, const QByteArray &bytes);
 
-    // Writes the central directory and closes the archive. The destructor of an
-    // unfinished writer deletes the partial file.
+    // Writes the central directory. The destructor of an unfinished writer
+    // deletes the partial file it owns; a caller-opened device is left to its
+    // owner.
     bool finish(QString *error = nullptr);
 
     QString error() const { return m_error; }
@@ -42,7 +46,8 @@ private:
     bool streamEntry(const QString &entryName, QIODevice &device);
     void abortFile();
 
-    QFile m_out;
+    QFile m_own;  // backing store of the path constructor
+    QIODevice *m_out = nullptr;
     QList<Entry> m_entries;
     QString m_error;
     bool m_finished = false;
