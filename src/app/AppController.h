@@ -28,6 +28,7 @@
 #include "app/BlockWorkList.h"
 #include "app/DecisionQueue.h"
 #include "app/LruImageCache.h"
+#include "app/RecheckQueue.h"
 #include "app/OrientationController.h"
 #include "app/PageEditStore.h"
 #include "app/PageListModel.h"
@@ -266,13 +267,13 @@ public:
     // checkBusy() spans the whole queue run (the gate holds between two
     // requests); the raw request-busy flags would drop in those gaps and
     // read as idle mid-run.
-    bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive() || m_decisionQueue.busy(); }
-    bool checkRunning() const { return m_verify.queueActive() || m_decisionQueue.active(); }
+    bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive() || m_decisionQueue.busy() || m_recheckQueue.busy(); }
+    bool checkRunning() const { return m_verify.queueActive() || m_decisionQueue.active() || m_recheckQueue.active(); }
     bool checkFinished() const { return m_checkFinished; }
     int checkProgressDone() const;
     int checkProgressTotal() const;
     bool checkDecisionPhase() const { return m_decisionQueue.active(); }
-    bool checkRecheckPhase() const { return m_verify.recheckPhase(); }
+    bool checkRecheckPhase() const { return m_recheckQueue.active(); }
     bool checkFixPhase() const { return m_verify.fixPhase(); }
     bool checkReadPhase() const { return m_verify.readPhase(); }
     QString checkErrorMessage() const { return m_checkError.text(); }
@@ -585,11 +586,13 @@ private:
     // renderer and is replaced wholesale by setCandidateRenderFunction.
     DecisionQueue::RenderCandidateFn m_candidateRenderFn;
     VerificationQueueController m_verify;
-    // The decision role runs on its own queue (docs/09); the gate keeps it
-    // from overlapping the recheck and the remedy runs of m_verify.
+    // The decision and the block-recognition roles run on their own queues
+    // (docs/09); the gate keeps them from overlapping the remedy runs of
+    // m_verify and each other.
     BlockWorkList m_workList;
     BlockRunGate m_checkRunGate;
     DecisionQueue m_decisionQueue;
+    RecheckQueue m_recheckQueue;
     LayoutController m_layout;
     OrientationController m_orientation;
     std::function<void()> m_pendingRun;  // The run that waits for the orientation check.

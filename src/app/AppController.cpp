@@ -81,6 +81,12 @@ AppController::AppController(SettingsStore &settings,
                        [this](int pageIndex, int boxIndex) { return blockDisplayText(pageIndex, boxIndex); },
                        [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderFn(candidateText, done); }},
                       this),
+      m_recheckQueue({m_document,
+                      m_checkRunGate,
+                      [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
+                      runtime,
+                      checkRequestProfiles},
+                     this),
       m_layout(layoutRequestProfiles, runtime, this), m_availability({m_document,
                                                                       m_pageModel,
                                                                       m_verify,
@@ -103,7 +109,7 @@ AppController::AppController(SettingsStore &settings,
                      m_currentPage = index;
                      m_pageModel.setCurrent(index);
                  },
-                 [this] { return m_layout.busy() || m_importing || m_export.exporting() || m_verify.queueActive() || m_verify.checkBusy() || m_decisionQueue.busy(); },
+                 [this] { return m_layout.busy() || m_importing || m_export.exporting() || m_verify.queueActive() || m_verify.checkBusy() || m_decisionQueue.busy() || m_recheckQueue.busy(); },
                  [this](const StatusMessage &message) { setStatus(message); },
                  [this](const StatusMessage &message, ProblemLog::Severity severity) { reportProblem(message, severity); },
                  [this] { m_inspector.resetSelection(); },
@@ -117,7 +123,7 @@ AppController::AppController(SettingsStore &settings,
     // the recheck/remedy runs: the markup pass and a stopped request still
     // winding down hold it from the outside.
     m_checkRunGate.setExternalBusy([this] {
-        return m_layout.busy() || m_verify.queueActive() || m_verify.checkBusy() || m_decisionQueue.requestBusy();
+        return m_layout.busy() || m_verify.queueActive() || m_verify.checkBusy() || m_decisionQueue.requestBusy() || m_recheckQueue.requestBusy();
     });
 
     // The orientation check: the picture reads the axis of the text before the
@@ -190,7 +196,6 @@ AppController::AppController(SettingsStore &settings,
             m_checkFinished = m_verify.finished();
     });
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
-    connect(&m_verify, &VerificationQueueController::blockRecognized, this, &AppController::applyRecognitionToBox);
     connect(&m_verify, &VerificationQueueController::blockFixed, this, &AppController::applyFixToBox);
     connect(&m_verify, &VerificationQueueController::blockRead, this, &AppController::applyReadToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) {
@@ -226,6 +231,31 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_decisionQueue, &DecisionQueue::verificationStarted, this, &AppController::applyVerificationStarted);
     connect(&m_decisionQueue, &DecisionQueue::blockVerified, this, &AppController::applyVerdictToBox);
 
+    // The recheck queue: the same wiring, its own result channel.
+    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, &AppController::checkStateChanged);
+    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, &AppController::busyChanged);
+    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, &AppController::scheduleAvailabilityRefresh);
+    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, [this]() {
+        if (m_recheckQueue.active())
+            setAutoPipelineMessage(StatusMessage());
+    });
+    connect(&m_recheckQueue, &BlockQueue::runStarted, this, [this]() {
+        setAutoPipelineMessage(StatusMessage());
+        m_checkError = StatusMessage();
+        m_checkFinished = false;
+        m_progressQueue = &m_recheckQueue;
+    });
+    connect(&m_recheckQueue, &BlockQueue::finished, this, [this]() {
+        if (!m_recheckQueue.active())
+            m_checkFinished = m_recheckQueue.finishedFlag();
+    });
+    connect(&m_recheckQueue, &BlockQueue::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+    connect(&m_recheckQueue, &BlockQueue::problemReported, this, [this](const StatusMessage &message) {
+        m_checkError = message;
+        reportProblem(message, ProblemLog::Error);
+    });
+    connect(&m_recheckQueue, &RecheckQueue::blockRecognized, this, &AppController::applyRecognitionToBox);
+
     // The queue's per-block tail (page-text rebuild + its signal fan-out) and
     // the availability rescan are coalesced while a run is active; the run's
     // own state changes carry the guaranteed flush.
@@ -235,6 +265,7 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_pageTextCoalesceTimer, &QTimer::timeout, this, &AppController::updateAvailability);
     connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
     connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
+    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::flushPageTextChangesWhenIdle);
 
     connect(&m_availability, &AvailabilityPresenter::changed, this, &AppController::availabilityChanged);
@@ -288,7 +319,7 @@ AppController::AppController(SettingsStore &settings,
     // orchestrator that owns the run. The stage that needs a model says so
     // and the run passes it over.
     m_autoMarkupStage = new AutoMarkupStage(m_layout, [this](const AutoPipelineStage::Scope &pages, const std::function<void(bool)> &done) { runMarkupPass(pages, done); }, this);
-    m_autoRecognitionStage = new AutoRecognitionStage(m_verify, [this]() { return m_availability.blockRecognitionModelAvailable(); }, this);
+    m_autoRecognitionStage = new AutoRecognitionStage(m_recheckQueue, m_workList, [this]() { return m_availability.blockRecognitionModelAvailable(); }, this);
     m_autoVerificationStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification"), this);
     m_autoFixStage = new AutoFixStage(m_verify, [this]() { return m_availability.fixModelAvailable(); }, this);
     m_autoRecheckStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification of the corrected blocks"), this);
@@ -1365,7 +1396,7 @@ void AppController::recognizeScopeBlocks()
 {
     if (m_layout.busy())
         return;
-    m_verify.recheckPagesBlocks(scopePages());
+    m_recheckQueue.run(m_workList.unrecognizedBlocks(scopePages()));
 }
 
 void AppController::layoutScopePages()
@@ -1403,6 +1434,7 @@ void AppController::stopCheck()
 {
     m_verify.stop();
     m_decisionQueue.stop();
+    m_recheckQueue.stop();
 }
 
 void AppController::startVerificationOrReport(const QList<BlockWorkList::Task> &tasks, int answered, int rejected)
@@ -1441,24 +1473,31 @@ int AppController::checkProgressTotal() const
 
 void AppController::recognizeSelectedBlock()
 {
-    m_verify.recheckBlock(m_currentPage, m_inspector.selectedBoxIndex());
+    if (m_inspector.selectedBoxIndex() < 0 || !blockQueueTaskReady(m_currentPage))
+        return;
+    m_recheckQueue.run({{m_currentPage, m_inspector.selectedBoxIndex()}});
 }
 
 void AppController::recognizeProblemBlocksOnPage()
 {
-    m_verify.recheckPageProblemBlocks(m_currentPage);
+    if (!blockQueueTaskReady(m_currentPage))
+        return;
+    m_recheckQueue.run(m_workList.problemBlocks({m_currentPage}));
 }
 
 void AppController::recognizeAllProblemBlocks()
 {
-    m_verify.recheckAllProblemBlocks();
+    QList<int> pages;
+    for (int p = 0; p < m_document.pageCount(); ++p)
+        pages.append(p);
+    m_recheckQueue.run(m_workList.problemBlocks(pages));
 }
 
 void AppController::recognizeAllBlocksOnPage()
 {
-    if (m_layout.busy())
+    if (m_layout.busy() || !blockQueueTaskReady(m_currentPage))
         return;
-    m_verify.recheckPageBlocks(m_currentPage);
+    m_recheckQueue.run(m_workList.unrecognizedBlocks({m_currentPage}));
 }
 
 void AppController::fixSelectedBlock()
@@ -2001,6 +2040,11 @@ void AppController::flushPageTextChangesWhenIdle()
         return;
     }
     if (m_decisionQueue.active() && m_decisionQueue.progressTotal() > 0 && m_decisionQueue.progressDone() >= m_decisionQueue.progressTotal()) {
+        flushPageTextChanges();
+        updateAvailability();
+        return;
+    }
+    if (m_recheckQueue.active() && m_recheckQueue.progressTotal() > 0 && m_recheckQueue.progressDone() >= m_recheckQueue.progressTotal()) {
         flushPageTextChanges();
         updateAvailability();
         return;

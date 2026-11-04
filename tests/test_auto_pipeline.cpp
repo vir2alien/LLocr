@@ -10,7 +10,9 @@
 #include "app/AutoPipelineController.h"
 #include "app/AutoPipelineStages.h"
 #include "app/BlockRunGate.h"
+#include "app/BlockWorkList.h"
 #include "app/DocumentModel.h"
+#include "app/RecheckQueue.h"
 #include "app/VerificationPromptStore.h"
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
@@ -86,28 +88,29 @@ public:
         m_settings->setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         m_launchProfiles = std::make_unique<LaunchProfileStore>(*m_settings);
         m_checkProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::BlockRecognition);
-        m_fixProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Fix);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_document = std::make_unique<DocumentModel>();
         const std::function<bool()> layoutIsBusy = [layoutBusy] { return layoutBusy; };
         m_gate.setExternalBusy(layoutIsBusy);
-        m_queue = std::make_unique<VerificationQueueController>(VerificationQueueController::Deps{
-            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, layoutIsBusy, m_gate});
+        m_workList = std::make_unique<BlockWorkList>(BlockWorkList::Deps{*m_document, *m_verification, *m_checkProfiles});
+        m_queue = std::make_unique<RecheckQueue>(RecheckQueue::Deps{
+            *m_document, m_gate, [](int, int) { return QImage(); }, *m_runtime, *m_checkProfiles});
     }
 
-    VerificationQueueController &queue() { return *m_queue; }
+    RecheckQueue &queue() { return *m_queue; }
+    BlockWorkList &workList() { return *m_workList; }
     DocumentModel &document() { return *m_document; }
 
 private:
     std::unique_ptr<SettingsStore> m_settings;
     std::unique_ptr<LaunchProfileStore> m_launchProfiles;
     std::unique_ptr<RequestProfileStore> m_checkProfiles;
-    std::unique_ptr<RequestProfileStore> m_fixProfiles;
     std::unique_ptr<RuntimeController> m_runtime;
     std::unique_ptr<VerificationPromptStore> m_verification;
     std::unique_ptr<DocumentModel> m_document;
-    std::unique_ptr<VerificationQueueController> m_queue;
+    std::unique_ptr<BlockWorkList> m_workList;
+    std::unique_ptr<RecheckQueue> m_queue;
     BlockRunGate m_gate;
 };
 
@@ -533,7 +536,7 @@ void TestAutoPipeline::aRefusedWorkListIsAFailure()
     page.boxes = {box};
     fixture.document().page(0).result.pages = {page};
 
-    AutoRecognitionStage stage(fixture.queue(), [] { return true; });
+    AutoRecognitionStage stage(fixture.queue(), fixture.workList(), [] { return true; });
     QSignalSpy failedSpy(&stage, &AutoPipelineStage::failed);
     QSignalSpy finishedSpy(&stage, &AutoPipelineStage::finished);
 
@@ -561,13 +564,13 @@ void TestAutoPipeline::aStoppedQueueEndsTheRun()
     page.boxes = {box};
     fixture.document().page(0).result.pages = {page};
 
-    AutoRecognitionStage stage(fixture.queue(), [] { return true; });
+    AutoRecognitionStage stage(fixture.queue(), fixture.workList(), [] { return true; });
     AutoPipelineController controller({[] { return QList<int>{0}; }, [] { return true; }});
     controller.setStages({&stage});
     QSignalSpy finishedSpy(&controller, &AutoPipelineController::finished);
 
     QVERIFY(controller.start());
-    QVERIFY(fixture.queue().queueActive());  // the stage's work list was taken
+    QVERIFY(fixture.queue().active());  // the stage's work list was taken
 
     fixture.queue().stop();  // the queue is stopped from outside the run
 

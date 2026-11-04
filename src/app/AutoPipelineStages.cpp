@@ -68,16 +68,16 @@ int AutoMarkupStage::progressTotal() const
     return m_layout.progressTotal();
 }
 
-AutoRecognitionStage::AutoRecognitionStage(VerificationQueueController &queue, ModelAvailable modelAvailable, QObject *parent)
-    : AutoPipelineStage(QStringLiteral("Block recognition"), parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
+AutoRecognitionStage::AutoRecognitionStage(RecheckQueue &queue, BlockWorkList &workList, ModelAvailable modelAvailable, QObject *parent)
+    : AutoPipelineStage(QStringLiteral("Block recognition"), parent), m_queue(queue), m_workList(workList), m_modelAvailable(std::move(modelAvailable))
 {
-    connect(&m_queue, &VerificationQueueController::queueFinished, this, [this]() {
+    connect(&m_queue, &BlockQueue::finished, this, [this]() {
         if (!m_running)
             return;
         // The signal belongs to the queue, not to this stage: the stage
         // before this one ends its run while this one has already started
         // its own. The queue is running again, so the signal is stale.
-        if (m_queue.queueActive())
+        if (m_queue.active())
             return;
         m_running = false;
         emit finished();
@@ -88,7 +88,7 @@ QString AutoRecognitionStage::skipReason(const AutoPipelineStage::Scope &pages) 
 {
     if (m_modelAvailable && !m_modelAvailable())
         return stageText(QStringLiteral("No model for this task"));
-    if (m_queue.unrecognizedBlocks(pages).isEmpty())
+    if (m_workList.unrecognizedBlocks(pages).isEmpty())
         return stageText(QStringLiteral("Nothing to recognize"));
     return QString();
 }
@@ -96,8 +96,8 @@ QString AutoRecognitionStage::skipReason(const AutoPipelineStage::Scope &pages) 
 void AutoRecognitionStage::start(const AutoPipelineStage::Scope &pages)
 {
     m_running = true;
-    m_queue.recognizeBlocks(m_queue.unrecognizedBlocks(pages));
-    if (!m_queue.queueActive()) {
+    m_queue.run(m_workList.unrecognizedBlocks(pages));
+    if (!m_queue.active()) {
         // The queue refused the list: the work was not taken, so the stage
         // failed — a silent success would leave the blocks unrecognized.
         m_running = false;

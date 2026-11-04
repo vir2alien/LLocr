@@ -6,7 +6,6 @@
 #include <QString>
 
 #include "app/BlockWorkList.h"
-#include "app/CheckController.h"
 #include "app/DocumentModel.h"
 #include "app/FixController.h"
 #include "app/VerificationPromptStore.h"
@@ -21,11 +20,10 @@ class BlockRunGate;
 class RequestProfileStore;
 class SettingsStore;
 
-// The re-recognition and the remedy queues over one work-list runner: the
-// recheck sends the queued blocks back through the blockRecognition role, the
-// remedy runs the fix or the read protocol over them (ADR 163, ADR 259). The
-// decision role has its own queue now (DecisionQueue); the gate keeps the
-// three roles from running over each other.
+// The remedy queue: the fix or the read protocol over one work list (ADR 163,
+// ADR 259). The decision role has its own queue (DecisionQueue), the
+// block-recognition role has its own (RecheckQueue); the gate keeps the three
+// roles from running over each other.
 class VerificationQueueController : public QObject
 {
     Q_OBJECT
@@ -52,10 +50,9 @@ public:
 
     explicit VerificationQueueController(Deps deps, QObject *parent = nullptr);
 
-    bool checkBusy() const { return m_check.busy() || m_fix.busy(); }
+    bool checkBusy() const { return m_fix.busy(); }
     bool queueActive() const { return m_verifyQueueActive; }
     bool finished() const { return m_checkFinished; }
-    bool recheckPhase() const { return m_phase == Phase::Recheck; }
     bool fixPhase() const { return m_phase == Phase::Fix; }
     bool readPhase() const { return m_phase == Phase::Read; }
     int progressDone() const { return m_verifyDone; }
@@ -85,15 +82,6 @@ public:
     QList<Task> fixableBlocks(const QList<int> &pages, const TypeFilter &filter = {}) const;
 
 public slots:
-    // Re-recognition runs the queue straight in its second phase. The single
-    // block form takes any status; the page/all forms pick the problem blocks.
-    void recheckBlock(int pageIndex, int boxIndex);
-    void recheckPageProblemBlocks(int pageIndex);
-    void recheckAllProblemBlocks();
-    // Recognize every block of the page that has no text yet (the layout-pass
-    // blocks); image placeholders are skipped.
-    void recheckPageBlocks(int pageIndex);
-    void recheckPagesBlocks(const QList<int> &pages);
     // The fix pipeline (ADR 163): a single block regardless of status (the
     // entry guards on the block having text), or every Mismatch/Review block
     // of the document.
@@ -106,9 +94,8 @@ public slots:
     // any block with text.
     void readBlock(int pageIndex, int boxIndex);
     void readScopeBlocks(const QList<int> &pages);
-    // The queues over an explicit work list — the stages of the auto
-    // pipeline collect the blocks themselves (ADR 257).
-    void recognizeBlocks(const QList<Task> &tasks);
+    // The remedy over an explicit work list — the fix stage of the auto
+    // pipeline collects the blocks itself (ADR 257).
     void fixBlocks(const QList<Task> &tasks);
     void stop();
 
@@ -118,11 +105,10 @@ signals:
     // here, not on the per-request state changes that follow.
     void runStarted();
     void statusRequested(const llocr::StatusMessage &message);
-    // One signal per result source: the block-recognition transcription
-    // (blockRecognized), the fix outcome (blockFixed) and the read outcome
-    // (blockRead) drive different box transitions (ADR 164, ADR 260). The
-    // decision verdict travels on DecisionQueue::blockVerified.
-    void blockRecognized(int pageIndex, int boxIndex, const llocr::CheckResult &result);
+    // One signal per result source: the fix outcome (blockFixed) and the read
+    // outcome (blockRead) drive different box transitions (ADR 164, ADR 260).
+    // The decision verdict travels on DecisionQueue::blockVerified, the
+    // transcription on RecheckQueue::blockRecognized.
     void blockFixed(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void blockRead(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void problemReported(const llocr::StatusMessage &message);
@@ -132,12 +118,10 @@ signals:
 
 private:
     enum class Phase {
-        Recheck,  ///< the block-recognition role re-runs the queued blocks
-        Fix,      ///< the fix protocol corrects the queued blocks
-        Read,     ///< the read protocol writes the queued blocks from the image
+        Fix,   ///< the fix protocol corrects the queued blocks
+        Read,  ///< the read protocol writes the queued blocks from the image
     };
 
-    void startRecheckQueue(const QList<Task> &tasks);
     void startFixQueue(const QList<Task> &tasks);
     void startReadQueue(const QList<Task> &tasks);
     void startRemedyQueue(const QList<Task> &tasks, Phase phase);
@@ -147,10 +131,9 @@ private:
 
     Deps m_deps;
     BlockWorkList m_workList;
-    CheckController m_check;
     FixController m_fix;
 
-    Phase m_phase = Phase::Recheck;
+    Phase m_phase = Phase::Fix;
     QList<Task> m_verifyQueue;
     int m_verifyPage = -1;
     int m_verifyBoxIndex = -1;

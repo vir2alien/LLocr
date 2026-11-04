@@ -7,6 +7,7 @@
 #include "app/AutoPipelineStage.h"
 #include "app/BlockQueue.h"
 #include "app/DecisionQueue.h"
+#include "app/RecheckQueue.h"
 #include "app/VerificationQueueController.h"
 
 namespace llocr {
@@ -51,7 +52,7 @@ public:
     // itself when it is not.
     using ModelAvailable = std::function<bool()>;
 
-    AutoRecognitionStage(VerificationQueueController &queue, ModelAvailable modelAvailable, QObject *parent = nullptr);
+    AutoRecognitionStage(RecheckQueue &queue, BlockWorkList &workList, ModelAvailable modelAvailable, QObject *parent = nullptr);
 
     QString skipReason(const AutoPipelineStage::Scope &pages) const override;
     void start(const AutoPipelineStage::Scope &pages) override;
@@ -60,7 +61,8 @@ public:
     int progressTotal() const override;
 
 private:
-    VerificationQueueController &m_queue;
+    RecheckQueue &m_queue;
+    BlockWorkList &m_workList;
     ModelAvailable m_modelAvailable;
     bool m_running = false;
 };

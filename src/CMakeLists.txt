@@ -325,6 +325,8 @@ qt_add_library(llocr_app STATIC
     app/BlockQueue.cpp
     app/DecisionQueue.h
     app/DecisionQueue.cpp
+    app/RecheckQueue.h
+    app/RecheckQueue.cpp
     app/CheckController.h
     app/CheckController.cpp
     app/DecisionController.h

@@ -14,24 +14,8 @@ namespace llocr {
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
     : QObject(parent), m_deps(std::move(deps)),
       m_workList({m_deps.document, m_deps.verification, m_deps.checkRequestProfiles}),
-      m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr),
       m_fix(m_deps.fixRequestProfiles, m_deps.settings, m_deps.runtime, nullptr)
 {
-    connect(&m_check, &CheckController::checkFinished, this, [this](const CheckResult &result) {
-        if (result.status == CheckStatus::Failed && !result.errorMessage.isEmpty() && result.errorMessage != m_checkError) {
-            m_checkError = result.errorMessage;
-            emit problemReported(result.errorMessage);
-        }
-        const int page = m_verifyPage;
-        const int box = m_verifyBoxIndex;
-        emit blockRecognized(page, box, result);
-        ++m_verifyDone;
-        emit stateChanged();
-        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
-    });
-    connect(&m_check, &CheckController::busyChanged, this, &VerificationQueueController::stateChanged);
-    connect(&m_check, &CheckController::statusRequested, this, &VerificationQueueController::statusRequested);
-
     connect(&m_fix, &FixController::fixFinished, this, [this](const CheckResult &result) {
         if (result.status == CheckStatus::Failed && !result.errorMessage.isEmpty() && result.errorMessage != m_checkError) {
             m_checkError = result.errorMessage;
@@ -98,8 +82,6 @@ void VerificationQueueController::stop()
         // wait for a work list that is gone (ADR 257).
         emit queueFinished();
     }
-    if (m_check.busy())
-        m_check.stop();
     if (m_fix.busy())
         m_fix.stop();
 }
@@ -127,45 +109,6 @@ bool VerificationQueueController::pageBlocksRecognitionSupported(int pageIndex) 
 bool VerificationQueueController::allPageRecheckSupported() const
 {
     return m_workList.allPageRecheckSupported();
-}
-
-void VerificationQueueController::recheckBlock(int pageIndex, int boxIndex)
-{
-    if (!m_deps.document.isValidIndex(pageIndex) || !m_deps.document.page(pageIndex).recognized) {
-        return;
-    }
-    startRecheckQueue({{pageIndex, boxIndex}});
-}
-
-void VerificationQueueController::recheckPageProblemBlocks(int pageIndex)
-{
-    if (!m_deps.document.isValidIndex(pageIndex))
-        return;
-    startRecheckQueue(m_workList.problemBlocks({pageIndex}));
-}
-
-void VerificationQueueController::recheckPageBlocks(int pageIndex)
-{
-    if (!m_deps.document.isValidIndex(pageIndex))
-        return;
-    startRecheckQueue(m_workList.unrecognizedBlocks({pageIndex}));
-}
-
-void VerificationQueueController::recheckPagesBlocks(const QList<int> &pages)
-{
-    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
-        return;
-    startRecheckQueue(m_workList.unrecognizedBlocks(pages));
-}
-
-void VerificationQueueController::recheckAllProblemBlocks()
-{
-    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
-        return;
-    QList<int> pages;
-    for (int p = 0; p < m_deps.document.pageCount(); ++p)
-        pages.append(p);
-    startRecheckQueue(m_workList.problemBlocks(pages));
 }
 
 void VerificationQueueController::fixBlock(int pageIndex, int boxIndex)
@@ -208,36 +151,9 @@ void VerificationQueueController::readScopeBlocks(const QList<int> &pages)
     startReadQueue(m_workList.readableBlocks(pages));
 }
 
-void VerificationQueueController::recognizeBlocks(const QList<Task> &tasks)
-{
-    startRecheckQueue(tasks);
-}
-
 void VerificationQueueController::fixBlocks(const QList<Task> &tasks)
 {
     startFixQueue(tasks);
-}
-
-void VerificationQueueController::startRecheckQueue(const QList<Task> &tasks)
-{
-    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive || m_deps.gate.held())
-        return;
-    if (tasks.isEmpty())
-        return;
-
-    m_checkError = StatusMessage();
-    m_checkFinished = false;
-    m_phase = Phase::Recheck;
-    m_verifyQueue = tasks;
-    m_verifyPage = -1;
-    m_verifyBoxIndex = -1;
-    m_verifyTotal = tasks.size();
-    m_verifyDone = 0;
-    m_verifyQueueActive = true;
-    emit stateChanged();
-    emit runStarted();
-
-    QTimer::singleShot(0, this, [this]() { startNextVerify(); });
 }
 
 void VerificationQueueController::startFixQueue(const QList<Task> &tasks)
@@ -361,15 +277,6 @@ void VerificationQueueController::startNextVerify()
         m_fix.fixBlock(crop, text, systemPrompt, userPrompt, box.label, maxOutput);
         return;
     }
-
-    // The transcription wording lives entirely in the model's profile
-    // (systemPrompt + blockPrompts on the blockRecognition role). Per
-    // ADR 163 the block's previous text is not sent — presenting a candidate
-    // and getting confirm/fix/refuse back is the fix task's job.
-    const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
-    const QString userPrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"), box.label);
-    const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"));
-    m_check.checkBlock(crop, systemPrompt, userPrompt);
 }
 
 void VerificationQueueController::skipCurrentTask()
