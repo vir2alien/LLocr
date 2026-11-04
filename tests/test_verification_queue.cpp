@@ -2,14 +2,12 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "app/BlockWorkList.h"
 #include "app/DocumentModel.h"
 #include "app/FixController.h"
 #include "app/VerificationPromptStore.h"
-#include "app/VerificationQueueController.h"
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
-#include "runtime/LaunchProfileStore.h"
-#include "runtime/RuntimeController.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -35,8 +33,9 @@ int parameterValue(const QList<RequestParameter> &parameters, const QString &nam
     return -1;
 }
 
-// The queue and the dependencies it reads. The runtime paths point inside the
-// test's own directory, so the test never touches the user's profiles.
+// The work list and the dependencies it reads. The runtime paths point
+// inside the test's own directory, so the test never touches the user's
+// profiles.
 class QueueFixture
 {
 public:
@@ -45,29 +44,22 @@ public:
         m_settings = std::make_unique<SettingsStore>();
         m_settings->setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         m_settings->setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
-        m_launchProfiles = std::make_unique<LaunchProfileStore>(*m_settings);
         m_checkProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::BlockRecognition);
-        m_fixProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Fix);
-        m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_document = std::make_unique<DocumentModel>();
-        m_queue = std::make_unique<VerificationQueueController>(VerificationQueueController::Deps{
-            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, [] { return false; }, [](int, int) { return QString(); }, {}});
+        m_workList = std::make_unique<BlockWorkList>(BlockWorkList::Deps{*m_document, *m_verification, *m_checkProfiles});
     }
 
-    VerificationQueueController &queue() { return *m_queue; }
+    BlockWorkList &queue() { return *m_workList; }
     VerificationPromptStore &verification() { return *m_verification; }
     DocumentModel &document() { return *m_document; }
 
 private:
     std::unique_ptr<SettingsStore> m_settings;
-    std::unique_ptr<LaunchProfileStore> m_launchProfiles;
     std::unique_ptr<RequestProfileStore> m_checkProfiles;
-    std::unique_ptr<RequestProfileStore> m_fixProfiles;
-    std::unique_ptr<RuntimeController> m_runtime;
     std::unique_ptr<VerificationPromptStore> m_verification;
     std::unique_ptr<DocumentModel> m_document;
-    std::unique_ptr<VerificationQueueController> m_queue;
+    std::unique_ptr<BlockWorkList> m_workList;
 };
 
 }  // namespace
@@ -179,7 +171,7 @@ private slots:
                       textBox(QStringLiteral("text"), QStringLiteral("plain")),
                       textBox(QStringLiteral("title"), QStringLiteral("heading"))});
 
-        const VerificationQueueController::TypeFilter onlyTitle = [](const QString &type) { return type == QLatin1String("title"); };
+        const BlockWorkList::TypeFilter onlyTitle = [](const QString &type) { return type == QLatin1String("title"); };
 
         QCOMPARE(fixture.queue().unrecognizedBlocks({0}).size(), 2);
         QCOMPARE(fixture.queue().enabledBlocks({0}).size(), 2);

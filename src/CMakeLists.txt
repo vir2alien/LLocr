@@ -317,6 +317,8 @@ qt_add_library(llocr_app STATIC
     app/ProblemLog.cpp
     app/ProjectStore.h
     app/ProjectStore.cpp
+    app/BlockWorkList.h
+    app/BlockWorkList.cpp
     app/CheckController.h
     app/CheckController.cpp
     app/DecisionController.h

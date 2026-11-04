@@ -7,12 +7,13 @@
 #include "core/BoxTransitions.h"
 #include "core/CheckRequest.h"
 #include "core/ModelProfiles.h"
-#include "parsers/BlockStyle.h"
 
 namespace llocr {
 
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
-    : QObject(parent), m_deps(std::move(deps)), m_decision(m_deps.runtime, this), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr),
+    : QObject(parent), m_deps(std::move(deps)),
+      m_workList({m_deps.document, m_deps.verification, m_deps.checkRequestProfiles}),
+      m_decision(m_deps.runtime, this), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr),
       m_fix(m_deps.fixRequestProfiles, m_deps.settings, m_deps.runtime, nullptr)
 {
     connect(&m_decision, &DecisionController::judgeFinished, this, [this](const DecisionResult &result) {
@@ -104,12 +105,7 @@ void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
 
     int answered = 0;
     int rejected = 0;
-    QList<int> candidates;
-    collectEnabledBoxes(pageIndex, candidates, answered, rejected);
-
-    QList<Task> tasks;
-    for (const int box : std::as_const(candidates))
-        tasks.append({pageIndex, box});
+    const QList<Task> tasks = m_workList.enabledBoxesOnPage(pageIndex, &answered, &rejected);
     startOrReportAnswered(tasks, answered, rejected);
 }
 
@@ -122,14 +118,11 @@ void VerificationQueueController::checkAllEnabledBlocks()
     int answered = 0;
     int rejected = 0;
     for (int p = 0; p < m_deps.document.pageCount(); ++p) {
-        QList<int> candidates;
         int pageAnswered = 0;
         int pageRejected = 0;
-        collectEnabledBoxes(p, candidates, pageAnswered, pageRejected);
+        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
         answered += pageAnswered;
         rejected += pageRejected;
-        for (const int box : std::as_const(candidates))
-            tasks.append({p, box});
     }
     startOrReportAnswered(tasks, answered, rejected);
 }
@@ -143,162 +136,28 @@ void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &page
     int answered = 0;
     int rejected = 0;
     for (const int p : pages) {
-        QList<int> candidates;
         int pageAnswered = 0;
         int pageRejected = 0;
-        collectEnabledBoxes(p, candidates, pageAnswered, pageRejected);
+        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
         answered += pageAnswered;
         rejected += pageRejected;
-        for (const int box : std::as_const(candidates))
-            tasks.append({p, box});
     }
     startOrReportAnswered(tasks, answered, rejected);
 }
 
 QList<VerificationQueueController::Task> VerificationQueueController::unrecognizedBlocks(const QList<int> &pages, const TypeFilter &filter) const
 {
-    QList<Task> tasks;
-    for (const int page : pages) {
-        if (!m_deps.document.isValidIndex(page))
-            continue;
-        collectUnrecognizedBoxes(page, tasks, filter);
-    }
-    return tasks;
+    return m_workList.unrecognizedBlocks(pages, filter);
 }
 
 QList<VerificationQueueController::Task> VerificationQueueController::enabledBlocks(const QList<int> &pages, const TypeFilter &filter) const
 {
-    QList<Task> tasks;
-    for (const int page : pages) {
-        if (!m_deps.document.isValidIndex(page))
-            continue;
-        QList<int> candidates;
-        int answered = 0;
-        int rejected = 0;
-        collectEnabledBoxes(page, candidates, answered, rejected, filter);
-        for (const int box : std::as_const(candidates))
-            tasks.append({page, box});
-    }
-    return tasks;
+    return m_workList.enabledBlocks(pages, filter);
 }
 
 QList<VerificationQueueController::Task> VerificationQueueController::fixableBlocks(const QList<int> &pages, const TypeFilter &filter) const
 {
-    QList<Task> tasks;
-    for (const int page : pages) {
-        if (!m_deps.document.isValidIndex(page))
-            continue;
-        collectFixBoxes(page, tasks, filter);
-    }
-    return tasks;
-}
-
-void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered, int &rejected, const TypeFilter &filter) const
-{
-    if (!m_deps.document.isValidIndex(pageIndex))
-        return;
-    const DocumentPage &docPage = m_deps.document.page(pageIndex);
-    if (!docPage.recognized || docPage.result.pages.isEmpty())
-        return;
-    const OcrPage &page = docPage.result.pages.first();
-    for (int i = 0; i < page.boxes.size(); ++i) {
-        const BoundingBox &box = page.boxes.at(i);
-        if (filter && !filter(box.label))
-            continue;
-        if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
-            continue;
-        // A formula the app rejected on its LaTeX syntax is not asked about
-        // (ADR 194): the answer would be about a text that cannot be
-        // rendered. It waits for a new recognition instead.
-        if (BoxTransitions::effectiveCheckStatus(box) == BoxCheckStatus::InvalidSyntax) {
-            ++rejected;
-            continue;
-        }
-        // A block with a verdict on its effective layer has been answered;
-        // a re-recognized block (fresh text, verdicts erased) is asked again.
-        if (BoxTransitions::effectiveCheckStatus(box) != BoxCheckStatus::NotChecked) {
-            ++answered;
-            continue;
-        }
-        if (BoxTransitions::effectiveText(box).isEmpty())
-            continue;
-        out.append(i);
-    }
-}
-
-void VerificationQueueController::collectProblemBoxes(int pageIndex, QList<Task> &out) const
-{
-    if (!m_deps.document.isValidIndex(pageIndex))
-        return;
-    const DocumentPage &docPage = m_deps.document.page(pageIndex);
-    if (!docPage.recognized || docPage.result.pages.isEmpty())
-        return;
-    const OcrPage &page = docPage.result.pages.first();
-    for (int i = 0; i < page.boxes.size(); ++i) {
-        const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(page.boxes.at(i));
-        // A formula the app rejected on its LaTeX syntax (ADR 194) needs a new
-        // recognition more than a re-check does: the text itself is broken.
-        if (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review || status == BoxCheckStatus::InvalidSyntax)
-            out.append({pageIndex, i});
-    }
-}
-
-// The blocks the fixer still has to answer (ADR 188): the decision model left
-// them open and the fixer has not looked at this candidate yet. The same set
-// the toolbar badge counts, so the number is the work.
-void VerificationQueueController::collectFixBoxes(int pageIndex, QList<Task> &out, const TypeFilter &filter) const
-{
-    if (!m_deps.document.isValidIndex(pageIndex))
-        return;
-    const DocumentPage &docPage = m_deps.document.page(pageIndex);
-    if (!docPage.recognized || docPage.result.pages.isEmpty())
-        return;
-    const OcrPage &page = docPage.result.pages.first();
-    for (int i = 0; i < page.boxes.size(); ++i) {
-        if (filter && !filter(page.boxes.at(i).label))
-            continue;
-        if (BoxTransitions::needsFix(page.boxes.at(i)))
-            out.append({pageIndex, i});
-    }
-}
-
-// The blocks the reader takes (ADR 260): every text block of the page — with
-// a text or without one. The reader writes the block from the image, so a
-// block nobody recognized yet is a block it can write.
-void VerificationQueueController::collectReadBoxes(int pageIndex, QList<Task> &out) const
-{
-    if (!m_deps.document.isValidIndex(pageIndex))
-        return;
-    const DocumentPage &docPage = m_deps.document.page(pageIndex);
-    if (!docPage.recognized || docPage.result.pages.isEmpty())
-        return;
-    const OcrPage &page = docPage.result.pages.first();
-    for (const int box : PageStatus::readableBoxes(page))
-        out.append({pageIndex, box});
-}
-
-// The layout pass creates text blocks with no text; a legacy project may
-// still carry a correction-only block. Image placeholders are never
-// transcribed.
-void VerificationQueueController::collectUnrecognizedBoxes(int pageIndex, QList<Task> &out, const TypeFilter &filter) const
-{
-    if (!m_deps.document.isValidIndex(pageIndex))
-        return;
-    const DocumentPage &docPage = m_deps.document.page(pageIndex);
-    if (!docPage.recognized || docPage.result.pages.isEmpty())
-        return;
-    const OcrPage &page = docPage.result.pages.first();
-    const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
-    for (int i = 0; i < page.boxes.size(); ++i) {
-        const BoundingBox &box = page.boxes.at(i);
-        if (filter && !filter(box.label))
-            continue;
-        if (box.checkStatus != BoxCheckStatus::NotChecked || !box.text.isEmpty() || !box.correctedText.isEmpty())
-            continue;
-        if (blockStyleForLabel(box.label, modelId).style == BlockStyle::ImagePlaceholder)
-            continue;
-        out.append({pageIndex, i});
-    }
+    return m_workList.fixableBlocks(pages, filter);
 }
 
 void VerificationQueueController::startOrReportAnswered(const QList<Task> &tasks, int answered, int rejected)
@@ -342,60 +201,27 @@ void VerificationQueueController::stop()
 
 bool VerificationQueueController::pageVerificationSupported(int pageIndex) const
 {
-    if (!m_deps.document.isValidIndex(pageIndex) || !m_deps.document.page(pageIndex).recognized || m_deps.document.page(pageIndex).result.pages.isEmpty())
-        return false;
-    if (m_deps.layoutBusy())
-        return false;
-    const OcrPage &page = m_deps.document.page(pageIndex).result.pages.first();
-    for (const BoundingBox &box : std::as_const(page.boxes)) {
-        if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !BoxTransitions::effectiveText(box).isEmpty())
-            return true;
-    }
-    return false;
+    return !m_deps.layoutBusy() && m_workList.pageVerificationSupported(pageIndex);
 }
 
 bool VerificationQueueController::allPageVerificationSupported() const
 {
-    if (m_deps.layoutBusy())
-        return false;
-    for (int p = 0; p < m_deps.document.pageCount(); ++p) {
-        const DocumentPage &docPage = m_deps.document.page(p);
-        if (!docPage.recognized || docPage.result.pages.isEmpty())
-            continue;
-        const OcrPage &page = docPage.result.pages.first();
-        for (const BoundingBox &box : std::as_const(page.boxes)) {
-            if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !BoxTransitions::effectiveText(box).isEmpty())
-                return true;
-        }
-    }
-    return false;
+    return !m_deps.layoutBusy() && m_workList.allPageVerificationSupported();
 }
 
 bool VerificationQueueController::pageRecheckSupported(int pageIndex) const
 {
-    QList<Task> tasks;
-    collectProblemBoxes(pageIndex, tasks);
-    return !tasks.isEmpty();
+    return m_workList.pageRecheckSupported(pageIndex);
 }
 
 bool VerificationQueueController::pageBlocksRecognitionSupported(int pageIndex) const
 {
-    if (m_deps.layoutBusy())
-        return false;
-    QList<Task> tasks;
-    collectUnrecognizedBoxes(pageIndex, tasks);
-    return !tasks.isEmpty();
+    return !m_deps.layoutBusy() && m_workList.pageBlocksRecognitionSupported(pageIndex);
 }
 
 bool VerificationQueueController::allPageRecheckSupported() const
 {
-    for (int p = 0; p < m_deps.document.pageCount(); ++p) {
-        QList<Task> tasks;
-        collectProblemBoxes(p, tasks);
-        if (!tasks.isEmpty())
-            return true;
-    }
-    return false;
+    return m_workList.allPageRecheckSupported();
 }
 
 void VerificationQueueController::startVerifyQueue(const QList<Task> &tasks)
@@ -433,38 +259,31 @@ void VerificationQueueController::recheckPageProblemBlocks(int pageIndex)
 {
     if (!m_deps.document.isValidIndex(pageIndex))
         return;
-    QList<Task> tasks;
-    collectProblemBoxes(pageIndex, tasks);
-    startRecheckQueue(tasks);
+    startRecheckQueue(m_workList.problemBlocks({pageIndex}));
 }
 
 void VerificationQueueController::recheckPageBlocks(int pageIndex)
 {
     if (!m_deps.document.isValidIndex(pageIndex))
         return;
-    QList<Task> tasks;
-    collectUnrecognizedBoxes(pageIndex, tasks);
-    startRecheckQueue(tasks);
+    startRecheckQueue(m_workList.unrecognizedBlocks({pageIndex}));
 }
 
 void VerificationQueueController::recheckPagesBlocks(const QList<int> &pages)
 {
     if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
-    QList<Task> tasks;
-    for (const int p : pages)
-        collectUnrecognizedBoxes(p, tasks);
-    startRecheckQueue(tasks);
+    startRecheckQueue(m_workList.unrecognizedBlocks(pages));
 }
 
 void VerificationQueueController::recheckAllProblemBlocks()
 {
     if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
-    QList<Task> tasks;
+    QList<int> pages;
     for (int p = 0; p < m_deps.document.pageCount(); ++p)
-        collectProblemBoxes(p, tasks);
-    startRecheckQueue(tasks);
+        pages.append(p);
+    startRecheckQueue(m_workList.problemBlocks(pages));
 }
 
 void VerificationQueueController::fixBlock(int pageIndex, int boxIndex)
@@ -479,20 +298,17 @@ void VerificationQueueController::fixAllProblemBlocks()
 {
     if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
-    QList<Task> tasks;
+    QList<int> pages;
     for (int p = 0; p < m_deps.document.pageCount(); ++p)
-        collectFixBoxes(p, tasks);
-    startFixQueue(tasks);
+        pages.append(p);
+    startFixQueue(m_workList.fixableBlocks(pages));
 }
 
 void VerificationQueueController::fixPagesProblemBlocks(const QList<int> &pages)
 {
     if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
-    QList<Task> tasks;
-    for (const int p : pages)
-        collectFixBoxes(p, tasks);
-    startFixQueue(tasks);
+    startFixQueue(m_workList.fixableBlocks(pages));
 }
 
 void VerificationQueueController::readBlock(int pageIndex, int boxIndex)
@@ -507,10 +323,7 @@ void VerificationQueueController::readScopeBlocks(const QList<int> &pages)
 {
     if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
-    QList<Task> tasks;
-    for (const int p : pages)
-        collectReadBoxes(p, tasks);
-    startReadQueue(tasks);
+    startReadQueue(m_workList.readableBlocks(pages));
 }
 
 void VerificationQueueController::recognizeBlocks(const QList<Task> &tasks)

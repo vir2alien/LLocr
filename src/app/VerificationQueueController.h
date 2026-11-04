@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QString>
 
+#include "app/BlockWorkList.h"
 #include "app/CheckController.h"
 #include "app/DecisionController.h"
 #include "app/DocumentModel.h"
@@ -38,16 +39,10 @@ public:
     // CandidateRenderer; a headless test can install a stand-in painter.
     using RenderCandidateFn = std::function<void(const QString &candidateText, const std::function<void(bool ok, const QImage &image, const QString &error)> &)>;
 
-    // One block of the work list: the page and the box on it.
-    struct Task {
-        int page;
-        int box;
-    };
-
-    // Which block types a stage handles. Empty — every type. A stage that
-    // reads only some types (a task assigned to them) narrows the
-    // collection with it (ADR 257).
-    using TypeFilter = std::function<bool(const QString &blockType)>;
+    // One block of the work list: the page and the box on it. The work-list
+    // vocabulary lives on BlockWorkList; the queue runs the lists it collects.
+    using Task = BlockWorkList::Task;
+    using TypeFilter = BlockWorkList::TypeFilter;
 
     struct Deps {
         DocumentModel &document;
@@ -176,14 +171,10 @@ private:
     void deliverVerdict(const CheckResult &verdict);
     void skipCurrentTask();
     void finishVerifyQueue();
-    void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered, int &rejected, const TypeFilter &filter = {}) const;
-    void collectProblemBoxes(int pageIndex, QList<Task> &out) const;
-    void collectFixBoxes(int pageIndex, QList<Task> &out, const TypeFilter &filter = {}) const;
-    void collectReadBoxes(int pageIndex, QList<Task> &out) const;
-    void collectUnrecognizedBoxes(int pageIndex, QList<Task> &out, const TypeFilter &filter = {}) const;
     double matchThresholdFor(const QString &blockType) const;
 
     Deps m_deps;
+    BlockWorkList m_workList;
     DecisionController m_decision;
     CheckController m_check;
     FixController m_fix;
