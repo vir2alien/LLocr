@@ -150,11 +150,11 @@ What is already ready for it:
 
 1. **A stage is the unit of work.** An additional task = an additional stage
    in the list. The orchestrator, the facade and QML do not change.
-2. **Block collection is separated from execution.** The verification queue
-   hands out a list of blocks (`unrecognizedBlocks`, `enabledBlocks`,
-   `fixableBlocks`) and executes it separately (`recognizeBlocks`,
-   `checkBlocks`, `fixBlocks`). A stage decides itself which blocks go into
-   which run.
+2. **Block collection is separated from execution.** `BlockWorkList`
+   collects the lists (`unrecognizedBlocks`, `enabledBlocks`,
+   `fixableBlocks`) and the role queues run them (`RecheckQueue::run`,
+   `DecisionQueue::run`, `RemedyQueue::runFix` — ADR 286). A stage decides
+   itself which blocks go into which run.
 3. **The block-type filter.** The collectors take an optional type filter:
    today it is empty (all types), tomorrow a task's stage hands out the
    filter «these types are mine». The filter is a
@@ -205,15 +205,14 @@ The full check is `scripts/check.sh` (build + ctest + clang-format + qmllint).
 Postponed deliberately (the next step, not a defect):
 
 * **Different models for different block types.** The seam is ready
-  (collection separated from execution, the type filter), but the queue does
-  not know how to work with *another* task: a new task needs a new queue
-  API. A new task in `core/ConnectionRole.h` + a new stage.
-* **Duplication in the verification queue.** The same four collection lines
-  are written four times; the queue's collectors should fold into one shared
-  function. Likewise, the three queue stages repeat ~100 lines of each
-  other: a private base would remove that.
-* **Double collection.** `skipReason()` and `start()` each collect the list
-  of blocks every time; the list could be collected once.
+  (collection separated from execution in `BlockWorkList`, the type filter),
+  but a new task still needs its own queue: a new task in
+  `core/ConnectionRole.h` + a new queue + a new stage.
+* **Duplication in the queue stages.** The three queue stages repeat the
+  connect/stop/progress tail of each other: a private base would remove
+  that. (The collectors themselves folded into `BlockWorkList`, and the
+  double collection of `skipReason`/`start` is gone — the reason's list is
+  cached, ADR 286.)
 * **Export is not closed by the pipeline.** The export button does not
   account for the markup stage (manual markup behaves the same), so a
   half-processed snapshot can be exported during a run. Project saving is

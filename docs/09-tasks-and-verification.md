@@ -225,7 +225,8 @@ fix → decision of the corrected); see `docs/11-auto-pipeline.md`.
 | Fix + read clients | `src/app/FixController.{h,cpp}`, `src/models/FixModel.cpp` |
 | Decision client | `src/app/DecisionController.{h,cpp}`, `src/models/DecisionModel.cpp` |
 | Candidate render for visual diff | `src/app/CandidateRenderer.cpp` |
-| Verification queue | `src/app/VerificationQueueController.{h,cpp}` |
+| Role queues (decision / recheck / remedy) | `src/app/BlockQueue.{h,cpp}`, `src/app/BlockRunGate.{h,cpp}`, `src/app/DecisionQueue.{h,cpp}`, `src/app/RecheckQueue.{h,cpp}`, `src/app/RemedyQueue.{h,cpp}` (ADR 286) |
+| Block collection | `src/app/BlockWorkList.{h,cpp}` |
 | Block OCR / layout clients | `src/app/CheckController.{h,cpp}`, `src/models/BlockRecognitionModel.cpp`, `src/app/LayoutController.{h,cpp}` |
 | Availability, facade | `src/app/AvailabilityPresenter.{h,cpp}`, `src/app/AppController.{h,cpp}` |
 | Project `.llocr` | `src/app/ProjectStore.{h,cpp}` |

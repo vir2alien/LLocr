@@ -239,7 +239,8 @@ table 0.4, base 0.5 на корпусе OCR_TEST. Формула доходит 
 | Клиенты исправления и чтения | `src/app/FixController.{h,cpp}`, `src/models/FixModel.cpp` |
 | Клиент проверки | `src/app/DecisionController.{h,cpp}`, `src/models/DecisionModel.cpp` |
 | Рендер кандидата для визуального диффа | `src/app/CandidateRenderer.cpp` |
-| Очередь проверки | `src/app/VerificationQueueController.{h,cpp}` |
+| Очереди ролей (decision / recheck / remedy) | `src/app/BlockQueue.{h,cpp}`, `src/app/BlockRunGate.{h,cpp}`, `src/app/DecisionQueue.{h,cpp}`, `src/app/RecheckQueue.{h,cpp}`, `src/app/RemedyQueue.{h,cpp}` (ADR 286) |
+| Сбор блоков | `src/app/BlockWorkList.{h,cpp}` |
 | Клиенты распознавания блока / разметки | `src/app/CheckController.{h,cpp}`, `src/models/BlockRecognitionModel.cpp`, `src/app/LayoutController.{h,cpp}` |
 | Доступность, фасад | `src/app/AvailabilityPresenter.{h,cpp}`, `src/app/AppController.{h,cpp}` |
 | Проект `.llocr` | `src/app/ProjectStore.{h,cpp}` |

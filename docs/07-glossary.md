@@ -217,7 +217,9 @@ appendix at the end of this file.
   `ExportController` owns the whole export pipeline (`collectPages`,
   `ExportScope`, pandoc/built-in and rendered HTML/PDF paths,
   `pdfPageLayout`); the `AppController` QML API stayed unchanged as
-  forwarders.
+  forwarders. (The queue state machine's owner is amended by ADR 286: the
+  role queues replaced `VerificationQueueController`; the
+  results-as-signals rule is unchanged.)
 - **92.** Block deletion has exactly one entry point,
   `AppController::removeBlock(index)`: the document is mutated first, then
   `BoxListModel` (plain `removeBox()`, not Q_INVOKABLE, no `boxRemoved`
@@ -307,7 +309,8 @@ appendix at the end of this file.
   `LayoutController` (layout pass). QML-bound property names and NOTIFY
   signals are unchanged, the new classes take dependencies through `Deps`, and
   document/import domains, parser choice and the status line stay in the
-  facade.
+  facade. (The verification domain's classes are amended by ADR 286: the
+  role queues replaced `VerificationQueueController`.)
 - **214.** The panel's scope list (thumbnail selection; empty selection =
   whole document) is computed by `AvailabilityPresenter` alone, and the
   facade asks it for both the actions (`recognizeScopePages`,
@@ -1132,6 +1135,27 @@ appendix at the end of this file.
   `conn.modelId`), models with `reasoning: false` get nothing, and stored user
   profiles are stripped of the parameter once
   (`ProfileStore::stripUserParameter`). The wire is unchanged.
+- **286.** The verification queue is split into role queues. `BlockWorkList`
+  (`app/BlockWorkList.{h,cpp}`) owns the block collection — the five
+  collectors (unrecognized / enabled / fixable / problem / readable) and the
+  page-level enablement predicates — as pure document queries. `BlockRunGate`
+  keeps the block queues one run at a time; the markup pass and a stopped
+  request still winding down hold it from the outside. The base `BlockQueue`
+  owns the shared runner (work list, guards, progress, stop, the waiter's
+  `finished` signal) and the three roles own their request machinery:
+  `DecisionQueue` (the visual diff with its render leg and thresholds,
+  ADR 235/254/184/258), `RecheckQueue` (the blockRecognition role, ADR 146)
+  and `RemedyQueue` — one class over the two remedy protocols (fix and read,
+  ADR 260) that also carries the read counters and summary (ADR 261).
+  `VerificationQueueController` is removed: `AppController` owns the three
+  queues and the readout state (the error line, the finished flag, the
+  progress source), the QML API and the result signals
+  (`blockVerified` / `blockRecognized` / `blockFixed` / `blockRead`) are
+  unchanged. The auto pipeline stages take their typed queue and the work
+  list (ADR 257) and `AvailabilityPresenter` reads its enablement predicates
+  off `BlockWorkList`. Amends ADR 86 (the queue state machine's owner) and
+  ADR 213 (the facade's domain list); the protocols, the statuses and the
+  stop semantics are untouched.
 
 ### UI
 

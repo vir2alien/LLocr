@@ -51,9 +51,12 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   — K», ADR 261). In Managed mode the
   server switches between the tasks' models automatically (ADR 74), in
   External mode the request just starts (ADR 91).
-  The serial check queue (task list, progress, stop) lives in
-  **`VerificationQueueController`** which owns `CheckController` and publishes
-  results to `AppController` via `blockChecked` (ADR 86) — `AppController`'s
+  The serial check queue (task list, progress, stop) lives in the role
+  queues (ADR 286): **`DecisionQueue`** runs the visual-diff decision,
+  **`RecheckQueue`** the block-recognition re-run and **`RemedyQueue`** the
+  fix and the read, over the shared `BlockQueue` runner and one
+  `BlockRunGate`. The block lists are collected by `BlockWorkList`; the
+  results reach `AppController` as signals (ADR 86) — `AppController`'s
   `check*` API to QML is unchanged.
   The queue survives page switches (parity with recognition), so a batch check
   keeps running while the user browses (ADR 91).
@@ -632,9 +635,11 @@ and the QML bindings are unchanged — the split is invisible to the UI.
 - **`AvailabilityPresenter`** — the availability matrix: the twenty flags of
   the toolbar and the panel, the fingerprint that guards the recomputation
   (ADR 208) and the toolbar scope (the thumbnail selection).
-- **`VerificationQueueController`** — the verification and fix pipeline: its
-  state and its progress were already its own; the facade only relays the
-  signal.
+- **`DecisionQueue` / `RecheckQueue` / `RemedyQueue`** — the three role
+  queues over the shared `BlockQueue` runner and `BlockRunGate` (ADR 286):
+  each owns its request controller and resolves its own prompts; the
+  collection lives in `BlockWorkList`, and the facade relays the signals and
+  keeps the readout state.
 - **`LayoutController`** — the markup pass: it owns the layout role of the
   active profile (the prompt and the parser).
 

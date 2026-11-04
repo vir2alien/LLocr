@@ -248,7 +248,8 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
   (открытие/добавление/удаление/перестановка), правками страниц и
   редактированием блоков-изображений. Домены вокруг него живут в собственных
   классах — `BlockInspector`, `ProjectController`, `AvailabilityPresenter`,
-  `VerificationQueueController` (с его подклассами `ModelRequestController`),
+  очереди ролей `DecisionQueue` / `RecheckQueue` / `RemedyQueue`
+  (с их подклассами `ModelRequestController`),
   `LayoutController`, `ExportController` — и фасад передаёт их состояние
   и сигналы, не меняя QML API. Применяет результаты проверки к документу
   (`applyCheckResultToBox` под блокировкой документа). Все настройки
@@ -265,13 +266,18 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
   отпечаток, охраняющий пересчёт (ADR 208), и область действия панели
   инструментов. Флаги меняются только когда один из них переключился, чтобы
   болтовня очереди не заставляла QML пересматривать документ.
-- **VerificationQueueController** — владеет последовательной очередью
-  проверки (LLM-проверки): список задач (`{page, box}`), прогресс, остановка
-  и собственный `CheckController`; блоки-кандидаты собираются из включённых
-  типов блоков в `VerificationPromptStore`. Доступ к документу только на
-  чтение через внедрённые ссылки; мутации по результатам остаются в
-  `AppController` (сигнал `blockChecked`). Прогресс/ошибки передаются
-  в свойства `check*` класса `AppController` (ADR 86).
+- **Очереди ролей** — блоковые задачи идут по одной роли на очередь (ADR 286):
+  `DecisionQueue` (визуальная сверка), `RecheckQueue` (повторное
+  распознавание blockRecognition) и `RemedyQueue` (исправление и чтение —
+  один класс над двумя протоколами). Базовый `BlockQueue` владеет общим
+  исполнителем — список задач (`{page, box}`), проверки, прогресс, остановка
+  — а `BlockRunGate` держит три очереди по одному запуску (разметка
+  удерживает его снаружи). Сбор блоков отделён от очередей: `BlockWorkList`
+  собирает списки как чистые запросы к документу. Доступ к документу только
+  на чтение через внедрённые ссылки; мутации по результатам остаются в
+  `AppController` (сигналы `block*`). Состояние показаний (строка ошибки,
+  флаг завершения, источник прогресса) живёт в `AppController` и
+  поддерживается по сигналам очередей `runStarted` / `finished` (ADR 86).
 - **ExportController** — владеет конвейером экспорта: сбор страниц, пути
   pandoc/встроенного писателя и поток отрендеренного HTML/PDF с резервными
   писателями; владеет `Exporter` и `ExportRenderer`. Кроп-изображения и флаг
@@ -286,9 +292,8 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
   получает подключение **только** через
   `RuntimeController::ensureConnectionReady()` (ADR 37), собирает запрос +
   `ConnectionConfig` из разрешённого подключения и передаёт итог.
-  Распознавание блоков (роль blockRecognition) идёт через очередь
-  перепроверки `VerificationQueueController` — однопроходный цикл по
-  страницам удалён (ADR 252).
+  Распознавание блоков (роль blockRecognition) идёт через `RecheckQueue` —
+  однопроходный цикл по страницам удалён (ADR 252).
 - **DocumentModel** — хранит загруженные страницы (`DocumentPage`:
   изображение + постраничный `OcrResult` + флаг `recognized`); загружает
   одно/несколько изображений (`QImage`), PDF (`QPdfDocument`) и DjVu
@@ -342,7 +347,7 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
 UI (file selection)
   → AppController (stores pages in DocumentModel)
     → per-task controller (a ModelRequestController subclass) or the
-      VerificationQueueController's re-check queue (block recognition)
+      role queue (RecheckQueue for block recognition, ADR 286)
         → RuntimeController::ensureConnectionReady()   [External: immediate;
             Managed: start → /health → /v1/models → alias]
         → OcrModel::create(modelId, role) from the task's model profile

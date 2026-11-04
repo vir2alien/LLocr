@@ -229,7 +229,8 @@ in `docs/04-components.md`, the decisions as ADRs in `docs/07-glossary.md`).
   list models to QML. Owns page lifecycle (open/append/remove/reorder),
   per-page edits and image-block editing. The domains around it live in their
   own classes — `BlockInspector`, `ProjectController`, `AvailabilityPresenter`,
-  `VerificationQueueController` (with its `ModelRequestController` subclasses),
+  the role queues `DecisionQueue` / `RecheckQueue` / `RemedyQueue` (with their
+  `ModelRequestController` subclasses),
   `LayoutController`, `ExportController` — and the facade forwards their state and signals with
   the QML API unchanged. Applies check results to the document
   (`applyCheckResultToBox` under the document lock). All
@@ -246,13 +247,19 @@ in `docs/04-components.md`, the decisions as ADRs in `docs/07-glossary.md`).
   fingerprint that guards the recomputation (ADR 208) and the toolbar scope.
   The flags change only when one of them flips, so the queue's chatter does
   not make QML rescan the document.
-- **VerificationQueueController** — owns the serial verification (LLM check)
-  queue: task list (`{page, box}`), progress, stop, and the owned
-  `CheckController`; candidate boxes are collected from the enabled block
-  types in `VerificationPromptStore`. Read-only document access via injected
-  references; per-result mutations stay in `AppController` (signal
-  `blockChecked`). Progress/error state is relayed to `AppController`'s
-  `check*` properties (ADR 86).
+- **Role queues** — the block tasks run one role per queue (ADR 286):
+  `DecisionQueue` (the visual-diff verification), `RecheckQueue` (the
+  blockRecognition re-run) and `RemedyQueue` (the fix and the read, one class
+  over two protocols). The base `BlockQueue` owns the shared runner — the
+  work list (`{page, box}`), the guards, the progress, the stop — and
+  `BlockRunGate` keeps the three one run at a time (the markup pass holds it
+  from the outside). The block collection is separated from the queues:
+  `BlockWorkList` collects the work lists as pure document queries.
+  Read-only document access via injected references; per-result mutations
+  stay in `AppController` (the `block*` signals). The readout state (the
+  error line, the finished flag, the progress source) lives in
+  `AppController` and is maintained off the queues' `runStarted` /
+  `finished` signals (ADR 86).
 - **ExportController** — owns the export pipeline: page collection, the
   pandoc/built-in writer paths and the rendered HTML/PDF flow with writer
   fallbacks; owns `Exporter` and `ExportRenderer`. Crop images and the
@@ -267,8 +274,7 @@ in `docs/04-components.md`, the decisions as ADRs in `docs/07-glossary.md`).
   `RuntimeController::ensureConnectionReady()` (ADR 37), builds the request +
   `ConnectionConfig` from the resolved connection, and relays the outcome.
   Block recognition (the blockRecognition role) runs through
-  `VerificationQueueController`'s re-check queue — the single-pass page run
-  loop is gone (ADR 252).
+  `RecheckQueue` — the single-pass page run loop is gone (ADR 252).
 - **DocumentModel** — holds the loaded pages (`DocumentPage`: image +
   per-page `OcrResult` + `recognized` flag); loads single/multiple images
   (`QImage`), PDFs (`QPdfDocument`) and DjVu (`DjVuDocument` / DjVuLibre),
@@ -316,7 +322,7 @@ in `docs/04-components.md`, the decisions as ADRs in `docs/07-glossary.md`).
 UI (file selection)
   → AppController (stores pages in DocumentModel)
     → per-task controller (a ModelRequestController subclass) or the
-      VerificationQueueController's re-check queue (block recognition)
+      role queue (RecheckQueue for block recognition, ADR 286)
         → RuntimeController::ensureConnectionReady()   [External: immediate;
             Managed: start → /health → /v1/models → alias]
         → OcrModel::create(modelId, role) from the task's model profile
