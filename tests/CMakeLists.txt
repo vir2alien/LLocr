@@ -16,7 +16,7 @@
 
 # The model profiles: one file per model, and a test that reads a model contract
 # needs the shipped data. Declared once so adding a model does not mean editing
-# every test target (docs/11-profile-findings.md, finding 6).
+# every test target (docs/19-testing.md, finding 6).
 set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-4b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-9b.json"
@@ -40,7 +40,7 @@ set(LLOCR_REQUEST_PROFILE_FILES
 
 # The shipped profiles a test reads: the model profiles and the request
 # profiles they point at. One call per target so adding a profile does not mean
-# editing every test target (docs/11-profile-findings.md, finding 6).
+# editing every test target (docs/19-testing.md, finding 6).
 function(llocr_add_profile_resources target)
     qt_add_resources(${target} "${target}_model_profiles"
         PREFIX "/profiles/models"
@@ -94,6 +94,7 @@ qt_add_resources(test_det_parser "det_parser_labels_res"
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )
 llocr_add_profile_resources(test_det_parser)
+# --- Parsers ---
 add_test(NAME test_det_parser COMMAND test_det_parser)
 
 qt_add_executable(test_profile_storage test_profile_storage.cpp)
@@ -102,6 +103,7 @@ target_link_libraries(test_profile_storage PRIVATE
     Qt6::Test
     llocr_config
 )
+# --- Config layer: profile storage, secrets ---
 add_test(NAME test_profile_storage COMMAND test_profile_storage)
 
 # The OS secret store: a key is stored, read back and removed (ADR 227). The
@@ -123,6 +125,7 @@ target_link_libraries(test_runtime_tab_external_qml PRIVATE
     Qt6::QuickControls2
     llocr_config
 )
+# --- App layer: pipeline, queue, availability ---
 add_test(NAME test_runtime_tab_external_qml COMMAND test_runtime_tab_external_qml)
 
 qt_add_executable(test_verification_prompts test_verification_prompts.cpp)
@@ -178,6 +181,7 @@ qt_add_resources(test_ocr_models "ocr_model_labels"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )
+# --- Models: OCR adapters, decision, fix/read protocols ---
 add_test(NAME test_ocr_models COMMAND test_ocr_models)
 
 qt_add_executable(test_pagemodel test_pagemodel.cpp)
@@ -257,6 +261,7 @@ target_link_libraries(test_page_status PRIVATE
     Qt6::Test
     llocr_app
 )
+# --- Document, pages, layout, orientation ---
 add_test(NAME test_page_status COMMAND test_page_status)
 
 # The manual markup pass (layout role): the request shape it sends through the
@@ -313,7 +318,7 @@ target_link_libraries(test_page_orientation PRIVATE
 # The renders of the corpus the check is measured against. The test skips when
 # the checkout carries no corpus.
 target_compile_definitions(test_page_orientation PRIVATE
-    LLOCR_CORPUS_RENDERS="${CMAKE_SOURCE_DIR}/OCRtest/ocr_models/materials/renders"
+    LLOCR_CORPUS_RENDERS="${CMAKE_SOURCE_DIR}/tests/fixtures/orientation-corpus"
 )
 add_test(NAME test_page_orientation COMMAND test_page_orientation)
 
@@ -358,6 +363,7 @@ if(WIN32 AND LLOCR_DJVU_AVAILABLE)
         VERBATIM
     )
 endif()
+# --- Import, settings, request/launch profiles ---
 add_test(NAME test_app_import COMMAND test_app_import)
 # The suite spins up WebEngine per test: 226 s on the Windows dev box, so the
 # 90 s cap killed a passing run there. The directory-wide 300 s covers it.
@@ -425,6 +431,7 @@ target_link_libraries(test_launch_tab_qml PRIVATE
     Qt6::QuickControls2
     llocr_config
 )
+# --- QML: launch tab, task models table, wizard ---
 add_test(NAME test_launch_tab_qml COMMAND test_launch_tab_qml)
 
 # The models table as QML: an unsaved edit must survive the sync that runs
@@ -469,6 +476,7 @@ target_link_libraries(test_runtime_installer PRIVATE
     Qt6::Network
     llocr_runtime
 )
+# --- Runtime installer and lifetime ---
 add_test(NAME test_runtime_installer COMMAND test_runtime_installer)
 
 qt_add_executable(test_runtime_lifetime test_runtime_lifetime.cpp)
@@ -496,6 +504,7 @@ qt_add_resources(test_exporter "exporter_preview_fixture"
         "${CMAKE_SOURCE_DIR}/tests/fixtures/exporter-preview/katex.min.css"
         "${CMAKE_SOURCE_DIR}/tests/fixtures/exporter-preview/fonts/KaTeX_Fake-Regular.woff2"
 )
+# --- Export and rendering ---
 add_test(NAME test_exporter COMMAND test_exporter)
 
 # ---- Export renderer: headless WebEngine integration -----------------------
@@ -547,7 +556,7 @@ add_test(NAME test_candidate_renderer COMMAND test_candidate_renderer)
 
 # Helper, not a test: dumps the app's own candidate renders of a .llocr
 # project for the decision-eval stand (the visual-diff threshold calibration,
-# docs/31 §6, ADR 184).
+# docs/17 §6, ADR 184).
 qt_add_executable(candidate_render_dump candidate_render_dump.cpp)
 
 target_link_libraries(candidate_render_dump PRIVATE
@@ -568,6 +577,7 @@ target_link_libraries(test_http_client PRIVATE
     Qt6::Test
     llocr_runtime
 )
+# --- Transport and managed server ---
 add_test(NAME test_http_client COMMAND test_http_client)
 
 # ---- Stage B: capabilities -------------------------------------------------
@@ -633,6 +643,7 @@ target_link_libraries(test_model_memory_estimator PRIVATE
     llocr_runtime
 )
 llocr_add_profile_resources(test_model_memory_estimator)
+# --- Downloads, catalogs, installs, locks ---
 add_test(NAME test_model_memory_estimator COMMAND test_model_memory_estimator)
 
 # ---- Stage C: download manager ------------------------------------------
@@ -781,6 +792,7 @@ target_link_libraries(test_llama_client PRIVATE
     Qt6::Test
     llocr_core
 )
+# --- Core: llama client, box transitions, text diff, latex ---
 add_test(NAME test_llama_client COMMAND test_llama_client)
 
 # ---- The block state machine (ADR 164): two layers, pure transitions -------

@@ -1,7 +1,7 @@
 # Model: Unlimited-OCR
 
 > Manual launch, request contract and app wiring. Russian version:
-> `docs/22-unlimited-ocr.ru.md`. The upstream reference (links, token
+> `archive/models/docs/22-unlimited-ocr.ru.md`. The upstream reference (links, token
 > vocabulary, hand-run example): `docs/UnlimitedOCR.md`.
 
 ## 1. What it is

@@ -255,7 +255,7 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     QVERIFY(blocks.contains(QStringLiteral("transcribe one block")));
     QVERIFY(blocks.contains(QStringLiteral("the block text and nothing else")));
 
-    // The shipped decision is the visual diff (docs/31): the task wording is
+    // The shipped decision is the visual diff (docs/17): the task wording is
     // baked into the model's own prompt, so the role ships no system prompt —
     // the request carries no texts to override.
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("minicpm-jev"), QStringLiteral("decision")).isEmpty());
@@ -327,7 +327,7 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("key_value")).isEmpty());
 
     // The equivalence rules are synced with the decision v6 block prompts
-    // (docs/21): the fixer treats the same things as equivalent and strictly
+    // (archive/models/docs/21-d3.md): the fixer treats the same things as equivalent and strictly
     // different, or the two models would fight over е/ё, homoglyphs, LaTeX
     // commands and table cells. All six fix models ship identical prompts.
     const QString fixText = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("text"));
@@ -556,10 +556,10 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
         QCOMPARE(role->blockMaxOutput, fixRequests->prompts.blockMaxOutput);
     }
 
-    // The decision model speaks the visual diff (docs/31): the task wording
+    // The decision model speaks the visual diff (docs/17): the task wording
     // is baked into the model's own prompt, the server rejects a request that
     // sends texts, so no request profile exists and the role names none. The
-    // thresholds stay per model, measured per block type (docs/31, ADR 184);
+    // thresholds stay per model, measured per block type (docs/17, ADR 184);
     // the flat 0.5 stands behind the split for a type the measurement did
     // not cover.
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("decision"))) {

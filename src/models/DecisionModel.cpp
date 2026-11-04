@@ -15,7 +15,7 @@ namespace llocr {
 
 QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl, const QByteArray &renderImageDataUrl, const QString &modelId)
 {
-    // The visual-diff decision model (docs/31): the task wording is part
+    // The visual-diff decision model (docs/17): the task wording is part
     // of the model's own prompt, so the state is the bare OCR text and the
     // question carries no instructions or criteria — the server rejects a
     // request that sends either. The noul head answers P(the candidate is

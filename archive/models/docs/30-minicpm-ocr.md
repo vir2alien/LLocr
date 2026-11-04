@@ -1,8 +1,8 @@
 # Model: MiniCPM-OCR 1.0
 
 > Manual launch, request contract and app wiring. Russian version:
-> `docs/30-minicpm-ocr.ru.md`. The companion decision model (visual-diff
-> verification) is MiniCPM-OCR Jev — `docs/31-minicpm-jev.md`.
+> `archive/models/docs/30-minicpm-ocr.ru.md`. The companion decision model (visual-diff
+> verification) is MiniCPM-OCR Jev — `archive/models/docs/17-model-minicpm-jev.md`.
 
 ## 1. What it is
 

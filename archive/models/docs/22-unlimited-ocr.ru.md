@@ -1,7 +1,7 @@
 # Модель: Unlimited-OCR
 
 > Ручной запуск, контракт запросов и подключение в приложении. English
-> version: `docs/22-unlimited-ocr.md`. Апстрим-справка (ссылки, словарь
+> version: `archive/models/docs/22-unlimited-ocr.md`. Апстрим-справка (ссылки, словарь
 > токенов, ручной пример): `docs/UnlimitedOCR.md`.
 
 ## 1. Что это

@@ -110,8 +110,10 @@ Implementations:
   extracts the server's error message.
 
 ## Key abstraction: resolved connection
-`RecognitionController` **never** deals with modes, processes, or health
-checks. It asks one async facade and receives a ready-to-use connection:
+The per-role request controllers (`ModelRequestController` and its subclasses
+`CheckController`, `DecisionController`, `FixController`, `LayoutController`)
+**never** deal with modes, processes, or health
+checks. They ask one async facade and receive a ready-to-use connection:
 
 ```cpp
 struct ResolvedConnection {   // src/runtime/ResolvedConnection.h
@@ -145,11 +147,11 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
 
 ## Configuration model
 The model + parser settings live in `SettingsStore` (persisted via `QSettings`,
-edited in the Settings dialog). When recognition starts, `RecognitionController`
-assembles an `OcrRequest` (prompt from the active OCR model adapter + the
-request-body parameters of that model's request profile, ADR 59) and a
-`ConnectionConfig` (connection transport) from the resolved connection and the
-store.
+edited in the Settings dialog). When a task's request starts, its
+`ModelRequestController` subclass assembles an `OcrRequest` (prompt from the
+active OCR model adapter + the request-body parameters of that model's request
+profile, ADR 59) and a `ConnectionConfig` (connection transport) from the
+resolved connection and the store.
 
 - `SettingsStore` loads/saves connection/model/parser/UI settings via
   `QSettings` (grouped keys: `provider/*`, `model/*`, `parser/*`, `ui/*`,
@@ -215,7 +217,8 @@ A dedicated `src/runtime/` layer sits between the backend and the OS:
 State: `AppBusyState` (`Idle`/`StartingRuntime`/`Recognizing`/`StoppingRuntime`/
 `Downloading`/`Installing`) and `RuntimeState` (`NotConfigured → Stopped →
 Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
-`canRecognize` per §1.4 of the local-runtime plan (`docs/09-local-runtime-plan.md`).
+`canRecognize` follows the runtime state (the managed-runtime components live
+in `docs/04-components.md`, the decisions as ADRs in `docs/07-glossary.md`).
 
 ## Backend building blocks (implemented)
 - **AppController** — the ViewModel and the **facade** the QML binds to
@@ -226,8 +229,8 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
   list models to QML. Owns page lifecycle (open/append/remove/reorder),
   per-page edits and image-block editing. The domains around it live in their
   own classes — `BlockInspector`, `ProjectController`, `AvailabilityPresenter`,
-  `VerificationQueueController`, `LayoutController`, `RecognitionController`,
-  `ExportController` — and the facade forwards their state and signals with
+  `VerificationQueueController` (with its `ModelRequestController` subclasses),
+  `LayoutController`, `ExportController` — and the facade forwards their state and signals with
   the QML API unchanged. Applies check results to the document
   (`applyCheckResultToBox` under the document lock). All
   connection/model/parser settings live in `SettingsStore` (exposed to QML
@@ -255,12 +258,17 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
   fallbacks; owns `Exporter` and `ExportRenderer`. Crop images and the
   importing flag come in as injected providers; `exportingChanged`/status are
   relayed by `AppController` (ADR 86).
-- **RecognitionController** — owns the recognition run loop (single page /
-  "recognize all"), the **stop** flag, and the active `OcrModel` instance
-  (resolved via `OcrModelFactory` from `model/recipeId` at run start).
-  Obtains the connection **only** via `RuntimeController::ensureConnectionReady()`
-  (ADR 37), builds `OcrRequest` + `ConnectionConfig` from the resolved connection,
-  runs sequentially through pages, and emits `rawResultReady` per page.
+- **ModelRequestController** — the shared scaffold of the per-task request
+  controllers (`CheckController`, `DecisionController`, `FixController`,
+  `LayoutController`): the busy flag, the **stop** flag honoured across both
+  the resolve and the in-flight phases, and the error handling. Each subclass
+  owns its `OcrModel` instance (created from the task's model profile) and its
+  result watcher; every request obtains the connection **only** via
+  `RuntimeController::ensureConnectionReady()` (ADR 37), builds the request +
+  `ConnectionConfig` from the resolved connection, and relays the outcome.
+  Block recognition (the blockRecognition role) runs through
+  `VerificationQueueController`'s re-check queue — the single-pass page run
+  loop is gone (ADR 252).
 - **DocumentModel** — holds the loaded pages (`DocumentPage`: image +
   per-page `OcrResult` + `recognized` flag); loads single/multiple images
   (`QImage`), PDFs (`QPdfDocument`) and DjVu (`DjVuDocument` / DjVuLibre),
@@ -288,8 +296,8 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
   via `QSettings`, grouped keys `provider/*`, `model/*`, `output/*`, `runtime/*`,
   `launch/*`, `hf/*`) plus UI state (`ui/*`: theme mode, language, window
   geometry). Exposed to QML as the `Settings` singleton; also read directly by
-  `AppController`, `RecognitionController`, `RuntimeController`, and
-  `UiController`.
+  `AppController`, the `ModelRequestController` subclasses, `RuntimeController`,
+  and `UiController`.
 - **UiController** — System / Light / Dark theme handling (`QML_ELEMENT`).
 - **I18n** — runtime language switching via Qt Linguist (`qsTr`/`tr` +
   `.ts`); installs translators, emits `languageApplied` for `engine.retranslate()`.
@@ -307,16 +315,18 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
 ```
 UI (file selection)
   → AppController (stores pages in DocumentModel)
-    → RecognitionController
+    → per-task controller (a ModelRequestController subclass) or the
+      VerificationQueueController's re-check queue (block recognition)
         → RuntimeController::ensureConnectionReady()   [External: immediate;
             Managed: start → /health → /v1/models → alias]
-        → OcrModelFactory::create(model/recipeId)
+        → OcrModel::create(modelId, role) from the task's model profile
         → ResolvedConnection → ConnectionConfig + OcrRequest
       → DocumentModel (decode image / render PDF page → QImage)
       → OcrModel.recognize() → LlamaClient.postJson()  [async, cancellable]
       → OutputParser (from settings: auto / raw / the model's own)
     → OcrResult (text + optional normalized boxes + parse notes)
-  → AppController (applyRawResult → per-page OcrResult + PageEditStore)
+  → AppController (applies the result to the box/page → per-page OcrResult
+    + PageEditStore)
 → UI: text panel + bbox overlay + thumbnail "recognized" marker
      + Exporter (on request)
 ```

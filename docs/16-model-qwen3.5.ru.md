@@ -1,0 +1,257 @@
+# 16. Руководство по модели: Qwen3.5-4B / 9B (fix)
+
+> Английский оригинал: [docs/16-model-qwen3.5.md](16-model-qwen3.5.md)
+
+Самодостаточное руководство по паре Qwen3.5 — семейству-дефолту задачи
+исправления — в том виде, в каком их использует LLocr: что они обслуживают,
+что скачивать, как запустить `llama-server` и как собирается запрос, без
+предварительного чтения кодовой базы. Каждое значение прослеживается до
+`resources/profiles/models/qwen3.5-4b.json` / `qwen3.5-9b.json`,
+`resources/profiles/serverLaunch.json`,
+`resources/profiles/requests/fix-requests.json` или названного исходного
+файла. Русское зеркало: [`16-model-qwen3.5.ru.md`](16-model-qwen3.5.ru.md).
+
+## 1. Что это за модели и какую задачу они обслуживают
+
+- **Qwen3.5-4B** и **Qwen3.5-9B** (упаковка Unsloth `-MTP`) — универсальные
+  instruct VLM. Лицензия Apache-2.0. Драфтящая голова MTP едет **внутри
+  весов -MTP** — отдельного скачивания драфта нет (в отличие от Gemma 4,
+  чей репозиторий несёт файл драфтера).
+- Задача: **исправление** (`roles.fix`; алиас `llocr-fix`). **4B — дефолтная
+  модель задачи** (`"default": true`, ADR 169); 9B — тот же рецепт большего
+  размера. Задача исправления получает кроп одного блока плюс OCR-кандидат
+  и отвечает трёхвердиктным контрактом **OK / FIX / REVIEW** по протоколу
+  `full_block` (ADR 192, заменивший span-контракт `span_hybrid` из ADR 180,
+  не подъявшийся малым моделям): `OK` оставляет кандидата, `FIX` несёт
+  **полный исправленный блок**, `REVIEW` отдаёт блок человеческим глазам.
+  Та же модель обслуживает и задачу **чтения** («Перераспознать», ADR 259) —
+  тот же транспорт, собственные промпты протокола чтения и контракт
+  FIX/REVIEW (ADR 260); протокол — выбор действия, а не модели (ADR 266).
+  Для **blockRecognition**, **decision** и **layout** не объявлена.
+
+## 2. Файлы и скачивание
+
+Репозитории (из `files.repo` в профилях; `minBuild` **b4000**):
+
+| Репозиторий | Файл | id кванта | Размер | Назначение |
+| --- | --- | --- | --- | --- |
+| [`unsloth/Qwen3.5-4B-MTP-GGUF`](https://huggingface.co/unsloth/Qwen3.5-4B-MTP-GGUF) | `Qwen3.5-4B-Q8_0.gguf` | q8_0 | 4.3 GiB | дефолт исправления |
+| 〃 | `Qwen3.5-4B-Q6_K.gguf` / `…-Q5_K_M.gguf` / `…-UD-Q4_K_XL.gguf` / `…-IQ4_XS.gguf` | q6_k / q5_k_m / q4_k_xl / iq4_xs | 3.4 / 3.0 / 2.8 / 2.5 GiB | меньшие кванты, которые может выбрать бюджет памяти |
+| 〃 | `mmproj-F16.gguf` | f16 | 641 MiB | зрительный проектор — **обязателен**, без него модель не видит изображение |
+| [`unsloth/Qwen3.5-9B-MTP-GGUF`](https://huggingface.co/unsloth/Qwen3.5-9B-MTP-GGUF) | `Qwen3.5-9B-Q8_0.gguf` (+ те же четыре id квантов) | q8_0 … | 9.1 GiB (Q8_0) … 5.1 GiB | 9B |
+| 〃 | `mmproj-F16.gguf` | f16 | 876 MiB | зрительный проектор — **обязателен** |
+
+- Записи `files.mtp` нет: спекулятивное декодирование использует MTP-голову
+  в основном GGUF; файла `--model-draft` нет. Приложение раскладывает
+  репозиторий как `<modelsDir>/<org>__<repo>/…` — например
+  `<modelsDir>/unsloth__Qwen3.5-4B-MTP-GGUF/Qwen3.5-4B-Q8_0.gguf`
+  (`ModelInstallTransaction::repoDirName`).
+
+## 3. Запуск llama-server
+
+Одна конкретная команда — **Qwen3.5-4B** на **Windows · CUDA** (платформенный
+профиль `win-cuda`), ровно как её собирает `ServerLaunchConfig::toArguments`
+(`src/runtime/ServerLaunchConfig.cpp`): сначала основные поля, затем
+составленные параметры по порядку:
+
+```bat
+llama-server.exe ^
+  --model C:\LLocr\models\unsloth__Qwen3.5-4B-MTP-GGUF\Qwen3.5-4B-Q8_0.gguf ^
+  --mmproj C:\LLocr\models\unsloth__Qwen3.5-4B-MTP-GGUF\mmproj-F16.gguf ^
+  --alias llocr-fix --host 127.0.0.1 --port 8080 ^
+  --parallel 1 --cache-reuse 0 --no-context-shift --no-warmup --verbosity 3 ^
+  --n-gpu-layers 99 --flash-attn on --ctx-size 16384 ^
+  --spec-type draft-mtp --spec-draft-n-max 4 --special --temp 0 ^
+  --jinja --reasoning-budget 0 --image-min-tokens 1024
+```
+
+Таблица по флагам (`layer` = откуда значение): **policy** =
+`serverLaunch.json → policy.parameters`, **platform** =
+`serverLaunch.json → profiles[win-cuda]`, **model** =
+`qwen3.5-4b.json → roles.fix.launch`, **core** = поля настроек, которыми
+владеет `ServerLaunchConfig`. Три слоя сливает `LaunchProfileStore::compose`
+— запись слоя модели заменяет одноимённую запись платформы/политики
+(`parallel`, `no-warmup`, `flash-attn`), всё остальное дописывается
+и перенумеровывается.
+
+| Флаг | Значение | Слой | Зачем |
+| --- | --- | --- | --- |
+| `--model` / `--mmproj` | пути | core | веса + проектор; **`--model-draft` нет** — MTP-голова внутри весов |
+| `--alias` | `llocr-fix` | core | `alias` роли; по нему маршрутизируется поле `model` запроса |
+| `--host` / `--port` | `127.0.0.1` / выбрать любой | core | настройки по умолчанию (`127.0.0.1`, `0` = выбрать автоматически); ручная команда должна назвать порт |
+| `--parallel` | `1` | policy (повторено в модели) | один слот декодирования; MTP-драфтинг однопоточный |
+| `--cache-reuse` | `0` | policy | переиспользование контекста между запросами отключено |
+| `--no-context-shift` | флаг | policy | держать контекст стабильным; без KV-сдвига при переполнении |
+| `--no-warmup` | флаг | policy (повторено в модели) | пропустить warmup-прогон при загрузке |
+| `--verbosity` | `3` | policy | уровень журнала сервера |
+| `--n-gpu-layers` | `99` | platform | все слои на GPU |
+| `--flash-attn` | `on` | platform (повторено в модели) | ядра flash attention; обязательны для визуального стека |
+| `--ctx-size` | `16384` | platform | промпт + изображение + окно вывода (8192 в CPU-профиле) |
+| `--spec-type` | `draft-mtp` | model | спекулятивное декодирование с MTP-головой внутри весов |
+| `--spec-draft-n-max` | `4` | model | драфт-токенов за шаг; 4 — то, под что учили голову |
+| `--special` | флаг | model | выдавать специальные токены в выводе сервера; парсер приложения снимает служебные маркеры (`stripControlTokens`) |
+| `--temp` | `0` | model | серверное жадное декодирование; исправления обязаны быть детерминированными |
+| `--jinja` | флаг | model | чат-шаблон из GGUF (рассуждения рулятся на уровне запроса, §4) |
+| `--reasoning-budget` | `0` | model | серверный дефолт: рассуждений нет, пока запрос не попросит (запрос перекрывает) |
+| `--image-min-tokens` | `1024` | model | llama.cpp предупреждает, что Qwen-VL нужно минимум 1024 токена изображения для grounding-задач |
+
+**9B нужен тот же набор запуска**; отличается только бюджет памяти
+(автовыбор мастера спускается по квантам, чтобы уместиться).
+
+## 4. Сборка запроса
+
+Транспорт: `FixModel` поверх `VisionChatModel` (`src/models/`),
+`POST /v1/chat/completions`, один запрос на блок, `stream: false`. Системный
+промпт и промпт типа блока берутся из общего профиля запросов
+`fix-requests.json` (роль называет его через `promptProfile`; слияние —
+фолбэк: собственная формулировка роли выиграла бы, ADR 182/267). Изображение
+— кроп блока как PNG data URL; кандидат — эффективный текст блока, формула
+уже в каноническом LaTeX (ADR 194).
+
+**Протокол исправления** (`full_block`) — буквальное тело для блока `text`,
+рассуждения выключены (обе длинные строки дословно лежат в
+`resources/profiles/requests/fix-requests.json`, ключи `systemPrompt` и
+`blockPrompts.text`):
+
+```json
+{
+  "model": "llocr-fix",
+  "messages": [
+    { "role": "system", "content": "<fix-requests.json → systemPrompt, verbatim>" },
+    { "role": "user", "content": [
+      { "type": "text", "text": "<fix-requests.json → blockPrompts.text, verbatim>" },
+      { "type": "image_url", "image_url": { "url": "data:image/png;base64,<base64 of the block crop>" } },
+      { "type": "text", "text": "OCR candidate:\n<CANDIDATE>\nLemma 2 holds for every n ≥ 1.\n</CANDIDATE>" }
+    ] }
+  ],
+  "chat_template_kwargs": { "enable_thinking": false },
+  "temperature": 0.0,
+  "repeat_penalty": 1.0,
+  "presence_penalty": 0.0,
+  "frequency_penalty": 0.0,
+  "stream": false,
+  "cache_prompt": false,
+  "stop": ["</CANDIDATE>"],
+  "max_tokens": 2048,
+  "reasoning_budget_tokens": 0
+}
+```
+
+Порядок частей пользователя на проводе: `[промпт типа, изображение,
+кандидат]`. Он следует флагу `promptBeforeImage` роли
+(`FixModel::buildRequestBody`); флаг по умолчанию `false`, и qwen-профили
+его не ставят, поэтому кандидат следует за изображением. (`FixModel` держит
+промпт типа первым в обоих состояниях флага; меняются местами только
+кандидат и изображение.)
+
+Поля верхнего уровня (`VisionChatModel::buildRoot`): `model` = вычисленный id
+модели — алиас управляемого сервера `llocr-fix` или имя модели внешнего
+сервера; `messages` как выше; затем **каждый** параметр запроса профиля как
+JSON-поле верхнего уровня, плюс два подставленных:
+
+| Поле | Значение | Источник |
+| --- | --- | --- |
+| `temperature` | `0.0` | роль `request` — жадное декодирование для протокола исправления |
+| `repeat_penalty` / `presence_penalty` / `frequency_penalty` | `1.0` / `0.0` / `0.0` | роль `request` — нейтральные |
+| `stream` | `false` | роль `request` — парсер получает один полный ответ |
+| `cache_prompt` | `false` | роль `request` — **no-op** для этого семейства: гибридную рекуррентную память нельзя отмотать, поэтому llama-server принудительно перерабатывает промпт целиком, что бы это поле ни говорило. Оставлено выключенным, чтобы это было явно (§6) |
+| `stop` | `["</CANDIDATE>"]` | роль `request` — обрывает ответ по вердикту. Здесь месту только маркер протокола: llama-server и сам останавливается на end-of-text токене, а названный в списке stop, тот срезает ответ до пустоты и отправляет каждый блок в Review |
+| `max_tokens` | по блоку, §5 | роль `maxOutput` 8192 как дефолт (`requestWithMaxOutput`); перекрывается по типу блока из `fix-requests.json → maxOutputByBlock` (`FixController::fixBlock`) |
+| `reasoning_budget_tokens` | `0` / 512 / 1024 / 1536 | подставляется `applyReasoningBudget` из глобальных настроек (`check/fixReasoningBudgetTokens` для исправления, `check/readReasoningBudgetTokens` для чтения; дефолт off) |
+| `chat_template_kwargs.enable_thinking` | `true` тогда и только тогда, когда `reasoning_budget_tokens` > 0 | `buildRoot` — бюджет заодно и переключатель (ADR 193) |
+
+**Протокол чтения** («Перераспознать», `FixProtocol::ReadBlock`) — то же
+тело, кроме: системный промпт и промпт типа берутся из
+`resources/profiles/requests/read-requests.json` (роль исправления может
+перекрыть своими `readSystemPrompt`/`readBlockPrompts` — qwen3.5-профили
+этого не делают), `max_tokens` берётся из
+`read-requests.json → maxOutputByBlock`, бюджет рассуждений — бюджет чтения
+— и **части-кандидата нет**: содержимое пользователя — только `[промпт
+типа, изображение]`. Распознанный текст блока никогда не едет (ADR 266);
+читатель пишет блок с одной картинки.
+
+**Ответ**: `choices[0].message.content` (мысль, когда включена, приходит
+отдельно в `message.reasoning_content` и никогда не доходит до парсера).
+После снятия служебных токенов и внешней кодовой ограды вердикт — первый
+токен:
+
+- `OK` — кандидат совпадает с изображением; блок хранит свои байты.
+- `FIX` + перевод строки + **полный исправленный блок** — дифф-гейт
+  (`FixDiffGate::fixBlock`, по-блочные правила эквивалентности ADR 183)
+  кладёт исправление в `box.correctedText` или оставляет собственные байты
+  кандидата, когда исправление — лишь переписывание его же (вердикт Ok).
+- `REVIEW` — блоку нужны человеческие глаза. Деградации в Review: ключевое
+  слово `FIX` с пустой нагрузкой; ответ, обрезанный бюджетом
+  (`finish_reason: "length"` — фрагмент не исправление); ответ вне трёх
+  вердиктов (старый `EMPTY`, свободный текст) — отклонение.
+
+**Обработка бюджета рассуждений** (`FixModel::check`, поведение ADR 193/230):
+ответ, несущий `reasoning_content` при пустом `content`, — модель потратила
+весь бюджет на рассуждения — повторяется **один раз без рассуждений**
+(`reasoning_budget_tokens: 0`, `max_tokens` уменьшен на объём рассуждений),
+с пометкой в футере; сервер запоминается, и последующие запросы пропускают
+рассуждения с самого начала. Бюджет едет в запросе — llama.cpp читает
+`reasoning_budget_tokens` в каждом запросе, поэтому режим действует со
+следующего исправления без перезапуска сервера. Измерение за режимом:
+рассуждение на 512 токенов подняло индекс исправления с 0.54 до 0.65 на
+проблемной странице стенда, ценой скорости.
+
+## 5. Бюджеты
+
+| Величина | Значение | Источник |
+| --- | --- | --- |
+| Контекст сервера (`ctx-size`) | 16384 (GPU: Metal/CUDA) / 8192 (CPU) | платформенные профили `serverLaunch.json` |
+| дефолт `max_tokens` | 8192 | роль `maxOutput` (`qwen3.5-4b.json` / `qwen3.5-9b.json`) |
+| `max_tokens` по блоку | page_number 64, header/footer 256, seal/title/key_value 512, caption/footnote/ref_text 1024, text/abstract/list 2048, code/equation 4096, table 16384 | `fix-requests.json → maxOutputByBlock` (алиасы: formula→equation, reference→ref_text, image/table_caption→caption, figure/table_footnote→footnote); тип без записи сохраняет дефолт 8192. Весь блок едет в ответе, поэтому бюджет обязан его вмещать |
+| Бюджет рассуждений (`reasoning_budget_tokens`) | off / 512 / 1024 / 1536 | глобальные настройки `check/fixReasoningBudgetTokens` (исправление) и `check/readReasoningBudgetTokens` (чтение), дефолт off — подставляется в каждый запрос, без перезапуска сервера (ADR 268) |
+| Нижняя граница токенов изображения | 1024 | `--image-min-tokens` (§3) |
+
+Как вычисляется бюджет запроса (`src/core/RequestBudget.cpp`,
+`FixController::fixBlock`): промпт оценивается как
+`imageTokens + cyrillicChars/2 + otherChars/4` по системе + промпту типа +
+кандидату; свободное место — `ctx-size − promptTokens`; **ответ занимает
+своё место первым** (`effectiveAnswer = min(max_tokens, room)`), а
+**рассуждения уступают раньше ответа** (`effectiveReasoning = min(budget,
+room − answer)`, исправление важнее мысли); запрос несёт
+`max_tokens = answer + reasoning` и обрезанное рассуждение. Если выбранное
+рассуждение не помещается, оно ужимается, и футер говорит, до чего.
+
+## 6. Известные ограничения
+
+- Qwen3.5 пишет предупреждения `non-consecutive token position` на каждом
+  батче изображения M-RoPE: токены изображения делят одну скалярную позицию,
+  а `find_slot` рекуррентного кэша ждёт строго возрастающие (апстрим-баг
+  #28166, открыт). Декодер продолжает корректно и никакая работа не
+  повторяется — поток сообщений это шум, и `LlamaServerProcess`
+  выфильтровывает эти строки из окна журнала.
+- Настоящая цена блока: кэширование промпта для гибридно-рекуррентных
+  моделей невозможно (рекуррентное состояние нельзя отмотать), поэтому
+  каждый запрос исправления перерабатывает весь свой промпт — текст,
+  1024-токенное изображение и всё прочее — что бы ни говорил `cache_prompt`.
+  Предупреждения не дают задержки; её даёт принудительный повторный префилл.
+- Перезапуск управляемого сервера возвращает роль, которую он обслуживал
+  (`restartBringsBackTheStartedRole`) — не «чините» смену роли перевыбором
+  модели.
+
+## 7. Где что лежит и ссылки
+
+| Кусок | Расположение |
+| --- | --- |
+| Профили моделей | `resources/profiles/models/qwen3.5-4b.json`, `qwen3.5-9b.json` |
+| Тексты запросов исправления / чтения (общие для всех fix-моделей) | `resources/profiles/requests/fix-requests.json`, `read-requests.json` |
+| Тело запроса и разбор ответа | `VisionChatModel::buildRoot`, `FixModel::buildRequestBody` / `parseResponse`, гейт `FixDiffGate::fixBlock` (`src/models/`) |
+| Сборка запуска и бюджет | `ServerLaunchConfig::toArguments` (`src/runtime/`), `LaunchProfileStore::compose`, `src/core/RequestBudget.cpp`, `FixController::fixBlock` (`src/app/`) |
+| Выбор задачи в приложении | Настройки → «Модели», строка исправления (`tasks/fix/modelPath`, `tasks/fix/mmprojPath`) |
+| Словарь задач и конвейер | `docs/09-tasks-and-verification.md` |
+| Оценка и калибровка VRAM | `docs/18-memory-estimate.md` |
+| Второе семейство исправления | `docs/15-model-gemma-4.md` |
+
+- 4B: <https://huggingface.co/unsloth/Qwen3.5-4B-MTP-GGUF>
+- 9B: <https://huggingface.co/unsloth/Qwen3.5-9B-MTP-GGUF>
+- Русское зеркало: [`16-model-qwen3.5.ru.md`](16-model-qwen3.5.ru.md)
+
+Проектные решения: ADR 162–164 (задача исправления, двухслойная
+верификация), 169 (дефолты задач — 4B), 180→192 (`span_hybrid` →
+`full_block`), 181 (эквивалентность, отклонения), 182 (тексты запросов в
+собственных профилях), 193/268 (бюджет рассуждений), 259/260/266 (протокол
+чтения).

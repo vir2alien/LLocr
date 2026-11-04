@@ -1,7 +1,7 @@
 # Model: PaddleOCR-VL-1.6
 
 > Manual launch, request contract and app wiring. Russian version:
-> `docs/25-paddleocr-vl.ru.md`.
+> `archive/models/docs/25-paddleocr-vl.ru.md`.
 
 ## 1. What it is
 

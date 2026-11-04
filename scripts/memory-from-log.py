@@ -10,7 +10,7 @@ for a page of --app-patches patches -- the case of a projector that keeps an
 attention matrix over the whole page.
 
 The fields it prints are the fields of the "memory" block of a model profile
-(resources/profiles/models/<id>.json); ADR 191 and docs/27-memory-estimate.md
+(resources/profiles/models/<id>.json); ADR 191 and docs/18-memory-estimate.md
 explain what they mean.
 """
 

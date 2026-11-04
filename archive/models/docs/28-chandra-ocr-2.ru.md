@@ -1,7 +1,7 @@
 # Модель: Chandra-OCR-2
 
 > Ручной запуск, контракт запросов и подключение в приложении. English
-> version: `docs/28-chandra-ocr-2.md`. Карточка модели:
+> version: `archive/models/docs/28-chandra-ocr-2.md`. Карточка модели:
 > <https://huggingface.co/datalab-to/chandra-ocr-2>.
 
 ## 1. Что это

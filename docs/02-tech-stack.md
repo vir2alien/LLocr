@@ -1,4 +1,4 @@
-- # 02. Technology Stack
+# 02. Technology Stack
 
   ## Main application
   | Area          | Choice                          | Status | Rationale                                            |
@@ -15,7 +15,7 @@
   | Export        | Direct writer (TXT/MD) + **preview-pipeline render** for HTML/PDF (`ExportRenderer`, headless WebEngine) + Pandoc for DOCX | ✅ done | HTML/PDF match the Markdown preview (marked + KaTeX); built-in `QPdfWriter` fallback |
   | i18n          | Qt Linguist (`qsTr`/`tr` + `.ts`) | ✅ done | Runtime retranslate; language persisted in `SettingsStore` (`ui/language`) |
   | Markdown preview | Qt WebEngine + marked + KaTeX | ✅ done | Toggle in the right text pane; image refs resolved via data: URIs |
-  | Tests         | Qt Test (unit tests in `tests/`) | ✅ done | 4 base + 13 runtime targets (see 4.12); helper `mock_llama_server` |
+  | Tests         | Qt Test (unit tests in `tests/`) | ✅ done | 4 base + 14 runtime targets (see 4.12); helper `mock_llama_server` |
   | Local runtime (managed llama.cpp) | `RuntimeController` + `LlamaServerProcess` + `ReleaseCatalog` | ✅ done | Installs & launches a local `llama-server` (see Architecture §runtime layer); the *HTTP client* remains `QNetworkAccessManager` |
   | Runtime install | `DownloadTask`/`DownloadManager` + `ArchiveExtractor` (zlib; zip + tar.gz) + `InstallTransaction` | ✅ done | Resumable downloads, ZIP + `.tar.gz` extract (Windows ships zip, macOS/Linux tar.gz), transactional install (staging → verify → rename) |
   | Models (Hugging Face) | `ModelCatalog` + `ModelRegistry` + `ModelInstaller` | ✅ done | GGUF install from HF with commit-SHA pinning + `sha256` (`lfs.oid`) |
@@ -38,7 +38,7 @@
   > The bbox coordinate range is a parser option (`ParserOptions::bboxRange`,
   > 1000 by default).
 
-  ## Managed local runtime (llama.cpp) — stages A–G ✅
+  ## Managed local runtime (llama.cpp) — stages A–H ✅
   Starting with a llama.cpp binary or downloading it from GitHub Releases
   (`ggml-org/llama.cpp`), the app can run a **local `llama-server`** the user
   never has to manage:
@@ -56,20 +56,14 @@
   > Local runtime and models require **no external Python** and no extra native
   > tooling — everything is embedded (network via Qt, ZIP + `.tar.gz` via zlib).
   
-  ## RAG service (separate process) — not started
-  | Area          | Choice           | Rationale                |
-  | ------------- | ---------------- | ------------------------ |
-  | Language      | Python           | Rich ML/RAG ecosystem    |
-  | API           | FastAPI          | Lightweight HTTP service |
-  | Vector DB     | Chroma / Qdrant  | Local embedding storage  |
-  | Link to LLocr | HTTP (localhost) | Component decoupling     |
-  
-  > RAG alternative without Python: **sqlite-vec** (a vector extension for SQLite,
-  > embeddable in Qt via QSqlDatabase). Consider it if you prefer not to pull in Python.
+  ## RAG service (separate process) — deferred (ADR 6), not started
+  A separate local Python service (FastAPI + a vector DB) that LLocr would
+  talk to over HTTP. Deferred (ADR 6) — not in the current release scope.
 
   ## Why this choice
   - Avoid re-learning for its own sake — Qt covers all GUI requirements.
-  - Python is used only where its ecosystem is genuinely stronger (RAG).
+  - Python is used only where its ecosystem is genuinely stronger (the deferred
+    RAG service).
   - Markdown as the internal format + Pandoc = cheap support for many export formats.
   - For the **local runtime**, self-managed llama.cpp (instead of Ollama/LM Studio)
     keeps one predictable CLI and full control over launch args — and no external

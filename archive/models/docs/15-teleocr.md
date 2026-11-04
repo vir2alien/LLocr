@@ -217,7 +217,7 @@ TeleOCR serves two of the six tasks (ADR 162):
   page's blocks with the reply's boxes; the text is then filled in block by
   block through the entry above. Not wired into the automatic pipeline.
 - **decision (phase 1)** — not applicable: clef-flash is the decision model
-  (`docs/18-clef-flash.md`); TeleOCR speaks only chat completions.
+  (`archive/models/docs/18-clef-flash.md`); TeleOCR speaks only chat completions.
 
 ## 7. Where things live in LLocr
 

@@ -9,7 +9,7 @@ next to the full ones, because that is exactly what the model sees.
 from pathlib import Path
 from PIL import Image
 
-RENDERS = Path(__file__).parent.parent / "ocr_models" / "materials" / "renders"
+RENDERS = Path(__file__).parent.parent.parent / "tests" / "fixtures" / "orientation-corpus"
 OUT = Path(__file__).parent / "pages"
 SQUASH = 1036
 

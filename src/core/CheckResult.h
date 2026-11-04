@@ -11,7 +11,7 @@ namespace llocr {
 // (unreadable), fix → Ok / Fixed (text holds the correction) / Review (also
 // for a reply outside the scheme and for the gate's downgrades, ADR 192),
 // decision → Ok / Mismatch, or
-// Review for an empty/unreadable crop (v6 routing, docs/21) — confidence
+// Review for an empty/unreadable crop (v6 routing, archive/models/docs/21-d3.md) — confidence
 // carries the match probability.
 enum class CheckStatus : int {
     Failed = 0,      ///< Network/parse error — errorMessage describes it.

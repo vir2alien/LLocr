@@ -218,7 +218,7 @@ TeleOCR обслуживает две из шести задач (ADR 162):
   текст затем заполняется поблочно через пункт выше. В автоматический
   пайплайн не встроено.
 - **decision (фаза 1)** — неприменимо: decision-модель — clef-flash
-  (`docs/18-clef-flash.ru.md`); TeleOCR говорит только на chat completions.
+  (`archive/models/docs/18-clef-flash.ru.md`); TeleOCR говорит только на chat completions.
 
 ## 7. Где что живёт в LLocr
 

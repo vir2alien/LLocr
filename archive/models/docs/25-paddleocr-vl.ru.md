@@ -1,7 +1,7 @@
 # Модель: PaddleOCR-VL-1.6
 
 > Ручной запуск, контракт запросов и подключение в приложении. English
-> version: `docs/25-paddleocr-vl.md`.
+> version: `archive/models/docs/25-paddleocr-vl.md`.
 
 ## 1. Что это
 

@@ -204,7 +204,7 @@ public:
     bool busy() const { return m_layout.busy() || checkBusy(); }
 
     // The visual-diff decision paints the candidate back into an image before
-    // the request goes out (docs/31). The headless suites cannot initialize
+    // the request goes out (docs/17). The headless suites cannot initialize
     // Chromium, so a test installs a stand-in painter here; production keeps
     // the real CandidateRenderer — the protocol, the profile and the routing
     // stay the shipped ones either way.

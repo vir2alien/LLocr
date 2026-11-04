@@ -6,7 +6,8 @@ LLocr provides a convenient interface to:
   llama.cpp server, or any hosted OpenAI-compatible API);
 - perform OCR on images and PDFs using multimodal LLMs;
 - save and structure the result;
-- grow a knowledge base (RAG) from recognized documents.
+- grow a knowledge base (RAG) from recognized documents — **deferred
+  (ADR 6), not in the current release scope**.
 
 ## Target requirements
 1. **Cross-platform** — Windows, macOS, Linux.
@@ -18,7 +19,8 @@ LLocr provides a convenient interface to:
    classes. For the managed local runtime the context is supplied by **model
    presets** (see Models below).
 3. **Result export** — Markdown, DOCX (+ TXT, PDF, HTML).
-4. **RAG integration** — populate a vector database from scans.
+4. **RAG integration** — populate a vector database from scans. **Deferred
+   (ADR 6)** — not in the current release scope.
 5. **Localizable & themeable UI** — language (System / English / Русский) and
    theme (System / Light / Dark) selectable in Settings.
 
@@ -48,9 +50,9 @@ LLocr provides a convenient interface to:
 Besides connecting to an existing OpenAI-compatible server (`External`),
 LLocr can **own the whole runtime** (`Managed` mode):
 
-- **First-run wizard** (`Setup/` steps Welcome → Runtime → Model → Launch →
-  Done) drives a clean profile from scratch to a recognized page — no terminal
-  needed. Existing profiles are treated as already configured and the wizard
+- **First-run wizard** (`Setup/` steps Intro → mode → Hardware and models →
+  Output → Check, ADR 170) drives a clean profile from scratch to a recognized
+  page — no terminal needed. Existing profiles are treated as already configured and the wizard
   does **not** appear (ADR 31).
 - **Runtime (llama.cpp):** in `Settings → Runtime` the user picks a release +
   backend (CPU / CUDA / Vulkan / Metal) and **downloads and installs** a
@@ -85,8 +87,11 @@ The window uses a **toolbar + three-pane** layout.
   page has been recognized, with a **Preview** switch that renders the text as
   Markdown (via Qt WebEngine + marked + KaTeX).
 
-## Settings dialog (tabbed)
-Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Models**.
+## Settings (windows)
+Separate non-modal windows opened from the header menu (ADR 70):
+**Interface** · **Output** · **Verification** · **Runtime** · **Models**
+(formerly the tabbed dialog's UI / Connection / Model / Output / Runtime /
+Models tabs).
 
 - **UI** — language (System / English / Русский), theme (System / Light / Dark).
 - **Connection** — endpoint base URL, API key (optional), request timeout.

@@ -629,7 +629,7 @@ void VerificationQueueController::startNextVerify()
         // canonical LaTeX form when it was recognized (ADR 194), so the wire
         // carries the same bytes the panel shows and the export writes.
         m_judgedType = box.label;
-        // The visual-diff decision (docs/31) reads the candidate twice:
+        // The visual-diff decision (docs/17) reads the candidate twice:
         // as the state text and as the picture it paints. Without a
         // renderer the run would be blind on the second leg, so the block
         // goes to human eyes instead of being judged on half the input.

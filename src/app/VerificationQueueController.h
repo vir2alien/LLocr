@@ -21,7 +21,7 @@ class RequestProfileStore;
 class SettingsStore;
 
 // The two-phase verification queue (ADR 145, ADR 163). Phase 1 sends every
-// queued block to the decision model — the visual diff (docs/31): the crop
+// queued block to the decision model — the visual diff (docs/17): the crop
 // and the candidate rendered back into an image go out together, and the
 // verdict is the threshold on P(match) — Ok above it, Mismatch below. The
 // threshold is per block type when the profile ships the map. The fix is a
@@ -64,7 +64,7 @@ public:
         // carries — the raw block text would reach the renderer as literal
         // LaTeX and the table markup as a run-on line (ADR 237).
         std::function<QString(int pageIndex, int boxIndex)> displayTextProvider;
-        // The visual-diff decision (docs/31) needs the candidate rendered back
+        // The visual-diff decision (docs/17) needs the candidate rendered back
         // into an image before the request goes out. Empty when no renderer is
         // wired: a visual-diff run then lands its blocks on Review instead of
         // judging them.

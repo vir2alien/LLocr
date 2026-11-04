@@ -109,7 +109,7 @@ class TestDecisionModel : public QObject
     Q_OBJECT
 
 private slots:
-    // The visual-diff decision (MiniCPM-OCR Jev, docs/31): the state is the
+    // The visual-diff decision (MiniCPM-OCR Jev, docs/17): the state is the
     // bare OCR text, the render of the candidate rides next to the crop in
     // that order, and the single noul question carries neither instructions
     // nor criteria — the server rejects a request that sends either. The wire
@@ -206,7 +206,7 @@ private slots:
         // the threshold alone: Ok at or above it, Mismatch below. A crop the
         // old text protocol would have sent to Review (unreadable, empty)
         // now lands on Mismatch and goes to the fixer, which answers REVIEW
-        // for a crop it cannot read (docs/31).
+        // for a crop it cannot read (docs/17).
         DecisionResult result;
         result.ok = true;
         result.probability = 0.7;

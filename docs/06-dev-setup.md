@@ -36,8 +36,8 @@
 >
 > **The C++ singletons are still registered by hand** in `main.cpp`
 > (`qmlRegisterSingletonInstance`): making them module types needs `create()`
-> factories (and the objects outlive the engine), which arrives with the
-> layering work in stage 4 of `docs/architecture-plan/README.md`. Consequently
+> factories (and the objects outlive the engine), and the classes have no
+> default constructor for `qmltyperegistrar` to call. Consequently
 > `qmllint` cannot see them, and `.qmllint.ini` documents which warning
 > categories are unreliable because of it (`UnusedImports`).
 >
@@ -90,7 +90,9 @@
   DjVu input. Without it the build succeeds and opening `.djvu` files reports
   an actionable error at runtime (ADR 69; see below).
 - Pandoc — for DOCX/PDF export (external dependency, optionally bundled).
-- Python 3.x — only for the RAG service (later stage).
+- Python 3.x — for the helper scripts in `scripts/` (see
+  [Developer helper scripts](#developer-helper-scripts) below); the RAG
+  service itself is deferred (ADR 6).
 - **Local runtime & models need none of the above**: llama.cpp downloads
   (GitHub Releases), Hugging Face GGUF downloads, ZIP + `.tar.gz` extraction
   (zlib) and the HTTP client are all embedded in the app — no external
@@ -346,6 +348,17 @@ and `DjVuDocument` and link DjVuLibre), plus the runtime suite and the
 `mock_llama_server` helper binary. Use `ctest --test-dir build -N` for the
 current target list.
 
+## Developer helper scripts
+- `scripts/reset-settings-linux.sh` / `scripts/reset-settings-macos.sh` /
+  `scripts/reset-settings-windows.bat` — wipe `QSettings`, the runtime root
+  with its models, caches and other app data, to simulate a fresh profile.
+- `scripts/convert-hf-gguf.py` — convert a Hugging Face checkpoint to GGUF
+  quants and emit a profile fragment (sha256/sizeBytes) for onboarding a new
+  model.
+- `scripts/probe-ocr-reply.py` — capture a model's raw OCR reply for one page
+  (the request the app itself sends), to tell a bad model answer from a bad
+  parse.
+
 ## macOS: the API key and the dev build
 The API key lives in the login Keychain, and the Keychain binds an item to
 the code that created it. The dev build is signed ad-hoc, and the identity of
@@ -476,7 +489,6 @@ LLocr/
 │   ├── icons/         # app-icon.svg + llocr-*.png + llocr.ico / llocr.icns +
 │   │                  #   hicolor/** (Linux) + llocr.rc (Win) + llocr.desktop.in
 │   └── i18n/          # llocr_ru.ts (compiled/embedded by qt_add_translations)
-├── rag-service/      # Python service (later stage) — empty for now
 ├── tests/            # document/DjVu + base + runtime suites; mock_llama_server helper
 ├── docs/
 └── AGENTS.md

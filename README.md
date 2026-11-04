@@ -1,4 +1,4 @@
-- # LLocr
+# LLocr
 
 ![Status](https://img.shields.io/badge/status-MVP%20in%20development-orange)
 ![License](https://img.shields.io/badge/license-GPLv3-blue)
@@ -6,84 +6,132 @@
 
 **A cross-platform application for OCR based on local LLMs.**
 
-LLocr connects to a local LLM provider (llama.cpp / OpenAI-compatible API),
-recognizes text from images and PDFs, and exports the result to Markdown, DOCX, and more —
-all running locally, without sending your data to the cloud.
+LLocr runs a local llama.cpp server (or connects to any OpenAI-compatible
+endpoint), recognizes text from images, PDFs and DjVu files, verifies the
+result with a second model, fixes it with a third — and exports to Markdown,
+TXT, HTML, DOCX and PDF. Everything runs locally; your data never leaves the
+machine.
+
+> Русская версия этого файла: [README.ru.md](README.ru.md). Вся документация
+> двуязычна: у каждого документа есть зеркало `*.ru.md`.
 
 ---
 
 ## Features
 
-> ⚠️ The project is under active development. Items marked *(WIP)* are not yet complete.
+- **Four model tasks** — page markup (`layout`), block OCR
+  (`blockRecognition`), visual-diff verification (`decision`) and AI
+  correction (`fix`), each with its own model, quantization and request
+  profile
+- **Managed runtime** — the app downloads, installs and starts llama.cpp
+  itself (GitHub releases, sha256-verified, transactional install); models
+  are downloaded from Hugging Face with pinned revisions
+- **Verification pipeline** — every block is judged by a visual-diff model
+  (crop vs rendered candidate), mismatches go to the fix model (OK / FIX /
+  REVIEW), and a read task can re-transcribe a block from the image alone
+- **Block inspector** — two text layers per block (OCR result and AI
+  correction) as clickable version cards with in-place word-level diff
+  tinting, approval and hand editing
+- **Manual markup** — draw blocks by hand or run the layout model; a page
+  can be recognized block by block
+- **Orientation pipeline** — two-stage pixel check (deskew + axis), page
+  auto-straightening and model-driven turn suggestions
+- **Auto pipeline** — one button runs markup → recognition → verification →
+  fix → verification of the corrected over a page range
+- **PDF, DjVu and image input**; multi-page documents with reordering,
+  deletion and a live thumbnail strip
+- **Editable image/chart blocks** — move, resize and delete detected regions
+- **Live Markdown preview** with rendered LaTeX formulas and tables
+  (Qt WebEngine + marked + KaTeX)
+- **Export** to Markdown / TXT / HTML / DOCX (Pandoc) / PDF (Pandoc or the
+  built-in writer) with All / Current / page-range scope
+- **Self-contained projects** — the whole working state (sources, blocks,
+  verdicts, manual edits) saves to one `.llocr` file and opens again
+- **Secrets in the OS store** — API keys live in the macOS Keychain, Windows
+  Credential Manager or Linux Secret Service, never in the settings file
+- Localizable UI (System / English / Русский) and theming (System / Light /
+  Dark)
 
-- **Cross-platform**: Windows, macOS, Linux
-- Support for different OCR models with their own input/output formats
-- **Live Markdown preview** with rendered LaTeX formulas, tables and images
-- Side-by-side source view and editable recognition results
-- Export to **Markdown, TXT, DOCX, PDF, HTML**
-- Multi-page documents: page reordering/deletion, per-page recognition, batch processing
-- **Editable image/chart blocks** — move, resize, and delete detected regions
-- Per-model generation settings incl. **DRY sampling parameters** (llama.cpp)
-- Localizable UI (System / English / Русский) and theming (System / Light / Dark)
-- Fully local processing — your data never leaves your machine
-- **RAG integration** to grow a knowledge base from scans *(WIP)*
+## Tech stack
 
-## Tech Stack
+| Area | Technologies |
+| --- | --- |
+| Core / UI | Qt6 · C++ · QML |
+| Markdown preview / HTML+PDF export | Qt WebEngine · marked · KaTeX · DOMPurify |
+| PDF input | Qt PDF (`QPdfDocument`) |
+| DjVu input (optional) | DjVuLibre C API |
+| OCR runtime | llama.cpp (`llama-server`) |
+| Export | Pandoc (DOCX/PDF), built-in HTML writer |
+| Build system | CMake (vcpkg participates on Windows only, for ZLIB) |
 
-| Area             | Technologies                  |
-| ---------------- | ----------------------------- |
-| Core / UI        | Qt6 · C++ · QML               |
-| Markdown preview | Qt WebEngine · marked · KaTeX |
-| Build system     | CMake · vcpkg                 |
-| RAG service      | Python                        |
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
-- Qt 6.5+ with the following modules:
-  - **Qt PDF** — PDF page rasterization
-  - **Qt WebEngine** — Markdown/LaTeX preview
-  - **Qt Positioning** — required by Qt WebEngine
-  - **Qt WebChannel** — required by Qt WebEngine
-  - **Qt LinguistTools** — runtime translation of the UI
-- CMake ≥ 3.21
-- A C++20-compatible compiler. **On Windows: MSVC 2022 64-bit**
-  (Visual Studio 2022) — Qt WebEngine is only shipped for the MSVC 2022 64-bit
-  Qt build, so MinGW cannot be used
-- vcpkg (provides ZLIB for the Windows build — see
-  `docs/06-dev-setup.md` for the concrete setup steps)
-- Python 3.x (for the RAG service)
-- Pandoc (optional, for DOCX/PDF export)
-- A running local LLM provider (e.g. [llama.cpp](https://github.com/ggml-org/llama.cpp) or any OpenAI-compatible endpoint)
 
-> 💡 **Qt WebEngine** and **Qt PDF** are optional Qt components and are *not*
-> installed by default. Add them via the Qt Maintenance Tool:
-> *Qt → 6.x.x → Additional Libraries → Qt WebEngine / Qt PDF*.
-> Qt WebEngine also pulls in Qt WebChannel and Qt Positioning.
+- Qt 6.10 with **Qt PDF**, **Qt WebEngine** (pulls in Qt WebChannel and Qt
+  Positioning) and **Qt LinguistTools**
+- CMake ≥ 3.21 and a C++20 compiler — **MSVC 2022 64-bit on Windows**
+  (the MinGW Qt build has no Qt WebEngine)
+- vcpkg (Windows only: ZLIB) · Pandoc (optional: DOCX/PDF export)
+- DjVuLibre (optional: `.djvu` input)
+- A llama.cpp release is downloaded by the app itself on first run
+
+Concrete setup steps for all three platforms: [docs/06-dev-setup.md](docs/06-dev-setup.md).
 
 ### Build
 
 ```bash
-git clone https://github.com/<user>/llocr.git
-cd llocr
-cmake -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x.x/<platform>
-cmake --build build --config Release
+cmake -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.10.3/<platform>
+cmake --build build -j
+ctest --test-dir build
 ```
 
-> **Windows:** pass the `msvc2022_64` Qt package path
-> (`-DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64`) and build with **MSVC 2022
-> 64-bit** (Qt Creator kit “Desktop Qt 6.10.3 MSVC2022 64bit”). The MinGW Qt
-> build does not include Qt WebEngine, which LLocr requires for the Markdown
-> preview — see `docs/06-dev-setup.md`.
+> **Windows:** use the `msvc2022_64` Qt package and the MSVC 2022 64-bit
+> compiler; the ready-made preset tree is `build/win-msvc2022`
+> (`cmake --preset dev-win`). Put the Qt DLLs on `PATH` before running
+> tests. See `docs/06-dev-setup.md`.
+
+## Documentation
+
+Everything is documented twice — English primary, `*.ru.md` mirror.
+
+### The app
+
+| # | Document | EN | RU |
+| --- | --- | --- | --- |
+| 01 | Idea, goals, requirements | [01-overview.md](docs/01-overview.md) | [ru](docs/01-overview.ru.md) |
+| 02 | Technologies and rationale | [02-tech-stack.md](docs/02-tech-stack.md) | [ru](docs/02-tech-stack.ru.md) |
+| 03 | Architecture, layers, key abstractions | [03-architecture.md](docs/03-architecture.md) | [ru](docs/03-architecture.ru.md) |
+| 04 | Component catalog | [04-components.md](docs/04-components.md) | [ru](docs/04-components.ru.md) |
+| 05 | Roadmap and status | [05-roadmap.md](docs/05-roadmap.md) | [ru](docs/05-roadmap.ru.md) |
+| 06 | Tooling, build, CI/CD, distribution | [06-dev-setup.md](docs/06-dev-setup.md) | [ru](docs/06-dev-setup.ru.md) |
+| 07 | Glossary + ADR log (all architectural decisions) | [07-glossary.md](docs/07-glossary.md) | [ru](docs/07-glossary.ru.md) |
+| 08 | Cross-platform application icon | [08-app-icon.md](docs/08-app-icon.md) | [ru](docs/08-app-icon.ru.md) |
+| 09 | The four tasks and the verification/fix pipeline | [09-tasks-and-verification.md](docs/09-tasks-and-verification.md) | [ru](docs/09-tasks-and-verification.ru.md) |
+| 10 | External runtime: per-task endpoints and secrets | [10-external-runtime.md](docs/10-external-runtime.md) | [ru](docs/10-external-runtime.ru.md) |
+| 11 | Auto pipeline (the five stages) | [11-auto-pipeline.md](docs/11-auto-pipeline.md) | [ru](docs/11-auto-pipeline.ru.md) |
+| 12 | Page-orientation correction pipeline | [12-orientation-pipeline.md](docs/12-orientation-pipeline.md) | [ru](docs/12-orientation-pipeline.ru.md) |
+| 19 | Test suite and evaluation stands | [19-testing.md](docs/19-testing.md) | [ru](docs/19-testing.ru.md) |
+
+### Model manuals (launch command + request cookbook)
+
+| # | Model | Task(s) | EN | RU |
+| --- | --- | --- | --- | --- |
+| 13 | MinerU2.5-Pro-2605-1.2B | layout, blockRecognition | [13-model-mineru.md](docs/13-model-mineru.md) | [ru](docs/13-model-mineru.ru.md) |
+| 14 | GLM-OCR | blockRecognition | [14-model-glm-ocr.md](docs/14-model-glm-ocr.md) | [ru](docs/14-model-glm-ocr.ru.md) |
+| 15 | Gemma 4 E4B / 12B QAT | fix | [15-model-gemma-4.md](docs/15-model-gemma-4.md) | [ru](docs/15-model-gemma-4.ru.md) |
+| 16 | Qwen3.5-4B / 9B (the fix default) | fix | [16-model-qwen3.5.md](docs/16-model-qwen3.5.md) | [ru](docs/16-model-qwen3.5.ru.md) |
+| 17 | MiniCPM-OCR Jev (visual diff) | decision | [17-model-minicpm-jev.md](docs/17-model-minicpm-jev.md) | [ru](docs/17-model-minicpm-jev.ru.md) |
+| 18 | VRAM estimate: formula and calibration of all shipped models | — | [18-memory-estimate.md](docs/18-memory-estimate.md) | [ru](docs/18-memory-estimate.ru.md) |
+
+### Archive
+
+Models, parsers and manuals cut from the release live in
+[`archive/`](archive/README.md) with a manifest and restore recipe.
 
 ## License
 
-LLocr is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).
-
-### Third-party components
-
-This project bundles and links against third-party software:
-
-Full license texts and attribution notices are collected in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [`licenses/`](licenses/) directory.
-
-Qt libraries are linked **dynamically**, as required by the LGPL v3.
+LLocr is licensed under the **GNU General Public License v3.0** — see
+[LICENSE](LICENSE). Third-party components are collected in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [`licenses/`](licenses/)
+directory; Qt libraries are linked **dynamically**, as required by the LGPL v3.

@@ -1,7 +1,7 @@
 # Model: LightOnOCR-3-4B
 
 > Manual launch, request contract and app wiring. Russian version:
-> `docs/23-lightonocr.ru.md`.
+> `archive/models/docs/23-lightonocr.ru.md`.
 
 ## 1. What it is
 

@@ -1,8 +1,8 @@
 # Модель: MiniCPM-OCR 1.0
 
 > Ручной запуск, контракт запросов и проводка в приложении. Английская
-> версия: `docs/30-minicpm-ocr.md`. Сопутствующая decision-модель
-> (визуальная сверка) — MiniCPM-OCR Jev, `docs/31-minicpm-jev.ru.md`.
+> версия: `archive/models/docs/30-minicpm-ocr.md`. Сопутствующая decision-модель
+> (визуальная сверка) — MiniCPM-OCR Jev, `archive/models/docs/17-model-minicpm-jev.ru.md`.
 
 ## 1. Что это
 

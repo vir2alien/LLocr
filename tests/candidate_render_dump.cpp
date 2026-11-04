@@ -21,7 +21,7 @@ using namespace llocr;
 
 // Renders every text block of a .llocr project through the app's own
 // CandidateRenderer and dumps the pictures next to a manifest for the
-// decision-eval stand (the visual-diff calibration of docs/31 §6: the
+// decision-eval stand (the visual-diff calibration of docs/17 §6: the
 // thresholds are measured against this app's own renders, ADR 184).
 //
 //   candidate_render_dump --project corpus.llocr --out <dir> --model-id mineru

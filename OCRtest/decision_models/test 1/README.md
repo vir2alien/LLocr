@@ -3,7 +3,7 @@
 Корпус для измерения качества верификации распознанного текста
 (decision-модель, `/v1/systemone`) и финальные результаты замеров
 13–14.10.2026. Сам стенд живёт в `scripts/decision-eval`, описание
-исследования и выводы — `docs/17-d1-verification-study.md`.
+исследования и выводы — `archive/models/docs/17-d1-verification-study.md`.
 
 ## Состав
 

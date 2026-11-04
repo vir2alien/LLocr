@@ -523,7 +523,7 @@ private slots:
         m_problems = std::make_unique<ProblemLog>();
         m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_fixRequestProfiles, *m_verification);
         m_controller->setProblemLog(m_problems.get());
-        // The decision is the visual diff (docs/31): the crop goes out next to
+        // The decision is the visual diff (docs/17): the crop goes out next to
         // the candidate rendered back into an image. Chromium cannot
         // initialize in this suite, so the render leg is a stand-in painter;
         // the shipped profile, the wire format and the routing stay real. The

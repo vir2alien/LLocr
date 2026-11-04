@@ -1,8 +1,8 @@
 # Model: Cloudflare clef-flash (decision)
 
 > Manual launch, request contract and calibration. Русская версия:
-> `docs/18-clef-flash.ru.md`. Measurements and the model-selection
-> rationale: `docs/17-d1-verification-study.md`.
+> `archive/models/docs/18-clef-flash.ru.md`. Measurements and the model-selection
+> rationale: `archive/models/docs/17-d1-verification-study.md`.
 
 ## 1. What it is
 
@@ -80,7 +80,7 @@ price for being able to verify formulas.
 ## 4. Request scheme (v7, unified with d3)
 
 clef ships the **same scheme v7 as the d3 family**
-(`docs/21-d3.md` §4b): one noul question `match`, the axes the block is
+(`archive/models/docs/21-d3.md` §4b): one noul question `match`, the axes the block is
 checked on in `state.notation`, a per-block threshold map. clef reads the
 questions of a request jointly in one prompt, so a second question would
 cost it no latency — unlike d3, which pays one forward pass per question.

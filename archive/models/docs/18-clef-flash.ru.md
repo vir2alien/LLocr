@@ -1,8 +1,8 @@
 # Модель: Cloudflare clef-flash (decision)
 
 > Ручной запуск, контракт запросов и калибровка. English version:
-> `docs/18-clef-flash.md`. Замеры и обоснование выбора модели —
-> `docs/17-d1-verification-study.md`.
+> `archive/models/docs/18-clef-flash.md`. Замеры и обоснование выбора модели —
+> `archive/models/docs/17-d1-verification-study.md`.
 
 ## 1. Что это
 

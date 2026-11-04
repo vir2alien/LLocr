@@ -26,11 +26,14 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   and the request-body parameters — one **request profile per OCR model**
   (DRY params, temperature, max tokens; ADR 59). The recognition **prompt**
   comes from the selected model adapter's `promptVariants()` (ADR 58).
-- **Text verification (check model)** ✅ (`CheckController` +
-  `GeneralPurposeModel`/`QwenGeneralModel`, ADR 68/74/78/79): a small
-  general-purpose model verifies a recognized block — the request carries the
-  block crop, the recognized text, the type prompt and the protocol contract
-  (`OK`/`FIX`/`REVIEW`), with the validate request profile's parameters. It
+- **Verification (decision + fix)** ✅ (`DecisionController`/`DecisionModel` +
+  `FixController`/`FixModel`, ADR 68/74/78/79 → ADR 252/254): the **decision**
+  model (MiniCPM-OCR Jev, the `decision` task in «Модели») judges a
+  recognized block — the request carries the block crop, the candidate
+  rendered back into an image and the candidate text; the noul head answers
+  P(consistent) in one pass, and the verdict is routed Ok / Mismatch by the
+  per-block-type threshold (`matchThresholdByBlock` in the profile, ADR 254).
+  It
   uses the same resolved connection (role-aware model name per ADR 73) and the
   single managed instance is re-loaded per task (ADR 74). Checking runs on the
   current page (`checkEnabledBlocksOnPage`), across all recognized pages
@@ -46,8 +49,8 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   unreadable), it explains itself in the reader's words, and the run ends with
   its tally («Прочитано блоков: переписано — N, подтверждено — M, не прочитано
   — K», ADR 261). In Managed mode the
-  server switches from the OCR to the check model automatically (ADR 74), in
-  External mode the check just starts (ADR 91).
+  server switches between the tasks' models automatically (ADR 74), in
+  External mode the request just starts (ADR 91).
   The serial check queue (task list, progress, stop) lives in
   **`VerificationQueueController`** which owns `CheckController` and publishes
   results to `AppController` via `blockChecked` (ADR 86) — `AppController`'s
@@ -134,8 +137,9 @@ outside — it reports the choice (`activated(index)`) and never sets
 The single managed llama-server instance serves both roles one at a time:
 `RuntimeController` (re)loads the model per task (ADR 74). Parallel roles are
 only possible against external servers, which get per-role model names
-(ADR 73). Model presets live in per-role catalogs (`defaultLlmPresetsOcr` /
-`defaultLlmPresetsValidate`, ADR 72; see 4.17).
+(ADR 73). Model presets live in one catalog: the built-in
+`:/models/default-presets.json` + the user `models/catalog.json` (ADR 42;
+see 4.17).
 
 Persistence is handled by `SettingsStore` (`QSettings`, grouped keys
 `provider/*`, `model/*`, `parser/id`, `output/*`, `export/*`, `runtime/*`,
@@ -161,8 +165,8 @@ the field carries a mask and takes a new one.
 > **OCR model adapter** (`promptVariants()`, ADR 58) and is not editable; the
 > `parser`/`prompt` fields of model presets are stored metadata only. The bbox
 > coordinate range is a parser option (`ParserOptions::bboxRange`, 1000 by
-> default, ADR 88), not a setting. The check-request parameters live in the
-> validate request profile (Settings → Check model → Request).
+> default, ADR 88), not a setting. The per-task request parameters live in the
+> task's request profile (Settings → Models → row ⚙ → Request).
 
 The per-task model settings (`tasks/<task>/{modelPath, mmprojPath, draftPath,
 requestProfileId, modelName}`) are reached through the task-generic
@@ -243,7 +247,7 @@ Three options handled by `UiController` (a QML singleton), selected in
   CMake links `DjVuLibre::DjVuLibre` into every target compiling
   `DocumentModel.cpp`: `llocr`, `test_document_model`, and
   `test_djvu_document`, plus the `test_app_import` controller integration test.
-  See ADR 65 and [dependency setup](06-dev-setup.md#djvulibre-required).
+  See ADR 65 and [dependency setup](06-dev-setup.md#djvulibre-optional-enables-djvu-input).
   `.djvu` and `.djv` files share the image/PDF opening and drag-and-drop path.
   Native scan resolution is retained up to 40 megapixels and 16384 pixels per
   side. Orientation is preserved; full-size images are rendered lazily through
@@ -289,10 +293,14 @@ Three options handled by `UiController` (a QML singleton), selected in
   recognition run is in progress**. ✅
 
 ## 4.8 Stop / cancellation
-- The Stop button calls `AppController::stop()`, which forwards to
-  `RecognitionController::stop()` (it sets a stop flag and calls
-  `OcrModel::abort()` → `LlamaClient::abort()`); the sequential "recognize all"
-  loop halts cleanly and already-recognized pages are preserved. ✅
+- The running action's toolbar button turns into the stop control, and the
+  stop goes to the run that owns it (`AppController::stopCheck()` for the
+  verification / re-check / fix / read queue, `stopLayout()`,
+  `stopAutoPipeline()`); there is no single stop any more. Each
+  `ModelRequestController` sets a stop flag honoured across both the resolve
+  and the in-flight phases and aborts the in-flight request
+  (`OcrModel::abort()` → `LlamaClient::abort()`); the blocks already answered
+  keep their results. ✅
 
 ## 4.9 Text editing
 - The right pane is an **editable** `TextArea` (read-only until the current
@@ -408,10 +416,12 @@ QML suite:
 > The four base targets from `AGENTS.md` are still present; the runtime suite
 > above is what the local-runtime plan (stages A–H) added.
 
-## 4.13 RAG service (later stage) — ⬜ not started
-- A separate Python process (FastAPI + Chroma/Qdrant).
-- LLocr sends recognized text for indexing over HTTP.
-- At an early stage — only an **interface stub** in the backend.
+## 4.13 RAG service — deferred (ADR 6), not started
+- A separate Python process (FastAPI + Chroma/Qdrant) is the sketch; nothing
+  is built.
+- LLocr would send recognized text for indexing over HTTP.
+- **Deferred (ADR 6)** — not in the current release scope; there is no
+  interface stub in the backend yet.
 
 ## 4.14 Internationalization (i18n)
 - UI strings use `qsTr`/`tr`; a Russian translation lives in
@@ -433,7 +443,8 @@ QML suite:
 
 ## 4.16 Local runtime (managed llama.cpp)
 The managed-runtime layer (`src/runtime/`) lets LLocr start, own and stop a
-local **`llama-server`** process (stages A/B, D of `docs/09-local-runtime-plan.md`).
+local **`llama-server`** process (the former local-runtime plan, stages A–H,
+complete; the decisions are recorded as ADRs in `docs/07-glossary.md`).
 
 - **Connection mode** (`External` / `Managed`) is chosen by the first-run wizard
   (ADR 31). In `External` nothing is launched; the app talks to an existing
@@ -464,8 +475,8 @@ local **`llama-server`** process (stages A/B, D of `docs/09-local-runtime-plan.m
   `DownloadTask`/`DownloadManager`, hardened `ArchiveExtractor` (ZIP +
   `.tar.gz` via zlib), transactional `InstallTransaction`, «Check for updates»,
   «Clean up unused builds». ✅
-- **No-orphan guarantees** and the error→message **matrix §7.5** are described in
-  `docs/09-local-runtime-plan.md`. ✅
+- **No-orphan guarantees** and the error→message matrix (the former plan's
+  §7.5) are decisions recorded in `docs/07-glossary.md`. ✅
 
 ## 4.17 Models and catalog (Hugging Face)
 Model management lives in the **Models** settings window
@@ -512,7 +523,7 @@ the installed models, the preset catalog and the HF search are part of it
   from the fixed cells its sliding layers get. A model outside the catalog
   names no card — nothing is known about the encoder it would run. ✅
   The method, the calibration of every shipped model and the checklist for a
-  new one: `docs/27-memory-estimate.md` (the measurement scripts:
+  new one: `docs/18-memory-estimate.md` (the measurement scripts:
   `scripts/measure-memory.sh`, `scripts/memory-from-log.py`).
 
 ## 4.18 First-run wizard (Stage F)

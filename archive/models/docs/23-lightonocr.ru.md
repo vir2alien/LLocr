@@ -1,7 +1,7 @@
 # Модель: LightOnOCR-3-4B
 
 > Ручной запуск, контракт запросов и подключение в приложении. English
-> version: `docs/23-lightonocr.md`.
+> version: `archive/models/docs/23-lightonocr.md`.
 
 ## 1. Что это
 

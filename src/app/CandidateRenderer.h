@@ -14,7 +14,7 @@ class QTemporaryDir;
 namespace llocr {
 
 // Renders one block's candidate text back into an image, the second leg of the
-// visual-diff decision (docs/31): the decision model compares the crop with
+// visual-diff decision (docs/17): the decision model compares the crop with
 // the picture the candidate paints, so the render has to show what the
 // candidate means — text as paragraphs, formulas as typeset math, tables as
 // ruled grids. The markdown stack of the preview page (marked + KaTeX) draws

@@ -1,7 +1,7 @@
 # Model: Chandra-OCR-2
 
 > Manual launch, request contract and app wiring. Russian version:
-> `docs/28-chandra-ocr-2.ru.md`. The model card:
+> `archive/models/docs/28-chandra-ocr-2.ru.md`. The model card:
 > <https://huggingface.co/datalab-to/chandra-ocr-2>.
 
 ## 1. What it is

@@ -4,7 +4,7 @@
 #
 # The numbers it prints are the fields of the "memory" block of a model
 # profile (resources/profiles/models/<id>.json). ADR 191 explains what the
-# estimate is; docs/27-memory-estimate.md explains how to measure a new model
+# estimate is; docs/18-memory-estimate.md explains how to measure a new model
 # and what the traps are.
 #
 # Usage:
