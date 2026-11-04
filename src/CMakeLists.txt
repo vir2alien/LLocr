@@ -327,6 +327,8 @@ qt_add_library(llocr_app STATIC
     app/DecisionQueue.cpp
     app/RecheckQueue.h
     app/RecheckQueue.cpp
+    app/RemedyQueue.h
+    app/RemedyQueue.cpp
     app/CheckController.h
     app/CheckController.cpp
     app/DecisionController.h
@@ -337,8 +339,6 @@ qt_add_library(llocr_app STATIC
     app/LayoutController.cpp
     app/VerificationPromptStore.h
     app/VerificationPromptStore.cpp
-    app/VerificationQueueController.h
-    app/VerificationQueueController.cpp
     app/ExportController.h
     app/ExportController.cpp
     app/UiController.h

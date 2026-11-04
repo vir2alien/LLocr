@@ -17,7 +17,7 @@ class SettingsStore;
 
 // Drives one fix request (ADR 163): resolves the fix-model connection and
 // asks it to confirm, correct or reject the block's current text. The queue
-// that feeds it lives in VerificationQueueController.
+// that feeds it is RemedyQueue.
 //
 // The read protocol (ADR 259) is the same request with another contract: the
 // model writes the block from the image and the recognized text travels only

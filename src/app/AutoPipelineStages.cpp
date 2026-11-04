@@ -180,16 +180,16 @@ int AutoVerificationStage::progressTotal() const
     return m_queue.progressTotal();
 }
 
-AutoFixStage::AutoFixStage(VerificationQueueController &queue, AutoVerificationStage::ModelAvailable modelAvailable, QObject *parent)
-    : AutoPipelineStage(QStringLiteral("Fix"), parent), m_queue(queue), m_modelAvailable(std::move(modelAvailable))
+AutoFixStage::AutoFixStage(RemedyQueue &queue, BlockWorkList &workList, AutoVerificationStage::ModelAvailable modelAvailable, QObject *parent)
+    : AutoPipelineStage(QStringLiteral("Fix"), parent), m_queue(queue), m_workList(workList), m_modelAvailable(std::move(modelAvailable))
 {
-    connect(&m_queue, &VerificationQueueController::queueFinished, this, [this]() {
+    connect(&m_queue, &BlockQueue::finished, this, [this]() {
         if (!m_running)
             return;
         // The signal belongs to the queue, not to this stage: the stage
         // before this one ends its run while this one has already started
         // its own. The queue is running again, so the signal is stale.
-        if (m_queue.queueActive())
+        if (m_queue.active())
             return;
         m_running = false;
         emit finished();
@@ -200,7 +200,7 @@ QString AutoFixStage::skipReason(const AutoPipelineStage::Scope &pages) const
 {
     if (m_modelAvailable && !m_modelAvailable())
         return stageText(QStringLiteral("No model for this task"));
-    if (m_queue.fixableBlocks(pages).isEmpty())
+    if (m_workList.fixableBlocks(pages).isEmpty())
         return stageText(QStringLiteral("Nothing to fix"));
     return QString();
 }
@@ -208,8 +208,8 @@ QString AutoFixStage::skipReason(const AutoPipelineStage::Scope &pages) const
 void AutoFixStage::start(const AutoPipelineStage::Scope &pages)
 {
     m_running = true;
-    m_queue.fixBlocks(m_queue.fixableBlocks(pages));
-    if (!m_queue.queueActive()) {
+    m_queue.runFix(m_workList.fixableBlocks(pages));
+    if (!m_queue.active()) {
         // The queue refused the list: the work was not taken, so the stage
         // failed — a silent success would leave the blocks uncorrected.
         m_running = false;

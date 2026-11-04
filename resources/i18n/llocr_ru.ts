@@ -3891,7 +3891,7 @@
     </message>
 </context>
 <context>
-    <name>VerificationQueueController</name>
+    <name>RemedyQueue</name>
     <message>
         <source>The read prompts (%1) are missing: the block was not sent.</source>
         <translation>Промпты чтения (%1) отсутствуют: блок не отправлен.</translation>

@@ -14,8 +14,8 @@
 namespace llocr {
 
 // Drives one decision request: resolves the decision-model connection, judges
-// the block, and can stop an in-flight request. The queue that feeds it lives
-// in VerificationQueueController.
+// the block, and can stop an in-flight request. The queue that feeds it is
+// DecisionQueue.
 class DecisionController : public ModelRequestController
 {
     Q_OBJECT

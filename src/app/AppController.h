@@ -29,13 +29,13 @@
 #include "app/DecisionQueue.h"
 #include "app/LruImageCache.h"
 #include "app/RecheckQueue.h"
+#include "app/RemedyQueue.h"
 #include "app/OrientationController.h"
 #include "app/PageEditStore.h"
 #include "app/PageListModel.h"
 #include "app/ProblemLog.h"
 #include "app/ProjectController.h"
 #include "app/VerificationPromptStore.h"
-#include "app/VerificationQueueController.h"
 #include "config/SettingsStore.h"
 #include "core/CheckRequest.h"
 #include "core/CheckResult.h"
@@ -204,9 +204,9 @@ public:
                            QObject *parent = nullptr);
     ~AppController() override;
 
-    // checkBusy() spans the whole queue run (queueActive holds between two
-    // requests); the raw m_verify.checkBusy() would drop in those gaps and
-    // read as idle mid-run.
+    // checkBusy() spans the whole queue run (the queue stays active between
+    // two requests of a run); the raw request-busy flags would drop in those
+    // gaps and read as idle mid-run.
     bool busy() const { return m_layout.busy() || checkBusy(); }
 
     // The visual-diff decision paints the candidate back into an image before
@@ -267,15 +267,15 @@ public:
     // checkBusy() spans the whole queue run (the gate holds between two
     // requests); the raw request-busy flags would drop in those gaps and
     // read as idle mid-run.
-    bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive() || m_decisionQueue.busy() || m_recheckQueue.busy(); }
-    bool checkRunning() const { return m_verify.queueActive() || m_decisionQueue.active() || m_recheckQueue.active(); }
+    bool checkBusy() const { return m_decisionQueue.busy() || m_recheckQueue.busy() || m_remedyQueue.busy(); }
+    bool checkRunning() const { return m_decisionQueue.active() || m_recheckQueue.active() || m_remedyQueue.active(); }
     bool checkFinished() const { return m_checkFinished; }
     int checkProgressDone() const;
     int checkProgressTotal() const;
     bool checkDecisionPhase() const { return m_decisionQueue.active(); }
     bool checkRecheckPhase() const { return m_recheckQueue.active(); }
-    bool checkFixPhase() const { return m_verify.fixPhase(); }
-    bool checkReadPhase() const { return m_verify.readPhase(); }
+    bool checkFixPhase() const { return m_remedyQueue.fixActive(); }
+    bool checkReadPhase() const { return m_remedyQueue.readActive(); }
     QString checkErrorMessage() const { return m_checkError.text(); }
     bool pageVerificationSupported() const { return m_availability.pageVerificationSupported(); }
     bool allPageVerificationSupported() const { return m_availability.allPageVerificationSupported(); }
@@ -565,6 +565,10 @@ private:
     void startVerificationOrReport(const QList<BlockWorkList::Task> &tasks, int answered, int rejected);
     // The single-block queue task's guard: the page must carry a result.
     bool blockQueueTaskReady(int pageIndex) const;
+    // The wiring every queue shares: the state fan-out, the readout resets on
+    // runStarted and the readout's progress source. The result signals stay
+    // with the callers — each role's results travel on its own channel.
+    void wireBlockQueue(BlockQueue &queue);
 
     void updateAvailability();
 
@@ -585,14 +589,13 @@ private:
     // The render function the decision queue calls; defaults to the real
     // renderer and is replaced wholesale by setCandidateRenderFunction.
     DecisionQueue::RenderCandidateFn m_candidateRenderFn;
-    VerificationQueueController m_verify;
-    // The decision and the block-recognition roles run on their own queues
-    // (docs/09); the gate keeps them from overlapping the remedy runs of
-    // m_verify and each other.
+    // The three roles run on their own queues (docs/09); the gate keeps them
+    // one run at a time, and the markup pass holds it from the outside.
     BlockWorkList m_workList;
     BlockRunGate m_checkRunGate;
     DecisionQueue m_decisionQueue;
     RecheckQueue m_recheckQueue;
+    RemedyQueue m_remedyQueue;
     LayoutController m_layout;
     OrientationController m_orientation;
     std::function<void()> m_pendingRun;  // The run that waits for the orientation check.
@@ -625,10 +628,10 @@ private:
     QTimer m_pageTextCoalesceTimer;
     QList<int> m_pendingPageTextPages;
 
-    // The run state the QML readouts are built from, maintained off the two
+    // The run state the QML readouts are built from, maintained off the
     // queues' signals (the queues own their runs; the facade owns the
     // readout): the last run's completion, its error line and the queue the
-    // progress readout belongs to (null = the recheck/remedy queue).
+    // progress readout belongs to.
     bool m_checkFinished = false;
     StatusMessage m_checkError;
     QPointer<BlockQueue> m_progressQueue;

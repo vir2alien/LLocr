@@ -1,5 +1,6 @@
 #include "app/AvailabilityPresenter.h"
-#include "app/VerificationQueueController.h"
+
+#include "app/BlockWorkList.h"
 
 namespace llocr {
 
@@ -66,27 +67,27 @@ void AvailabilityPresenter::refresh(const Revisions &revisions)
 
 bool AvailabilityPresenter::pageVerificationSupported() const
 {
-    return m_deps.verify.pageVerificationSupported(m_deps.currentPage());
+    return !m_deps.layoutBusy() && m_deps.workList.pageVerificationSupported(m_deps.currentPage());
 }
 
 bool AvailabilityPresenter::allPageVerificationSupported() const
 {
-    return m_deps.verify.allPageVerificationSupported();
+    return !m_deps.layoutBusy() && m_deps.workList.allPageVerificationSupported();
 }
 
 bool AvailabilityPresenter::pageProblemRecognitionSupported() const
 {
-    return m_deps.verify.pageRecheckSupported(m_deps.currentPage());
+    return m_deps.workList.pageRecheckSupported(m_deps.currentPage());
 }
 
 bool AvailabilityPresenter::allProblemRecognitionSupported() const
 {
-    return m_deps.verify.allPageRecheckSupported();
+    return m_deps.workList.allPageRecheckSupported();
 }
 
 bool AvailabilityPresenter::pageBlocksRecognitionSupported() const
 {
-    return m_deps.verify.pageBlocksRecognitionSupported(m_deps.currentPage());
+    return !m_deps.layoutBusy() && m_deps.workList.pageBlocksRecognitionSupported(m_deps.currentPage());
 }
 
 bool AvailabilityPresenter::actionsIdle() const
@@ -175,7 +176,7 @@ bool AvailabilityPresenter::scopeHasResults() const
 bool AvailabilityPresenter::scopeVerificationSupported() const
 {
     for (const int pageIndex : scopePages()) {
-        if (m_deps.verify.pageVerificationSupported(pageIndex))
+        if (!m_deps.layoutBusy() && m_deps.workList.pageVerificationSupported(pageIndex))
             return true;
     }
     return false;
@@ -184,7 +185,7 @@ bool AvailabilityPresenter::scopeVerificationSupported() const
 bool AvailabilityPresenter::scopeBlocksRecognitionSupported() const
 {
     for (const int pageIndex : scopePages()) {
-        if (m_deps.verify.pageBlocksRecognitionSupported(pageIndex))
+        if (!m_deps.layoutBusy() && m_deps.workList.pageBlocksRecognitionSupported(pageIndex))
             return true;
     }
     return false;

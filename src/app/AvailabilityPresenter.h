@@ -11,7 +11,7 @@
 
 namespace llocr {
 
-class VerificationQueueController;
+class BlockWorkList;
 
 // The availability matrix: which actions the document, the runtime and the
 // running jobs allow right now (ADR 213). The presenter owns the flags and
@@ -25,7 +25,7 @@ public:
     struct Deps {
         DocumentModel &document;
         PageListModel &pageModel;
-        VerificationQueueController &verify;
+        BlockWorkList &workList;
         RuntimeController &runtime;
         VerificationPromptStore &verification;
         // The live inputs: the page the user reads and what runs right now.

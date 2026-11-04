@@ -60,18 +60,6 @@ AppController::AppController(SettingsStore &settings,
                                                              [this] { return makeParser(); }},
                                                             this),
       m_candidateRenderFn([this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderer.render(candidateText, done); }),
-      m_verify({m_document,
-                verification,
-                checkRequestProfiles,
-                fixRequestProfiles,
-                settings,
-                runtime,
-                [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
-                // The queue and the markup pass are the two jobs left, and they
-                // are mutually exclusive: neither may start while the other runs.
-                [this] { return m_layout.busy(); },
-                m_checkRunGate},
-               this),
       m_workList({m_document, verification, checkRequestProfiles}),
       m_decisionQueue({m_document,
                        m_checkRunGate,
@@ -87,9 +75,16 @@ AppController::AppController(SettingsStore &settings,
                       runtime,
                       checkRequestProfiles},
                      this),
+      m_remedyQueue({m_document,
+                     m_checkRunGate,
+                     [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
+                     runtime,
+                     settings,
+                     fixRequestProfiles},
+                    this),
       m_layout(layoutRequestProfiles, runtime, this), m_availability({m_document,
                                                                       m_pageModel,
-                                                                      m_verify,
+                                                                      m_workList,
                                                                       runtime,
                                                                       verification,
                                                                       [this] { return m_currentPage; },
@@ -109,7 +104,7 @@ AppController::AppController(SettingsStore &settings,
                      m_currentPage = index;
                      m_pageModel.setCurrent(index);
                  },
-                 [this] { return m_layout.busy() || m_importing || m_export.exporting() || m_verify.queueActive() || m_verify.checkBusy() || m_decisionQueue.busy() || m_recheckQueue.busy(); },
+                 [this] { return m_layout.busy() || m_importing || m_export.exporting() || m_decisionQueue.busy() || m_recheckQueue.busy() || m_remedyQueue.busy(); },
                  [this](const StatusMessage &message) { setStatus(message); },
                  [this](const StatusMessage &message, ProblemLog::Severity severity) { reportProblem(message, severity); },
                  [this] { m_inspector.resetSelection(); },
@@ -123,7 +118,7 @@ AppController::AppController(SettingsStore &settings,
     // the recheck/remedy runs: the markup pass and a stopped request still
     // winding down hold it from the outside.
     m_checkRunGate.setExternalBusy([this] {
-        return m_layout.busy() || m_verify.queueActive() || m_verify.checkBusy() || m_decisionQueue.requestBusy() || m_recheckQueue.requestBusy();
+        return m_layout.busy() || m_decisionQueue.requestBusy() || m_recheckQueue.requestBusy() || m_remedyQueue.requestBusy();
     });
 
     // The orientation check: the picture reads the axis of the text before the
@@ -168,93 +163,16 @@ AppController::AppController(SettingsStore &settings,
     connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, verificationFilterChanged);
     connect(&verification, &VerificationPromptStore::modelChanged, this, verificationFilterChanged);
 
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::checkStateChanged);
-    // busy() is the layout pass or the queue running: both state changes must
-    // re-announce it to the QML bindings.
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::busyChanged);
-    // The queue's stateChanged fires per request and the rescan it drives is
-    // O(pages×blocks) — it rides the coalescing window while a run is active.
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::scheduleAvailabilityRefresh);
-    // A new check run takes the footer line: the outcome of the last run is
-    // over, and the check that follows it must not read as a finished run.
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, [this]() {
-        if (m_verify.queueActive())
-            setAutoPipelineMessage(StatusMessage());
-    });
-    // The run's readouts reset when a run starts, not on the per-request
-    // state changes that follow; the readout's progress source becomes this
-    // queue. The run's own end sets the finished flag; a stop does not (the
-    // stopped run reads as not finished, as before).
-    connect(&m_verify, &VerificationQueueController::runStarted, this, [this]() {
-        setAutoPipelineMessage(StatusMessage());
-        m_checkError = StatusMessage();
-        m_checkFinished = false;
-        m_progressQueue = nullptr;
-    });
-    connect(&m_verify, &VerificationQueueController::queueFinished, this, [this]() {
-        if (!m_verify.queueActive())
-            m_checkFinished = m_verify.finished();
-    });
-    connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
-    connect(&m_verify, &VerificationQueueController::blockFixed, this, &AppController::applyFixToBox);
-    connect(&m_verify, &VerificationQueueController::blockRead, this, &AppController::applyReadToBox);
-    connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) {
-        m_checkError = message;
-        reportProblem(message, ProblemLog::Error);
-    });
-
-    // The decision queue: the same wiring, its own result channel.
-    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::checkStateChanged);
-    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::busyChanged);
-    // The queue's stateChanged fires per request and the rescan it drives is
-    // O(pages×blocks) — it rides the coalescing window while a run is active.
-    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::scheduleAvailabilityRefresh);
-    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, [this]() {
-        if (m_decisionQueue.active())
-            setAutoPipelineMessage(StatusMessage());
-    });
-    connect(&m_decisionQueue, &BlockQueue::runStarted, this, [this]() {
-        setAutoPipelineMessage(StatusMessage());
-        m_checkError = StatusMessage();
-        m_checkFinished = false;
-        m_progressQueue = &m_decisionQueue;
-    });
-    connect(&m_decisionQueue, &BlockQueue::finished, this, [this]() {
-        if (!m_decisionQueue.active())
-            m_checkFinished = m_decisionQueue.finishedFlag();
-    });
-    connect(&m_decisionQueue, &BlockQueue::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
-    connect(&m_decisionQueue, &BlockQueue::problemReported, this, [this](const StatusMessage &message) {
-        m_checkError = message;
-        reportProblem(message, ProblemLog::Error);
-    });
+    // The three queues share the wiring; each role's results travel on its
+    // own channel and land on their apply* handlers.
+    wireBlockQueue(m_decisionQueue);
+    wireBlockQueue(m_recheckQueue);
+    wireBlockQueue(m_remedyQueue);
     connect(&m_decisionQueue, &DecisionQueue::verificationStarted, this, &AppController::applyVerificationStarted);
     connect(&m_decisionQueue, &DecisionQueue::blockVerified, this, &AppController::applyVerdictToBox);
-
-    // The recheck queue: the same wiring, its own result channel.
-    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, &AppController::checkStateChanged);
-    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, &AppController::busyChanged);
-    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, &AppController::scheduleAvailabilityRefresh);
-    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, [this]() {
-        if (m_recheckQueue.active())
-            setAutoPipelineMessage(StatusMessage());
-    });
-    connect(&m_recheckQueue, &BlockQueue::runStarted, this, [this]() {
-        setAutoPipelineMessage(StatusMessage());
-        m_checkError = StatusMessage();
-        m_checkFinished = false;
-        m_progressQueue = &m_recheckQueue;
-    });
-    connect(&m_recheckQueue, &BlockQueue::finished, this, [this]() {
-        if (!m_recheckQueue.active())
-            m_checkFinished = m_recheckQueue.finishedFlag();
-    });
-    connect(&m_recheckQueue, &BlockQueue::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
-    connect(&m_recheckQueue, &BlockQueue::problemReported, this, [this](const StatusMessage &message) {
-        m_checkError = message;
-        reportProblem(message, ProblemLog::Error);
-    });
     connect(&m_recheckQueue, &RecheckQueue::blockRecognized, this, &AppController::applyRecognitionToBox);
+    connect(&m_remedyQueue, &RemedyQueue::blockFixed, this, &AppController::applyFixToBox);
+    connect(&m_remedyQueue, &RemedyQueue::blockRead, this, &AppController::applyReadToBox);
 
     // The queue's per-block tail (page-text rebuild + its signal fan-out) and
     // the availability rescan are coalesced while a run is active; the run's
@@ -263,9 +181,6 @@ AppController::AppController(SettingsStore &settings,
     m_pageTextCoalesceTimer.setInterval(kPageTextCoalesceWindowMs);
     connect(&m_pageTextCoalesceTimer, &QTimer::timeout, this, &AppController::flushPageTextChanges);
     connect(&m_pageTextCoalesceTimer, &QTimer::timeout, this, &AppController::updateAvailability);
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
-    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
-    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::flushPageTextChangesWhenIdle);
 
     connect(&m_availability, &AvailabilityPresenter::changed, this, &AppController::availabilityChanged);
@@ -321,7 +236,7 @@ AppController::AppController(SettingsStore &settings,
     m_autoMarkupStage = new AutoMarkupStage(m_layout, [this](const AutoPipelineStage::Scope &pages, const std::function<void(bool)> &done) { runMarkupPass(pages, done); }, this);
     m_autoRecognitionStage = new AutoRecognitionStage(m_recheckQueue, m_workList, [this]() { return m_availability.blockRecognitionModelAvailable(); }, this);
     m_autoVerificationStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification"), this);
-    m_autoFixStage = new AutoFixStage(m_verify, [this]() { return m_availability.fixModelAvailable(); }, this);
+    m_autoFixStage = new AutoFixStage(m_remedyQueue, m_workList, [this]() { return m_availability.fixModelAvailable(); }, this);
     m_autoRecheckStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification of the corrected blocks"), this);
 
     AutoPipelineController::Deps deps;
@@ -353,7 +268,9 @@ AppController::AppController(SettingsStore &settings,
             emit autoStateChanged();
     };
     connect(&m_layout, &LayoutController::progressChanged, this, autoProgressChanged);
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, autoProgressChanged);
+    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, autoProgressChanged);
+    connect(&m_recheckQueue, &BlockQueue::stateChanged, this, autoProgressChanged);
+    connect(&m_remedyQueue, &BlockQueue::stateChanged, this, autoProgressChanged);
 
     connect(&m_export, &ExportController::exportingChanged, this, &AppController::exportingChanged);
 
@@ -1422,19 +1339,19 @@ void AppController::checkScopeEnabledBlocks()
 
 void AppController::fixScopeProblemBlocks()
 {
-    m_verify.fixPagesProblemBlocks(scopePages());
+    m_remedyQueue.runFix(m_workList.fixableBlocks(scopePages()));
 }
 
 void AppController::readScopeBlocks()
 {
-    m_verify.readScopeBlocks(scopePages());
+    m_remedyQueue.runRead(m_workList.readableBlocks(scopePages()));
 }
 
 void AppController::stopCheck()
 {
-    m_verify.stop();
     m_decisionQueue.stop();
     m_recheckQueue.stop();
+    m_remedyQueue.stop();
 }
 
 void AppController::startVerificationOrReport(const QList<BlockWorkList::Task> &tasks, int answered, int rejected)
@@ -1461,14 +1378,51 @@ bool AppController::blockQueueTaskReady(int pageIndex) const
     return m_document.isValidIndex(pageIndex) && m_document.page(pageIndex).recognized;
 }
 
+void AppController::wireBlockQueue(BlockQueue &queue)
+{
+    connect(&queue, &BlockQueue::stateChanged, this, &AppController::checkStateChanged);
+    // busy() is the layout pass or a queue running: both state changes must
+    // re-announce it to the QML bindings.
+    connect(&queue, &BlockQueue::stateChanged, this, &AppController::busyChanged);
+    // The queue's stateChanged fires per request and the rescan it drives is
+    // O(pages×blocks) — it rides the coalescing window while a run is active.
+    connect(&queue, &BlockQueue::stateChanged, this, &AppController::scheduleAvailabilityRefresh);
+    connect(&queue, &BlockQueue::stateChanged, this, [&queue, this]() {
+        if (queue.active())
+            setAutoPipelineMessage(StatusMessage());
+    });
+    connect(&queue, &BlockQueue::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
+    // A new check run takes the footer line: the outcome of the last run is
+    // over, and the check that follows it must not read as a finished run.
+    // The run's readouts reset when a run starts, not on the per-request
+    // state changes that follow; the readout's progress source becomes this
+    // queue. The run's own end sets the finished flag; a stop does not (the
+    // stopped run reads as not finished, as before).
+    connect(&queue, &BlockQueue::runStarted, this, [&queue, this]() {
+        setAutoPipelineMessage(StatusMessage());
+        m_checkError = StatusMessage();
+        m_checkFinished = false;
+        m_progressQueue = &queue;
+    });
+    connect(&queue, &BlockQueue::finished, this, [&queue, this]() {
+        if (!queue.active())
+            m_checkFinished = queue.finishedFlag();
+    });
+    connect(&queue, &BlockQueue::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+    connect(&queue, &BlockQueue::problemReported, this, [this](const StatusMessage &message) {
+        m_checkError = message;
+        reportProblem(message, ProblemLog::Error);
+    });
+}
+
 int AppController::checkProgressDone() const
 {
-    return m_progressQueue ? m_progressQueue->progressDone() : m_verify.progressDone();
+    return m_progressQueue ? m_progressQueue->progressDone() : 0;
 }
 
 int AppController::checkProgressTotal() const
 {
-    return m_progressQueue ? m_progressQueue->progressTotal() : m_verify.progressTotal();
+    return m_progressQueue ? m_progressQueue->progressTotal() : 0;
 }
 
 void AppController::recognizeSelectedBlock()
@@ -1502,21 +1456,24 @@ void AppController::recognizeAllBlocksOnPage()
 
 void AppController::fixSelectedBlock()
 {
-    if (m_inspector.selectedBoxIndex() < 0)
+    if (m_inspector.selectedBoxIndex() < 0 || !blockQueueTaskReady(m_currentPage))
         return;
-    m_verify.fixBlock(m_currentPage, m_inspector.selectedBoxIndex());
+    m_remedyQueue.runFix({{m_currentPage, m_inspector.selectedBoxIndex()}});
 }
 
 void AppController::readSelectedBlock()
 {
-    if (m_inspector.selectedBoxIndex() < 0)
+    if (m_inspector.selectedBoxIndex() < 0 || !blockQueueTaskReady(m_currentPage))
         return;
-    m_verify.readBlock(m_currentPage, m_inspector.selectedBoxIndex());
+    m_remedyQueue.runRead({{m_currentPage, m_inspector.selectedBoxIndex()}});
 }
 
 void AppController::fixAllProblemBlocks()
 {
-    m_verify.fixAllProblemBlocks();
+    QList<int> pages;
+    for (int p = 0; p < m_document.pageCount(); ++p)
+        pages.append(p);
+    m_remedyQueue.runFix(m_workList.fixableBlocks(pages));
 }
 
 void AppController::layoutCurrentPage()
@@ -2034,20 +1991,13 @@ void AppController::flushPageTextChangesWhenIdle()
     // transition lands one event-loop turn later, which a reader of the page
     // text must not have to wait for. A work list that just drained flushes
     // in the turn of its last block.
-    if (m_verify.queueActive() && m_verify.progressTotal() > 0 && m_verify.progressDone() >= m_verify.progressTotal()) {
-        flushPageTextChanges();
-        updateAvailability();
-        return;
-    }
-    if (m_decisionQueue.active() && m_decisionQueue.progressTotal() > 0 && m_decisionQueue.progressDone() >= m_decisionQueue.progressTotal()) {
-        flushPageTextChanges();
-        updateAvailability();
-        return;
-    }
-    if (m_recheckQueue.active() && m_recheckQueue.progressTotal() > 0 && m_recheckQueue.progressDone() >= m_recheckQueue.progressTotal()) {
-        flushPageTextChanges();
-        updateAvailability();
-        return;
+    const QList<BlockQueue *> queues = {&m_decisionQueue, &m_recheckQueue, &m_remedyQueue};
+    for (BlockQueue *queue : queues) {
+        if (queue->active() && queue->progressTotal() > 0 && queue->progressDone() >= queue->progressTotal()) {
+            flushPageTextChanges();
+            updateAvailability();
+            return;
+        }
     }
     if (!busy()) {
         flushPageTextChanges();

@@ -40,7 +40,7 @@
 #include "app/ProblemLog.h"
 #include "app/UiController.h"
 #include "app/VerificationPromptStore.h"
-#include "app/VerificationQueueController.h"
+#include "app/DocumentModel.h"
 #include "config/RequestProfileStore.h"
 #include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"

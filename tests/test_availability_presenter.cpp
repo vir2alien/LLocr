@@ -4,11 +4,10 @@
 #include <QtTest>
 
 #include "app/AvailabilityPresenter.h"
-#include "app/BlockRunGate.h"
+#include "app/BlockWorkList.h"
 #include "app/DocumentModel.h"
 #include "app/PageListModel.h"
 #include "app/VerificationPromptStore.h"
-#include "app/VerificationQueueController.h"
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
 #include "runtime/LaunchProfileStore.h"
@@ -39,16 +38,14 @@ public:
         m_settings->setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         m_launchProfiles = std::make_unique<LaunchProfileStore>(*m_settings);
         m_checkProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::BlockRecognition);
-        m_fixProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Fix);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_document = std::make_unique<DocumentModel>();
         m_pageModel = std::make_unique<PageListModel>();
-        m_queue = std::make_unique<VerificationQueueController>(VerificationQueueController::Deps{
-            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, [] { return false; }, m_gate});
+        m_workList = std::make_unique<BlockWorkList>(BlockWorkList::Deps{*m_document, *m_verification, *m_checkProfiles});
         m_presenter = std::make_unique<AvailabilityPresenter>(AvailabilityPresenter::Deps{*m_document,
                                                                                           *m_pageModel,
-                                                                                          *m_queue,
+                                                                                          *m_workList,
                                                                                           *m_runtime,
                                                                                           *m_verification,
                                                                                           [this] { return m_currentPage; },
@@ -68,13 +65,11 @@ private:
     std::unique_ptr<SettingsStore> m_settings;
     std::unique_ptr<LaunchProfileStore> m_launchProfiles;
     std::unique_ptr<RequestProfileStore> m_checkProfiles;
-    std::unique_ptr<RequestProfileStore> m_fixProfiles;
     std::unique_ptr<RuntimeController> m_runtime;
     std::unique_ptr<VerificationPromptStore> m_verification;
     std::unique_ptr<DocumentModel> m_document;
     std::unique_ptr<PageListModel> m_pageModel;
-    std::unique_ptr<VerificationQueueController> m_queue;
-    BlockRunGate m_gate;
+    std::unique_ptr<BlockWorkList> m_workList;
     std::unique_ptr<AvailabilityPresenter> m_presenter;
     int m_currentPage = 0;
 };

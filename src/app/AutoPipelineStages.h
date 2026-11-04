@@ -8,7 +8,7 @@
 #include "app/BlockQueue.h"
 #include "app/DecisionQueue.h"
 #include "app/RecheckQueue.h"
-#include "app/VerificationQueueController.h"
+#include "app/RemedyQueue.h"
 
 namespace llocr {
 
@@ -102,7 +102,7 @@ class AutoFixStage : public AutoPipelineStage
     Q_OBJECT
 
 public:
-    AutoFixStage(VerificationQueueController &queue, AutoVerificationStage::ModelAvailable modelAvailable, QObject *parent = nullptr);
+    AutoFixStage(RemedyQueue &queue, BlockWorkList &workList, AutoVerificationStage::ModelAvailable modelAvailable, QObject *parent = nullptr);
 
     QString skipReason(const AutoPipelineStage::Scope &pages) const override;
     void start(const AutoPipelineStage::Scope &pages) override;
@@ -111,7 +111,8 @@ public:
     int progressTotal() const override;
 
 private:
-    VerificationQueueController &m_queue;
+    RemedyQueue &m_queue;
+    BlockWorkList &m_workList;
     AutoVerificationStage::ModelAvailable m_modelAvailable;
     bool m_running = false;
 };
