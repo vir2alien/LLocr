@@ -4,6 +4,18 @@
 <context>
     <name>AppController</name>
     <message>
+        <source>Nothing to check:</source>
+        <translation>Проверять нечего:</translation>
+    </message>
+    <message>
+        <source>%1 block(s) already verified</source>
+        <translation>уже проверенных блоков: %1</translation>
+    </message>
+    <message>
+        <source>%1 formula(s) rejected: invalid LaTeX syntax</source>
+        <translation>отклонено формул с неверным LaTeX: %1</translation>
+    </message>
+    <message>
         <location filename="../../src/app/AppController.cpp" line="+600"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
@@ -3868,27 +3880,7 @@
     </message>
 </context>
 <context>
-    <name>VerificationQueueController</name>
-    <message>
-        <location filename="../../src/app/VerificationQueueController.cpp" line="+260"/>
-        <source>Nothing to check:</source>
-        <translation>Проверять нечего:</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>%1 block(s) already verified</source>
-        <translation>уже проверенных блоков: %1</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>%1 formula(s) rejected: invalid LaTeX syntax</source>
-        <translation>отклонено формул с неверным LaTeX: %1</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>The read prompts (%1) are missing: the block was not sent.</source>
-        <translation>Промпты чтения (%1) отсутствуют: блок не отправлен.</translation>
-    </message>
+    <name>DecisionQueue</name>
     <message>
         <source>No candidate renderer: the visual-diff decision model needs the candidate as an image.</source>
         <translation>Нет рендерера кандидата: модели визуальной сверки кандидат нужен картинкой.</translation>
@@ -3897,8 +3889,14 @@
         <source>The candidate render failed: %1</source>
         <translation>Не удалось отрисовать кандидата: %1</translation>
     </message>
+</context>
+<context>
+    <name>VerificationQueueController</name>
     <message>
-        <location filename="../../src/app/VerificationQueueController.cpp" line="+745"/>
+        <source>The read prompts (%1) are missing: the block was not sent.</source>
+        <translation>Промпты чтения (%1) отсутствуют: блок не отправлен.</translation>
+    </message>
+    <message>
         <source>Blocks read: %1 rewritten, %2 confirmed, %3 unreadable.</source>
         <translation>Прочитано блоков: переписано — %1, подтверждено — %2, не прочитано — %3.</translation>
     </message>

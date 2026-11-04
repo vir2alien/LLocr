@@ -2,6 +2,7 @@
 
 #include <QTimer>
 
+#include "app/BlockRunGate.h"
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
 #include "core/BoxTransitions.h"
@@ -13,29 +14,9 @@ namespace llocr {
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
     : QObject(parent), m_deps(std::move(deps)),
       m_workList({m_deps.document, m_deps.verification, m_deps.checkRequestProfiles}),
-      m_decision(m_deps.runtime, this), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr),
+      m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr),
       m_fix(m_deps.fixRequestProfiles, m_deps.settings, m_deps.runtime, nullptr)
 {
-    connect(&m_decision, &DecisionController::judgeFinished, this, [this](const DecisionResult &result) {
-        CheckResult verdict;
-        if (!result.ok) {
-            // A failed decision request is not a verdict: the block stays
-            // unchecked and the error is reported, instead of the block being
-            // silently re-recognized on a broken stage.
-            verdict = CheckResult::makeError(result.errorMessage);
-            if (!result.errorMessage.isEmpty() && result.errorMessage != m_checkError) {
-                m_checkError = result.errorMessage;
-                emit problemReported(result.errorMessage);
-            }
-        } else {
-            verdict.status = result.routedStatus(matchThresholdFor(m_judgedType));
-            verdict.confidence = result.probability;
-        }
-        deliverVerdict(verdict);
-    });
-    connect(&m_decision, &DecisionController::busyChanged, this, &VerificationQueueController::stateChanged);
-    connect(&m_decision, &DecisionController::statusRequested, this, &VerificationQueueController::statusRequested);
-
     connect(&m_check, &CheckController::checkFinished, this, [this](const CheckResult &result) {
         if (result.status == CheckStatus::Failed && !result.errorMessage.isEmpty() && result.errorMessage != m_checkError) {
             m_checkError = result.errorMessage;
@@ -90,61 +71,6 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
     connect(&m_fix, &FixController::statusRequested, this, &VerificationQueueController::statusRequested);
 }
 
-void VerificationQueueController::checkBlock(int pageIndex, int boxIndex)
-{
-    if (!m_deps.document.isValidIndex(pageIndex) || !m_deps.document.page(pageIndex).recognized) {
-        return;
-    }
-    startVerifyQueue({{pageIndex, boxIndex}});
-}
-
-void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
-{
-    if (!m_deps.document.isValidIndex(pageIndex))
-        return;
-
-    int answered = 0;
-    int rejected = 0;
-    const QList<Task> tasks = m_workList.enabledBoxesOnPage(pageIndex, &answered, &rejected);
-    startOrReportAnswered(tasks, answered, rejected);
-}
-
-void VerificationQueueController::checkAllEnabledBlocks()
-{
-    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
-        return;
-
-    QList<Task> tasks;
-    int answered = 0;
-    int rejected = 0;
-    for (int p = 0; p < m_deps.document.pageCount(); ++p) {
-        int pageAnswered = 0;
-        int pageRejected = 0;
-        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
-        answered += pageAnswered;
-        rejected += pageRejected;
-    }
-    startOrReportAnswered(tasks, answered, rejected);
-}
-
-void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &pages)
-{
-    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
-        return;
-
-    QList<Task> tasks;
-    int answered = 0;
-    int rejected = 0;
-    for (const int p : pages) {
-        int pageAnswered = 0;
-        int pageRejected = 0;
-        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
-        answered += pageAnswered;
-        rejected += pageRejected;
-    }
-    startOrReportAnswered(tasks, answered, rejected);
-}
-
 QList<VerificationQueueController::Task> VerificationQueueController::unrecognizedBlocks(const QList<int> &pages, const TypeFilter &filter) const
 {
     return m_workList.unrecognizedBlocks(pages, filter);
@@ -160,25 +86,6 @@ QList<VerificationQueueController::Task> VerificationQueueController::fixableBlo
     return m_workList.fixableBlocks(pages, filter);
 }
 
-void VerificationQueueController::startOrReportAnswered(const QList<Task> &tasks, int answered, int rejected)
-{
-    if (!tasks.isEmpty()) {
-        startVerifyQueue(tasks);
-        return;
-    }
-    if (answered == 0 && rejected == 0)
-        return;
-    // A formula the app rejected on its LaTeX syntax is named apart from the
-    // blocks that were already verified: it was not asked about (ADR 194).
-    QList<StatusMessage> parts;
-    parts.append(StatusMessage::translate("VerificationQueueController", "Nothing to check:"));
-    if (answered > 0)
-        parts.append(StatusMessage::translate("VerificationQueueController", "%1 block(s) already verified").arg(answered));
-    if (rejected > 0)
-        parts.append(StatusMessage::translate("VerificationQueueController", "%1 formula(s) rejected: invalid LaTeX syntax").arg(rejected));
-    emit statusRequested(StatusMessage::join(parts, QStringLiteral(" ")));
-}
-
 void VerificationQueueController::stop()
 {
     m_verifyQueue.clear();
@@ -191,8 +98,6 @@ void VerificationQueueController::stop()
         // wait for a work list that is gone (ADR 257).
         emit queueFinished();
     }
-    if (m_decision.busy())
-        m_decision.stop();
     if (m_check.busy())
         m_check.stop();
     if (m_fix.busy())
@@ -222,29 +127,6 @@ bool VerificationQueueController::pageBlocksRecognitionSupported(int pageIndex) 
 bool VerificationQueueController::allPageRecheckSupported() const
 {
     return m_workList.allPageRecheckSupported();
-}
-
-void VerificationQueueController::startVerifyQueue(const QList<Task> &tasks)
-{
-    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
-        return;
-    if (tasks.isEmpty())
-        return;
-
-    m_checkError = StatusMessage();
-    m_checkFinished = false;
-    m_phase = Phase::Decision;
-    m_matchThreshold = m_deps.settings.decisionMatchThreshold();
-    m_decisionRole = ModelProfiles::roleFor(m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
-    m_verifyQueue = tasks;
-    m_verifyPage = -1;
-    m_verifyBoxIndex = -1;
-    m_verifyTotal = tasks.size();
-    m_verifyDone = 0;
-    m_verifyQueueActive = true;
-    emit stateChanged();
-
-    QTimer::singleShot(0, this, [this]() { startNextVerify(); });
 }
 
 void VerificationQueueController::recheckBlock(int pageIndex, int boxIndex)
@@ -331,11 +213,6 @@ void VerificationQueueController::recognizeBlocks(const QList<Task> &tasks)
     startRecheckQueue(tasks);
 }
 
-void VerificationQueueController::checkBlocks(const QList<Task> &tasks)
-{
-    startVerifyQueue(tasks);
-}
-
 void VerificationQueueController::fixBlocks(const QList<Task> &tasks)
 {
     startFixQueue(tasks);
@@ -343,7 +220,7 @@ void VerificationQueueController::fixBlocks(const QList<Task> &tasks)
 
 void VerificationQueueController::startRecheckQueue(const QList<Task> &tasks)
 {
-    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive || m_deps.gate.held())
         return;
     if (tasks.isEmpty())
         return;
@@ -358,6 +235,7 @@ void VerificationQueueController::startRecheckQueue(const QList<Task> &tasks)
     m_verifyDone = 0;
     m_verifyQueueActive = true;
     emit stateChanged();
+    emit runStarted();
 
     QTimer::singleShot(0, this, [this]() { startNextVerify(); });
 }
@@ -376,7 +254,7 @@ void VerificationQueueController::startReadQueue(const QList<Task> &tasks)
 // blocks that wait for a hand. Only the protocol differs.
 void VerificationQueueController::startRemedyQueue(const QList<Task> &tasks, Phase phase)
 {
-    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive || m_deps.gate.held())
         return;
     if (tasks.isEmpty())
         return;
@@ -394,6 +272,7 @@ void VerificationQueueController::startRemedyQueue(const QList<Task> &tasks, Pha
     m_readUnreadable = 0;
     m_verifyQueueActive = true;
     emit stateChanged();
+    emit runStarted();
 
     QTimer::singleShot(0, this, [this]() { startNextVerify(); });
 }
@@ -430,46 +309,6 @@ void VerificationQueueController::startNextVerify()
     const QImage crop = m_deps.cropProvider(m_verifyPage, m_verifyBoxIndex);
     if (crop.isNull()) {
         skipCurrentTask();
-        return;
-    }
-
-    if (m_phase == Phase::Decision) {
-        // The old verdict of the layer being judged is erased while the
-        // request is in flight: a failed run leaves the block gray instead of
-        // showing a stale verdict (ADR 164).
-        emit verificationStarted(m_verifyPage, m_verifyBoxIndex);
-        // The candidate is the block's own text: a formula was brought to its
-        // canonical LaTeX form when it was recognized (ADR 194), so the wire
-        // carries the same bytes the panel shows and the export writes.
-        m_judgedType = box.label;
-        // The visual-diff decision (docs/17) reads the candidate twice:
-        // as the state text and as the picture it paints. Without a
-        // renderer the run would be blind on the second leg, so the block
-        // goes to human eyes instead of being judged on half the input.
-        if (!m_deps.renderCandidate) {
-            deliverVerdict(CheckResult{
-                CheckStatus::Review, {}, StatusMessage::translate("VerificationQueueController", "No candidate renderer: the visual-diff decision model needs the candidate as an image."), {}, -1.0});
-            return;
-        }
-        // The state carries the block's own text (the upstream contract:
-        // the OCR text goes to the model as it is), but the picture is
-        // painted from the text the page shows — a formula as display
-        // math, a table as a grid. The raw block text would reach the
-        // renderer as literal LaTeX, which no model can read as a
-        // formula (ADR 237).
-        const QString displayText = m_deps.displayTextProvider ? m_deps.displayTextProvider(m_verifyPage, m_verifyBoxIndex) : QString();
-        const QString candidate = displayText.isEmpty() ? text : displayText;
-        m_deps.renderCandidate(candidate, [this, crop, text](bool ok, const QImage &rendered, const QString &error) {
-            // The queue may have been stopped while the render was in
-            // flight; a late image belongs to no task anymore.
-            if (!m_verifyQueueActive)
-                return;
-            if (!ok || rendered.isNull()) {
-                deliverVerdict(CheckResult{CheckStatus::Review, {}, StatusMessage::translate("VerificationQueueController", "The candidate render failed: %1").arg(error), {}, -1.0});
-                return;
-            }
-            m_decision.judgeVisual(crop, rendered, text);
-        });
         return;
     }
 
@@ -531,32 +370,6 @@ void VerificationQueueController::startNextVerify()
     const QString userPrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"), box.label);
     const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"));
     m_check.checkBlock(crop, systemPrompt, userPrompt);
-}
-
-double VerificationQueueController::matchThresholdFor(const QString &blockType) const
-{
-    if (!m_decisionRole)
-        return m_matchThreshold;
-    const QString aliasKey = m_decisionRole->blockAliases.value(blockType, blockType);
-    const double byBlock = m_decisionRole->blockMatchThresholds.value(aliasKey, -1.0);
-    if (byBlock >= 0)
-        return byBlock;
-    if (m_decisionRole->matchThreshold >= 0)
-        return m_decisionRole->matchThreshold;
-    return m_matchThreshold;
-}
-
-// The shared tail of every decision result, requested or produced locally (a
-// failed render lands on Review without a model request): the verdict reaches
-// the document, the progress moves, the next task starts.
-void VerificationQueueController::deliverVerdict(const CheckResult &verdict)
-{
-    const int page = m_verifyPage;
-    const int box = m_verifyBoxIndex;
-    emit blockVerified(page, box, verdict);
-    ++m_verifyDone;
-    emit stateChanged();
-    QTimer::singleShot(0, this, [this]() { startNextVerify(); });
 }
 
 void VerificationQueueController::skipCurrentTask()

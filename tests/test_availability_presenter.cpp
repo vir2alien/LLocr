@@ -4,6 +4,7 @@
 #include <QtTest>
 
 #include "app/AvailabilityPresenter.h"
+#include "app/BlockRunGate.h"
 #include "app/DocumentModel.h"
 #include "app/PageListModel.h"
 #include "app/VerificationPromptStore.h"
@@ -44,7 +45,7 @@ public:
         m_document = std::make_unique<DocumentModel>();
         m_pageModel = std::make_unique<PageListModel>();
         m_queue = std::make_unique<VerificationQueueController>(VerificationQueueController::Deps{
-            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, [] { return false; }, [](int, int) { return QString(); }, {}});
+            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, [] { return false; }, m_gate});
         m_presenter = std::make_unique<AvailabilityPresenter>(AvailabilityPresenter::Deps{*m_document,
                                                                                           *m_pageModel,
                                                                                           *m_queue,
@@ -73,6 +74,7 @@ private:
     std::unique_ptr<DocumentModel> m_document;
     std::unique_ptr<PageListModel> m_pageModel;
     std::unique_ptr<VerificationQueueController> m_queue;
+    BlockRunGate m_gate;
     std::unique_ptr<AvailabilityPresenter> m_presenter;
     int m_currentPage = 0;
 };

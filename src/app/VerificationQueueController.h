@@ -7,7 +7,6 @@
 
 #include "app/BlockWorkList.h"
 #include "app/CheckController.h"
-#include "app/DecisionController.h"
 #include "app/DocumentModel.h"
 #include "app/FixController.h"
 #include "app/VerificationPromptStore.h"
@@ -18,27 +17,20 @@
 
 namespace llocr {
 
+class BlockRunGate;
 class RequestProfileStore;
 class SettingsStore;
 
-// The two-phase verification queue (ADR 145, ADR 163). Phase 1 sends every
-// queued block to the decision model — the visual diff (docs/17): the crop
-// and the candidate rendered back into an image go out together, and the
-// verdict is the threshold on P(match) — Ok above it, Mismatch below. The
-// threshold is per block type when the profile ships the map. The fix is a
-// separate action (ADR 178): the user sends the mismatched blocks through the
-// fix task's OK / FIX / REVIEW protocol with the «Fix» button, so one check
-// run costs one server role switch.
+// The re-recognition and the remedy queues over one work-list runner: the
+// recheck sends the queued blocks back through the blockRecognition role, the
+// remedy runs the fix or the read protocol over them (ADR 163, ADR 259). The
+// decision role has its own queue now (DecisionQueue); the gate keeps the
+// three roles from running over each other.
 class VerificationQueueController : public QObject
 {
     Q_OBJECT
 
 public:
-    // The visual-diff decision's render leg: the candidate text painted back
-    // into an image before the request goes out. The app supplies the
-    // CandidateRenderer; a headless test can install a stand-in painter.
-    using RenderCandidateFn = std::function<void(const QString &candidateText, const std::function<void(bool ok, const QImage &image, const QString &error)> &)>;
-
     // One block of the work list: the page and the box on it. The work-list
     // vocabulary lives on BlockWorkList; the queue runs the lists it collects.
     using Task = BlockWorkList::Task;
@@ -53,25 +45,16 @@ public:
         RuntimeController &runtime;
         std::function<QImage(int pageIndex, int boxIndex)> cropProvider;
         std::function<bool()> layoutBusy;
-        // The text of a block as the page shows it: a formula as display math,
-        // a table as a grid. The visual-diff decision paints its candidate
-        // from it, so the picture the model reads is the one the document
-        // carries — the raw block text would reach the renderer as literal
-        // LaTeX and the table markup as a run-on line (ADR 237).
-        std::function<QString(int pageIndex, int boxIndex)> displayTextProvider;
-        // The visual-diff decision (docs/17) needs the candidate rendered back
-        // into an image before the request goes out. Empty when no renderer is
-        // wired: a visual-diff run then lands its blocks on Review instead of
-        // judging them.
-        RenderCandidateFn renderCandidate;
+        // The decision queue runs on the same gate: a recheck or a remedy
+        // must not start under a decision run, and the other way round.
+        BlockRunGate &gate;
     };
 
     explicit VerificationQueueController(Deps deps, QObject *parent = nullptr);
 
-    bool checkBusy() const { return m_check.busy() || m_decision.busy() || m_fix.busy(); }
+    bool checkBusy() const { return m_check.busy() || m_fix.busy(); }
     bool queueActive() const { return m_verifyQueueActive; }
     bool finished() const { return m_checkFinished; }
-    bool decisionPhase() const { return m_phase == Phase::Decision; }
     bool recheckPhase() const { return m_phase == Phase::Recheck; }
     bool fixPhase() const { return m_phase == Phase::Fix; }
     bool readPhase() const { return m_phase == Phase::Read; }
@@ -102,12 +85,6 @@ public:
     QList<Task> fixableBlocks(const QList<int> &pages, const TypeFilter &filter = {}) const;
 
 public slots:
-    void checkBlock(int pageIndex, int boxIndex);
-    void checkPageEnabledBlocks(int pageIndex);
-    void checkAllEnabledBlocks();
-    // The toolbar's scoped spellings: the same collections over an explicit
-    // page set (the thumbnail selection).
-    void checkPagesEnabledBlocks(const QList<int> &pages);
     // Re-recognition runs the queue straight in its second phase. The single
     // block form takes any status; the page/all forms pick the problem blocks.
     void recheckBlock(int pageIndex, int boxIndex);
@@ -132,19 +109,19 @@ public slots:
     // The queues over an explicit work list — the stages of the auto
     // pipeline collect the blocks themselves (ADR 257).
     void recognizeBlocks(const QList<Task> &tasks);
-    void checkBlocks(const QList<Task> &tasks);
     void fixBlocks(const QList<Task> &tasks);
     void stop();
 
 signals:
     void stateChanged();
+    // A run took the work list: the readouts that describe "the run" reset
+    // here, not on the per-request state changes that follow.
+    void runStarted();
     void statusRequested(const llocr::StatusMessage &message);
-    // One signal per result source: the decision verdict (blockVerified), the
-    // block-recognition transcription (blockRecognized), the fix outcome
-    // (blockFixed) and the read outcome (blockRead) drive different box
-    // transitions (ADR 164, ADR 260).
-    void verificationStarted(int pageIndex, int boxIndex);
-    void blockVerified(int pageIndex, int boxIndex, const llocr::CheckResult &result);
+    // One signal per result source: the block-recognition transcription
+    // (blockRecognized), the fix outcome (blockFixed) and the read outcome
+    // (blockRead) drive different box transitions (ADR 164, ADR 260). The
+    // decision verdict travels on DecisionQueue::blockVerified.
     void blockRecognized(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void blockFixed(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void blockRead(int pageIndex, int boxIndex, const llocr::CheckResult &result);
@@ -155,31 +132,25 @@ signals:
 
 private:
     enum class Phase {
-        Decision,  ///< the decision model judges every queued block
-        Recheck,   ///< the block-recognition role re-runs the queued blocks
-        Fix,       ///< the fix protocol corrects the queued blocks
-        Read,      ///< the read protocol writes the queued blocks from the image
+        Recheck,  ///< the block-recognition role re-runs the queued blocks
+        Fix,      ///< the fix protocol corrects the queued blocks
+        Read,     ///< the read protocol writes the queued blocks from the image
     };
 
-    void startVerifyQueue(const QList<Task> &tasks);
     void startRecheckQueue(const QList<Task> &tasks);
     void startFixQueue(const QList<Task> &tasks);
     void startReadQueue(const QList<Task> &tasks);
     void startRemedyQueue(const QList<Task> &tasks, Phase phase);
-    void startOrReportAnswered(const QList<Task> &tasks, int answered, int rejected);
     void startNextVerify();
-    void deliverVerdict(const CheckResult &verdict);
     void skipCurrentTask();
     void finishVerifyQueue();
-    double matchThresholdFor(const QString &blockType) const;
 
     Deps m_deps;
     BlockWorkList m_workList;
-    DecisionController m_decision;
     CheckController m_check;
     FixController m_fix;
 
-    Phase m_phase = Phase::Decision;
+    Phase m_phase = Phase::Recheck;
     QList<Task> m_verifyQueue;
     int m_verifyPage = -1;
     int m_verifyBoxIndex = -1;
@@ -193,9 +164,6 @@ private:
     int m_readRewritten = 0;
     int m_readConfirmed = 0;
     int m_readUnreadable = 0;
-    double m_matchThreshold = 0.5;
-    const ModelProfiles::Role *m_decisionRole = nullptr;  // resolved per run: the per-block thresholds live on the role
-    QString m_judgedType;                                 // the block type of the verdict in flight
     StatusMessage m_checkError;
 };
 

@@ -70,9 +70,17 @@ AppController::AppController(SettingsStore &settings,
                 // The queue and the markup pass are the two jobs left, and they
                 // are mutually exclusive: neither may start while the other runs.
                 [this] { return m_layout.busy(); },
-                [this](int pageIndex, int boxIndex) { return blockDisplayText(pageIndex, boxIndex); },
-                [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderFn(candidateText, done); }},
+                m_checkRunGate},
                this),
+      m_workList({m_document, verification, checkRequestProfiles}),
+      m_decisionQueue({m_document,
+                       m_checkRunGate,
+                       [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
+                       runtime,
+                       settings,
+                       [this](int pageIndex, int boxIndex) { return blockDisplayText(pageIndex, boxIndex); },
+                       [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderFn(candidateText, done); }},
+                      this),
       m_layout(layoutRequestProfiles, runtime, this), m_availability({m_document,
                                                                       m_pageModel,
                                                                       m_verify,
@@ -95,7 +103,7 @@ AppController::AppController(SettingsStore &settings,
                      m_currentPage = index;
                      m_pageModel.setCurrent(index);
                  },
-                 [this] { return m_layout.busy() || m_importing || m_export.exporting() || m_verify.queueActive() || m_verify.checkBusy(); },
+                 [this] { return m_layout.busy() || m_importing || m_export.exporting() || m_verify.queueActive() || m_verify.checkBusy() || m_decisionQueue.busy(); },
                  [this](const StatusMessage &message) { setStatus(message); },
                  [this](const StatusMessage &message, ProblemLog::Severity severity) { reportProblem(message, severity); },
                  [this] { m_inspector.resetSelection(); },
@@ -105,6 +113,13 @@ AppController::AppController(SettingsStore &settings,
                  [this] { notifyDocumentChanged(); }},
                 this)
 {
+    // The gate is the one-run-at-a-time rule across the decision queue and
+    // the recheck/remedy runs: the markup pass and a stopped request still
+    // winding down hold it from the outside.
+    m_checkRunGate.setExternalBusy([this] {
+        return m_layout.busy() || m_verify.queueActive() || m_verify.checkBusy() || m_decisionQueue.requestBusy();
+    });
+
     // The orientation check: the picture reads the axis of the text before the
     // page is recognized. A page it cannot settle is marked and left as it
     // is — the user turns it by hand.
@@ -160,13 +175,56 @@ AppController::AppController(SettingsStore &settings,
         if (m_verify.queueActive())
             setAutoPipelineMessage(StatusMessage());
     });
+    // The run's readouts reset when a run starts, not on the per-request
+    // state changes that follow; the readout's progress source becomes this
+    // queue. The run's own end sets the finished flag; a stop does not (the
+    // stopped run reads as not finished, as before).
+    connect(&m_verify, &VerificationQueueController::runStarted, this, [this]() {
+        setAutoPipelineMessage(StatusMessage());
+        m_checkError = StatusMessage();
+        m_checkFinished = false;
+        m_progressQueue = nullptr;
+    });
+    connect(&m_verify, &VerificationQueueController::queueFinished, this, [this]() {
+        if (!m_verify.queueActive())
+            m_checkFinished = m_verify.finished();
+    });
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
-    connect(&m_verify, &VerificationQueueController::verificationStarted, this, &AppController::applyVerificationStarted);
-    connect(&m_verify, &VerificationQueueController::blockVerified, this, &AppController::applyVerdictToBox);
     connect(&m_verify, &VerificationQueueController::blockRecognized, this, &AppController::applyRecognitionToBox);
     connect(&m_verify, &VerificationQueueController::blockFixed, this, &AppController::applyFixToBox);
     connect(&m_verify, &VerificationQueueController::blockRead, this, &AppController::applyReadToBox);
-    connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
+    connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) {
+        m_checkError = message;
+        reportProblem(message, ProblemLog::Error);
+    });
+
+    // The decision queue: the same wiring, its own result channel.
+    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::checkStateChanged);
+    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::busyChanged);
+    // The queue's stateChanged fires per request and the rescan it drives is
+    // O(pages×blocks) — it rides the coalescing window while a run is active.
+    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::scheduleAvailabilityRefresh);
+    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, [this]() {
+        if (m_decisionQueue.active())
+            setAutoPipelineMessage(StatusMessage());
+    });
+    connect(&m_decisionQueue, &BlockQueue::runStarted, this, [this]() {
+        setAutoPipelineMessage(StatusMessage());
+        m_checkError = StatusMessage();
+        m_checkFinished = false;
+        m_progressQueue = &m_decisionQueue;
+    });
+    connect(&m_decisionQueue, &BlockQueue::finished, this, [this]() {
+        if (!m_decisionQueue.active())
+            m_checkFinished = m_decisionQueue.finishedFlag();
+    });
+    connect(&m_decisionQueue, &BlockQueue::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+    connect(&m_decisionQueue, &BlockQueue::problemReported, this, [this](const StatusMessage &message) {
+        m_checkError = message;
+        reportProblem(message, ProblemLog::Error);
+    });
+    connect(&m_decisionQueue, &DecisionQueue::verificationStarted, this, &AppController::applyVerificationStarted);
+    connect(&m_decisionQueue, &DecisionQueue::blockVerified, this, &AppController::applyVerdictToBox);
 
     // The queue's per-block tail (page-text rebuild + its signal fan-out) and
     // the availability rescan are coalesced while a run is active; the run's
@@ -176,6 +234,7 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_pageTextCoalesceTimer, &QTimer::timeout, this, &AppController::flushPageTextChanges);
     connect(&m_pageTextCoalesceTimer, &QTimer::timeout, this, &AppController::updateAvailability);
     connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
+    connect(&m_decisionQueue, &BlockQueue::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::flushPageTextChangesWhenIdle);
 
     connect(&m_availability, &AvailabilityPresenter::changed, this, &AppController::availabilityChanged);
@@ -230,9 +289,9 @@ AppController::AppController(SettingsStore &settings,
     // and the run passes it over.
     m_autoMarkupStage = new AutoMarkupStage(m_layout, [this](const AutoPipelineStage::Scope &pages, const std::function<void(bool)> &done) { runMarkupPass(pages, done); }, this);
     m_autoRecognitionStage = new AutoRecognitionStage(m_verify, [this]() { return m_availability.blockRecognitionModelAvailable(); }, this);
-    m_autoVerificationStage = new AutoVerificationStage(m_verify, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification"), this);
+    m_autoVerificationStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification"), this);
     m_autoFixStage = new AutoFixStage(m_verify, [this]() { return m_availability.fixModelAvailable(); }, this);
-    m_autoRecheckStage = new AutoVerificationStage(m_verify, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification of the corrected blocks"), this);
+    m_autoRecheckStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification of the corrected blocks"), this);
 
     AutoPipelineController::Deps deps;
     deps.scopePages = [this]() { return scopePages(); };
@@ -301,7 +360,7 @@ AppController::AppController(SettingsStore &settings,
 
 AppController::~AppController() = default;
 
-void AppController::setCandidateRenderFunction(VerificationQueueController::RenderCandidateFn render)
+void AppController::setCandidateRenderFunction(DecisionQueue::RenderCandidateFn render)
 {
     m_candidateRenderFn = std::move(render);
 }
@@ -1141,9 +1200,9 @@ bool AppController::addBlockAt(const QString &type, qreal x, qreal y, qreal widt
 
 void AppController::checkSelectedBlock()
 {
-    if (m_inspector.selectedBoxIndex() < 0)
+    if (m_inspector.selectedBoxIndex() < 0 || !blockQueueTaskReady(m_currentPage))
         return;
-    m_verify.checkBlock(m_currentPage, m_inspector.selectedBoxIndex());
+    m_decisionQueue.run({{m_currentPage, m_inspector.selectedBoxIndex()}});
 }
 
 void AppController::revertBlockCorrection()
@@ -1279,12 +1338,27 @@ void AppController::setSelectedBlockText(const QString &text, bool correctedLaye
 
 void AppController::checkEnabledBlocksOnPage()
 {
-    m_verify.checkPageEnabledBlocks(m_currentPage);
+    if (!blockQueueTaskReady(m_currentPage))
+        return;
+    int answered = 0;
+    int rejected = 0;
+    const QList<BlockWorkList::Task> tasks = m_workList.enabledBoxesOnPage(m_currentPage, &answered, &rejected);
+    startVerificationOrReport(tasks, answered, rejected);
 }
 
 void AppController::checkAllEnabledBlocks()
 {
-    m_verify.checkAllEnabledBlocks();
+    QList<BlockWorkList::Task> tasks;
+    int answered = 0;
+    int rejected = 0;
+    for (int p = 0; p < m_document.pageCount(); ++p) {
+        int pageAnswered = 0;
+        int pageRejected = 0;
+        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
+        answered += pageAnswered;
+        rejected += pageRejected;
+    }
+    startVerificationOrReport(tasks, answered, rejected);
 }
 
 void AppController::recognizeScopeBlocks()
@@ -1302,7 +1376,17 @@ void AppController::layoutScopePages()
 
 void AppController::checkScopeEnabledBlocks()
 {
-    m_verify.checkPagesEnabledBlocks(scopePages());
+    QList<BlockWorkList::Task> tasks;
+    int answered = 0;
+    int rejected = 0;
+    for (const int p : scopePages()) {
+        int pageAnswered = 0;
+        int pageRejected = 0;
+        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
+        answered += pageAnswered;
+        rejected += pageRejected;
+    }
+    startVerificationOrReport(tasks, answered, rejected);
 }
 
 void AppController::fixScopeProblemBlocks()
@@ -1318,6 +1402,41 @@ void AppController::readScopeBlocks()
 void AppController::stopCheck()
 {
     m_verify.stop();
+    m_decisionQueue.stop();
+}
+
+void AppController::startVerificationOrReport(const QList<BlockWorkList::Task> &tasks, int answered, int rejected)
+{
+    if (!tasks.isEmpty()) {
+        m_decisionQueue.run(tasks);
+        return;
+    }
+    if (answered == 0 && rejected == 0)
+        return;
+    // A formula the app rejected on its LaTeX syntax is named apart from the
+    // blocks that were already verified: it was not asked about (ADR 194).
+    QList<StatusMessage> parts;
+    parts.append(StatusMessage::translate("AppController", "Nothing to check:"));
+    if (answered > 0)
+        parts.append(StatusMessage::translate("AppController", "%1 block(s) already verified").arg(answered));
+    if (rejected > 0)
+        parts.append(StatusMessage::translate("AppController", "%1 formula(s) rejected: invalid LaTeX syntax").arg(rejected));
+    setStatus(StatusMessage::join(parts, QStringLiteral(" ")));
+}
+
+bool AppController::blockQueueTaskReady(int pageIndex) const
+{
+    return m_document.isValidIndex(pageIndex) && m_document.page(pageIndex).recognized;
+}
+
+int AppController::checkProgressDone() const
+{
+    return m_progressQueue ? m_progressQueue->progressDone() : m_verify.progressDone();
+}
+
+int AppController::checkProgressTotal() const
+{
+    return m_progressQueue ? m_progressQueue->progressTotal() : m_verify.progressTotal();
 }
 
 void AppController::recognizeSelectedBlock()
@@ -1877,6 +1996,11 @@ void AppController::flushPageTextChangesWhenIdle()
     // text must not have to wait for. A work list that just drained flushes
     // in the turn of its last block.
     if (m_verify.queueActive() && m_verify.progressTotal() > 0 && m_verify.progressDone() >= m_verify.progressTotal()) {
+        flushPageTextChanges();
+        updateAvailability();
+        return;
+    }
+    if (m_decisionQueue.active() && m_decisionQueue.progressTotal() > 0 && m_decisionQueue.progressDone() >= m_decisionQueue.progressTotal()) {
         flushPageTextChanges();
         updateAvailability();
         return;

@@ -9,6 +9,7 @@
 
 #include "app/AutoPipelineController.h"
 #include "app/AutoPipelineStages.h"
+#include "app/BlockRunGate.h"
 #include "app/DocumentModel.h"
 #include "app/VerificationPromptStore.h"
 #include "config/RequestProfileStore.h"
@@ -90,8 +91,9 @@ public:
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_document = std::make_unique<DocumentModel>();
         const std::function<bool()> layoutIsBusy = [layoutBusy] { return layoutBusy; };
+        m_gate.setExternalBusy(layoutIsBusy);
         m_queue = std::make_unique<VerificationQueueController>(VerificationQueueController::Deps{
-            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, layoutIsBusy, [](int, int) { return QString(); }, {}});
+            *m_document, *m_verification, *m_checkProfiles, *m_fixProfiles, *m_settings, *m_runtime, [](int, int) { return QImage(); }, layoutIsBusy, m_gate});
     }
 
     VerificationQueueController &queue() { return *m_queue; }
@@ -106,6 +108,7 @@ private:
     std::unique_ptr<VerificationPromptStore> m_verification;
     std::unique_ptr<DocumentModel> m_document;
     std::unique_ptr<VerificationQueueController> m_queue;
+    BlockRunGate m_gate;
 };
 
 }  // namespace

@@ -5,10 +5,13 @@
 #include <QString>
 
 #include "app/AutoPipelineStage.h"
+#include "app/BlockQueue.h"
+#include "app/DecisionQueue.h"
 #include "app/VerificationQueueController.h"
 
 namespace llocr {
 
+class BlockWorkList;
 class LayoutController;
 
 // The markup stage: the layout pass over the scope. The prompt, the parser
@@ -76,7 +79,7 @@ public:
     // itself when it is not.
     using ModelAvailable = std::function<bool()>;
 
-    AutoVerificationStage(VerificationQueueController &queue, ModelAvailable modelAvailable, QString titleKey, QObject *parent = nullptr);
+    AutoVerificationStage(DecisionQueue &queue, BlockWorkList &workList, ModelAvailable modelAvailable, QString titleKey, QObject *parent = nullptr);
 
     QString skipReason(const AutoPipelineStage::Scope &pages) const override;
     void start(const AutoPipelineStage::Scope &pages) override;
@@ -85,7 +88,8 @@ public:
     int progressTotal() const override;
 
 private:
-    VerificationQueueController &m_queue;
+    DecisionQueue &m_queue;
+    BlockWorkList &m_workList;
     ModelAvailable m_modelAvailable;
     bool m_running = false;
 };

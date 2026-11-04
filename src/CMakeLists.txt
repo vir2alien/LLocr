@@ -319,6 +319,12 @@ qt_add_library(llocr_app STATIC
     app/ProjectStore.cpp
     app/BlockWorkList.h
     app/BlockWorkList.cpp
+    app/BlockRunGate.h
+    app/BlockRunGate.cpp
+    app/BlockQueue.h
+    app/BlockQueue.cpp
+    app/DecisionQueue.h
+    app/DecisionQueue.cpp
     app/CheckController.h
     app/CheckController.cpp
     app/DecisionController.h

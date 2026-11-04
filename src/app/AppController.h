@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QPointer>
+
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -22,6 +24,9 @@
 #include "app/ExportController.h"
 #include "app/Exporter.h"
 #include "app/LayoutController.h"
+#include "app/BlockRunGate.h"
+#include "app/BlockWorkList.h"
+#include "app/DecisionQueue.h"
 #include "app/LruImageCache.h"
 #include "app/OrientationController.h"
 #include "app/PageEditStore.h"
@@ -208,7 +213,7 @@ public:
     // Chromium, so a test installs a stand-in painter here; production keeps
     // the real CandidateRenderer — the protocol, the profile and the routing
     // stay the shipped ones either way.
-    void setCandidateRenderFunction(VerificationQueueController::RenderCandidateFn render);
+    void setCandidateRenderFunction(DecisionQueue::RenderCandidateFn render);
 
     bool exporting() const { return m_export.exporting(); }
     bool projectBusy() const { return m_project.busy(); }
@@ -258,16 +263,19 @@ public:
     bool pageTextEditorFocused() const { return m_inspector.pageTextEditorFocused(); }
     void setPageTextEditorFocused(bool focused);
 
-    bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive(); }
-    bool checkRunning() const { return m_verify.queueActive(); }
-    bool checkFinished() const { return m_verify.finished(); }
-    int checkProgressDone() const { return m_verify.progressDone(); }
-    int checkProgressTotal() const { return m_verify.progressTotal(); }
-    bool checkDecisionPhase() const { return m_verify.decisionPhase(); }
+    // checkBusy() spans the whole queue run (the gate holds between two
+    // requests); the raw request-busy flags would drop in those gaps and
+    // read as idle mid-run.
+    bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive() || m_decisionQueue.busy(); }
+    bool checkRunning() const { return m_verify.queueActive() || m_decisionQueue.active(); }
+    bool checkFinished() const { return m_checkFinished; }
+    int checkProgressDone() const;
+    int checkProgressTotal() const;
+    bool checkDecisionPhase() const { return m_decisionQueue.active(); }
     bool checkRecheckPhase() const { return m_verify.recheckPhase(); }
     bool checkFixPhase() const { return m_verify.fixPhase(); }
     bool checkReadPhase() const { return m_verify.readPhase(); }
-    QString checkErrorMessage() const { return m_verify.errorMessage(); }
+    QString checkErrorMessage() const { return m_checkError.text(); }
     bool pageVerificationSupported() const { return m_availability.pageVerificationSupported(); }
     bool allPageVerificationSupported() const { return m_availability.allPageVerificationSupported(); }
     bool pageProblemRecognitionSupported() const { return m_availability.pageProblemRecognitionSupported(); }
@@ -550,6 +558,13 @@ private:
     // scope reads "1 page", not "all".
     void ensureDefaultSelection();
 
+    // The decision run over a collected work list, or the «nothing to check»
+    // report when the collection came back empty (the already-verified and
+    // the LaTeX-rejected blocks are named apart, ADR 194).
+    void startVerificationOrReport(const QList<BlockWorkList::Task> &tasks, int answered, int rejected);
+    // The single-block queue task's guard: the page must carry a result.
+    bool blockQueueTaskReady(int pageIndex) const;
+
     void updateAvailability();
 
 private:
@@ -566,10 +581,15 @@ private:
     // Declared before the queue: a render in flight must die with its
     // callbacks before the queue that would receive them.
     CandidateRenderer m_candidateRenderer;
-    // The render function the queue calls; defaults to the real renderer and
-    // is replaced wholesale by setCandidateRenderFunction.
-    VerificationQueueController::RenderCandidateFn m_candidateRenderFn;
+    // The render function the decision queue calls; defaults to the real
+    // renderer and is replaced wholesale by setCandidateRenderFunction.
+    DecisionQueue::RenderCandidateFn m_candidateRenderFn;
     VerificationQueueController m_verify;
+    // The decision role runs on its own queue (docs/09); the gate keeps it
+    // from overlapping the recheck and the remedy runs of m_verify.
+    BlockWorkList m_workList;
+    BlockRunGate m_checkRunGate;
+    DecisionQueue m_decisionQueue;
     LayoutController m_layout;
     OrientationController m_orientation;
     std::function<void()> m_pendingRun;  // The run that waits for the orientation check.
@@ -601,6 +621,14 @@ private:
     mutable QString m_parserIdKey;
     QTimer m_pageTextCoalesceTimer;
     QList<int> m_pendingPageTextPages;
+
+    // The run state the QML readouts are built from, maintained off the two
+    // queues' signals (the queues own their runs; the facade owns the
+    // readout): the last run's completion, its error line and the queue the
+    // progress readout belongs to (null = the recheck/remedy queue).
+    bool m_checkFinished = false;
+    StatusMessage m_checkError;
+    QPointer<BlockQueue> m_progressQueue;
 
     LruImageCache m_previewCache{kPreviewCacheBudgetBytes};
     mutable QMutex m_previewMutex;
