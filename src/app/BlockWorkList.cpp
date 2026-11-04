@@ -7,9 +7,7 @@
 
 namespace llocr {
 
-BlockWorkList::BlockWorkList(Deps deps)
-    : m_deps(std::move(deps))
-{}
+BlockWorkList::BlockWorkList(Deps deps) : m_deps(std::move(deps)) {}
 
 QList<BlockWorkList::Task> BlockWorkList::unrecognizedBlocks(const QList<int> &pages, const TypeFilter &filter) const
 {

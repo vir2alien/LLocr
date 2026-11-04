@@ -4,9 +4,7 @@
 
 namespace llocr {
 
-BlockQueue::BlockQueue(Deps deps, QObject *parent)
-    : QObject(parent), m_deps(std::move(deps))
-{}
+BlockQueue::BlockQueue(Deps deps, QObject *parent) : QObject(parent), m_deps(std::move(deps)) {}
 
 bool BlockQueue::run(const QList<Task> &tasks)
 {

@@ -94,8 +94,7 @@ public:
         const std::function<bool()> layoutIsBusy = [layoutBusy] { return layoutBusy; };
         m_gate.setExternalBusy(layoutIsBusy);
         m_workList = std::make_unique<BlockWorkList>(BlockWorkList::Deps{*m_document, *m_verification, *m_checkProfiles});
-        m_queue = std::make_unique<RecheckQueue>(RecheckQueue::Deps{
-            *m_document, m_gate, [](int, int) { return QImage(); }, *m_runtime, *m_checkProfiles});
+        m_queue = std::make_unique<RecheckQueue>(RecheckQueue::Deps{*m_document, m_gate, [](int, int) { return QImage(); }, *m_runtime, *m_checkProfiles});
     }
 
     RecheckQueue &queue() { return *m_queue; }

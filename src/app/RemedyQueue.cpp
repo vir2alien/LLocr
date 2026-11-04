@@ -8,9 +8,7 @@
 namespace llocr {
 
 RemedyQueue::RemedyQueue(Deps deps, QObject *parent)
-    : BlockQueue({deps.document, deps.gate, deps.cropProvider}, parent),
-      m_deps(std::move(deps)),
-      m_fix(m_deps.fixRequestProfiles, m_deps.settings, m_deps.runtime, nullptr)
+    : BlockQueue({deps.document, deps.gate, deps.cropProvider}, parent), m_deps(std::move(deps)), m_fix(m_deps.fixRequestProfiles, m_deps.settings, m_deps.runtime, nullptr)
 {
     connect(&m_fix, &FixController::fixFinished, this, [this](const CheckResult &result) {
         if (result.status == CheckStatus::Failed && !result.errorMessage.isEmpty())
@@ -130,8 +128,7 @@ void RemedyQueue::stopRequest()
 void RemedyQueue::finishRun()
 {
     if (m_protocol == Protocol::Read && progressTotal() > 0) {
-        emit statusRequested(
-            StatusMessage::translate("RemedyQueue", "Blocks read: %1 rewritten, %2 confirmed, %3 unreadable.").arg(m_readRewritten).arg(m_readConfirmed).arg(m_readUnreadable));
+        emit statusRequested(StatusMessage::translate("RemedyQueue", "Blocks read: %1 rewritten, %2 confirmed, %3 unreadable.").arg(m_readRewritten).arg(m_readConfirmed).arg(m_readUnreadable));
     }
 }
 

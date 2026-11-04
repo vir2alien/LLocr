@@ -35,12 +35,12 @@
 
 #include "app/AppController.h"
 #include "app/BoxListModel.h"
+#include "app/DocumentModel.h"
 #include "app/PageListModel.h"
 #include "app/PageRotation.h"
 #include "app/ProblemLog.h"
 #include "app/UiController.h"
 #include "app/VerificationPromptStore.h"
-#include "app/DocumentModel.h"
 #include "config/RequestProfileStore.h"
 #include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"

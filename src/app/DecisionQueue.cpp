@@ -5,10 +5,7 @@
 
 namespace llocr {
 
-DecisionQueue::DecisionQueue(Deps deps, QObject *parent)
-    : BlockQueue({deps.document, deps.gate, deps.cropProvider}, parent),
-      m_deps(std::move(deps)),
-      m_decision(m_deps.runtime, this)
+DecisionQueue::DecisionQueue(Deps deps, QObject *parent) : BlockQueue({deps.document, deps.gate, deps.cropProvider}, parent), m_deps(std::move(deps)), m_decision(m_deps.runtime, this)
 {
     connect(&m_decision, &DecisionController::judgeFinished, this, [this](const DecisionResult &result) {
         CheckResult verdict;
@@ -51,8 +48,8 @@ void DecisionQueue::startTask(const Task &task, const BoundingBox &box, const QI
     // would be blind on the second leg, so the block goes to human eyes
     // instead of being judged on half the input.
     if (!m_deps.renderCandidate) {
-        deliverVerdict(CheckResult{
-            CheckStatus::Review, {}, StatusMessage::translate("DecisionQueue", "No candidate renderer: the visual-diff decision model needs the candidate as an image."), {}, -1.0});
+        deliverVerdict(
+            CheckResult{CheckStatus::Review, {}, StatusMessage::translate("DecisionQueue", "No candidate renderer: the visual-diff decision model needs the candidate as an image."), {}, -1.0});
         return;
     }
     // The state carries the block's own text (the upstream contract: the OCR

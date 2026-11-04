@@ -69,19 +69,8 @@ AppController::AppController(SettingsStore &settings,
                        [this](int pageIndex, int boxIndex) { return blockDisplayText(pageIndex, boxIndex); },
                        [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderFn(candidateText, done); }},
                       this),
-      m_recheckQueue({m_document,
-                      m_checkRunGate,
-                      [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
-                      runtime,
-                      checkRequestProfiles},
-                     this),
-      m_remedyQueue({m_document,
-                     m_checkRunGate,
-                     [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
-                     runtime,
-                     settings,
-                     fixRequestProfiles},
-                    this),
+      m_recheckQueue({m_document, m_checkRunGate, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, runtime, checkRequestProfiles}, this),
+      m_remedyQueue({m_document, m_checkRunGate, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, runtime, settings, fixRequestProfiles}, this),
       m_layout(layoutRequestProfiles, runtime, this), m_availability({m_document,
                                                                       m_pageModel,
                                                                       m_workList,
@@ -117,9 +106,7 @@ AppController::AppController(SettingsStore &settings,
     // The gate is the one-run-at-a-time rule across the decision queue and
     // the recheck/remedy runs: the markup pass and a stopped request still
     // winding down hold it from the outside.
-    m_checkRunGate.setExternalBusy([this] {
-        return m_layout.busy() || m_decisionQueue.requestBusy() || m_recheckQueue.requestBusy() || m_remedyQueue.requestBusy();
-    });
+    m_checkRunGate.setExternalBusy([this] { return m_layout.busy() || m_decisionQueue.requestBusy() || m_recheckQueue.requestBusy() || m_remedyQueue.requestBusy(); });
 
     // The orientation check: the picture reads the axis of the text before the
     // page is recognized. A page it cannot settle is marked and left as it
@@ -237,7 +224,8 @@ AppController::AppController(SettingsStore &settings,
     m_autoRecognitionStage = new AutoRecognitionStage(m_recheckQueue, m_workList, [this]() { return m_availability.blockRecognitionModelAvailable(); }, this);
     m_autoVerificationStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification"), this);
     m_autoFixStage = new AutoFixStage(m_remedyQueue, m_workList, [this]() { return m_availability.fixModelAvailable(); }, this);
-    m_autoRecheckStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification of the corrected blocks"), this);
+    m_autoRecheckStage =
+        new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification of the corrected blocks"), this);
 
     AutoPipelineController::Deps deps;
     deps.scopePages = [this]() { return scopePages(); };

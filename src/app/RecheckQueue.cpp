@@ -6,9 +6,7 @@
 namespace llocr {
 
 RecheckQueue::RecheckQueue(Deps deps, QObject *parent)
-    : BlockQueue({deps.document, deps.gate, deps.cropProvider}, parent),
-      m_deps(std::move(deps)),
-      m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr)
+    : BlockQueue({deps.document, deps.gate, deps.cropProvider}, parent), m_deps(std::move(deps)), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr)
 {
     connect(&m_check, &CheckController::checkFinished, this, [this](const CheckResult &result) {
         if (result.status == CheckStatus::Failed && !result.errorMessage.isEmpty())
