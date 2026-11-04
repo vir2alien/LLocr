@@ -6,6 +6,7 @@
 #include "app/PageRotation.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <utility>
 
@@ -59,7 +60,6 @@ AppController::AppController(SettingsStore &settings,
                                                              [this](int index) { return pageText(index); },
                                                              [this] { return makeParser(); }},
                                                             this),
-      m_candidateRenderFn([this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderer.render(candidateText, done); }),
       m_workList({m_document, verification, checkRequestProfiles}),
       m_decisionQueue({m_document,
                        m_checkRunGate,
@@ -71,6 +71,7 @@ AppController::AppController(SettingsStore &settings,
                       this),
       m_recheckQueue({m_document, m_checkRunGate, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, runtime, checkRequestProfiles}, this),
       m_remedyQueue({m_document, m_checkRunGate, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, runtime, settings, fixRequestProfiles}, this),
+      m_candidateRenderFn([this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderer.render(candidateText, done); }),
       m_layout(layoutRequestProfiles, runtime, this), m_availability({m_document,
                                                                       m_pageModel,
                                                                       m_workList,
@@ -1284,17 +1285,16 @@ void AppController::checkEnabledBlocksOnPage()
 
 void AppController::checkAllEnabledBlocks()
 {
-    QList<BlockWorkList::Task> tasks;
+    // The old controller refused silently before collecting; the report below
+    // is for a run that was allowed to look at the document.
+    if (m_layout.busy() || checkBusy())
+        return;
+    QList<int> pages;
+    for (int p = 0; p < m_document.pageCount(); ++p)
+        pages.append(p);
     int answered = 0;
     int rejected = 0;
-    for (int p = 0; p < m_document.pageCount(); ++p) {
-        int pageAnswered = 0;
-        int pageRejected = 0;
-        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
-        answered += pageAnswered;
-        rejected += pageRejected;
-    }
-    startVerificationOrReport(tasks, answered, rejected);
+    startVerificationOrReport(collectEnabledWithCounts(pages, &answered, &rejected), answered, rejected);
 }
 
 void AppController::recognizeScopeBlocks()
@@ -1312,26 +1312,24 @@ void AppController::layoutScopePages()
 
 void AppController::checkScopeEnabledBlocks()
 {
-    QList<BlockWorkList::Task> tasks;
+    if (m_layout.busy() || checkBusy())
+        return;
     int answered = 0;
     int rejected = 0;
-    for (const int p : scopePages()) {
-        int pageAnswered = 0;
-        int pageRejected = 0;
-        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
-        answered += pageAnswered;
-        rejected += pageRejected;
-    }
-    startVerificationOrReport(tasks, answered, rejected);
+    startVerificationOrReport(collectEnabledWithCounts(scopePages(), &answered, &rejected), answered, rejected);
 }
 
 void AppController::fixScopeProblemBlocks()
 {
+    if (m_layout.busy() || checkBusy())
+        return;
     m_remedyQueue.runFix(m_workList.fixableBlocks(scopePages()));
 }
 
 void AppController::readScopeBlocks()
 {
+    if (m_layout.busy() || checkBusy())
+        return;
     m_remedyQueue.runRead(m_workList.readableBlocks(scopePages()));
 }
 
@@ -1340,6 +1338,21 @@ void AppController::stopCheck()
     m_decisionQueue.stop();
     m_recheckQueue.stop();
     m_remedyQueue.stop();
+}
+
+QList<BlockWorkList::Task> AppController::collectEnabledWithCounts(const QList<int> &pages, int *answered, int *rejected) const
+{
+    QList<BlockWorkList::Task> tasks;
+    for (const int p : pages) {
+        int pageAnswered = 0;
+        int pageRejected = 0;
+        tasks.append(m_workList.enabledBoxesOnPage(p, &pageAnswered, &pageRejected));
+        if (answered)
+            *answered += pageAnswered;
+        if (rejected)
+            *rejected += pageRejected;
+    }
+    return tasks;
 }
 
 void AppController::startVerificationOrReport(const QList<BlockWorkList::Task> &tasks, int answered, int rejected)
@@ -1368,6 +1381,9 @@ bool AppController::blockQueueTaskReady(int pageIndex) const
 
 void AppController::wireBlockQueue(BlockQueue &queue)
 {
+    // The lambdas outlive this call, so they hold the queue by address —
+    // a member of this controller, whose connections die with it.
+    BlockQueue *const q = &queue;
     connect(&queue, &BlockQueue::stateChanged, this, &AppController::checkStateChanged);
     // busy() is the layout pass or a queue running: both state changes must
     // re-announce it to the QML bindings.
@@ -1375,8 +1391,8 @@ void AppController::wireBlockQueue(BlockQueue &queue)
     // The queue's stateChanged fires per request and the rescan it drives is
     // O(pages×blocks) — it rides the coalescing window while a run is active.
     connect(&queue, &BlockQueue::stateChanged, this, &AppController::scheduleAvailabilityRefresh);
-    connect(&queue, &BlockQueue::stateChanged, this, [&queue, this]() {
-        if (queue.active())
+    connect(&queue, &BlockQueue::stateChanged, this, [q, this]() {
+        if (q->active())
             setAutoPipelineMessage(StatusMessage());
     });
     connect(&queue, &BlockQueue::stateChanged, this, &AppController::flushPageTextChangesWhenIdle);
@@ -1386,15 +1402,15 @@ void AppController::wireBlockQueue(BlockQueue &queue)
     // state changes that follow; the readout's progress source becomes this
     // queue. The run's own end sets the finished flag; a stop does not (the
     // stopped run reads as not finished, as before).
-    connect(&queue, &BlockQueue::runStarted, this, [&queue, this]() {
+    connect(&queue, &BlockQueue::runStarted, this, [q, this]() {
         setAutoPipelineMessage(StatusMessage());
         m_checkError = StatusMessage();
         m_checkFinished = false;
-        m_progressQueue = &queue;
+        m_progressQueue = q;
     });
-    connect(&queue, &BlockQueue::finished, this, [&queue, this]() {
-        if (!queue.active())
-            m_checkFinished = queue.finishedFlag();
+    connect(&queue, &BlockQueue::finished, this, [q, this]() {
+        if (!q->active())
+            m_checkFinished = q->finishedFlag();
     });
     connect(&queue, &BlockQueue::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&queue, &BlockQueue::problemReported, this, [this](const StatusMessage &message) {
@@ -1429,6 +1445,8 @@ void AppController::recognizeProblemBlocksOnPage()
 
 void AppController::recognizeAllProblemBlocks()
 {
+    if (m_layout.busy() || checkBusy())
+        return;
     QList<int> pages;
     for (int p = 0; p < m_document.pageCount(); ++p)
         pages.append(p);
@@ -1458,6 +1476,8 @@ void AppController::readSelectedBlock()
 
 void AppController::fixAllProblemBlocks()
 {
+    if (m_layout.busy() || checkBusy())
+        return;
     QList<int> pages;
     for (int p = 0; p < m_document.pageCount(); ++p)
         pages.append(p);
@@ -1979,7 +1999,7 @@ void AppController::flushPageTextChangesWhenIdle()
     // transition lands one event-loop turn later, which a reader of the page
     // text must not have to wait for. A work list that just drained flushes
     // in the turn of its last block.
-    const QList<BlockQueue *> queues = {&m_decisionQueue, &m_recheckQueue, &m_remedyQueue};
+    const std::array<BlockQueue *, 3> queues = {&m_decisionQueue, &m_recheckQueue, &m_remedyQueue};
     for (BlockQueue *queue : queues) {
         if (queue->active() && queue->progressTotal() > 0 && queue->progressDone() >= queue->progressTotal()) {
             flushPageTextChanges();

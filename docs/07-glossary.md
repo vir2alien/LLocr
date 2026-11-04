@@ -1155,7 +1155,12 @@ appendix at the end of this file.
   list (ADR 257) and `AvailabilityPresenter` reads its enablement predicates
   off `BlockWorkList`. Amends ADR 86 (the queue state machine's owner) and
   ADR 213 (the facade's domain list); the protocols, the statuses and the
-  stop semantics are untouched.
+  stop semantics are untouched. The `check*Phase` properties narrow quietly:
+  they now mean «this role's run is active» instead of the old sticky
+  «the last run's phase» — every QML reader consults them under
+  `checkRunning`/`stopMode`, so nothing observes the difference except a
+  sub-second stop-button wind-down flicker accepted for the simpler
+  semantics.
 
 ### UI
 

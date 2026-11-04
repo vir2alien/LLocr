@@ -50,7 +50,7 @@ public:
         m_workList = std::make_unique<BlockWorkList>(BlockWorkList::Deps{*m_document, *m_verification, *m_checkProfiles});
     }
 
-    BlockWorkList &queue() { return *m_workList; }
+    BlockWorkList &workList() { return *m_workList; }
     VerificationPromptStore &verification() { return *m_verification; }
     DocumentModel &document() { return *m_document; }
 
@@ -101,7 +101,7 @@ private slots:
         QueueFixture fixture(m_dir);
         makeDocument(fixture.document(), {textBox(QStringLiteral("text"), QString()), textBox(QStringLiteral("title"), QStringLiteral("already read"))});
 
-        const auto tasks = fixture.queue().unrecognizedBlocks({0});
+        const auto tasks = fixture.workList().unrecognizedBlocks({0});
         QCOMPARE(tasks.size(), 1);
         QCOMPARE(tasks.first().page, 0);
         QCOMPARE(tasks.first().box, 0);
@@ -116,7 +116,7 @@ private slots:
 
         makeDocument(fixture.document(), {textBox(QStringLiteral("text"), QStringLiteral("plain")), textBox(QStringLiteral("title"), QStringLiteral("heading"))});
 
-        const auto tasks = fixture.queue().enabledBlocks({0});
+        const auto tasks = fixture.workList().enabledBlocks({0});
         QCOMPARE(tasks.size(), 1);
         QCOMPARE(tasks.first().box, 1);
     }
@@ -133,7 +133,45 @@ private slots:
 
         makeDocument(fixture.document(), {mismatch, review, ok});
 
-        const auto tasks = fixture.queue().fixableBlocks({0});
+        const auto tasks = fixture.workList().fixableBlocks({0});
+        QCOMPARE(tasks.size(), 2);
+        QCOMPARE(tasks.at(0).box, 0);
+        QCOMPARE(tasks.at(1).box, 1);
+    }
+
+    // The statuses that ask for a re-run: the decision stage's rejections and
+    // the blocks it could not transcribe; an answered block is not a problem.
+    void theProblemWorkIsTheBlocksTheDecisionRejected()
+    {
+        QueueFixture fixture(m_dir);
+        BoundingBox mismatch = textBox(QStringLiteral("text"), QStringLiteral("wrong"));
+        mismatch.checkStatus = BoxCheckStatus::Mismatch;
+        BoundingBox review = textBox(QStringLiteral("text"), QStringLiteral("unreadable"));
+        review.checkStatus = BoxCheckStatus::Review;
+        BoundingBox ok = textBox(QStringLiteral("text"), QStringLiteral("right"));
+        ok.checkStatus = BoxCheckStatus::Ok;
+        BoundingBox plain = textBox(QStringLiteral("text"), QStringLiteral("unchecked"));
+
+        makeDocument(fixture.document(), {mismatch, review, ok, plain});
+
+        const auto tasks = fixture.workList().problemBlocks({0});
+        QCOMPARE(tasks.size(), 2);
+        QCOMPARE(tasks.at(0).box, 0);
+        QCOMPARE(tasks.at(1).box, 1);
+    }
+
+    // The reader takes every text block of the page — recognized or not —
+    // but not the image placeholders nobody transcribes.
+    void theReadableWorkIsEveryTextBoxOfThePage()
+    {
+        QueueFixture fixture(m_dir);
+        BoundingBox withText = textBox(QStringLiteral("text"), QStringLiteral("read me"));
+        BoundingBox withoutText = textBox(QStringLiteral("title"), QString());
+        BoundingBox image = textBox(QStringLiteral("image"), QString());
+
+        makeDocument(fixture.document(), {withText, withoutText, image});
+
+        const auto tasks = fixture.workList().readableBlocks({0});
         QCOMPARE(tasks.size(), 2);
         QCOMPARE(tasks.at(0).box, 0);
         QCOMPARE(tasks.at(1).box, 1);
@@ -150,7 +188,7 @@ private slots:
 
         makeDocument(fixture.document(), {corrected, refused});
 
-        const auto tasks = fixture.queue().enabledBlocks({0});
+        const auto tasks = fixture.workList().enabledBlocks({0});
         QCOMPARE(tasks.size(), 1);
         QCOMPARE(tasks.first().box, 0);
     }
@@ -173,19 +211,19 @@ private slots:
 
         const BlockWorkList::TypeFilter onlyTitle = [](const QString &type) { return type == QLatin1String("title"); };
 
-        QCOMPARE(fixture.queue().unrecognizedBlocks({0}).size(), 2);
-        QCOMPARE(fixture.queue().enabledBlocks({0}).size(), 2);
-        QCOMPARE(fixture.queue().fixableBlocks({0}).size(), 2);
+        QCOMPARE(fixture.workList().unrecognizedBlocks({0}).size(), 2);
+        QCOMPARE(fixture.workList().enabledBlocks({0}).size(), 2);
+        QCOMPARE(fixture.workList().fixableBlocks({0}).size(), 2);
 
-        const auto unrecognized = fixture.queue().unrecognizedBlocks({0}, onlyTitle);
+        const auto unrecognized = fixture.workList().unrecognizedBlocks({0}, onlyTitle);
         QCOMPARE(unrecognized.size(), 1);
         QCOMPARE(unrecognized.first().box, 1);
 
-        const auto enabled = fixture.queue().enabledBlocks({0}, onlyTitle);
+        const auto enabled = fixture.workList().enabledBlocks({0}, onlyTitle);
         QCOMPARE(enabled.size(), 1);
         QCOMPARE(enabled.first().box, 5);
 
-        const auto fixable = fixture.queue().fixableBlocks({0}, onlyTitle);
+        const auto fixable = fixture.workList().fixableBlocks({0}, onlyTitle);
         QCOMPARE(fixable.size(), 1);
         QCOMPARE(fixable.first().box, 3);
     }

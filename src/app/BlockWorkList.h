@@ -17,6 +17,8 @@ class VerificationPromptStore;
 // with the callers.
 class BlockWorkList
 {
+    Q_DISABLE_COPY_MOVE(BlockWorkList)
+
 public:
     // One block of the work list: the page and the box on it.
     struct Task {
@@ -69,6 +71,11 @@ public:
     bool pageBlocksRecognitionSupported(int pageIndex) const;
 
 private:
+    // The early-exit forms behind the predicates: a first matching block
+    // answers, no work list is built.
+    bool hasProblemBlocks(int pageIndex) const;
+    bool hasUnrecognizedBlocks(int pageIndex) const;
+
     Deps m_deps;
 };
 

@@ -45,16 +45,24 @@ RemedyQueue::RemedyQueue(Deps deps, QObject *parent)
     connect(&m_fix, &FixController::statusRequested, this, &RemedyQueue::statusRequested);
 }
 
+// The protocol commits only when the run takes the list: a refused call must
+// not re-route the results of a run still in flight on the other protocol.
+// The first task starts one event-loop turn later (the queue's own deferred
+// start), so the protocol is in place before any result can arrive.
 bool RemedyQueue::runFix(const QList<Task> &tasks)
 {
+    if (!run(tasks))
+        return false;
     m_protocol = Protocol::Fix;
-    return run(tasks);
+    return true;
 }
 
 bool RemedyQueue::runRead(const QList<Task> &tasks)
 {
+    if (!run(tasks))
+        return false;
     m_protocol = Protocol::Read;
-    return run(tasks);
+    return true;
 }
 
 bool RemedyQueue::requestBusy() const

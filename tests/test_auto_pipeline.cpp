@@ -108,9 +108,11 @@ private:
     std::unique_ptr<RuntimeController> m_runtime;
     std::unique_ptr<VerificationPromptStore> m_verification;
     std::unique_ptr<DocumentModel> m_document;
+    // Declared before the queue: the queue holds a gate reference, so the
+    // gate must outlive it (members are destroyed in reverse order).
+    BlockRunGate m_gate;
     std::unique_ptr<BlockWorkList> m_workList;
     std::unique_ptr<RecheckQueue> m_queue;
-    BlockRunGate m_gate;
 };
 
 }  // namespace

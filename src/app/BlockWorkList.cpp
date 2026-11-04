@@ -12,6 +12,7 @@ BlockWorkList::BlockWorkList(Deps deps) : m_deps(std::move(deps)) {}
 QList<BlockWorkList::Task> BlockWorkList::unrecognizedBlocks(const QList<int> &pages, const TypeFilter &filter) const
 {
     QList<Task> tasks;
+    const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
     for (const int page : pages) {
         if (!m_deps.document.isValidIndex(page))
             continue;
@@ -19,7 +20,6 @@ QList<BlockWorkList::Task> BlockWorkList::unrecognizedBlocks(const QList<int> &p
         if (!docPage.recognized || docPage.result.pages.isEmpty())
             continue;
         const OcrPage &ocrPage = docPage.result.pages.first();
-        const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
         for (int i = 0; i < ocrPage.boxes.size(); ++i) {
             const BoundingBox &box = ocrPage.boxes.at(i);
             if (filter && !filter(box.label))
@@ -168,15 +168,53 @@ bool BlockWorkList::allPageVerificationSupported() const
     return false;
 }
 
+// The early-exit forms the availability predicates read: a first problem
+// block or a first block without text answers the question, no list is built.
+bool BlockWorkList::hasProblemBlocks(int pageIndex) const
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return false;
+    const DocumentPage &docPage = m_deps.document.page(pageIndex);
+    if (!docPage.recognized || docPage.result.pages.isEmpty())
+        return false;
+    const OcrPage &ocrPage = docPage.result.pages.first();
+    for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+        const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(ocrPage.boxes.at(i));
+        if (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review || status == BoxCheckStatus::InvalidSyntax)
+            return true;
+    }
+    return false;
+}
+
+bool BlockWorkList::hasUnrecognizedBlocks(int pageIndex) const
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return false;
+    const DocumentPage &docPage = m_deps.document.page(pageIndex);
+    if (!docPage.recognized || docPage.result.pages.isEmpty())
+        return false;
+    const OcrPage &ocrPage = docPage.result.pages.first();
+    const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
+    for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+        const BoundingBox &box = ocrPage.boxes.at(i);
+        if (box.checkStatus != BoxCheckStatus::NotChecked || !box.text.isEmpty() || !box.correctedText.isEmpty())
+            continue;
+        if (blockStyleForLabel(box.label, modelId).style == BlockStyle::ImagePlaceholder)
+            continue;
+        return true;
+    }
+    return false;
+}
+
 bool BlockWorkList::pageRecheckSupported(int pageIndex) const
 {
-    return !problemBlocks({pageIndex}).isEmpty();
+    return hasProblemBlocks(pageIndex);
 }
 
 bool BlockWorkList::allPageRecheckSupported() const
 {
     for (int p = 0; p < m_deps.document.pageCount(); ++p) {
-        if (!problemBlocks({p}).isEmpty())
+        if (hasProblemBlocks(p))
             return true;
     }
     return false;
@@ -186,7 +224,7 @@ bool BlockWorkList::allPageRecheckSupported() const
 // from the blocks there is nothing to transcribe for.
 bool BlockWorkList::pageBlocksRecognitionSupported(int pageIndex) const
 {
-    return !unrecognizedBlocks({pageIndex}).isEmpty();
+    return hasUnrecognizedBlocks(pageIndex);
 }
 
 }  // namespace llocr

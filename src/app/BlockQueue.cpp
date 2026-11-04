@@ -1,5 +1,7 @@
 #include "app/BlockQueue.h"
 
+#include <QTimer>
+
 #include "core/BoxTransitions.h"
 
 namespace llocr {
@@ -13,6 +15,7 @@ bool BlockQueue::run(const QList<Task> &tasks)
     if (!m_deps.gate.tryAcquire(this))
         return false;
 
+    ++m_runGeneration;
     m_error = StatusMessage();
     m_finished = false;
     beginRun();
@@ -22,8 +25,12 @@ bool BlockQueue::run(const QList<Task> &tasks)
     m_total = tasks.size();
     m_done = 0;
     m_active = true;
-    emit stateChanged();
+    // The run-start readouts (the facade resets its error line, finished flag
+    // and progress source here) must be fresh by the time the state change
+    // announces the run: the single notify carries the new run's values, as
+    // the old controller's single start-time state change did.
     emit runStarted();
+    emit stateChanged();
 
     QTimer::singleShot(0, this, [this]() { startNext(); });
     return true;
@@ -116,12 +123,14 @@ void BlockQueue::finish()
     m_boxIndex = -1;
     m_finished = true;
     finishRun();
-    emit stateChanged();
-    // The gate is released before the waiter signal: a stage that starts the
-    // next queue inside finished() must not be refused by the run that just
-    // ended.
+    // The gate is released and the waiter hears it before the state change:
+    // a stage that starts the next queue inside finished() must not be
+    // refused by the run that just ended, and the facade's finished readout
+    // (the check-finished flag) must be set by the time the final notify
+    // reaches QML.
     m_deps.gate.release(this);
     emit finished();
+    emit stateChanged();
 }
 
 }  // namespace llocr

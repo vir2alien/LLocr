@@ -4,7 +4,6 @@
 #include <QImage>
 #include <QObject>
 #include <QString>
-#include <QTimer>
 
 #include "app/BlockRunGate.h"
 #include "app/BlockWorkList.h"
@@ -52,7 +51,6 @@ public:
     bool finishedFlag() const { return m_finished; }
     int progressDone() const { return m_done; }
     int progressTotal() const { return m_total; }
-    QString errorMessage() const { return m_error.text(); }
 
 signals:
     void stateChanged();
@@ -80,6 +78,10 @@ protected:
     bool reportNewError(const StatusMessage &error);
     int taskPage() const { return m_page; }
     int taskBox() const { return m_boxIndex; }
+    // Increments with every accepted run: an asynchronous leg that outlives
+    // its run (the candidate render) compares the generation it captured and
+    // drops a late delivery instead of answering for the next run's task.
+    quint64 runGeneration() const { return m_runGeneration; }
 
 private:
     void startNext();
@@ -93,6 +95,7 @@ private:
     bool m_finished = false;
     int m_total = 0;
     int m_done = 0;
+    quint64 m_runGeneration = 0;
     StatusMessage m_error;
 };
 

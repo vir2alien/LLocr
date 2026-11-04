@@ -14,22 +14,19 @@ class BlockQueue;
 // exclusive, ADR 74).
 class BlockRunGate
 {
+    Q_DISABLE_COPY_MOVE(BlockRunGate)
+
 public:
+    BlockRunGate() = default;
     void setExternalBusy(std::function<bool()> busy);
     // Takes the gate for the queue, or refuses: the gate is held or an
     // external job is busy. A refusal is not an error — the caller reports it.
     bool tryAcquire(BlockQueue *owner);
     void release(BlockQueue *owner);
-    bool held() const;
-    // The run in flight, and the one before it: the readouts (the progress,
-    // the error line) outlive their run until the next one starts.
-    BlockQueue *holder() const;
-    BlockQueue *lastHolder() const;
 
 private:
     std::function<bool()> m_externalBusy;
     QPointer<BlockQueue> m_holder;
-    QPointer<BlockQueue> m_lastHolder;
 };
 
 }  // namespace llocr

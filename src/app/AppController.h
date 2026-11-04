@@ -563,6 +563,8 @@ private:
     // report when the collection came back empty (the already-verified and
     // the LaTeX-rejected blocks are named apart, ADR 194).
     void startVerificationOrReport(const QList<BlockWorkList::Task> &tasks, int answered, int rejected);
+    // The enabled blocks of the pages with the «nothing to check» counts.
+    QList<BlockWorkList::Task> collectEnabledWithCounts(const QList<int> &pages, int *answered, int *rejected) const;
     // The single-block queue task's guard: the page must carry a result.
     bool blockQueueTaskReady(int pageIndex) const;
     // The wiring every queue shares: the state fan-out, the readout resets on
@@ -583,12 +585,6 @@ private:
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
     BlockInspector m_inspector;
-    // Declared before the queue: a render in flight must die with its
-    // callbacks before the queue that would receive them.
-    CandidateRenderer m_candidateRenderer;
-    // The render function the decision queue calls; defaults to the real
-    // renderer and is replaced wholesale by setCandidateRenderFunction.
-    DecisionQueue::RenderCandidateFn m_candidateRenderFn;
     // The three roles run on their own queues (docs/09); the gate keeps them
     // one run at a time, and the markup pass holds it from the outside.
     BlockWorkList m_workList;
@@ -596,6 +592,13 @@ private:
     DecisionQueue m_decisionQueue;
     RecheckQueue m_recheckQueue;
     RemedyQueue m_remedyQueue;
+    // Declared after the queues: members are destroyed in reverse order, so
+    // the renderer — whose callback holds the decision queue — dies first,
+    // before the queues that would receive its callbacks.
+    CandidateRenderer m_candidateRenderer;
+    // The render function the decision queue calls; defaults to the real
+    // renderer and is replaced wholesale by setCandidateRenderFunction.
+    DecisionQueue::RenderCandidateFn m_candidateRenderFn;
     LayoutController m_layout;
     OrientationController m_orientation;
     std::function<void()> m_pendingRun;  // The run that waits for the orientation check.

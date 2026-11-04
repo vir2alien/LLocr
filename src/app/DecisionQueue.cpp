@@ -59,10 +59,13 @@ void DecisionQueue::startTask(const Task &task, const BoundingBox &box, const QI
     // model can read as a formula (ADR 237).
     const QString displayText = m_deps.displayTextProvider ? m_deps.displayTextProvider(taskPage(), taskBox()) : QString();
     const QString candidate = displayText.isEmpty() ? text : displayText;
-    m_deps.renderCandidate(candidate, [this, crop, text](bool ok, const QImage &rendered, const QString &error) {
-        // The queue may have been stopped while the render was in flight; a
-        // late image belongs to no task anymore.
-        if (!active())
+    // The render leg is the one asynchronous stretch the gate does not hold
+    // (no request is in flight), so a stop followed by a restart can slip in
+    // before the image arrives: a late render belongs to its own run's
+    // generation, not to whatever task the queue is on now.
+    const quint64 generation = runGeneration();
+    m_deps.renderCandidate(candidate, [this, crop, text, generation](bool ok, const QImage &rendered, const QString &error) {
+        if (!active() || generation != runGeneration())
             return;
         if (!ok || rendered.isNull()) {
             deliverVerdict(CheckResult{CheckStatus::Review, {}, StatusMessage::translate("DecisionQueue", "The candidate render failed: %1").arg(error), {}, -1.0});
