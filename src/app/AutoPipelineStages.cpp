@@ -88,15 +88,29 @@ QString AutoRecognitionStage::skipReason(const AutoPipelineStage::Scope &pages) 
 {
     if (m_modelAvailable && !m_modelAvailable())
         return stageText(QStringLiteral("No model for this task"));
-    if (m_workList.unrecognizedBlocks(pages).isEmpty())
+    m_cachedWork = m_workList.unrecognizedBlocks(pages);
+    m_workCached = true;
+    if (m_cachedWork.isEmpty())
         return stageText(QStringLiteral("Nothing to recognize"));
     return QString();
+}
+
+// The run stage asks the reason and starts back to back, so the collection
+// of skipReason is still fresh here.
+QList<BlockWorkList::Task> AutoRecognitionStage::collectedWork(const AutoPipelineStage::Scope &pages)
+{
+    if (m_workCached) {
+        m_workCached = false;
+        return m_cachedWork;
+    }
+    return m_workList.unrecognizedBlocks(pages);
 }
 
 void AutoRecognitionStage::start(const AutoPipelineStage::Scope &pages)
 {
     m_running = true;
-    m_queue.run(m_workList.unrecognizedBlocks(pages));
+    const QList<BlockWorkList::Task> work = collectedWork(pages);
+    m_queue.run(work);
     if (!m_queue.active()) {
         // The queue refused the list: the work was not taken, so the stage
         // failed — a silent success would leave the blocks unrecognized.
@@ -144,15 +158,27 @@ QString AutoVerificationStage::skipReason(const AutoPipelineStage::Scope &pages)
 {
     if (m_modelAvailable && !m_modelAvailable())
         return stageText(QStringLiteral("No model for this task"));
-    if (m_workList.enabledBlocks(pages).isEmpty())
+    m_cachedWork = m_workList.enabledBlocks(pages);
+    m_workCached = true;
+    if (m_cachedWork.isEmpty())
         return stageText(QStringLiteral("Nothing to check"));
     return QString();
+}
+
+QList<BlockWorkList::Task> AutoVerificationStage::collectedWork(const AutoPipelineStage::Scope &pages)
+{
+    if (m_workCached) {
+        m_workCached = false;
+        return m_cachedWork;
+    }
+    return m_workList.enabledBlocks(pages);
 }
 
 void AutoVerificationStage::start(const AutoPipelineStage::Scope &pages)
 {
     m_running = true;
-    m_queue.run(m_workList.enabledBlocks(pages));
+    const QList<BlockWorkList::Task> work = collectedWork(pages);
+    m_queue.run(work);
     if (!m_queue.active()) {
         // The queue refused the list: the work was not taken, so the stage
         // failed — a silent success would leave the blocks unjudged.
@@ -200,15 +226,27 @@ QString AutoFixStage::skipReason(const AutoPipelineStage::Scope &pages) const
 {
     if (m_modelAvailable && !m_modelAvailable())
         return stageText(QStringLiteral("No model for this task"));
-    if (m_workList.fixableBlocks(pages).isEmpty())
+    m_cachedWork = m_workList.fixableBlocks(pages);
+    m_workCached = true;
+    if (m_cachedWork.isEmpty())
         return stageText(QStringLiteral("Nothing to fix"));
     return QString();
+}
+
+QList<BlockWorkList::Task> AutoFixStage::collectedWork(const AutoPipelineStage::Scope &pages)
+{
+    if (m_workCached) {
+        m_workCached = false;
+        return m_cachedWork;
+    }
+    return m_workList.fixableBlocks(pages);
 }
 
 void AutoFixStage::start(const AutoPipelineStage::Scope &pages)
 {
     m_running = true;
-    m_queue.runFix(m_workList.fixableBlocks(pages));
+    const QList<BlockWorkList::Task> work = collectedWork(pages);
+    m_queue.runFix(work);
     if (!m_queue.active()) {
         // The queue refused the list: the work was not taken, so the stage
         // failed — a silent success would leave the blocks uncorrected.

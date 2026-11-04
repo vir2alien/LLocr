@@ -6,13 +6,13 @@
 
 #include "app/AutoPipelineStage.h"
 #include "app/BlockQueue.h"
+#include "app/BlockWorkList.h"
 #include "app/DecisionQueue.h"
 #include "app/RecheckQueue.h"
 #include "app/RemedyQueue.h"
 
 namespace llocr {
 
-class BlockWorkList;
 class LayoutController;
 
 // The markup stage: the layout pass over the scope. The prompt, the parser
@@ -65,6 +65,13 @@ private:
     BlockWorkList &m_workList;
     ModelAvailable m_modelAvailable;
     bool m_running = false;
+    // The work list collected in skipReason; the run stage asks the reason
+    // and starts back to back, so the collection happens once (docs/11 §10).
+    mutable QList<BlockWorkList::Task> m_cachedWork;
+    mutable bool m_workCached = false;
+    // The work list of skipReason, or a fresh collection when the stage was
+    // started without its reason being asked first.
+    QList<BlockWorkList::Task> collectedWork(const AutoPipelineStage::Scope &pages);
 };
 
 // The verification stage: the blocks of the enabled types that have no
@@ -94,6 +101,13 @@ private:
     BlockWorkList &m_workList;
     ModelAvailable m_modelAvailable;
     bool m_running = false;
+    // The work list collected in skipReason; the run stage asks the reason
+    // and starts back to back, so the collection happens once (docs/11 §10).
+    mutable QList<BlockWorkList::Task> m_cachedWork;
+    mutable bool m_workCached = false;
+    // The work list of skipReason, or a fresh collection when the stage was
+    // started without its reason being asked first.
+    QList<BlockWorkList::Task> collectedWork(const AutoPipelineStage::Scope &pages);
 };
 
 // The fix stage: the blocks that wait for the fixer (ADR 188).
@@ -115,6 +129,13 @@ private:
     BlockWorkList &m_workList;
     AutoVerificationStage::ModelAvailable m_modelAvailable;
     bool m_running = false;
+    // The work list collected in skipReason; the run stage asks the reason
+    // and starts back to back, so the collection happens once (docs/11 §10).
+    mutable QList<BlockWorkList::Task> m_cachedWork;
+    mutable bool m_workCached = false;
+    // The work list of skipReason, or a fresh collection when the stage was
+    // started without its reason being asked first.
+    QList<BlockWorkList::Task> collectedWork(const AutoPipelineStage::Scope &pages);
 };
 
 }  // namespace llocr
