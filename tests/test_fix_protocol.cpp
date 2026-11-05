@@ -1,20 +1,49 @@
+#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPainter>
 #include <QtTest>
 
 #include "core/CheckRequest.h"
+#include "models/CropScaling.h"
 #include "models/FixModel.h"
 
 using namespace llocr;
 
 namespace {
 
+// The first image part of the request body, decoded back: what the model
+// would see.
+QImage bodyImage(const QByteArray &body)
+{
+    const QJsonDocument document = QJsonDocument::fromJson(body);
+    const QJsonArray messages = document.object().value(QStringLiteral("messages")).toArray();
+    for (const QJsonValue &message : messages) {
+        const QJsonObject messageObject = message.toObject();
+        if (messageObject.value(QStringLiteral("role")).toString() != QLatin1String("user"))
+            continue;
+        const QJsonArray content = messageObject.value(QStringLiteral("content")).toArray();
+        for (const QJsonValue &part : content) {
+            const QJsonObject partObject = part.toObject();
+            if (!partObject.contains(QStringLiteral("image_url")))
+                continue;
+            const QString url = partObject.value(QStringLiteral("image_url")).toObject().value(QStringLiteral("url")).toString();
+            const QByteArray png = QByteArray::fromBase64(url.mid(QStringView(u"data:image/png;base64,").size()).toLatin1());
+            QImage image;
+            image.loadFromData(png, "PNG");
+            return image;
+        }
+    }
+    return QImage();
+}
+
 // The parse/build pair is the whole fix protocol surface; expose them.
 class ExposedFixModel : public FixModel
 {
 public:
     QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
+    QByteArray buildWithImage(const CheckRequest &request) { return buildRequest(request); }
     CheckResult parse(const QByteArray &responseData, const QString &candidate = {}, const QString &blockType = {}, CheckRequest::FixProtocol protocol = CheckRequest::FixProtocol::FullBlock)
     {
         return parseResponse(responseData, candidate, blockType, protocol);
@@ -105,6 +134,9 @@ private slots:
     void readEquivalentBlockConfirmsWithoutText();
     void readReviewSpeaksInTheReadersWords();
     void readTruncatedReplyIsReviewed();
+    // The glyph stage (ADR 287): the fix role's formula labels scale the crop
+    // up to the target letter height; a label outside the map passes as is.
+    void glyphStageScalesTheFormulaCrop();
 };
 
 void TestFixProtocol::fixCarriesTheCompleteBlock()
@@ -408,6 +440,36 @@ void TestFixProtocol::readTruncatedReplyIsReviewed()
     QCOMPARE(result.status, CheckStatus::Review);
     QVERIFY(result.text.isEmpty());
     QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
+}
+
+void TestFixProtocol::glyphStageScalesTheFormulaCrop()
+{
+    // A 16 px letter height (the bars measure exactly, see test_crop_scaling):
+    // the shipped fix role's 32 px target doubles the crop.
+    QImage crop(60, 40, QImage::Format_RGB32);
+    crop.fill(Qt::white);
+    QPainter painter(&crop);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::black);
+    painter.drawRect(9, 12, 6, 16);
+    painter.drawRect(27, 12, 6, 16);
+    painter.drawRect(45, 12, 6, 16);
+    painter.end();
+    QCOMPARE(cropGlyphHeight(crop), 16);
+
+    ExposedFixModel model;
+    CheckRequest formula = fixRequest();
+    formula.image = crop;
+    formula.blockType = QStringLiteral("equation");
+    const QImage scaled = bodyImage(model.buildWithImage(formula));
+    QVERIFY(!scaled.isNull());
+    QCOMPARE(scaled.size(), QSize(120, 80));
+    QCOMPARE(cropGlyphHeight(scaled), 32);
+
+    // The map names the formula labels only: a text block keeps its bytes.
+    CheckRequest text = fixRequest();
+    text.image = crop;
+    QCOMPARE(bodyImage(model.buildWithImage(text)).size(), crop.size());
 }
 
 QTEST_MAIN(TestFixProtocol)

@@ -28,6 +28,26 @@ The `pageOcr` / `rawPageOcr` single-pass page tasks were cut (ADR 252) — a
 page's text is assembled from block recognition, after either manual markup
 (`layout`) or a model markup pass.
 
+### The crop the model sees (ADR 287)
+
+The block tasks send a crop of the block's box, cut from the page render
+(300 DPI for PDF). Before the image is encoded into the request, the model
+role's crop policy may resample it (`src/models/CropScaling.{h,cpp}`):
+
+- the **glyph stage** (fix/read): `cropGlyphHeightByBlock` maps block labels
+  to a target letter height — the measured letter height of the crop. A crop
+  with smaller letters is stretched up, never down; labels outside the map
+  pass untouched. The shipped qwen3.5 fix roles target 32 px for
+  `equation`/`formula`: at the 300-DPI crop's ~18 px letters small print
+  loses accents (an overline), at 32 px it reads cleanly.
+- the **vision-token budget** (blockRecognition): `cropMaxVisionTokens`
+  bounds the crop's estimated prompt tokens; a crop over the budget shrinks
+  until it fits. mineru ships 3072 — a dense table at the page's resolution
+  would overflow the slot the server caps at `n_ctx_train`.
+
+Both stages are profile data: a role without the fields sends the crop
+exactly as before, and decision/layout are untouched.
+
 ## 2. Model → task matrix
 
 Nine profiles ship in `resources/profiles/models/`; cut profiles live in
@@ -222,6 +242,7 @@ fix → decision of the corrected); see `docs/11-auto-pipeline.md`.
 | Models window, install queue | `src/runtime/ModelInstaller.{h,cpp}`, `src/runtime/ModelQuantModel.cpp`, `src/runtime/ModelInstallTransaction.cpp` |
 | Block state, transitions | `src/core/OcrResult.h`, `src/core/BoxTransitions.{h,cpp}` |
 | Formula canonical form / syntax | `src/core/LatexText.{h,cpp}` |
+| Crop preprocessing (glyph, token budget) | `src/models/CropScaling.{h,cpp}` |
 | Fix + read clients | `src/app/FixController.{h,cpp}`, `src/models/FixModel.cpp` |
 | Decision client | `src/app/DecisionController.{h,cpp}`, `src/models/DecisionModel.cpp` |
 | Candidate render for visual diff | `src/app/CandidateRenderer.cpp` |

@@ -18,6 +18,7 @@ public:
     QFuture<CheckResult> check(const CheckRequest &request, const ConnectionConfig &config);
 
 protected:
+    static QByteArray buildRequest(const CheckRequest &request);
     static QByteArray buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl);
     static CheckResult parseResponse(const QByteArray &responseData);
 };

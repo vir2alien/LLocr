@@ -26,14 +26,14 @@ inside an MSVC x64 prompt; Qt DLLs must be on `PATH` before `ctest`.
 `--disable-gpu --no-sandbox --single-process`; on some machines its GPU
 initialization aborts (environmental, not a regression).
 
-### The 60 targets, by domain
+### The 61 targets, by domain
 
 | Domain | Targets |
 | --- | --- |
 | Parsers | `test_det_parser` |
 | Config layer | `test_profile_storage`, `test_secret_store` |
 | App layer (pipeline, queue, availability) | `test_runtime_tab_external_qml`, `test_verification_prompts`, `test_auto_pipeline`, `test_verification_queue`, `test_availability_presenter` |
-| Models (adapters, decision, fix/read) | `test_ocr_models`, `test_pagemodel`, `test_page_edit_store`, `test_box_model`, `test_decision_model`, `test_fix_protocol`, `test_fix_diff_gate`, `test_external_runtime` |
+| Models (adapters, decision, fix/read) | `test_ocr_models`, `test_crop_scaling`, `test_pagemodel`, `test_page_edit_store`, `test_box_model`, `test_decision_model`, `test_fix_protocol`, `test_fix_diff_gate`, `test_external_runtime` |
 | Document, pages, layout, orientation | `test_page_status`, `test_layout`, `test_project_store`, `test_document_model`, `test_page_rotation`, `test_page_orientation`, `test_djvu_document`* , `test_app_import` |
 | Import, settings, profiles | `test_settings_store`, `test_request_profile`, `test_request_budget`, `test_launch_profile`, `test_launch_config` |
 | QML (launch tab, task table, wizard) | `test_launch_tab_qml`, `test_task_models_table_qml`, `test_setup_wizard_qml` |

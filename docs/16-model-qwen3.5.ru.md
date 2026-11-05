@@ -205,6 +205,17 @@ JSON-поле верхнего уровня, плюс два подставле�
 | `max_tokens` по блоку | page_number 64, header/footer 256, seal/title/key_value 512, caption/footnote/ref_text 1024, text/abstract/list 2048, code/equation 4096, table 16384 | `fix-requests.json → maxOutputByBlock` (алиасы: formula→equation, reference→ref_text, image/table_caption→caption, figure/table_footnote→footnote); тип без записи сохраняет дефолт 8192. Весь блок едет в ответе, поэтому бюджет обязан его вмещать |
 | Бюджет рассуждений (`reasoning_budget_tokens`) | off / 512 / 1024 / 1536 | глобальные настройки `check/fixReasoningBudgetTokens` (исправление) и `check/readReasoningBudgetTokens` (чтение), дефолт off — подставляется в каждый запрос, без перезапуска сервера (ADR 268) |
 | Нижняя граница токенов изображения | 1024 | `--image-min-tokens` (§3) |
+| Кегль кропа формулы | 32 px для `equation`/`formula` | `roles.fix.cropGlyphHeightByBlock` (ADR 287) |
+
+Кроп запроса fix несёт целевой кегль (`cropGlyphHeightByBlock`, ADR 287):
+перед кодированием изображения измеряется высота букв кропа (медиана
+«буквенных» связных компонент), и кроп с меньшими буквами растягивается до
+цели. Цель 32 px — масштаб, измеренный экспериментами с чтением: на кегле
+~18 px (кроп 300 DPI) мелкая печать теряет акценты (чёрту над τ), при
+32–33 px читается чисто. В карте только метки формул — таблица или текст
+проходят без изменений, и масштабирование только вверх: кроп, уже достигший
+цели, сохраняет свои байты. Оба протокола (исправление и чтение) делят одну
+модель, поэтому масштаб получают оба.
 
 Как вычисляется бюджет запроса (`src/core/RequestBudget.cpp`,
 `FixController::fixBlock`): промпт оценивается как

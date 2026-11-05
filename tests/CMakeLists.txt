@@ -230,6 +230,8 @@ target_link_libraries(test_fix_protocol PRIVATE
     Qt6::Test
     llocr_models
 )
+# The glyph stage reads the shipped fix role's cropGlyphHeightByBlock.
+llocr_add_profile_resources(test_fix_protocol)
 add_test(NAME test_fix_protocol COMMAND test_fix_protocol)
 
 qt_add_executable(test_fix_diff_gate test_fix_diff_gate.cpp)
@@ -821,6 +823,15 @@ target_link_libraries(test_latex_text PRIVATE
     llocr_core
 )
 add_test(NAME test_latex_text COMMAND test_latex_text)
+
+# ---- Crop preprocessing: the letter height, the vision-token budget (ADR 287)
+qt_add_executable(test_crop_scaling test_crop_scaling.cpp)
+
+target_link_libraries(test_crop_scaling PRIVATE
+    Qt6::Test
+    llocr_models
+)
+add_test(NAME test_crop_scaling COMMAND test_crop_scaling)
 
 # ---- Log view sync: incremental QTextDocument mirroring (QML-I3) ------------
 qt_add_executable(test_log_document_sync test_log_document_sync.cpp)

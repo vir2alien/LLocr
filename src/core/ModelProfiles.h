@@ -37,6 +37,8 @@ public:
         QHash<QString, QString> blockAliases;         // alias -> canonical blockPrompts key
         bool promptBeforeImage = false;               // wire order: prompt text first, then the image (LFM2.5 trains text-then-image)
         int imageLongestEdge = 0;                     // 0 = send the page as-is; >0 = downscale to fit (LightOnOCR-3 trains on 2048 px pages)
+        int cropMaxVisionTokens = 0;                  // 0 = send the crop as-is; >0 = shrink the crop when its estimated vision-token count exceeds the budget (ADR 287)
+        QHash<QString, int> cropGlyphHeights;         // cropGlyphHeightByBlock: label -> target letter height in px; labels outside the map pass untouched (ADR 287)
         QString promptProfile;                        // id of the prompt profile this role takes its texts from
         bool reasoningSupported = false;              // the model can think: the fix task may spend a reasoning budget
         QString readSystemPrompt;                     // read-task system prompt; empty = the shared reader profile's (ADR 267)

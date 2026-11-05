@@ -15,6 +15,16 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   New LLMs are added as new profile JSONs — a new parser class only for a new
   reply shape. The removed models' adapters went to the archive with them
   (ADR 251).
+- **CropScaling** ✅ (`src/models/CropScaling.{h,cpp}`): the request-path crop
+  preprocessing (ADR 287). `policyForRole` reads the role's
+  `cropMaxVisionTokens` and `cropGlyphHeightByBlock`; `applyCropScaling`
+  measures the crop's letter height (grayscale, Otsu split, 8-connected
+  components) and stretches formula crops up to the fix roles' 32 px target,
+  and shrinks a crop whose estimated vision-token count (patch 14, 2×2
+  merge, calibrated on MinerU) exceeds the blockRecognition budget. Both
+  stages are per-role profile data, off where the profile does not name
+  them; `BlockRecognitionModel::buildRequest` and `FixModel::buildRequest`
+  apply them on the worker thread before the image is encoded.
 - **LlamaClient** ✅ (`core/LlamaClient.h`): thin transport — pre-flights the
   TCP connect (connection timeout), POSTs JSON to `/v1/chat/completions` with
   an optional bearer token, caps the whole request with the response timeout

@@ -1161,6 +1161,31 @@ appendix at the end of this file.
   `checkRunning`/`stopMode`, so nothing observes the difference except a
   sub-second stop-button wind-down flicker accepted for the simpler
   semantics.
+- **287.** Crops are preprocessed before they reach the model, and the policy
+  is profile data. `models/CropScaling.{h,cpp}` (`llocr_models`) carries two
+  independent stages. The **glyph stage** (fix/read): the role's
+  `cropGlyphHeightByBlock` maps block labels to a target letter height — the
+  median height of the letter-like connected components of the crop
+  (`cropGlyphHeight`: grayscale, Otsu split, 8-connected components); a crop
+  whose letters measure smaller is stretched (Smooth) up to the target, never
+  down, and labels outside the map pass untouched. Shipped at 32 px for
+  `equation`/`formula` on the two qwen3.5 fix roles: the scale experiments
+  measured that small print loses accents (an overline) at the 300-DPI
+  crop's ~18 px letters and reads cleanly at 32–33 px. The **vision-token
+  budget stage** (blockRecognition): the role's `cropMaxVisionTokens` — when
+  the crop's estimated token count exceeds the budget, the crop shrinks (by
+  area, converging, because the patch grid rounds every edge up) until it
+  fits. The estimate is the dynamic-resolution geometry
+  (`estimateVisionTokens`: patch 14, 2×2 merge — calibrated on MinerU2.5-Pro
+  prompt tokens within ~1%); mineru ships 3072, which keeps a dense table's
+  prompt inside the slot the server caps at `n_ctx_train`. Both stages run in
+  the request build (`BlockRecognitionModel::buildRequest`,
+  `FixModel::buildRequest` — on the worker thread, before the image is
+  encoded, where `imageLongestEdge` already applies), and both are off for
+  the profiles that do not name them, which is the behavior every other
+  model keeps. Known limit: a dense table's reply length is bounded by its
+  content, not by the crop, so the budget guards the prompt, not the
+  generation time.
 
 ### UI
 

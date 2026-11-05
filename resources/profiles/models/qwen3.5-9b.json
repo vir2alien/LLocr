@@ -65,6 +65,10 @@
       "promptProfile": "fix-requests",
       "reasoning": true,
       "maxOutput": 8192,
+      "cropGlyphHeightByBlock": {
+        "equation": 32,
+        "formula": 32
+      },
       "launch": [
         {
           "order": 1,

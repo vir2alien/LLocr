@@ -214,6 +214,7 @@ pipeline.
 | `max_tokens`, blockRecognition | 8192 | `roles.blockRecognition.maxOutput` |
 | image tokens, layout page | 1369 (the 37² grid of the 1036² input) | `memory.visionTokens`, used by the memory estimate (`ModelProfiles::visionTokensFor`) |
 | image tokens, block crop | ~512 (the app's default estimate) | `kDefaultCropTokens` — the profile sets no `image-min-tokens` |
+| crop vision-token budget | 3072 | `roles.blockRecognition.cropMaxVisionTokens` (ADR 287) |
 
 The role's `maxOutput` is injected into every request as `max_tokens` by
 the per-task request profile (`ModelProfiles::requestWithMaxOutput`).
@@ -222,6 +223,16 @@ Neither role declares reasoning, so the budget travels unchanged — the
 the server's context window itself: a 1036² page (~1369 vision tokens)
 plus a 4096-token answer fits 16384 with room to spare; the `cpu` profile
 (8192) leaves less headroom.
+
+The block crop carries a real vision-token budget (`cropMaxVisionTokens`,
+ADR 287): the model's dynamic resolution makes the prompt grow with the
+crop's area (patch 14, 2×2 merge — the app's estimate tracks the measured
+prompt tokens within ~1%), and a dense table at the page's 300 DPI can push
+the prompt past the slot the server actually holds (`n_ctx_train` caps the
+declared `--ctx-size` to 8192). A crop over the 3072-token budget shrinks
+until it fits, so the request completes instead of wedging the slot. The
+budget bounds the prompt, not the generation: a dense table's OTSL reply is
+as long as the table is, so it still takes the time it takes.
 
 ## 6. Known limitations
 

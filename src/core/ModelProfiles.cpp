@@ -242,6 +242,10 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.isDefault = roleObject.value(QStringLiteral("default")).toBool(false);
         role.promptBeforeImage = roleObject.value(QStringLiteral("promptBeforeImage")).toBool(false);
         role.imageLongestEdge = roleObject.value(QStringLiteral("imageLongestEdge")).toInt(0);
+        role.cropMaxVisionTokens = roleObject.value(QStringLiteral("cropMaxVisionTokens")).toInt(0);
+        const QJsonObject glyphHeights = roleObject.value(QStringLiteral("cropGlyphHeightByBlock")).toObject();
+        for (auto glyph = glyphHeights.constBegin(); glyph != glyphHeights.constEnd(); ++glyph)
+            role.cropGlyphHeights.insert(glyph.key(), glyph.value().toInt(0));
         role.matchThreshold = roleObject.value(QStringLiteral("matchThreshold")).toDouble(-1.0);
         const QJsonObject thresholds = roleObject.value(QStringLiteral("matchThresholdByBlock")).toObject();
         for (auto threshold = thresholds.constBegin(); threshold != thresholds.constEnd(); ++threshold)

@@ -7,17 +7,29 @@
 
 #include "core/ModelProfiles.h"
 #include "models/ChatExchange.h"
+#include "models/CropScaling.h"
 #include "models/ImageDataUrl.h"
 
 namespace llocr {
 
 QFuture<CheckResult> BlockRecognitionModel::check(const CheckRequest &request, const ConnectionConfig &config)
 {
-    return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
+    return runChatExchange<CheckResult>([request]() { return buildRequest(request); },
                                         config,
                                         m_activeClient,
                                         [](const QByteArray &body) { return parseResponse(body); },
                                         QCoreApplication::translate("BlockRecognitionModel", "Failed to encode the block image"));
+}
+
+QByteArray BlockRecognitionModel::buildRequest(const CheckRequest &request)
+{
+    // The vision-token budget (ADR 287): a dense table at the page's
+    // resolution can overflow the slot the server caps at, so the crop
+    // shrinks only when the estimate exceeds the budget the profile sets.
+    QImage image = request.image;
+    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("blockRecognition")))
+        image = applyCropScaling(image, request.blockType, policyForRole(role));
+    return buildRequestBody(request, encodeImageDataUrl(image));
 }
 
 QByteArray BlockRecognitionModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)

@@ -149,6 +149,7 @@
       "default": true,
       "parser": "raw",
       "maxOutput": 8192,
+      "cropMaxVisionTokens": 3072,
       "systemPrompt": "You are a helpful assistant.",
       "blockPrompts": {
         "text": "\nText Recognition:",

@@ -11,6 +11,7 @@
 #include "core/ModelProfiles.h"
 #include "core/RequestProfile.h"
 #include "models/ChatExchange.h"
+#include "models/CropScaling.h"
 #include "models/FixDiffGate.h"
 #include "models/ImageDataUrl.h"
 
@@ -148,7 +149,7 @@ QFuture<CheckResult> FixModel::check(const CheckRequest &request, const Connecti
 
 QFuture<CheckResult> FixModel::exchange(const CheckRequest &request, const ConnectionConfig &config, const std::shared_ptr<QByteArray> &rawBody)
 {
-    return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
+    return runChatExchange<CheckResult>([request]() { return buildRequest(request); },
                                         config,
                                         m_activeClient,
                                         [request, rawBody](const QByteArray &body) {
@@ -157,6 +158,18 @@ QFuture<CheckResult> FixModel::exchange(const CheckRequest &request, const Conne
                                             return parseResponse(body, request.recognizedText, request.blockType, request.fixProtocol);
                                         },
                                         QCoreApplication::translate("FixModel", "Failed to encode the block image"));
+}
+
+QByteArray FixModel::buildRequest(const CheckRequest &request)
+{
+    // The glyph stage (ADR 287): the fix role names the block labels whose
+    // letter height it wants at the target (32 px for formulas — small print
+    // is what the fixer and the reader misread); every other block passes
+    // untouched. Both protocols share the model, so both get the scale.
+    QImage image = request.image;
+    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("fix")))
+        image = applyCropScaling(image, request.blockType, policyForRole(role));
+    return buildRequestBody(request, encodeImageDataUrl(image));
 }
 
 QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)

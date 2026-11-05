@@ -189,6 +189,34 @@ private slots:
         }
     }
 
+    // ADR 287: the crop preprocessing ships as profile data. The block task
+    // carries the vision-token budget; the fix roles measured at the 32 px
+    // letter height carry the glyph map. A role without the fields keeps both
+    // stages off.
+    void cropScalingShipsAsProfileData()
+    {
+        const ModelProfiles::Role *mineru = ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("blockRecognition"));
+        QVERIFY(mineru);
+        QCOMPARE(mineru->cropMaxVisionTokens, 3072);
+        QVERIFY(mineru->cropGlyphHeights.isEmpty());
+
+        const QStringList scaledFixRoles = {QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")};
+        for (const QString &id : scaledFixRoles) {
+            const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
+            QVERIFY2(fix, qPrintable(id));
+            QCOMPARE(fix->cropMaxVisionTokens, 0);
+            QCOMPARE(fix->cropGlyphHeights.value(QStringLiteral("equation")), 32);
+            QCOMPARE(fix->cropGlyphHeights.value(QStringLiteral("formula")), 32);
+            QVERIFY(!fix->cropGlyphHeights.contains(QStringLiteral("text")));
+        }
+
+        // A role the feature was not measured for ships neither field.
+        const ModelProfiles::Role *glm = ModelProfiles::roleFor(QStringLiteral("glm-ocr"), QStringLiteral("blockRecognition"));
+        QVERIFY(glm);
+        QCOMPARE(glm->cropMaxVisionTokens, 0);
+        QVERIFY(glm->cropGlyphHeights.isEmpty());
+    }
+
     // The read task's prompts are one profile shared by every model: the
     // system prompt, a prompt per block type and a budget per block type.
     void readPromptProfileIsSharedAndComplete()

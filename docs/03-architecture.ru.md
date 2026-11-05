@@ -17,7 +17,8 @@
      │                  SingleInstanceGuard · LaunchProfileStore
      │           ┌──────┴───────┐
    llocr_models      llocr_parsers
-   OcrModel adapters  IOutputParser · one parser per model · BlockStyle
+   OcrModel adapters ·  IOutputParser · one parser per model · BlockStyle
+   CropScaling
      │           └──────┬───────┘
    llocr_config       SettingsStore · RequestProfileStore · ProfileStorage ·
      │                RequestParametersModel · RuntimePaths

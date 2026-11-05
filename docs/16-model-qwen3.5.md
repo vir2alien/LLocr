@@ -203,6 +203,18 @@ the price of speed.
 | `max_tokens` per block | page_number 64, header/footer 256, seal/title/key_value 512, caption/footnote/ref_text 1024, text/abstract/list 2048, code/equation 4096, table 16384 | `fix-requests.json → maxOutputByBlock` (aliases: formula→equation, reference→ref_text, image/table_caption→caption, figure/table_footnote→footnote); a type without an entry keeps the 8192 default. The whole block travels in the reply, so the budget must fit it |
 | Reasoning budget (`reasoning_budget_tokens`) | off / 512 / 1024 / 1536 | global settings `check/fixReasoningBudgetTokens` (fix) and `check/readReasoningBudgetTokens` (read), default off — injected per request, no server restart (ADR 268) |
 | Image token floor | 1024 | `--image-min-tokens` (§3) |
+| Formula crop letter height | 32 px for `equation`/`formula` | `roles.fix.cropGlyphHeightByBlock` (ADR 287) |
+
+The fix request's crop carries a glyph target (`cropGlyphHeightByBlock`,
+ADR 287): before the image is encoded, the crop's letter height is measured
+(the median of its letter-like connected components) and a crop with
+smaller letters is stretched up to the target. The 32 px target is the
+scale the read experiments measured: at the 300-DPI crop's ~18 px letters
+small print loses accents (an overline), at 32–33 px it reads cleanly.
+Only the formula labels are in the map — a table or a text block passes
+untouched, and only upward scaling happens, so a crop already at the target
+keeps its bytes. Both protocols (fix and read) share the model, so both get
+the scale.
 
 How the request budget is computed (`src/core/RequestBudget.cpp`,
 `FixController::fixBlock`): the prompt is estimated as
