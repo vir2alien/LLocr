@@ -189,7 +189,10 @@ void verdictApplied(BoundingBox &box, const CheckResult &result)
 
 void fixApplied(BoundingBox &box, const QString &text)
 {
-    box.correctedText = text;
+    // The canonical form is what every layer of a formula block carries
+    // (ADR 194): the fixer answers in spaced LaTeX, and the read protocol
+    // lands here too — both remedies write the bytes a recognition would.
+    box.correctedText = LatexText::isMathLabel(box.label) ? LatexText::canonical(text) : text;
     box.correctedCheckStatus = BoxCheckStatus::NotChecked;
     box.correctedConfidence = -1.0;
     box.fixStatus = BoxFixStatus::Fixed;

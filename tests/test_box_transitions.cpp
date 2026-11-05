@@ -531,6 +531,39 @@ private slots:
         QCOMPARE(box.syntaxProblem, LatexText::Problem::None);
     }
 
+    // The remedy answers in spaced LaTeX, and the correction layer carries
+    // the canonical form like the text layer does (ADR 194). A non-math
+    // label keeps the reply's own bytes.
+    void aRemedyAnswerLandsCanonicalOnAMathLabel()
+    {
+        BoundingBox equation = correctedBox();
+        equation.label = QStringLiteral("equation");
+        BoxTransitions::fixApplied(equation, QStringLiteral("w _ { 1 } = 0.5"));
+        QCOMPARE(equation.correctedText, QStringLiteral("w _{1} = 0.5"));
+
+        BoundingBox plain = correctedBox();
+        BoxTransitions::fixApplied(plain, QStringLiteral("w _ { 1 } = 0.5"));
+        QCOMPARE(plain.correctedText, QStringLiteral("w _ { 1 } = 0.5"));
+    }
+
+    // The read protocol writes through the same transitions: over a
+    // recognized block the answer is a canonical correction, into a block
+    // nobody recognized it is a canonical recognition.
+    void aReadAnswerLandsCanonicalOnBothLayers()
+    {
+        BoundingBox read = correctedBox();
+        read.label = QStringLiteral("formula");
+        BoxTransitions::readApplied(read, QStringLiteral("\\mathrm { Bi } _ { 1 }"));
+        QCOMPARE(read.correctedText, QStringLiteral("\\mathrm{Bi} _{1}"));
+        QCOMPARE(read.fixStatus, BoxFixStatus::ReadFixed);
+
+        BoundingBox fresh;
+        fresh.label = QStringLiteral("equation");
+        BoxTransitions::readApplied(fresh, QStringLiteral("R _ { e } = \\frac { vD } { \\nu }"));
+        QCOMPARE(fresh.text, QStringLiteral("R _{e} = \\frac{vD} {\\nu}"));
+        QVERIFY(fresh.correctedText.isEmpty());
+    }
+
     // The syntax verdict is derived from the text: a project written before
     // the rules changed carries the old verdict, and it is recomputed when
     // the project opens (ADR 194).
