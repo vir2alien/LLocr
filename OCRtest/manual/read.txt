@@ -1,0 +1,47 @@
+# Ручной стенд READ. Один параметр на строку: «ключ = значение».
+# Значение продолжается на следующих строках с отступом.
+# Строки с # и пустые пропускаются. Относительные пути — от папки конфига.
+# Смена параметров блока «Сервер»/«Запуск» пересапает сервер при следующем
+# запуске; правка запросов идёт без пересапа. Флаг --restart пересапает принудительно.
+
+# --- Сервер ---
+runtime    = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\runtime\llama.cpp-b11946-vulkan-win-x64\llama-server.exe
+model      = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\Qwen3.5-4B-Q8_0.gguf
+mmproj     = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\mmproj-F16.gguf
+host       = 127.0.0.1
+port       = 8123
+wait       = 300
+timeout    = 600
+max_tokens = 4096
+
+# --- Запуск llama-server: по одному флагу на строку (флаг и значение через пробел) ---
+launch = --n-gpu-layers 99
+         --flash-attn on
+         --ctx-size 8192
+         --parallel 1
+         --jinja
+         --reasoning-budget 0
+         --temp 0
+         --no-warmup
+         --spec-type draft-mtp
+         --spec-draft-n-max 4
+         --image-min-tokens 256
+         --image-max-tokens 2048
+
+# --- Запрос ---
+# Системный запрос: транскрипция формулы (тот, что сработал в эксперименте).
+system = You transcribe mathematical expressions from images into LaTeX. Treat the image as the source of truth. Copy exactly what is visible. Do not solve, simplify, correct, or complete the expression using mathematical expectations. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. Ignore equation numbers and surrounding prose. Return only LaTeX, without Markdown fences, explanations, or $ delimiters. If a symbol is genuinely unreadable, use \text{[?]} at that position instead of inventing a symbol.
+
+# Типовой запрос блока (пустое значение = отправить только изображение).
+prompt = Formula. Output the complete LaTeX from the image. Keep base versus index versus exponent, script, italic versus upright versus bold, operator variant and brackets. Never simplify or restructure.
+
+# --- Кроп изображения ---
+image = C:\Users\gladskih\Documents\GitHub\LLocr\tmp\out\crops\p02_b05_equation.png
+
+# --- Параметры тела запроса: имя = json-значение, по одному на строку ---
+params = temperature = 0.0
+         top_p = 1.0
+         top_k = 0
+         min_p = 0.0
+         repeat_penalty = 1.0
+         presence_penalty = 0.0

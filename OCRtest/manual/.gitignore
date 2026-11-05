@@ -1,0 +1,5 @@
+__pycache__/
+.server_state.txt
+server.log
+last_read.txt
+last_fix.txt
