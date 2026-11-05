@@ -5,11 +5,11 @@
 # запуске; правка запросов идёт без пересапа. Флаг --restart пересапает принудительно.
 
 # --- Сервер ---
-runtime    = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\runtime\llama.cpp-b11946-vulkan-win-x64\llama-server.exe
-model      = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\Qwen3.5-4B-Q8_0.gguf
-mmproj     = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\mmproj-F16.gguf
+runtime    = C:\AI\llama.cpp\build-cuda\bin\Release\llama-server.exe
+model      = C:\Users\Dmitriy\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\Qwen3.5-4B-Q6_K.gguf
+mmproj     = C:\Users\Dmitriy\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\mmproj-F16.gguf
 host       = 127.0.0.1
-port       = 8123
+port       = 8080
 wait       = 300
 timeout    = 600
 max_tokens = 4096
@@ -20,7 +20,8 @@ launch = --n-gpu-layers 99
          --ctx-size 8192
          --parallel 1
          --jinja
-         --reasoning-budget 0
+         --reasoning-budget 8
+         --reasoning on
          --temp 0
          --no-warmup
          --spec-type draft-mtp
@@ -29,14 +30,14 @@ launch = --n-gpu-layers 99
          --image-max-tokens 2048
 
 # --- Запрос ---
-# Системный запрос: транскрипция формулы (тот, что сработал в эксперименте).
+# Системный запрос:
 system = You transcribe mathematical expressions from images into LaTeX. Treat the image as the source of truth. Copy exactly what is visible. Do not solve, simplify, correct, or complete the expression using mathematical expectations. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. Ignore equation numbers and surrounding prose. Return only LaTeX, without Markdown fences, explanations, or $ delimiters. If a symbol is genuinely unreadable, use \text{[?]} at that position instead of inventing a symbol.
 
 # Типовой запрос блока (пустое значение = отправить только изображение).
-prompt = Formula. Output the complete LaTeX from the image. Keep base versus index versus exponent, script, italic versus upright versus bold, operator variant and brackets. Never simplify or restructure.
+prompt = Transcribe this formula into LaTeX.
 
 # --- Кроп изображения ---
-image = C:\Users\gladskih\Documents\GitHub\LLocr\tmp\out\crops\p02_b05_equation.png
+image = C:\Projects\Source\LLocr\OCRtest\manual\crops\5.png
 
 # --- Параметры тела запроса: имя = json-значение, по одному на строку ---
 params = temperature = 0.0
