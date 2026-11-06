@@ -9,9 +9,9 @@
 # запуске; правка запросов идёт без пересапа. Флаг --restart пересапает принудительно.
 
 # --- Сервер ---
-runtime    = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\runtime\llama.cpp-b11946-vulkan-win-x64\llama-server.exe
-model      = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\Qwen3.5-4B-Q8_0.gguf
-mmproj     = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\mmproj-F16.gguf
+runtime    = /Users/gladskikh/LLM/llama.cpp/build/bin/llama-server
+model      = /Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__Qwen3.5-9B-MTP-GGUF/Qwen3.5-9B-UD-Q4_K_XL.gguf
+mmproj     = /Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__Qwen3.5-9B-MTP-GGUF/mmproj-F16.gguf
 host       = 127.0.0.1
 port       = 8080
 wait       = 300
@@ -24,7 +24,8 @@ launch = --n-gpu-layers 99
          --ctx-size 8192
          --parallel 1
          --jinja
-         --reasoning-budget 256
+         --reasoning off
+         --reasoning-budget 0
          --temp 0
          --no-warmup
          --spec-type draft-mtp
@@ -41,7 +42,7 @@ system = You are an OCR agent.
 prompt = Transcribe mathematical expression from the image into LaTeX. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nFor a readable expression, output FIX on the first line, followed by the complete LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf a symbol is genuinely unreadable, output only REVIEW.\n\nTranscribe mathematical expression from the image into LaTeX. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nFor a readable expression, output FIX on the first line, followed by the complete LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf a symbol is genuinely unreadable, output only REVIEW.
 
 # --- Кроп изображения ---
-image = C:\Users\gladskih\Documents\GitHub\LLocr\OCRtest\manual\crops\5.png
+image = /Users/gladskikh/Git/LLocr/OCRtest/manual/crops/5.png
 
 # --- Параметры тела запроса: имя = json-значение, по одному на строку ---
 params = temperature = 0.0

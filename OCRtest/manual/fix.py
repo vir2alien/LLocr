@@ -3,7 +3,7 @@
 """Ручной стенд FIX: читает конфиг fix.txt, поднимает/переиспользует
 llama-server, отправляет кроп + кандидата и печатает вердикт OK/FIX/REVIEW.
 
-usage: py fix.py [config.txt] [--restart]
+usage: py fix.py [--имя-конфига.txt | config.txt] [--restart]
 Части запроса как в FixModel для qwen: типовой промпт, изображение, кандидат.
 """
 

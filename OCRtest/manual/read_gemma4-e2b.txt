@@ -1,0 +1,48 @@
+# Ручной стенд READ. Один параметр на строку: «ключ = значение».
+# Значение продолжается на следующих строках с отступом.
+# Перенос строки в system/prompt — только строка с отступом; литерал \n
+# не превращается в перенос (в LaTeX \neq, \nu начинаются с \n).
+# В params значения — JSON: \n внутри JSON-строки это настоящий перенос,
+# а JSON-значение можно переносить на строки с отступом.
+# Строки с # и пустые пропускаются. Относительные пути — от папки конфига.
+# Смена параметров блока «Сервер»/«Запуск» пересапает сервер при следующем
+# запуске; правка запросов идёт без пересапа. Флаг --restart пересапает принудительно.
+
+# --- Сервер ---
+runtime    = /Users/gladskikh/LLM/llama.cpp/build/bin/llama-server
+model      = /Users/gladskikh/LLM/models/GGUF/gemma-4-E2B-it-GGUF/gemma-4-E2B-it-UD-Q8_K_XL.gguf
+mmproj     = /Users/gladskikh/LLM/models/GGUF/gemma-4-E2B-it-GGUF/mmproj-F16.gguf
+host       = 127.0.0.1
+port       = 8080
+wait       = 300
+timeout    = 600
+max_tokens = 4096
+
+# --- Запуск llama-server: по одному флагу на строку (флаг и значение через пробел) ---
+launch = --n-gpu-layers 99
+         --flash-attn on
+         --ctx-size 8192
+         --parallel 1
+         --jinja
+         --reasoning on
+         --reasoning-budget 256
+         --temp 0
+         --no-warmup
+
+# --- Запрос ---
+# Системный запрос:
+system = You correct one block of a document from an image. The image is the only source of truth: write what it shows, not what it usually looks like.\n\nPreserve script, case, face (upright/italic/bold), position (baseline/subscript/superscript, nesting depth), and bracket pairing. Read glyphs at the printed size; never guess small print.\n\nAdd nothing. Complete nothing you cannot fully read. Do not translate, reflow, simplify or normalize.\n\nAnswer with exactly one of:\n\nREVIEW\n\nor\n\nFIX\n<complete corrected block>\n\nUse REVIEW only when a character is cut off, covered or fully unreadable. If it is visible, read it. No explanation, no code fence.
+
+# Типовой запрос блока (пустое значение = отправить только изображение).
+prompt = Formula. Output the complete LaTeX from the image. Keep base versus index versus exponent, script, italic versus upright versus bold, operator variant and brackets. Never simplify or restructure.
+
+# --- Кроп изображения ---
+image = /Users/gladskikh/Git/LLocr/OCRtest/manual/crops/5.png
+
+# --- Параметры тела запроса: имя = json-значение, по одному на строку ---
+params = temperature = 0.0
+         top_p = 1.0
+         top_k = 0
+         min_p = 0.0
+         repeat_penalty = 1.0
+         presence_penalty = 0.0

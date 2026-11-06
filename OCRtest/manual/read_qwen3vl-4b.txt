@@ -1,0 +1,51 @@
+# Ручной стенд READ. Один параметр на строку: «ключ = значение».
+# Значение продолжается на следующих строках с отступом.
+# Перенос строки в system/prompt — только строка с отступом; литерал \n
+# не превращается в перенос (в LaTeX \neq, \nu начинаются с \n).
+# В params значения — JSON: \n внутри JSON-строки это настоящий перенос,
+# а JSON-значение можно переносить на строки с отступом.
+# Строки с # и пустые пропускаются. Относительные пути — от папки конфига.
+# Смена параметров блока «Сервер»/«Запуск» пересапает сервер при следующем
+# запуске; правка запросов идёт без пересапа. Флаг --restart пересапает принудительно.
+
+# --- Сервер ---
+runtime    = /Users/gladskikh/LLM/llama.cpp/build/bin/llama-server
+model      = /Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/Qwen__Qwen3-VL-8B-Instruct-GGUF/Qwen3VL-8B-Instruct-Q4_K_M.gguf
+mmproj     = /Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/Qwen__Qwen3-VL-8B-Instruct-GGUF/mmproj-Qwen3VL-8B-Instruct-F16.gguf
+host       = 127.0.0.1
+port       = 8080
+wait       = 300
+timeout    = 600
+max_tokens = 4096
+
+# --- Запуск llama-server: по одному флагу на строку (флаг и значение через пробел) ---
+launch = --n-gpu-layers 99
+         --flash-attn on
+         --ctx-size 8192
+         --parallel 1
+         --jinja
+         --reasoning off
+         --reasoning-budget 0
+         --temp 0
+         --no-warmup
+         --image-min-tokens 256
+         --image-max-tokens 2048
+
+# --- Запрос ---
+# Системный запрос:
+system = You are an OCR agent.
+
+# Типовой запрос блока (пустое значение = отправить только изображение).
+# Промпт продублирован с литеральным \n\n — победитель корпусного прогона.
+prompt = Transcribe mathematical expression from the image into LaTeX. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nFor a readable expression, output FIX on the first line, followed by the complete LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf a symbol is genuinely unreadable, output only REVIEW.\n\nTranscribe mathematical expression from the image into LaTeX. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nFor a readable expression, output FIX on the first line, followed by the complete LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf a symbol is genuinely unreadable, output only REVIEW.
+
+# --- Кроп изображения ---
+image = /Users/gladskikh/Git/LLocr/OCRtest/manual/crops/5.png
+
+# --- Параметры тела запроса: имя = json-значение, по одному на строку ---
+params = temperature = 0.0
+         top_p = 1.0
+         top_k = 0
+         min_p = 0.0
+         repeat_penalty = 1.0
+         presence_penalty = 0.0

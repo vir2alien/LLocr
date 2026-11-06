@@ -43,8 +43,16 @@
 ```bat
 py OCRtest\manual\read.py
 py OCRtest\manual\fix.py
+py OCRtest\manual\read.py --read_qwen.txt
 py OCRtest\manual\read.py другой-конфиг.txt --restart
 ```
+
+На macOS то же самое через `python3 OCRtest/manual/read.py`.
+
+Формы конфига: `--имя.txt` — файл из папки скриптов (удобно держать рядом
+несколько конфигов и переключаться флагом); позиционный путь — любой, с
+абсолютным или текущим путём; `--restart` — принудительный пересап сервера,
+можно сочетать с любой формой.
 
 Скрипт сам поднимает llama-server из конфига (лог — `server.log`) и ждёт
 `/health`. Уже работающий сервер с теми же параметрами запуска

@@ -13,6 +13,7 @@ import base64
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -62,12 +63,17 @@ class Config:
 
 
 def parse_args(script_default):
-    """usage: py read.py [config.txt] [--restart]"""
+    """usage: py read.py [--имя-конфига.txt | config.txt] [--restart]
+
+    «--имя.txt» — конфиг из папки скриптов; позиционный путь — как раньше
+    (относительный отсчитывается от текущей папки)."""
     config_path = os.path.join(HERE, script_default)
     restart = False
     for arg in sys.argv[1:]:
         if arg == "--restart":
             restart = True
+        elif arg.startswith("--"):
+            config_path = os.path.join(HERE, arg[2:])
         else:
             config_path = arg if os.path.isabs(arg) else os.path.join(os.getcwd(), arg)
     if not os.path.exists(config_path):
@@ -95,14 +101,18 @@ def server_args(cfg):
 
 
 def listener_pid(port):
-    # netstat пишет в OEM-кодировке: разбираем байты, нас интересуют только
-    # ASCII-колонки.
-    out = subprocess.run(["netstat", "-ano"], capture_output=True).stdout.decode("utf-8", "replace")
-    for line in out.splitlines():
-        parts = line.split()
-        if len(parts) >= 5 and parts[3] == "LISTENING" and parts[1].endswith(f":{port}"):
-            return int(parts[4])
-    return None
+    if sys.platform == "win32":
+        # netstat пишет в OEM-кодировке: разбираем байты, нас интересуют только
+        # ASCII-колонки.
+        out = subprocess.run(["netstat", "-ano"], capture_output=True).stdout.decode("utf-8", "replace")
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 5 and parts[3] == "LISTENING" and parts[1].endswith(f":{port}"):
+                return int(parts[4])
+        return None
+    out = subprocess.run(["lsof", "-nP", "-t", f"-iTCP:{port}", "-sTCP:LISTEN"],
+                         capture_output=True).stdout.split()
+    return int(out[0]) if out else None
 
 
 def healthy(host, port):
@@ -132,7 +142,21 @@ def write_state(pid, stamp):
 
 
 def stop_server(pid, port):
-    subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+    if sys.platform == "win32":
+        subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+    else:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            return
+        for _ in range(30):
+            if listener_pid(port) is None:
+                return
+            time.sleep(0.5)
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            return
     for _ in range(30):
         if listener_pid(port) is None:
             return

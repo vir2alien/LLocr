@@ -3,7 +3,7 @@
 """Ручной стенд READ: читает конфиг read.txt, поднимает/переиспользует
 llama-server, отправляет кроп и печатает расшифровку.
 
-usage: py read.py [config.txt] [--restart]
+usage: py read.py [--имя-конфига.txt | config.txt] [--restart]
 Порядок частей запроса как в приложении для qwen: текст перед изображением.
 """
 
