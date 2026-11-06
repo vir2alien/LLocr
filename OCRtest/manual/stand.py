@@ -42,7 +42,7 @@ class Config:
                     self.raw[current].append(stripped)
                     continue
                 if "=" not in line:
-                    print(f"конфиг: строка без ключа пропущена: {stripped[:60]}")
+                    print(f"конфиг: строка без '=' пропущена (перенос значения пишите с отступом): {stripped[:60]}")
                     continue
                 key, _, value = line.partition("=")
                 current = key.strip().lower()
@@ -189,7 +189,57 @@ def ensure_server(cfg, restart):
     sys.exit(f"сервер не поднялся за {limit:.0f} с, см. server.log")
 
 
-def chat(cfg, messages):
+def dump_request(title, body):
+    """Тело запроса с отпечатком картинки вместо base64: побайтовое сравнение
+    запросов между машинами и прогонами."""
+    def redact(value):
+        if isinstance(value, dict):
+            out = {}
+            for key, item in value.items():
+                if key == "image_url" and isinstance(item, dict) and "url" in item:
+                    raw = item["url"].partition(",")[2]
+                    out[key] = {"url": f"<png base64, {len(raw)} символов, sha1={hashlib.sha1(raw.encode()).hexdigest()[:12]}>"}
+                else:
+                    out[key] = redact(item)
+            return out
+        if isinstance(value, list):
+            return [redact(item) for item in value]
+        return value
+
+    out = os.path.join(HERE, f"last_request_{title}.json")
+    with open(out, "w", encoding="utf-8") as handle:
+        json.dump(redact(body), handle, ensure_ascii=False, indent=1)
+    return out
+
+
+def apply_params(body, lines):
+    """Поля тела запроса: «имя = json-значение». Значение может занимать
+    несколько строк — строки копятся, пока не соберётся валидный JSON."""
+    decoder = json.JSONDecoder()
+    name = None
+    buf = ""
+    for line in lines:
+        if name is None:
+            text, sep, value = line.partition("=")
+            if not sep:
+                sys.exit(f"конфиг, params: строка без имени параметра: {line[:60]}")
+            name = text.strip()
+            buf = value.strip()
+        else:
+            buf += " " + line.strip()
+        try:
+            parsed, consumed = decoder.raw_decode(buf)
+        except json.JSONDecodeError:
+            continue  # значение ещё не собралось — едим следующие строки
+        if buf[consumed:].strip():
+            sys.exit(f"конфиг, params: мусор после значения {name}: {buf[consumed:][:40]}")
+        body[name] = parsed
+        name, buf = None, ""
+    if name is not None:
+        sys.exit(f"конфиг, params: значение {name} не разобралось как JSON: {buf[:80]}")
+
+
+def chat(cfg, messages, title=""):
     body = {
         "model": "manual",
         "messages": messages,
@@ -197,9 +247,8 @@ def chat(cfg, messages):
         "cache_prompt": True,
         "max_tokens": int(cfg.get("max_tokens", "4096")),
     }
-    for line in cfg.lines("params"):
-        name, _, value = line.partition("=")
-        body[name.strip()] = json.loads(value.strip())
+    apply_params(body, cfg.lines("params"))
+    request_path = dump_request(title, body) if title else ""
     payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
         f"http://{cfg.get('host', '127.0.0.1')}:{cfg.get('port', '8123')}/v1/chat/completions",
@@ -242,3 +291,5 @@ def report(title, answer, extra=""):
     with open(out, "w", encoding="utf-8") as handle:
         handle.write(head + "\n\n" + text + "\n")
     print(f"полный ответ: {out}")
+    if title:
+        print(f"тело запроса: {os.path.join(HERE, f'last_request_{title}.json')}")

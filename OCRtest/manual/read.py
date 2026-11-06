@@ -30,7 +30,7 @@ def main():
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": content})
 
-    report("read", chat(cfg, messages))
+    report("read", chat(cfg, messages, "read"))
 
 
 if __name__ == "__main__":

@@ -3,3 +3,5 @@ __pycache__/
 server.log
 last_read.txt
 last_fix.txt
+last_request_read.json
+last_request_fix.json

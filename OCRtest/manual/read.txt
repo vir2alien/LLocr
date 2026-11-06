@@ -1,13 +1,17 @@
 # Ручной стенд READ. Один параметр на строку: «ключ = значение».
 # Значение продолжается на следующих строках с отступом.
+# Перенос строки в system/prompt — только строка с отступом; литерал \n
+# не превращается в перенос (в LaTeX \neq, \nu начинаются с \n).
+# В params значения — JSON: \n внутри JSON-строки это настоящий перенос,
+# а JSON-значение можно переносить на строки с отступом.
 # Строки с # и пустые пропускаются. Относительные пути — от папки конфига.
 # Смена параметров блока «Сервер»/«Запуск» пересапает сервер при следующем
 # запуске; правка запросов идёт без пересапа. Флаг --restart пересапает принудительно.
 
 # --- Сервер ---
-runtime    = C:\AI\llama.cpp\build-cuda\bin\Release\llama-server.exe
-model      = C:\Users\Dmitriy\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\Qwen3.5-4B-Q6_K.gguf
-mmproj     = C:\Users\Dmitriy\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\mmproj-F16.gguf
+runtime    = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\runtime\llama.cpp-b11946-vulkan-win-x64\llama-server.exe
+model      = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\Qwen3.5-4B-Q8_0.gguf
+mmproj     = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\mmproj-F16.gguf
 host       = 127.0.0.1
 port       = 8080
 wait       = 300
@@ -20,8 +24,7 @@ launch = --n-gpu-layers 99
          --ctx-size 8192
          --parallel 1
          --jinja
-         --reasoning-budget 8
-         --reasoning on
+         --reasoning-budget 256
          --temp 0
          --no-warmup
          --spec-type draft-mtp
@@ -31,13 +34,14 @@ launch = --n-gpu-layers 99
 
 # --- Запрос ---
 # Системный запрос:
-system = You transcribe mathematical expressions from images into LaTeX. Treat the image as the source of truth. Copy exactly what is visible. Do not solve, simplify, correct, or complete the expression using mathematical expectations. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. Ignore equation numbers and surrounding prose. Return only LaTeX, without Markdown fences, explanations, or $ delimiters. If a symbol is genuinely unreadable, use \text{[?]} at that position instead of inventing a symbol.
+system = You are an OCR agent.
 
 # Типовой запрос блока (пустое значение = отправить только изображение).
-prompt = Transcribe this formula into LaTeX.
+# Промпт продублирован с литеральным \n\n — победитель корпусного прогона.
+prompt = Transcribe mathematical expression from the image into LaTeX. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nFor a readable expression, output FIX on the first line, followed by the complete LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf a symbol is genuinely unreadable, output only REVIEW.\n\nTranscribe mathematical expression from the image into LaTeX. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nFor a readable expression, output FIX on the first line, followed by the complete LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf a symbol is genuinely unreadable, output only REVIEW.
 
 # --- Кроп изображения ---
-image = C:\Projects\Source\LLocr\OCRtest\manual\crops\5.png
+image = C:\Users\gladskih\Documents\GitHub\LLocr\OCRtest\manual\crops\5.png
 
 # --- Параметры тела запроса: имя = json-значение, по одному на строку ---
 params = temperature = 0.0

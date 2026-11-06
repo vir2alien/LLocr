@@ -33,7 +33,7 @@ def main():
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": content})
 
-    report("fix", chat(cfg, messages), extra="candidate: " + (candidate[:60] or "(пусто)"))
+    report("fix", chat(cfg, messages, "fix"), extra="candidate: " + (candidate[:60] or "(пусто)"))
 
 
 if __name__ == "__main__":

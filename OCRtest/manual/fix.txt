@@ -1,5 +1,9 @@
 # Ручной стенд FIX. Один параметр на строку: «ключ = значение».
 # Значение продолжается на следующих строках с отступом.
+# Перенос строки в system/prompt/candidate — только строка с отступом;
+# литерал \n не превращается в перенос (в LaTeX \neq, \nu начинаются с \n).
+# В params значения — JSON: \n внутри JSON-строки это настоящий перенос,
+# а JSON-значение можно переносить на строки с отступом.
 # Строки с # и пустые пропускаются. Относительные пути — от папки конфига.
 # Смена параметров блока «Сервер»/«Запуск» пересапает сервер при следующем
 # запуске; правка запросов/кандидата идёт без пересапа. Флаг --restart пересапает принудительно.
@@ -9,7 +13,7 @@ runtime    = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\runtime\llama.cpp-b
 model      = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\Qwen3.5-4B-Q8_0.gguf
 mmproj     = C:\Users\gladskih\AppData\Roaming\llocr\LLM OCR\models\unsloth__Qwen3.5-4B-MTP-GGUF\mmproj-F16.gguf
 host       = 127.0.0.1
-port       = 8123
+port       = 8080
 wait       = 300
 timeout    = 600
 max_tokens = 4096
@@ -62,7 +66,9 @@ image = C:\Users\gladskih\Documents\GitHub\LLocr\tmp\out\crops\p02_b05_equation.
 
 # --- Параметры тела запроса: имя = json-значение, по одному на строку ---
 params = temperature = 0.0
+         top_p = 1.0
+         top_k = 0
+         min_p = 0.0
          repeat_penalty = 1.0
          presence_penalty = 0.0
-         frequency_penalty = 0.0
          stop = ["</CANDIDATE>"]
