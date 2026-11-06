@@ -423,14 +423,16 @@ void TestModelPresetCatalog::fixRequestProfilesCarryNoReasoningBudget()
 // back to the shared profile.
 void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
 {
-    // The shipped catalog: only the Qwen3-VL pair ships a reader wording (the
-    // shared one reads as a correction-verification to that family and every
-    // legible block came back unread); every other fix model takes the
-    // shared texts.
+    // The shipped catalog: the Qwen3-VL pair and qwen3.5-4b ship reader
+    // wordings of their own (the shared one reads as a correction-verification
+    // to the Qwen3-VL family, and the qwen3.5-4b one is the measured corpus
+    // winner); every other fix model takes the shared texts.
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
         const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(fix, qPrintable(id));
+        if (id == QStringLiteral("qwen3.5-4b"))
+            continue;  // its own reader calibration, checked below
         if (!id.startsWith(QStringLiteral("qwen3-vl"))) {
             QVERIFY2(fix->readSystemPrompt.isEmpty(), qPrintable(id));
             QVERIFY2(fix->readBlockPrompts.isEmpty(), qPrintable(id));
@@ -451,10 +453,23 @@ void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
     QCOMPARE(ModelProfiles::roleFor(QStringLiteral("qwen3-vl-4b"), QStringLiteral("fix"))->readSystemPrompt,
              ModelProfiles::roleFor(QStringLiteral("qwen3-vl-8b"), QStringLiteral("fix"))->readSystemPrompt);
 
+    // The qwen3.5-4b reader calibration (ADR 267): the measured system prompt
+    // and every canonical block type of the shared reader, each prompt present
+    // twice in full — the doubling is what won the corpus run.
+    const ModelProfiles::Role *qwenFix = ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"));
+    const ModelProfiles::PromptProfile *readRequests = ModelProfiles::promptProfile(QString::fromLatin1(ModelProfiles::kReadPromptProfileId));
+    QVERIFY(qwenFix);
+    QVERIFY(readRequests);
+    QCOMPARE(qwenFix->readSystemPrompt, QStringLiteral("You are an OCR agent."));
+    QCOMPARE(qwenFix->readBlockPrompts.size(), readRequests->prompts.blockPrompts.size());
+    for (auto it = readRequests->prompts.blockPrompts.constBegin(); it != readRequests->prompts.blockPrompts.constEnd(); ++it) {
+        const QString prompt = qwenFix->readBlockPrompts.value(it.key());
+        QVERIFY2(prompt.count(QStringLiteral("output FIX on the first line")) == 2, qPrintable(QStringLiteral("qwen3.5-4b/") + it.key()));
+    }
+
     // The fallback, exercised on a synthetic profile that ships one wording
     // per kind: its own texts win, the shared profile fills every gap.
     const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
-    const ModelProfiles::PromptProfile *readRequests = ModelProfiles::promptProfile(QString::fromLatin1(ModelProfiles::kReadPromptProfileId));
     QVERIFY(fixRequests);
     QVERIFY(readRequests);
 

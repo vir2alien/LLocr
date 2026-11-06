@@ -19,7 +19,7 @@ Item {
     property int fixReasoningIndex: 0
     property int readReasoningIndex: 0
 
-    readonly property var reasoningBudgetSteps: [0, 512, 1024, 1536]
+    readonly property var reasoningBudgetSteps: [0, 128, 256, 512]
     readonly property var reasoningOptions: [
         { label: qsTr("Off") },
         { label: qsTr("Low") },

@@ -25,7 +25,8 @@ Russian mirror: [`16-model-qwen3.5.ru.md`](16-model-qwen3.5.ru.md).
   human eyes. The same model also serves the **read** task
   («Перераспознать», ADR 259) — same transport, the read protocol's own
   prompts and a FIX/REVIEW contract (ADR 260); the protocol is the action's
-  choice, not the model's (ADR 266). Not declared for **blockRecognition**,
+  choice, not the model's (ADR 266); the 4B ships its own measured read
+  wording (§4). Not declared for **blockRecognition**,
   **decision** or **layout**.
 
 ## 2. Files and download
@@ -159,13 +160,33 @@ top-level JSON field, plus two injected ones:
 | `chat_template_kwargs.enable_thinking` | `true` iff `reasoning_budget_tokens` > 0 | `buildRoot` — the budget is also the switch (ADR 193) |
 
 **Read protocol** («Перераспознать», `FixProtocol::ReadBlock`) — same body
-except: the system prompt and block prompt come from
-`resources/profiles/requests/read-requests.json` (a fix role may override
-with its own `readSystemPrompt`/`readBlockPrompts` — the qwen3.5 profiles do
-not), `max_tokens` comes from `read-requests.json → maxOutputByBlock`, the
-reasoning budget is the read budget — and there is **no candidate part**: the
+except: the system prompt and block prompt come from the fix role's own
+`readSystemPrompt` / `readBlockPrompts` when it ships them, else from
+`resources/profiles/requests/read-requests.json` — the 4B ships its measured
+read wording (below), the 9B takes the shared texts. `max_tokens` comes from
+`read-requests.json → maxOutputByBlock`, the reasoning budget is the read
+budget — and there is **no candidate part**: the
 user content is only `[type prompt, image]`. The recognized text of the block
 never travels (ADR 266); the reader writes the block from the image alone.
+
+**The 4B's measured read optimum** (the manual read stand, `OCRtest/manual/`;
+the settings the corpus run picked):
+
+- **Doubled block prompt.** The winning wording states the task, the
+  FIX/REVIEW contract and the escape twice: the full text repeats verbatim,
+  separated by a blank line, and the separators ride as literal `\n`
+  characters. The 4B ships it per block type in `roles.fix.readBlockPrompts`
+  — all 15 canonical types; `readSystemPrompt` is `You are an OCR agent.` A
+  type the profile omits would fall back to the shared reader.
+- **Reasoning on, budget 256 tokens.** The read stand pins the thinking
+  server-side (`--reasoning on --reasoning-budget 256`). In the app the
+  budget rides the request (`reasoning_budget_tokens`, ADR 268) from
+  `check/readReasoningBudgetTokens`, whose steps are 0 / 512 / 1024 / 1536 —
+  the measured optimum sits below the smallest step.
+- **Image scale: body-text letter height ≈ 32 px.** Read crops read best
+  when the main text's letters are ~32 px tall — the scale the formula crop
+  target enforces in-app (§5). At the 300-DPI crop's native ~18 px small
+  print loses accents (an overline); at 32–33 px it reads cleanly.
 
 **The reply**: `choices[0].message.content` (a thought, when enabled, arrives
 separately in `message.reasoning_content` and never reaches the parser).
@@ -204,6 +225,7 @@ the price of speed.
 | Reasoning budget (`reasoning_budget_tokens`) | off / 512 / 1024 / 1536 | global settings `check/fixReasoningBudgetTokens` (fix) and `check/readReasoningBudgetTokens` (read), default off — injected per request, no server restart (ADR 268) |
 | Image token floor | 1024 | `--image-min-tokens` (§3) |
 | Formula crop letter height | 32 px for `equation`/`formula` | `roles.fix.cropGlyphHeightByBlock` (ADR 287) |
+| Read image scale | body-text letter height ≈ 32 px | the read stand's measured optimum (§4); in-app only formula crops are scaled (`cropGlyphHeightByBlock`) |
 
 The fix request's crop carries a glyph target (`cropGlyphHeightByBlock`,
 ADR 287): before the image is encoded, the crop's letter height is measured
@@ -248,7 +270,7 @@ thinking does not fit, it shrinks and the footer says to what.
 | Piece | Location |
 | --- | --- |
 | Model profiles | `resources/profiles/models/qwen3.5-4b.json`, `qwen3.5-9b.json` |
-| Fix / read request texts (shared by all fix models) | `resources/profiles/requests/fix-requests.json`, `read-requests.json` |
+| Fix request texts (shared by all fix models); read texts (shared — the 4B overrides them in its profile) | `resources/profiles/requests/fix-requests.json`, `read-requests.json` |
 | Request body and reply parsing | `VisionChatModel::buildRoot`, `FixModel::buildRequestBody` / `parseResponse`, gate `FixDiffGate::fixBlock` (`src/models/`) |
 | Launch assembly and budget | `ServerLaunchConfig::toArguments` (`src/runtime/`), `LaunchProfileStore::compose`, `src/core/RequestBudget.cpp`, `FixController::fixBlock` (`src/app/`) |
 | Task selection in the app | Settings → «Модели», the fix row (`tasks/fix/modelPath`, `tasks/fix/mmprojPath`) |
