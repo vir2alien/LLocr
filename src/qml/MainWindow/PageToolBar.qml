@@ -120,7 +120,7 @@ ToolBar {
                     Icon {
                         anchors.verticalCenter: parent.verticalCenter
                         name: "layout-grid"
-                        size: 18
+                        size: Theme.iconSizeLarge
                         color: allBlocksButton.enabled ? Theme.textPrimary : Theme.textMuted
                     }
                     Text {
@@ -175,14 +175,17 @@ ToolBar {
         id: zoomMenu
 
         MenuItem {
+            font: Theme.button
             text: qsTr("Zoom in")
             onTriggered: pageToolBarRoot.preview.zoomBy(1.25)
         }
         MenuItem {
+            font: Theme.button
             text: qsTr("Zoom out")
             onTriggered: pageToolBarRoot.preview.zoomBy(1 / 1.25)
         }
         MenuItem {
+            font: Theme.button
             text: qsTr("Fit page")
             onTriggered: pageToolBarRoot.preview.resetZoom()
         }
@@ -195,6 +198,7 @@ ToolBar {
             model: Object.keys(BlockNames.nameMap)
             delegate: MenuItem {
                 required property string modelData
+                font: Theme.button
                 text: BlockNames.displayName(modelData)
                 onTriggered: pageToolBarRoot.beginDraw(modelData)
             }
@@ -243,7 +247,7 @@ ToolBar {
         Icon {
             anchors.centerIn: parent
             name: addButton.iconName
-            size: 18
+            size: Theme.iconSizeLarge
             color: addButton.enabled ? Theme.textPrimary : Theme.textMuted
         }
 
@@ -274,7 +278,7 @@ ToolBar {
         Icon {
             anchors.centerIn: parent
             name: rotateButton.iconName
-            size: 18
+            size: Theme.iconSizeLarge
             color: rotateButton.enabled ? Theme.textPrimary : Theme.textMuted
         }
 

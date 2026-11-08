@@ -88,12 +88,11 @@ ScrollView {
             LLOLabel {
                 Layout.fillWidth: true
                 text: qsTr("Install llama.cpp")
-                font.pointSize: Theme.bodySize
+                font.pixelSize: Theme.bodySize
                 color: Theme.textPrimary
             }
             LLOButton {
                 text: qsTr("Clean up unused builds")
-                font: Theme.bodySmall
                 enabled: !RuntimeInstaller.busy
                 onClicked: RuntimeInstaller.cleanupUnusedBuilds()
             }
@@ -102,7 +101,7 @@ ScrollView {
         LLOLabel {
             Layout.fillWidth: true
             visible: RuntimeInstaller.installedBuildCount === 0
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.textMuted
             text: qsTr("No runtime installed yet")
         }
@@ -131,7 +130,7 @@ ScrollView {
             Layout.fillWidth: true
             visible: text.length > 0
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.error
         }
 
@@ -152,7 +151,7 @@ ScrollView {
 
                 LLOLabel {
                     Layout.fillWidth: true
-                    font.pointSize: Theme.footnoteSize
+                    font.pixelSize: Theme.footnoteSize
                     font.bold: true
                     color: Theme.textPrimary
                     text: qsTr("A newer build %1 is available%2")
@@ -163,7 +162,7 @@ ScrollView {
                 }
                 LLOLabel {
                     Layout.fillWidth: true
-                    font.pointSize: Theme.footnoteSize
+                    font.pixelSize: Theme.footnoteSize
                     color: Theme.textSecondary
                     text: Runtime.state === Runtime.Ready
                           ? qsTr("Updating will install it after the running server is stopped.")
@@ -174,7 +173,6 @@ ScrollView {
                     LLOButton {
                         text: Runtime.state === Runtime.Ready ? qsTr("Stop server and update")
                                                               : qsTr("Update")
-                        font: Theme.bodySmall
                         enabled: !RuntimeInstaller.busy
                         onClicked: {
                             if (Runtime.state === Runtime.Ready)
@@ -184,7 +182,6 @@ ScrollView {
                     }
                     LLOButton {
                         text: qsTr("View changes")
-                        font: Theme.bodySmall
                         onClicked: RuntimeInstaller.openReleasePage()
                     }
                     Item { Layout.fillWidth: true }
@@ -194,7 +191,7 @@ ScrollView {
 
         LLOLabel {
             Layout.fillWidth: true
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.textMuted
             text: qsTr("Platform: %1 · recommended backend: %2")
                 .arg(RuntimeInstaller.platformLabel)
@@ -253,14 +250,12 @@ ScrollView {
 
             LLOButton {
                 text: qsTr("Check for updates")
-                font: Theme.bodySmall
                 enabled: !RuntimeInstaller.busy
                 onClicked: RuntimeInstaller.checkForUpdates()
             }
             LLOButton {
                 text: RuntimeInstaller.state === RuntimeInstaller.Downloading ? qsTr("Cancel")
                                                                               : qsTr("Download and install")
-                font: Theme.bodySmall
                 enabled: !(RuntimeInstaller.state === RuntimeInstaller.Fetching || RuntimeInstaller.state === RuntimeInstaller.Installing)
                 onClicked: {
                     if (RuntimeInstaller.state === RuntimeInstaller.Downloading)
@@ -273,7 +268,7 @@ ScrollView {
 
         LLOLabel {
             Layout.fillWidth: true
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.textMuted
             text: RuntimeInstaller.state === RuntimeInstaller.Idle
                   ? qsTr("Press “Check for updates” to see if a newer release is available.")

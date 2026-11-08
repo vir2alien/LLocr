@@ -10,7 +10,7 @@ import "../Common"
 ColumnLayout {
     id: root
 
-    spacing: 4
+    spacing: Theme.spacingSmall
 
     // {id, label} pairs so the combo shows translated names while
     // Settings.parserId keeps storing the stable id.
@@ -76,7 +76,7 @@ ColumnLayout {
 
     LLOLabel {
         text: qsTr("Output parser")
-        font.pointSize: Theme.bodySize
+        font.pixelSize: Theme.bodySize
         color: Theme.textPrimary
     }
     LLOComboBox {
@@ -118,20 +118,20 @@ ColumnLayout {
 
     LLOLabel {
         text: qsTr("PDF export")
-        font.pointSize: Theme.bodySize
+        font.pixelSize: Theme.bodySize
         color: Theme.textPrimary
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: Theme.spacing
+    GridLayout {
+        columns: 3
+        columnSpacing: Theme.spacing
+        rowSpacing: root.spacing
 
         LLOLabel {
             text: qsTr("Orientation")
-            font: Theme.bodySmall
+            font: Theme.body
         }
-        SegmentedToggle {
-            Layout.fillWidth: true
+        SegmentedControl {
             options: [
                 { label: qsTr("Portrait") },
                 { label: qsTr("Landscape") }
@@ -139,21 +139,17 @@ ColumnLayout {
             currentIndex: root.orientationIndex
             onActivated: (idx) => root.orientationIndex = idx
         }
-    }
-
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: Theme.spacing
+        Item { Layout.fillWidth: true }
 
         LLOLabel {
             text: qsTr("Margins (mm)")
-            font: Theme.bodySmall
+            font: Theme.body
         }
         SpinBox {
             id: marginSpin
             Layout.preferredWidth: 110
             implicitHeight: Theme.controlHeight
-            font.pointSize: Theme.bodySmallSize
+            font.pixelSize: Theme.bodySize
             from: 0
             to: 50
             editable: true

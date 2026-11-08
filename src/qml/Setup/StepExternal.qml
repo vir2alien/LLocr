@@ -42,7 +42,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             text: qsTr("External server")
-            font.pointSize: Theme.bodySize
+            font.pixelSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }

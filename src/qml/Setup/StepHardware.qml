@@ -53,7 +53,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Hardware and models")
-            font.pointSize: Theme.bodySize
+            font.pixelSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }
@@ -114,7 +114,7 @@ Item {
                     delegate: MenuItem {
                         required property string modelData
                         required property int index
-
+                        font: Theme.button
                         width: backendBox.width
                         height: Theme.controlHeight
                         highlighted: backendBox.highlightedIndex === index
@@ -140,14 +140,14 @@ Item {
                     Layout.fillWidth: true
                     Layout.maximumWidth: 340
                     wrapMode: Text.WordWrap
-                    font.pointSize: Theme.captionSize
+                    font.pixelSize: Theme.captionSize
                     color: Theme.textSecondary
                     text: RuntimeInstaller.recommendationReason
                 }
             }
 
             LLOLabel {
-                font.pointSize: Theme.captionSize
+                font.pixelSize: Theme.captionSize
                 color: Theme.textMuted
                 text: RuntimeInstaller.platformLabel
             }

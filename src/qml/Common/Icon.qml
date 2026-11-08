@@ -12,7 +12,7 @@ Item {
 
     property string name: ""
     property color color: Theme.textPrimary
-    property int size: 18
+    property int size: Theme.iconSizeLarge
 
     width: root.size
     height: root.size

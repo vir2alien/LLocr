@@ -93,7 +93,7 @@ Item {
                 anchors.centerIn: parent
                 text: "\u2713"
                 visible: typeRow.checkEnabled
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 font.bold: true
                 color: Theme.dark ? "#1c1c1c" : "#ffffff"
             }
@@ -108,7 +108,7 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: (Theme.rowHeightCompact - nameLabel.implicitHeight) / 2
             text: BlockNames.displayName(typeRow.name, typeRow.type)
-            font.pointSize: Theme.bodySmallSize
+            font.pixelSize: Theme.bodySize
             color: Theme.textPrimary
             elide: Text.ElideRight
         }
@@ -134,18 +134,16 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
+        GridLayout {
+            columns: 3
+            columnSpacing: Theme.spacing
             Layout.topMargin: Theme.spacingSmall
-            spacing: Theme.spacing
-
             LLOLabel {
                 text: qsTr("Thinking during fix")
-                font.pointSize: Theme.bodySmallSize
+                font.pixelSize: Theme.bodySize
                 color: Theme.textPrimary
             }
-            Item { Layout.fillWidth: true }
-            SegmentedToggle {
+            SegmentedControl {
                 currentIndex: root.fixReasoningIndex
                 options: root.reasoningOptions
                 onActivated: (idx) => {
@@ -153,19 +151,14 @@ Item {
                     root.edited()
                 }
             }
-        }
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.topMargin: Theme.spacingSmall
-            spacing: Theme.spacing
+            Item { Layout.fillWidth: true }
 
             LLOLabel {
                 text: qsTr("Thinking during read")
-                font.pointSize: Theme.bodySmallSize
+                font.pixelSize: Theme.bodySize
                 color: Theme.textPrimary
             }
-            Item { Layout.fillWidth: true }
-            SegmentedToggle {
+            SegmentedControl {
                 currentIndex: root.readReasoningIndex
                 options: root.reasoningOptions
                 onActivated: (idx) => {
@@ -173,11 +166,13 @@ Item {
                     root.edited()
                 }
             }
+            Item { Layout.fillWidth: true }
         }
+
         LLOLabel {
             Layout.fillWidth: true
             Layout.topMargin: Theme.spacingSmall
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.helpColor
             wrapMode: Text.WordWrap
             text: qsTr("Tokens the model may spend thinking before the answer. "
@@ -191,7 +186,7 @@ Item {
             Layout.fillWidth: true
             Layout.topMargin: Theme.spacing
             text: qsTr("Show model confidence")
-            font.pointSize: Theme.bodySmallSize
+            font.pixelSize: Theme.bodySize
             onToggled: if (!loading) root.edited()
         }
 
@@ -202,12 +197,12 @@ Item {
 
             LLOLabel {
                 text: qsTr("Block types to check")
-                font.pointSize: Theme.bodySize
+                font.pixelSize: Theme.bodySize
                 color: Theme.textPrimary
             }
             LLOLabel {
                 text: qsTr("Select all")
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: selAllHover.hovered ? Theme.textPrimary : Theme.linkColor
                 TapHandler {
                     onTapped: Verification.blockModel.setAllEnabled(true)
@@ -219,12 +214,12 @@ Item {
             }
             LLOLabel {
                 text: "\u00b7"
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.helpColor
             }
             LLOLabel {
                 text: qsTr("Deselect all")
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: selNoneHover.hovered ? Theme.textPrimary : Theme.linkColor
                 TapHandler {
                     onTapped: Verification.blockModel.setAllEnabled(false)
@@ -236,7 +231,7 @@ Item {
             }
             Item { Layout.fillWidth: true }
             LLOLabel {
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.helpColor
                 text: qsTr("Selected %1 of %2")
                       .arg(Verification.blockModel.enabledCount)
@@ -302,7 +297,7 @@ Item {
                                 LLOLabel {
                                     Layout.fillWidth: true
                                     text: BlockNames.groupTitle(groupCard.modelData.group)
-                                    font.pointSize: Theme.bodySmallSize
+                                    font.pixelSize: Theme.bodySize
                                     font.bold: true
                                     color: Theme.textPrimary
                                     elide: Text.ElideRight
@@ -312,7 +307,7 @@ Item {
                                         const counts = Verification.blockGroupCounts[groupCard.modelData.group]
                                         return counts ? counts.enabled + "/" + counts.total : ""
                                     }
-                                    font.pointSize: Theme.footnoteSize
+                                    font.pixelSize: Theme.footnoteSize
                                     color: Theme.helpColor
                                 }
                             }
@@ -334,16 +329,16 @@ Item {
 
             Icon {
                 name: "info"
-                size: 14
-                Layout.preferredWidth: 14
-                Layout.preferredHeight: 14
+                size: Theme.iconSizeMedium
+                Layout.preferredWidth: Theme.iconSizeMedium
+                Layout.preferredHeight: Theme.iconSizeMedium
                 Layout.alignment: Qt.AlignVCenter
                 color: Theme.helpColor
                 Accessible.ignored: true
             }
             LLOLabel {
                 Layout.fillWidth: true
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.helpColor
                 wrapMode: Text.WordWrap
                 text: qsTr("Blocks without OCR text are not checked.")

@@ -63,9 +63,10 @@
      `QSettings`), not hardcoded.
   4. Build system — **CMake** (not qmake).
   5. When decisions change — update `07-glossary.md`.
-  6. UI text sizes — use `Theme.*Size` / `Theme.*` fonts from
-     `src/qml/Theme.qml`; never hardcode `font.pointSize` in QML. They
-     carry the macOS point-size compensation (ADR 77).
+  6. UI text and icon sizes — use `Theme.*Size` / `Theme.*` fonts from
+     `src/qml/Theme.qml`; never hardcode a font or icon size in QML. The
+     sizes are px, multiplied by the per-OS `uiScale` (ADR 293); the UI
+     font family is the system stack set in `main.cpp` (ADR 293).
   7. **Comments only in the most extreme cases** — when the code cannot be
      understood from the surrounding context and from the names of the classes,
      functions and variables. Never restate what the code says, never narrate

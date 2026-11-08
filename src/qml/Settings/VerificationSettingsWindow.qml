@@ -32,7 +32,6 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Reset all settings")
-            font: Theme.bodySmall
             onClicked: {
                 Verification.resetToDefaults()
                 blocksTab.resetValues()
@@ -43,7 +42,6 @@ ApplicationWindow {
         Item { Layout.fillWidth: true }
         LLOButton {
             text: qsTr("Cancel")
-            font: Theme.bodySmall
             onClicked: {
                 Verification.loadValues()
                 window.unsavedChanges = false
@@ -53,7 +51,6 @@ ApplicationWindow {
         LLOButton {
             emphasis: true
             text: qsTr("Save")
-            font: Theme.bodySmall
             onClicked: {
                 saveAll()
                 Verification.save()

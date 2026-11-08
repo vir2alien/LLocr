@@ -91,7 +91,7 @@ Item {
                         }
                         LLOLabel {
                             Layout.fillWidth: true
-                            font.pointSize: Theme.captionSize
+                            font.pixelSize: Theme.captionSize
                             color: Theme.helpColor
                             text: choiceCard.hint
                         }

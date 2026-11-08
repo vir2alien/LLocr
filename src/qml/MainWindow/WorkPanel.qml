@@ -102,7 +102,7 @@ Rectangle {
                 Icon {
                     anchors.centerIn: parent
                     name: "clipboard-copy"
-                    size: 15
+                    size: Theme.iconSizeMedium
                     color: copyButton.enabled ? Theme.textPrimary : Theme.textMuted
                 }
                 onClicked: Controller.copyCurrentPageText()
@@ -110,7 +110,10 @@ Rectangle {
 
             SegmentedControl {
                 id: viewSwitch
-                labels: [qsTr("Text (MD)"), qsTr("Preview")]
+                options: [
+                    { label: qsTr("Text (MD)") },
+                    { label: qsTr("Preview") }
+                ]
                 currentIndex: root.previewActive ? 1 : 0
                 onActivated: (index) => root.previewActive = index === 1
             }

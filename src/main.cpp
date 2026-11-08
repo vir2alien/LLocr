@@ -1,3 +1,4 @@
+#include <QFont>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QLibraryInfo>
@@ -42,10 +43,28 @@ QIcon makeWindowIcon()
     return windowIcon;
 }
 
+// The system UI stack, the first family that exists wins (QFont::setFamilies).
+// Set on the application font so it reaches plain Text as well — QML controls
+// inherit the window font, but a bare Text reads the application font.
+void applyUiFont(QGuiApplication &app)
+{
+#ifdef Q_OS_MACOS
+    const QStringList families = {QStringLiteral("SF Pro Text"), QStringLiteral("SF Pro Display")};
+#elif defined(Q_OS_WIN)
+    const QStringList families = {QStringLiteral("Segoe UI")};
+#else
+    const QStringList families = {QStringLiteral("Ubuntu"), QStringLiteral("Cantarell"), QStringLiteral("Roboto")};
+#endif
+    QFont uiFont;
+    uiFont.setFamilies(families);
+    app.setFont(uiFont);
+}
+
 void applyVisualStyle(QGuiApplication &app)
 {
     app.setWindowIcon(makeWindowIcon());
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
+    applyUiFont(app);
 }
 
 void prepareRuntimeDirectories(const llocr::RuntimePaths &paths)

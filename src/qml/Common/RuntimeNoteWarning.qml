@@ -7,7 +7,7 @@ LLOLabel {
     visible: note.length > 0
     Layout.fillWidth: true
     wrapMode: Text.WordWrap
-    font.pointSize: Theme.captionSize
+    font.pixelSize: Theme.captionSize
     color: Theme.warning
     text: qsTr("The managed runtime cannot run this model. %1").arg(note)
 }

@@ -1308,7 +1308,8 @@ appendix at the end of this file.
   (`platformTextScale = 4/3 on macOS` — the single place a point size is
   chosen; no QML file hardcodes `font.pointSize`): 1 pt is 1 px on macOS but
   1.33 px on Windows, so without the factor text came out ~25 % smaller
-  relative to the pixel-sized controls.
+  relative to the pixel-sized controls. (Superseded by ADR 293: px sizes
+  with a per-OS scale factor, the compensation is gone.)
 - **79.** Connection mode is a single combo choice and each window's content
   follows it: in External mode the model window shows only a "configure
   runtime" notice, in Managed it offers the download sources; Start/Stop/
@@ -1600,7 +1601,35 @@ appendix at the end of this file.
   cannot be a `Repeater` delegate). The blue accent is gone — selection is the
   card, text `Theme.textPrimary`/`Theme.textSecondary` (replaces the
   `Theme.cardAccent` part of ADR 279); behavior unchanged (controlled from
-  outside, RadioButton, arrows/space) across all seven places.
+  outside, RadioButton, arrows/space) across all seven places. (ADR 292
+  replaces the component: the switch is one for the whole app.)
+- **292.** One switch for the whole app: `Common/SegmentedControl.qml` — the
+  main window's «Text (MD) / Preview» switch is the only segment control, and
+  `Common/SegmentedToggle.qml` is deleted. It takes `options: [{label, icon?}]`
+  — the icon is optional (the theme switcher keeps its `monitor`/`sun`/`moon`
+  glyphs), the segments sit inset in a `Theme.surfaceAlt` frame with a
+  `Theme.divider` border, and the active one is filled with `Theme.selected`
+  and framed with `Theme.border` (ADR 285's block is gone; the accent does not
+  come back). The control is driven from the outside — it reports
+  `activated(index)` and never writes `currentIndex` itself, so a binding to a
+  stored setting survives the click: the settings write the value, the binding
+  brings the switch back. The segments keep the radio semantics (arrows,
+  space, `Accessible.RadioButton`).
+- **293.** The UI text/icon size system is a px ladder in `Theme.qml`, every
+  token multiplied by a per-OS scale factor (`uiScaleMac`/`uiScaleWindows`/
+  `uiScaleLinux`, all 1.0 until visually calibrated): text
+  11/12/13/14/16/18/20/24 px (badges → captions → dense tables →
+  body/buttons/inputs → subheading → H3 → H2 → H1/page title) and icons
+  12/16/18/26 px (inline arrows → row buttons → toolbars → the header stop
+  ring). Sizes are `font.pixelSize` — pt renders differently per OS, px is
+  predictable — which retires ADR 77's `platformTextScale` compensation and
+  the duplicate tokens with it (`buttonSize` = `bodySize`,
+  `buttonSmallSize` = `bodySmallSize`, `titleSize`, the font-sized
+  `iconSize`). The application font family is the explicit system stack set
+  once in `main.cpp` (`QGuiApplication::setFont`: Segoe UI on Windows,
+  SF Pro Text/Display on macOS, Ubuntu/Cantarell/Roboto on Linux) — the
+  application font is what reaches plain `Text` too, which per-window fonts
+  would miss.
 
 ### Security & secrets
 

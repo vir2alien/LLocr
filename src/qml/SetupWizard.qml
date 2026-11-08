@@ -146,7 +146,7 @@ Dialog {
             LLOLabel {
                 text: qsTr("Step %1 of %2").arg(wizard.current + 1)
                                              .arg(wizard.steps.length)
-                font.pointSize: Theme.captionSize
+                font.pixelSize: Theme.captionSize
                 color: Theme.textSecondary
             }
             LLOButton {

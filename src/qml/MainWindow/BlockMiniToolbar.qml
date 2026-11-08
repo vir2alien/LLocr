@@ -52,7 +52,7 @@ Rectangle {
             Icon {
                 anchors.centerIn: parent
                 name: miniButton.iconName
-                size: 16
+                size: Theme.iconSizeMedium
                 color: miniButton.enabled ? Theme.textPrimary : Theme.textMuted
             }
 

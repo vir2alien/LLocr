@@ -23,13 +23,14 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Welcome to LLM OCR")
-            font.pointSize: Theme.bodySize
+            font.pixelSize: Theme.headingSize3
             color: Theme.textPrimary
             font.bold: true
         }
 
         LLOLabel {
             Layout.fillWidth: true
+            font.pixelSize: Theme.subheadingSize
             text: qsTr("This assistant recognizes text from images and PDFs using a "
                        + "local LLM. A few steps will configure the app — you can "
                        + "change everything later in Settings.")

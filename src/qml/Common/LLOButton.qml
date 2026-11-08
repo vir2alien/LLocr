@@ -11,7 +11,7 @@ Button {
     property bool emphasis: false
     property bool subtle: false
 
-    font: Theme.caption
+    font: Theme.button
 
     background: Rectangle {
         radius: Theme.controlRadius

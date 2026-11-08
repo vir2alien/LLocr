@@ -34,7 +34,7 @@ TabBar {
 
         contentItem: Text {
             text: tabItem.text
-            font.pointSize: Theme.bodySmallSize
+            font.pixelSize: Theme.bodySmallSize
             font.bold: tabItem.checked
             color: tabItem.checked ? Theme.textPrimary : Theme.textSecondary
             horizontalAlignment: Text.AlignHCenter

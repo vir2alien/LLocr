@@ -253,7 +253,7 @@ Item {
             anchors.centerIn: parent
             visible: Controller.previewRenderingPage === Controller.currentPage
             text: qsTr("Rendering page…")
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             color: Theme.textMuted
             background: Rectangle {
                 color: Theme.surface
@@ -268,7 +268,7 @@ Item {
             anchors.centerIn: parent
             visible: pageImage.status === Image.Error
             text: qsTr("Could not load the page image")
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             color: Theme.error
             background: Rectangle {
                 color: Theme.surface
@@ -473,7 +473,7 @@ Item {
                                                            && effectiveConfidence >= 0
                         visible: showNumber && boxDelegate.hasText
                         text: Math.round(effectiveConfidence * 100)
-                        font.pointSize: Theme.captionSize
+                        font.pixelSize: Theme.captionSize
                         font.bold: true
                         color: boxDelegate.stateColor
                         anchors.verticalCenter: parent.verticalCenter

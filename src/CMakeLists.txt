@@ -587,6 +587,7 @@ qt_add_qml_module(llocr
     URI LLocr
     VERSION 1.0
     QML_FILES ${LLOCR_QML_FILES}
+    QML_FILES
 )
 
 qt_add_translations(llocr

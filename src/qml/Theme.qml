@@ -84,33 +84,66 @@ QtObject {
     readonly property int controlHeight: 28
     readonly property int controlRadius: 3
 
-    // --- Text pt sizes ---
-    readonly property real platformTextScale: Qt.platform.os === "osx" ? 4 / 3 : 1
-    readonly property int iconSize: 9 * platformTextScale
-    readonly property int captionSize: 8 * platformTextScale
-    readonly property int footnoteSize: 9 * platformTextScale
-    readonly property int bodySmallSize: 10 * platformTextScale
-    readonly property int bodySize: 11 * platformTextScale
-    readonly property int titleSize: 16 * platformTextScale
+    // --- Text and icon sizes (px, ADR 293) ----------------------------------
+    // Every size is a px value at scale 1 multiplied by the per-OS factor —
+    // one dial per platform to tune the rendered look. Text is pixelSize:
+    // pt renders differently per OS, px is predictable (supersedes the ADR 77
+    // point-size compensation). The application-wide font family is the
+    // system stack set in main.cpp; these sizes ride on it.
+    readonly property real uiScaleMac: 1.0
+    readonly property real uiScaleWindows: 1.0
+    readonly property real uiScaleLinux: 1.0
+    readonly property real uiScale: Qt.platform.os === "osx" ? uiScaleMac
+                                  : Qt.platform.os === "windows" ? uiScaleWindows
+                                  : uiScaleLinux
+
+    function px(size) {
+        return Math.round(size * uiScale)
+    }
+
+    // The text ladder, smallest up: badges/timestamps 11 → captions/hints 12 →
+    // dense tables and lists 13 → body/buttons/inputs/menus 14 → section
+    // subheading 16 → heading 3 18 → heading 2 20 → heading 1 / page title 24.
+    readonly property int captionSize: px(11)
+    readonly property int footnoteSize: px(12)
+    readonly property int bodySmallSize: px(13)
+    readonly property int bodySize: px(14)
+    readonly property int subheadingSize: px(16)
+    readonly property int headingSize3: px(18)
+    readonly property int headingSize2: px(20)
+    readonly property int headingSize1: px(24)
+
+    // The icon ladder: inline arrows/indicators 12 → row buttons and hint
+    // icons 16 → toolbars 18 → the header stop ring 26.
+    readonly property int iconSizeSmall: px(12)
+    readonly property int iconSizeMedium: px(16)
+    readonly property int iconSizeLarge: px(18)
+    readonly property int iconSizeXlarge: px(26)
 
     readonly property color linkColor: accent
 
     readonly property font caption: Qt.font({
-        pointSize: captionSize
+        pixelSize: captionSize
     })
 
-    // The size of the values: the text of a control, of a button in a
-    // settings footer, of a row in a table.
     readonly property font bodySmall: Qt.font({
-        pointSize: bodySmallSize
+        pixelSize: bodySmallSize
     })
 
-    // The section labels of the toolbar: uppercase and a hair apart — they
-    // read as headings over the buttons, not as a caption of one. A step
-    // below the button font, so the buttons stay the voice of the toolbar.
+    readonly property font body: Qt.font({
+        pixelSize: bodySize
+    })
+
+    readonly property font buttonSmall: Qt.font({
+        pixelSize: bodySmallSize
+    })
+    readonly property font button: Qt.font({
+        pixelSize: bodySize
+    })
+
     readonly property font captionUpper: {
         const f = Qt.font({
-            pointSize: captionSize
+            pixelSize: captionSize
         })
         f.capitalization = Font.AllUppercase
         f.letterSpacing = 0.6
@@ -124,10 +157,10 @@ QtObject {
                                        : (Qt.platform.os === "windows" ? "Consolas" : "DejaVu Sans Mono")
     readonly property font mono: Qt.font({
         family: monoFamily,
-        pointSize: bodySmallSize
+        pixelSize: bodySmallSize
     })
     readonly property font monoSmall: Qt.font({
         family: monoFamily,
-        pointSize: captionSize
+        pixelSize: captionSize
     })
 }

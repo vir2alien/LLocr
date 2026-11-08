@@ -113,12 +113,9 @@ ToolBar {
 
                 TextField {
                     id: pagesField
-
+                    font: Theme.bodySmall
                     implicitWidth: 120
-                    implicitHeight: 28
-                    // The Fusion field pads the text by 4 px above and below, and
-                    // the system font's line is 21 px on macOS: 26 px of height
-                    // needs 2 px of padding, or the text is cut.
+                    implicitHeight: 22
                     topPadding: 2
                     bottomPadding: 2
                     // The text starts where the prefix and the buttons'
@@ -392,6 +389,7 @@ ToolBar {
         property bool highlight: false
         property bool stopMode: false
 
+        font: Theme.button
         implicitHeight: 28
         implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
         leftPadding: 5
@@ -440,7 +438,7 @@ ToolBar {
                 Icon {
                     id: stopRing
                     name: "loader-circle"
-                    size: 26
+                    size: Theme.iconSizeXlarge
                     color: Theme.textSecondary
 
                     RotationAnimation on rotation {
@@ -458,7 +456,7 @@ ToolBar {
                     // Even sizes keep the centering on whole pixels — an odd
                     // square in an even ring lands at x.5 and renders left of
                     // the ring's center.
-                    size: 12
+                    size: Theme.iconSizeSmall
                     color: Theme.textPrimary
                 }
             }
@@ -504,6 +502,7 @@ ToolBar {
 
         MenuItem {
             id: openProjectItem
+            font: Theme.button
             text: qsTr("Open project…")
             enabled: !Controller.busy && !Controller.importing && !Controller.exporting
                          && !Controller.projectBusy && !Controller.checkRunning
@@ -512,7 +511,6 @@ ToolBar {
         MenuSeparator {}
         MenuItem {
             id: saveItem
-
             action: Action {
                 id: saveAction
                 text: qsTr("Save project")
@@ -530,7 +528,7 @@ ToolBar {
                 anchors.right: parent.right
                 anchors.rightMargin: saveItem.padding
                 anchors.verticalCenter: parent.verticalCenter
-                font: Theme.caption
+                font: Theme.button
                 color: Theme.textMuted
                 text: headerRoot.shortcutDisplayText(saveAction.shortcut)
             }
@@ -555,7 +553,7 @@ ToolBar {
                 anchors.right: parent.right
                 anchors.rightMargin: saveAsItem.padding
                 anchors.verticalCenter: parent.verticalCenter
-                font: Theme.caption
+                font: Theme.button
                 color: Theme.textMuted
                 text: headerRoot.shortcutDisplayText(saveAsAction.shortcut)
             }
@@ -566,26 +564,32 @@ ToolBar {
         id: settingsMenu
 
         MenuItem {
+            font: Theme.button
             text: qsTr("Setup wizard")
             onTriggered: headerRoot.setupWizardRequested()
         }
         MenuItem {
+            font: Theme.button
             text: qsTr("Interface")
             onTriggered: headerRoot.openUiSettingsRequested()
         }
         MenuItem {
+            font: Theme.button
             text: qsTr("Output")
             onTriggered: headerRoot.openOutputSettingsRequested()
         }
         MenuItem {
+            font: Theme.button
             text: qsTr("Verification")
             onTriggered: headerRoot.openVerificationSettingsRequested()
         }
         MenuItem {
+            font: Theme.button
             text: qsTr("Runtime")
             onTriggered: headerRoot.openRuntimeSettingsRequested()
         }
         MenuItem {
+            font: Theme.button
             text: qsTr("Models")
             onTriggered: headerRoot.openTaskModelsSettingsRequested()
         }

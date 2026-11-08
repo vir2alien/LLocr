@@ -65,7 +65,7 @@ RowLayout {
         Layout.preferredWidth: root.titleWidth
         Layout.fillHeight: true
         text: RoleProfiles.title(root.task)
-        font.pointSize: Theme.bodySmallSize
+        font.pixelSize: Theme.bodySmallSize
         color: Theme.textPrimary
         wrapMode: Text.WordWrap
         verticalAlignment: Text.AlignVCenter
@@ -80,7 +80,7 @@ RowLayout {
             id: endpointField
             Layout.fillWidth: true
             implicitHeight: Theme.controlHeight
-            font.pointSize: Theme.bodySmallSize
+            font.pixelSize: Theme.bodySmallSize
             selectByMouse: true
             placeholderText: Settings.baseUrl
         }
@@ -88,7 +88,7 @@ RowLayout {
         LLOLabel {
             id: plaintextKeyWarning
             Layout.fillWidth: true
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.accentAttention
             visible: Settings.isPlaintextKeyEndpoint(endpointField.text)
             wrapMode: Text.WordWrap
@@ -109,7 +109,7 @@ RowLayout {
         Layout.preferredWidth: root.aliasWidth
         Layout.fillWidth: true
         implicitHeight: Theme.controlHeight
-        font.pointSize: Theme.bodySmallSize
+        font.pixelSize: Theme.bodySmallSize
         selectByMouse: true
         placeholderText: qsTr("the model id")
     }

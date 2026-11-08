@@ -46,7 +46,7 @@ ListView {
     Text {
         id: fontProbe
         visible: false
-        font.pointSize: Theme.bodySmallSize
+        font.pixelSize: Theme.bodySmallSize
     }
     FontMetrics {
         id: metrics
@@ -103,7 +103,7 @@ ListView {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
-                    font.pointSize: Theme.bodySmallSize
+                    font.pixelSize: Theme.bodySmallSize
                     color: Theme.textPrimary
                     text: buildRow.build.length ? buildRow.build : buildRow.tag
                 }
@@ -111,7 +111,7 @@ ListView {
                     Layout.fillWidth: true
                     elide: Text.ElideMiddle
                     wrapMode: Text.NoWrap
-                    font.pointSize: Theme.bodySmallSize
+                    font.pixelSize: Theme.bodySmallSize
                     color: Theme.textMuted
                     text: buildRow.binaryFound
                           ? (buildRow.backendDisplay.length
@@ -132,7 +132,7 @@ ListView {
                     horizontalAlignment: Text.AlignRight
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
-                    font.pointSize: Theme.bodySmallSize
+                    font.pixelSize: Theme.bodySmallSize
                     color: Theme.textMuted
                     text: root.fmtBytes(buildRow.sizeBytes)
                 }
@@ -140,7 +140,7 @@ ListView {
                 LLOButton {
                     Layout.minimumWidth: root.actionColumn
                     text: buildRow.active ? qsTr("Active") : qsTr("Activate")
-                    font: Theme.bodySmall
+                    font: Theme.buttonSmall
                     enabled: !buildRow.active && !RuntimeInstaller.busy
                              && Runtime.state !== Runtime.Starting && buildRow.binaryFound
                     onClicked: {
@@ -224,7 +224,7 @@ ListView {
                     anchors.leftMargin: Theme.spacing
                     anchors.verticalCenter: parent.verticalCenter
                     wrapMode: Text.NoWrap
-                    font.pointSize: Theme.bodySmallSize
+                    font.pixelSize: Theme.bodySize
                     color: parent.enabled ? Theme.textPrimary : Theme.textMuted
                     text: qsTr("Open folder")
                 }
@@ -247,7 +247,7 @@ ListView {
                     anchors.leftMargin: Theme.spacing
                     anchors.verticalCenter: parent.verticalCenter
                     wrapMode: Text.NoWrap
-                    font.pointSize: Theme.bodySmallSize
+                    font.pixelSize: Theme.bodySize
                     color: parent.enabled ? Theme.textPrimary : Theme.textMuted
                     text: qsTr("Delete build")
                 }
@@ -271,7 +271,7 @@ ListView {
         contentItem: LLOLabel {
             width: deleteBuildDialog.availableWidth
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.bodySmallSize
+            font.pixelSize: Theme.bodySmallSize
             color: Theme.textSecondary
             text: qsTr("%1 will be deleted from disk.").arg(deleteBuildDialog.pendingLabel)
         }

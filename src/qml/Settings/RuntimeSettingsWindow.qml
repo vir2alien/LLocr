@@ -49,7 +49,6 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Restore defaults")
-            font: Theme.bodySmall
             onClicked: {
                 Settings.resetRuntimeDefaults()
                 rtTab.loadValues()
@@ -58,7 +57,6 @@ ApplicationWindow {
         Item { Layout.fillWidth: true }
         LLOButton {
             text: qsTr("Cancel")
-            font: Theme.bodySmall
             onClicked: {
                 window.restoreApplySnapshot()
                 rtTab.loadValues()
@@ -68,7 +66,6 @@ ApplicationWindow {
         LLOButton {
             emphasis: true
             text: qsTr("Save")
-            font: Theme.bodySmall
             onClicked: {
                 rtTab.saveValues()
                 Settings.forceSave()

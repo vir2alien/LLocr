@@ -226,7 +226,7 @@ Item {
             Item { Layout.preferredWidth: 140 }
             LLOLabel {
                 Layout.fillWidth: true
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.textMuted
                 text: qsTr("Model")
             }
@@ -259,7 +259,7 @@ Item {
                         leftPadding: Theme.spacingSmall
                         elide: Text.ElideRight
                         wrapMode: Text.NoWrap
-                        font.pointSize: Theme.bodySmallSize
+                        font.pixelSize: Theme.bodySmallSize
                         text: RoleProfiles.title(taskRow.task)
                         color: Theme.textPrimary
                     }
@@ -406,7 +406,7 @@ Item {
                     visible: table.externalMode
                     Layout.preferredWidth: 210
                     implicitHeight: Theme.controlHeight
-                    font.pointSize: Theme.bodySmallSize
+                    font.pixelSize: Theme.bodySmallSize
                     text: taskRow.entry.modelName || ""
                     // The alias belongs to the connection: it is edited in
                     // Settings → Runtime, where the endpoint and the key live
@@ -438,7 +438,7 @@ Item {
                             id: gearIcon
                             anchors.centerIn: parent
                             name: "settings"
-                            size: 15
+                            size: Theme.iconSizeMedium
                             color: gearButton.enabled ? Theme.textPrimary : Theme.textMuted
                         }
                     }
@@ -490,7 +490,7 @@ Item {
 
                 LLOLabel {
                     Layout.fillWidth: true
-                    font.pointSize: Theme.bodySize
+                    font.pixelSize: Theme.bodySize
                     font.bold: true
                     color: Theme.textPrimary
                     elide: Text.ElideRight
@@ -513,7 +513,7 @@ Item {
                             id: closeIcon
                             anchors.centerIn: parent
                             name: "x"
-                            size: 15
+                            size: Theme.iconSizeMedium
                             color: Theme.textSecondary
                         }
                     }

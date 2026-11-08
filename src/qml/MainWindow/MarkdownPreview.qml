@@ -43,7 +43,7 @@ Item {
         visible: root._loadError !== ""
         wrapMode: Text.WordWrap
         horizontalAlignment: Text.AlignHCenter
-        font.pointSize: Theme.bodySmallSize
+        font.pixelSize: Theme.bodySmallSize
         color: Theme.textSecondary
         text: root._loadError
     }

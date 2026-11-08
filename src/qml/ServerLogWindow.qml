@@ -133,7 +133,7 @@ ApplicationWindow {
             readOnly: true
             wrapMode: TextEdit.NoWrap
             font.family: "monospace"
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             font.preferShaping: false
             color: Theme.textPrimary
             selectByMouse: true

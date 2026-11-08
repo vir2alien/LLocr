@@ -52,12 +52,12 @@ Item {
 
             LLOLabel {
                 text: qsTr("Match threshold (%)")
-                font.pointSize: Theme.bodySmallSize
+                font.pixelSize: Theme.bodySmallSize
             }
             SpinBox {
                 id: thresholdSpin
                 implicitHeight: Theme.controlHeight
-                font.pointSize: Theme.bodySmallSize
+                font.pixelSize: Theme.bodySmallSize
                 from: 0
                 to: 100
                 stepSize: 5
@@ -70,7 +70,7 @@ Item {
             Layout.fillWidth: true
             visible: root.decisionRole
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("The decision model answers with the probability that the text matches the image. A block counts as correct when the probability reaches this threshold; the rest are re-recognized when automatic re-recognition is on.")
         }
@@ -89,7 +89,7 @@ Item {
             Layout.fillWidth: true
             visible: root.decisionRole && !root.hasParams
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("The decision model answers in a single forward pass and generates no text, so it has no sampling parameters — the threshold above is its only setting here.")
         }
@@ -97,7 +97,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             visible: root.hasParams
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.helpColor
             wrapMode: Text.WordWrap
             text: RoleProfiles.samplingHint(role)

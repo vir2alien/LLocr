@@ -24,7 +24,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Output")
-            font.pointSize: Theme.bodySize
+            font.pixelSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }
@@ -75,8 +75,7 @@ Item {
                 text: qsTr("Orientation")
                 font: Theme.bodySmall
             }
-            SegmentedToggle {
-                Layout.fillWidth: true
+            SegmentedControl {
                 options: [
                     { label: qsTr("Portrait") },
                     { label: qsTr("Landscape") }
@@ -84,6 +83,7 @@ Item {
                 currentIndex: Settings.pdfLandscape ? 1 : 0
                 onActivated: (idx) => Settings.pdfLandscape = (idx === 1)
             }
+            Item { Layout.fillWidth: true }
         }
 
         RowLayout {
@@ -98,7 +98,7 @@ Item {
                 id: marginSpin
                 Layout.preferredWidth: 110
                 implicitHeight: Theme.controlHeight
-                font.pointSize: Theme.bodySmallSize
+                font.pixelSize: Theme.bodySmallSize
                 from: 0
                 to: 50
                 editable: true

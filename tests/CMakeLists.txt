@@ -471,6 +471,22 @@ llocr_add_profile_resources(test_setup_wizard_qml)
 llocr_add_ui_icons(test_setup_wizard_qml)
 add_test(NAME test_setup_wizard_qml COMMAND test_setup_wizard_qml)
 
+# The app's one switch: it must report the choice and never write the index
+# itself — the seven places that use it bind the index to a stored value, and
+# a click that wrote the index would break that binding. The file is read
+# from the source tree, so the test covers the shipped QML.
+qt_add_executable(test_segmented_control_qml test_segmented_control_qml.cpp)
+
+target_link_libraries(test_segmented_control_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+# The switch draws icons (the theme picker's monitor, sun and moon).
+llocr_add_ui_icons(test_segmented_control_qml)
+add_test(NAME test_segmented_control_qml COMMAND test_segmented_control_qml)
+
 qt_add_executable(test_runtime_installer test_runtime_installer.cpp)
 
 target_link_libraries(test_runtime_installer PRIVATE

@@ -212,7 +212,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     visible: root.currentDiagnostic.length === 0 && Log.count > 0
                     text: qsTr("%n problem(s) logged", "", Log.count)
-                    font.pointSize: Theme.captionSize
+                    font.pixelSize: Theme.captionSize
                     color: Theme.textMuted
                 }
 
@@ -275,6 +275,7 @@ Item {
                     Layout.minimumWidth: implicitWidth
                     visible: Settings.connectionMode === "managed"
                     hoverEnabled: true
+                    font: Theme.buttonSmall
                     text: root.serverActive ? qsTr("Stop server") : qsTr("Start server")
                     enabled: !Runtime.lockedOut
                              && (root.serverActive
@@ -294,7 +295,7 @@ Item {
                     ToolTip {
                         visible: runtimeToggleButton.hovered
                         delay: 600
-                        font.pointSize: Theme.captionSize
+                        font.pixelSize: Theme.captionSize
                         text: root.toggleToolTipText()
                     }
                 }
@@ -316,7 +317,7 @@ Item {
                                ? qsTr("Request log — click to open. %1")
                                : qsTr("Server log — click to open. %1")).arg(root.stateText())
                         delay: 600
-                        font.pointSize: Theme.captionSize
+                        font.pixelSize: Theme.captionSize
                     }
 
                     RowLayout {

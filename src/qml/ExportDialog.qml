@@ -98,7 +98,7 @@ Dialog {
         implicitHeight: Theme.controlHeight
         implicitWidth: 100
         editable: true
-        font.pointSize: Theme.captionSize
+        font.pixelSize: Theme.captionSize
 
         contentItem: TextInput {
             z: 2
@@ -126,7 +126,7 @@ Dialog {
 
             Text {
                 text: "▲"
-                font.pointSize: Theme.iconSize
+                font.pixelSize: Theme.footnoteSize
                 color: sb.enabled && sb.value < sb.to ? Theme.textSecondary : Theme.textMuted
                 anchors.centerIn: parent
             }
@@ -143,7 +143,7 @@ Dialog {
 
             Text {
                 text: "▼"
-                font.pointSize: Theme.iconSize
+                font.pixelSize: Theme.footnoteSize
                 color: sb.enabled && sb.value > sb.from ? Theme.textSecondary : Theme.textMuted
                 anchors.centerIn: parent
             }
@@ -167,20 +167,20 @@ Dialog {
         RadioButton {
             id: scopeAll
             text: qsTr("All recognized pages")
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             checked: true
             ButtonGroup.group: scopeGroup
         }
         RadioButton {
             id: scopeCurrent
             text: qsTr("Current page (%1)").arg(Controller.currentPage + 1)
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             ButtonGroup.group: scopeGroup
         }
         RadioButton {
             id: scopeRange
             text: qsTr("Page range")
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             ButtonGroup.group: scopeGroup
         }
 
@@ -214,7 +214,7 @@ Dialog {
 
         LLOLabel {
             Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             color: Theme.textMuted
             text: qsTr("Only recognized pages inside the selection are exported.")
         }

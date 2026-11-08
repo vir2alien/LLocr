@@ -128,7 +128,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Check and launch")
-            font.pointSize: Theme.bodySize
+            font.pixelSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }
@@ -177,7 +177,7 @@ Item {
 
             LLOLabel {
                 visible: root.totalDownloadBytes > 0
-                font.pointSize: Theme.captionSize
+                font.pixelSize: Theme.captionSize
                 color: Theme.textSecondary
                 text: qsTr("Models total: %1").arg(root.fmtBytes(root.totalDownloadBytes))
             }
@@ -204,7 +204,7 @@ Item {
             LLOLabel {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                font.pointSize: Theme.captionSize
+                font.pixelSize: Theme.captionSize
                 color: SelfTest.selftestOk ? Theme.success
                      : SelfTest.selftestRunning ? Theme.textSecondary
                      : Theme.textMuted
@@ -256,7 +256,7 @@ Item {
             Layout.fillWidth: true
             visible: root.phase === "failed"
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             color: Theme.error
             text: qsTr("Something failed — see the message above, fix the cause and press the button again.")
         }

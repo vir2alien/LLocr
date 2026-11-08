@@ -31,7 +31,7 @@ Item {
             LLOLabel {
                 anchors.left: parent.left
                 width: parent.width * root.nameWidth
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.textMuted
                 text: qsTr("Parameter")
             }
@@ -40,7 +40,7 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: parent.width * root.nameWidth + Theme.spacing
                 width: parent.width * root.valueWidth
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.textMuted
                 text: qsTr("Value")
             }
@@ -48,7 +48,7 @@ Item {
                 anchors.left: headerValue.right
                 anchors.leftMargin: Theme.spacing
                 anchors.right: parent.right
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.textMuted
                 text: qsTr("Description")
             }
@@ -88,7 +88,7 @@ Item {
                     width: parent.width * root.nameWidth
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
-                    font.pointSize: Theme.bodySmallSize
+                    font.pixelSize: Theme.bodySmallSize
                     color: Theme.textPrimary
                     text: paramRow.model.name
                 }
@@ -100,7 +100,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width * root.valueWidth
                     implicitHeight: Theme.controlHeight
-                    font.pointSize: Theme.bodySmallSize
+                    font.pixelSize: Theme.bodySmallSize
                     selectByMouse: true
                     placeholderText: root.valuePlaceholder
                     text: paramRow.model.valueText
@@ -152,7 +152,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: Theme.spacing
                     anchors.verticalCenter: parent.verticalCenter
-                    font.pointSize: Theme.footnoteSize
+                    font.pixelSize: Theme.footnoteSize
                     color: Theme.textMuted
                     text: paramRow.model.description
                 }

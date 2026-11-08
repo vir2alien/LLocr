@@ -168,7 +168,7 @@ ApplicationWindow {
             // truncating it here would defeat the point of the window.
             wrapMode: TextEdit.Wrap
             font.family: "monospace"
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             font.preferShaping: false
             color: Theme.textPrimary
             selectByMouse: true

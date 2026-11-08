@@ -68,7 +68,7 @@ Item {
                     anchors.centerIn: parent
                     visible: pageThumb.status === Image.Error
                     text: qsTr("Load error")
-                    font.pointSize: Theme.captionSize
+                    font.pixelSize: Theme.captionSize
                     color: Theme.error
                 }
             }
@@ -100,7 +100,7 @@ Item {
                 }
                 LLOLabel {
                     text: qsTr("Page %1").arg(pageIndex + 1)
-                    font.pointSize: Theme.captionSize
+                    font.pixelSize: Theme.captionSize
                     color: hasDuplicates ? "#d32f2f"
                             : (recognized ? Theme.textSecondary
                             : Theme.textMuted)
@@ -114,7 +114,7 @@ Item {
                 Layout.fillWidth: true
                 visible: statusText.length > 0
                 text: statusText
-                font.pointSize: Theme.captionSize
+                font.pixelSize: Theme.captionSize
                 color: orientationProblemFound || (aggregateDone && pageVerification === 1) ? Theme.error : Theme.textMuted
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap
@@ -186,7 +186,7 @@ Item {
             anchors.centerIn: parent
             text: "\u22EE\u22EE"
             color: Theme.textSecondary
-            font.pointSize: Theme.bodySize
+            font.pixelSize: Theme.bodySize
         }
 
         DragHandler {

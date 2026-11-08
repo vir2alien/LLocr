@@ -13,13 +13,13 @@ import "Settings"
 
 ApplicationWindow {
     id: mainWindow
-    width: 1540
+    width: 1280
     height: 820
     // One row has to hold the whole toolbar — the blocks with their labels,
     // the page field and the stop key that appears next to «Исправить» while
     // a run is active. The toolbar needs ~1485 px in the system font
     // (ADR 270).
-    minimumWidth: 1490
+    minimumWidth: 1024
     minimumHeight: 600
     visible: true
     title: Controller.projectFileName !== ""
@@ -154,7 +154,7 @@ ApplicationWindow {
         LLOLabel {
             anchors.centerIn: parent
             text: qsTr("Drop to open")
-            font.pointSize: Theme.titleSize
+            font.pixelSize: Theme.headingSize2
             color: Theme.accent
         }
     }//Rectangle

@@ -35,9 +35,9 @@ ColumnLayout {
 
         LLOLabel {
             text: qsTr("Connection mode")
-            font: Theme.bodySmall
+            font: Theme.body
         }
-        SegmentedToggle {
+        SegmentedControl {
             currentIndex: Settings.connectionMode === "managed" ? 1 : 0
             options: [
                 { label: qsTr("External") },
@@ -60,13 +60,13 @@ ColumnLayout {
 
             LLOLabel {
                 text: qsTr("Connection timeout (ms)")
-                font: Theme.bodySmall
+                font: Theme.body
             }
             TextField {
                 id: connectionTimeoutField
                 Layout.fillWidth: true
                 implicitHeight: Theme.controlHeight
-                font.pointSize: Theme.bodySmallSize
+                font.pixelSize: Theme.bodySize
                 selectByMouse: true
                 inputMethodHints: Qt.ImhDigitsOnly
                 validator: IntValidator { bottom: 1000; top: 3600000 }
@@ -79,13 +79,13 @@ ColumnLayout {
 
             LLOLabel {
                 text: qsTr("Request timeout (ms)")
-                font: Theme.bodySmall
+                font: Theme.body
             }
             TextField {
                 id: responseTimeoutField
                 Layout.fillWidth: true
                 implicitHeight: Theme.controlHeight
-                font.pointSize: Theme.bodySmallSize
+                font.pixelSize: Theme.bodySize
                 selectByMouse: true
                 inputMethodHints: Qt.ImhDigitsOnly
                 validator: IntValidator { bottom: 1000; top: 3600000 }
@@ -95,7 +95,7 @@ ColumnLayout {
 
     LLOLabel {
         Layout.fillWidth: true
-        font.pointSize: Theme.footnoteSize
+        font.pixelSize: Theme.footnoteSize
         color: Theme.helpColor
         wrapMode: Text.WordWrap
         text: qsTr("Connection timeout — how long to wait for the server to accept a connection. "

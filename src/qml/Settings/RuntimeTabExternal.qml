@@ -75,7 +75,7 @@ ColumnLayout {
 
     LLOLabel {
         text: qsTr("Shared server — the default for every task")
-        font.pointSize: Theme.bodySize
+        font.pixelSize: Theme.bodySize
         color: Theme.textPrimary
     }
 
@@ -87,7 +87,7 @@ ColumnLayout {
         id: baseUrlField
         Layout.fillWidth: true
         implicitHeight: Theme.controlHeight
-        font.pointSize: Theme.bodySmallSize
+        font.pixelSize: Theme.bodySmallSize
         placeholderText: "http://localhost:8080"
         selectByMouse: true
     }
@@ -95,7 +95,7 @@ ColumnLayout {
     LLOLabel {
         id: plaintextKeyWarning
         Layout.fillWidth: true
-        font.pointSize: Theme.footnoteSize
+        font.pixelSize: Theme.footnoteSize
         color: Theme.accentAttention
         visible: Settings.isPlaintextKeyEndpoint(baseUrlField.text)
         wrapMode: Text.WordWrap
@@ -130,14 +130,14 @@ ColumnLayout {
 
     LLOLabel {
         Layout.fillWidth: true
-        font.pointSize: Theme.footnoteSize
+        font.pixelSize: Theme.footnoteSize
         color: Theme.helpColor
         text: extRoot.storeNote()
     }
 
     LLOLabel {
         Layout.fillWidth: true
-        font.pointSize: Theme.footnoteSize
+        font.pixelSize: Theme.footnoteSize
         color: Theme.helpColor
         visible: Settings.secretError.length > 0
         wrapMode: Text.WordWrap
@@ -153,7 +153,7 @@ ColumnLayout {
     LLOLabel {
         visible: !extRoot.compact
         text: qsTr("Tasks — an empty field takes the shared value")
-        font.pointSize: Theme.bodySize
+        font.pixelSize: Theme.bodySize
         color: Theme.textPrimary
     }
 
@@ -164,13 +164,13 @@ ColumnLayout {
 
         LLOLabel {
             Layout.preferredWidth: extRoot.titleWidth
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("Task")
         }
         LLOLabel {
             Layout.preferredWidth: extRoot.endpointWidth
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("Endpoint")
         }
@@ -178,13 +178,13 @@ ColumnLayout {
             Layout.preferredWidth: extRoot.keyWidth
             spacing: Theme.spacingSmall
             LLOLabel {
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.helpColor
                 text: qsTr("API key")
             }
             LLOCheckBox {
                 text: qsTr("Show")
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 checked: extRoot.revealKeys
                 onToggled: extRoot.revealKeys = checked
             }
@@ -192,7 +192,7 @@ ColumnLayout {
         }
         LLOLabel {
             Layout.preferredWidth: extRoot.aliasWidth
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             color: Theme.helpColor
             text: qsTr("Model alias")
         }

@@ -15,14 +15,14 @@ ColumnLayout {
     LLOCheckBox {
         id: box
         Layout.fillWidth: true
-        font.pointSize: Theme.bodySmallSize
+        font.pixelSize: Theme.bodySmallSize
         text: root.label
         onToggled: root.toggled(checked)
     }
     LLOLabel {
         Layout.fillWidth: true
         visible: root.help.length > 0
-        font.pointSize: Theme.captionSize
+        font.pixelSize: Theme.captionSize
         color: Theme.helpColor
         wrapMode: Text.WordWrap
         text: root.help

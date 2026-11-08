@@ -38,7 +38,7 @@ GPU-инициализация прерывается (особенность с
 | Модели (адаптеры, decision, fix/read) | `test_ocr_models`, `test_crop_scaling`, `test_pagemodel`, `test_page_edit_store`, `test_box_model`, `test_decision_model`, `test_fix_protocol`, `test_fix_diff_gate`, `test_external_runtime` |
 | Документ, страницы, разметка, ориентация | `test_page_status`, `test_layout`, `test_project_store`, `test_document_model`, `test_page_rotation`, `test_page_orientation`, `test_djvu_document`* , `test_app_import` |
 | Импорт, настройки, профили | `test_settings_store`, `test_request_profile`, `test_request_budget`, `test_launch_profile`, `test_launch_config` |
-| QML (вкладка запуска, таблица задач, мастер) | `test_launch_tab_qml`, `test_task_models_table_qml`, `test_setup_wizard_qml` |
+| QML (вкладка запуска, таблица задач, мастер, переключатель) | `test_launch_tab_qml`, `test_task_models_table_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
 | Установщик рантайма, жизненный цикл | `test_runtime_installer`, `test_runtime_lifetime` |
 | Экспорт и рендеринг | `test_exporter`, `test_export_renderer`, `test_candidate_renderer` |
 | Транспорт и управляемый сервер | `test_http_client`, `test_capabilities`, `test_runtime_locator`, `test_server_process`, `test_ensure_connection` |

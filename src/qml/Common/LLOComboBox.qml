@@ -11,9 +11,8 @@ import LLocr
 // app's theme.
 ComboBox {
     id: control
-
     implicitHeight: Theme.controlHeight
-    font.pointSize: Theme.bodySmallSize
+    font.pixelSize: Theme.bodySize
 
     padding: 0
     leftPadding: Theme.spacing
@@ -40,7 +39,7 @@ ComboBox {
         x: control.width - width - Theme.spacing
         y: (control.height - height) / 2
         name: "chevron-down"
-        size: 12
+        size: Theme.iconSizeSmall
         color: control.enabled ? Theme.textSecondary : Theme.textMuted
     }
 
@@ -48,7 +47,7 @@ ComboBox {
         id: entry
 
         required property int index
-
+        font: Theme.button
         width: ListView.view.width
         implicitHeight: Theme.controlHeight
         padding: 0

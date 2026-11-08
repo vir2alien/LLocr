@@ -9,7 +9,7 @@ CheckBox {
     id: control
 
     spacing: 10
-    font.pointSize: Theme.bodySmallSize
+    font.pixelSize: Theme.bodySize
 
     indicator: Rectangle {
         x: control.leftPadding
@@ -26,7 +26,7 @@ CheckBox {
             anchors.centerIn: parent
             text: "\u2713"
             visible: control.checked
-            font.pointSize: Theme.footnoteSize
+            font.pixelSize: Theme.footnoteSize
             font.bold: true
             color: Theme.dark ? "#1c1c1c" : "#ffffff"
         }

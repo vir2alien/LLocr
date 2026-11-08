@@ -10,3 +10,8 @@
   - Очерить блоком (как в настройках проверки)
 - Тёмная тема - сделать иконки светлыми.
 - Главное окно - крупнее текст на кнопках (как в окнах настроек, всё к единому кеглю)
+- Re-recognize - сделать таким же как фикс (для страницы обрабатывает только ошибочные блоки, если есть проверка. Но если нет проверки - то все блоки)
+
+- Ошибки
+qrc:/qt/qml/LLocr/Settings/VerificationBlocksTab.qml:247:9: QML ScrollView: Binding loop detected for property "contentHeight":
+qrc:/qt/qml/LLocr/Settings/VerificationBlocksTab.qml:257:13

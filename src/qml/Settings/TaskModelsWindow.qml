@@ -50,12 +50,10 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Restore defaults")
-            font: Theme.bodySmall
             onClicked: taskTable.resetTabs()
         }
         LLOButton {
             text: qsTr("Cancel")
-            font: Theme.bodySmall
             enabled: !ModelInstaller.taskQueueActive
             onClicked: {
                 taskTable.resetDraft()
@@ -135,7 +133,7 @@ ApplicationWindow {
 
             LLOLabel {
                 Layout.fillWidth: true
-                font.pointSize: Theme.bodySize
+                font.pixelSize: Theme.bodySize
                 color: Theme.textPrimary
                 text: qsTr("Downloaded model files on disk")
             }
@@ -146,7 +144,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: text.length > 0
                 wrapMode: Text.WordWrap
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.error
             }
 
@@ -183,20 +181,20 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                         wrapMode: Text.NoWrap
-                        font.pointSize: Theme.bodySmallSize
+                        font.pixelSize: Theme.bodySmallSize
                         text: fileRow.title
                         color: Theme.textPrimary
                     }
                     LLOLabel {
                         Layout.preferredWidth: 64
-                        font.pointSize: Theme.bodySmallSize
+                        font.pixelSize: Theme.bodySmallSize
                         text: fileRow.quant
                         color: Theme.textSecondary
                     }
                     LLOLabel {
                         Layout.preferredWidth: 76
                         horizontalAlignment: Text.AlignRight
-                        font.pointSize: Theme.bodySmallSize
+                        font.pixelSize: Theme.bodySmallSize
                         text: fileRow.sizeLabel
                         color: Theme.textSecondary
                     }
@@ -204,7 +202,7 @@ ApplicationWindow {
                         Layout.preferredWidth: 165
                         elide: Text.ElideRight
                         wrapMode: Text.NoWrap
-                        font.pointSize: Theme.bodySmallSize
+                        font.pixelSize: Theme.bodySmallSize
                         text: fileRow.usageText
                         color: fileRow.usageCount > 0 ? Theme.textPrimary : Theme.textMuted
                     }
@@ -228,7 +226,7 @@ ApplicationWindow {
                                 id: folderIcon
                                 anchors.centerIn: parent
                                 name: "folder"
-                                size: 15
+                                size: Theme.iconSizeMedium
                                 color: Theme.textSecondary
                             }
                         }
@@ -259,7 +257,7 @@ ApplicationWindow {
                                 id: trashIcon
                                 anchors.centerIn: parent
                                 name: "trash-2"
-                                size: 15
+                                size: Theme.iconSizeMedium
                                 color: deleteRowButton.enabled ? Theme.textSecondary : Theme.textMuted
                             }
                         }
@@ -271,7 +269,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: ModelInstaller.installedCount === 0
                 wrapMode: Text.WordWrap
-                font.pointSize: Theme.footnoteSize
+                font.pixelSize: Theme.footnoteSize
                 color: Theme.helpColor
                 text: qsTr("Downloaded models will appear here — pick a quantization in the rows above and save.")
             }
@@ -343,7 +341,7 @@ ApplicationWindow {
         contentItem: LLOLabel {
             width: deleteFileDialog.availableWidth
             wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
+            font.pixelSize: Theme.captionSize
             color: Theme.textSecondary
             text: deleteFileDialog.usageCount > 0
                   ? qsTr("%1 is used by %2 task(s). The task rows keep their choice, but the model is gone from disk until you download it again.").arg(deleteFileDialog.subject).arg(deleteFileDialog.usageCount)

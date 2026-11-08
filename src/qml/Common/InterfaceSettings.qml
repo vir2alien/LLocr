@@ -14,7 +14,7 @@ ColumnLayout {
 
     LLOLabel {
         text: qsTr("Language")
-        font.pointSize: Theme.bodySize
+        font.pixelSize: Theme.bodySize
         color: Theme.textPrimary
     }
     LLOComboBox {
@@ -41,11 +41,10 @@ ColumnLayout {
 
     LLOLabel {
         text: qsTr("Theme")
-        font.pointSize: Theme.bodySize
+        font.pixelSize: Theme.bodySize
         color: Theme.textPrimary
     }
-    SegmentedToggle {
-        Layout.fillWidth: true
+    SegmentedControl {
         options: [
             { label: qsTr("System"), icon: "monitor" },
             { label: qsTr("Light"), icon: "sun" },
