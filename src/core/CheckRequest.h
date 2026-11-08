@@ -28,6 +28,7 @@ struct CheckRequest {
     QString recognizedText;              ///< Fix task: the OCR candidate under correction; the read task's comparison base only (it does not travel, ADR 266).
     QString blockType;                   ///< Fix task: the block label, picks the reply mode and edit gate.
     QString modelId;                     ///< Model to route the request to (from the connection).
+    QString profileId;                   ///< Profile the role lookups resolve by: on a managed connection modelId is the server's alias, which no profile carries.
     QList<RequestParameter> parameters;  ///< Sampling parameters from the task's request profile.
     Task task = Task::BlockRecognition;
     FixProtocol fixProtocol = FixProtocol::FullBlock;

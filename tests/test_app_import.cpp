@@ -260,7 +260,7 @@ public:
 // The reader's system prompt opens with this (the read profile's own words):
 // the mock server recognizes the reader's request by it — the sample-carrying
 // one and the bare image alike (ADR 260).
-const QByteArray kReadPromptMarker = QByteArrayLiteral("You produce the corrected text of one block");
+const QByteArray kReadPromptMarker = QByteArrayLiteral("You correct one block of a document from an image");
 
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
 // fixed reply, so the real recognition pipeline produces real blocks.
@@ -2381,6 +2381,10 @@ private slots:
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
+        // The reader's wording is the shared profile's only when the fix
+        // request profile ships no reader texts of its own: pin one that does
+        // not, the marker below matches the shared prompt.
+        m_settings->setFixRequestProfileId(QStringLiteral("qwen3.5-9b"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2437,6 +2441,7 @@ private slots:
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
+        m_settings->setFixRequestProfileId(QStringLiteral("qwen3.5-9b"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);

@@ -53,6 +53,7 @@ void SelfTestController::runSelfTestRequest(const ResolvedConnection &conn, std:
     request.image = makeTestImage();
     request.prompt = tr("Describe the text in this image in one short line.");
     request.modelId = conn.modelId;
+    request.profileId = m_requestProfiles.activeProfileId();
     request.parameters = m_requestProfiles.activeProfile().parameters;
 
     QFutureWatcher<OcrResult> *watch = new QFutureWatcher<OcrResult>(this);

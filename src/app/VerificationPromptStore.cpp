@@ -168,8 +168,7 @@ VerificationPromptStore::VerificationPromptStore(SettingsStore &settings, QObjec
     m_serviceModel->setSourceModel(m_model);
     m_serviceModel->setGroup(QStringLiteral("service"));
 
-    connect(m_model, &VerificationBlocksModel::countsChanged,
-            this, &VerificationPromptStore::countsChanged);
+    connect(m_model, &VerificationBlocksModel::countsChanged, this, &VerificationPromptStore::countsChanged);
 
     loadBuiltIn();
     loadUser();
@@ -251,8 +250,7 @@ QVariantMap VerificationPromptStore::blockGroupCounts() const
     QVariantMap out;
     for (const VerificationBlock &block : m_model->blocks()) {
         QVariantMap entry = out.value(block.group).toMap();
-        entry.insert(QStringLiteral("enabled"),
-                     entry.value(QStringLiteral("enabled")).toInt() + (block.enabled ? 1 : 0));
+        entry.insert(QStringLiteral("enabled"), entry.value(QStringLiteral("enabled")).toInt() + (block.enabled ? 1 : 0));
         entry.insert(QStringLiteral("total"), entry.value(QStringLiteral("total")).toInt() + 1);
         out.insert(block.group, entry);
     }

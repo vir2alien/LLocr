@@ -233,9 +233,11 @@ private slots:
             QVERIFY(ModelProfiles::maxOutputForBlockRole(read->prompts, type) > 0);
         }
 
-        // The reader answers the whole block, so the equation's budget is the
-        // reader's own — the fix task's budget was measured for a correction.
-        QVERIFY(ModelProfiles::maxOutputForBlockRole(read->prompts, QStringLiteral("equation")) > ModelProfiles::maxOutputForBlockRole(fix->prompts, QStringLiteral("equation")));
+        // The reader answers the whole block, so its budget is its own
+        // profile's, never smaller than the fixer's: the two profiles were
+        // calibrated together and carry the same per-type budgets.
+        QVERIFY(ModelProfiles::maxOutputForBlockRole(read->prompts, QStringLiteral("equation")) >= ModelProfiles::maxOutputForBlockRole(fix->prompts, QStringLiteral("equation")));
+        QCOMPARE(read->prompts.blockMaxOutput, fix->prompts.blockMaxOutput);
     }
 
     // The model contract lives in resources/profiles/models/<id>.json: a
@@ -547,12 +549,14 @@ private slots:
         request.typePrompt = QStringLiteral("Block type: text.");
 
         request.modelId = QStringLiteral("gemma-4-e4b");
+        request.profileId = QStringLiteral("gemma-4-e4b");
         const QByteArray gemmaBody = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
         const QJsonArray gemmaContent = QJsonDocument::fromJson(gemmaBody).object().value(QStringLiteral("messages")).toArray().at(1).toObject().value(QStringLiteral("content")).toArray();
         QCOMPARE(gemmaContent.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
         QCOMPARE(gemmaContent.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
 
         request.modelId = QStringLiteral("glm-ocr");
+        request.profileId = QStringLiteral("glm-ocr");
         const QByteArray defaultOrderBody = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
         const QJsonArray defaultOrderContent =
             QJsonDocument::fromJson(defaultOrderBody).object().value(QStringLiteral("messages")).toArray().at(1).toObject().value(QStringLiteral("content")).toArray();

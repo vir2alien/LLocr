@@ -42,7 +42,7 @@ system = You are an OCR agent.
 prompt = Transcribe mathematical expression from the image into LaTeX. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nFor a readable expression, output FIX on the first line, followed by the complete LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf a symbol is genuinely unreadable, output only REVIEW.\n\nTranscribe mathematical expression from the image into LaTeX. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nFor a readable expression, output FIX on the first line, followed by the complete LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf a symbol is genuinely unreadable, output only REVIEW.
 
 # --- Кроп изображения ---
-image = /Users/gladskikh/Git/LLocr/OCRtest/manual/crops/5.png
+image = /Users/gladskikh/Git/LLocr/OCRtest/manual/crops/p3b12.png
 
 # --- Параметры тела запроса: имя = json-значение, по одному на строку ---
 params = temperature = 0.0

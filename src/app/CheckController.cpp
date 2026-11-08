@@ -45,6 +45,7 @@ void CheckController::checkBlock(const QImage &image, const QString &systemPromp
             request.systemPrompt = systemPrompt;
             request.typePrompt = typePrompt;
             request.modelId = conn.modelId;
+            request.profileId = m_requestProfiles.activeProfileId();
             request.parameters = requestParameters();
 
             m_watcher.setFuture(m_model->check(request, conn.toConnectionConfig()));

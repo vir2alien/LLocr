@@ -1,0 +1,53 @@
+# Ручной стенд FIX. Один параметр на строку: «ключ = значение».
+# Значение продолжается на следующих строках с отступом.
+# Перенос строки в system/prompt/candidate — только строка с отступом;
+# литерал \n не превращается в перенос (в LaTeX \neq, \nu начинаются с \n).
+# В params значения — JSON: \n внутри JSON-строки это настоящий перенос,
+# а JSON-значение можно переносить на строки с отступом.
+# Строки с # и пустые пропускаются. Относительные пути — от папки конфига.
+# Смена параметров блока «Сервер»/«Запуск» пересапает сервер при следующем
+# запуске; правка запросов/кандидата идёт без пересапа. Флаг --restart пересапает принудительно.
+
+# --- Сервер ---
+runtime    = /Users/gladskikh/LLM/llama.cpp/build/bin/llama-server
+model      = /Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__gemma-4-E4B-it-qat-GGUF/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf
+mmproj     = /Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__gemma-4-E4B-it-qat-GGUF/mmproj-F16.gguf
+host       = 127.0.0.1
+port       = 8080
+wait       = 300
+timeout    = 600
+max_tokens = 4096
+
+# --- Запуск llama-server: по одному флагу на строку (флаг и значение через пробел) ---
+launch = --n-gpu-layers 99
+         --flash-attn on
+         --ctx-size 8192
+         --parallel 1
+         --jinja
+         --reasoning on
+         --reasoning-budget 256
+         --temp 0
+         --no-warmup
+
+# --- Запрос ---
+# Системный запрос: контракт OK/FIX/REVIEW (профиль fix-requests приложения).
+system = You are an OCR agent. You receive an image, and a text that has been recognized by others from that image. Check the recognized text. And, if necessary, correct it.
+
+# Типовой запрос блока: контракт формулы (профиль fix-requests приложения).
+prompt = Check and correct mathematical expression. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nIf the recognized text is correct, output only OK.\nIf you correct the expression output FIX on the first line, followed by the complete corrected LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf an image is empty or genuinely unreadable, output only REVIEW.\n\nCheck and correct mathematical expression. Preserve all symbols, subscripts, superscripts, accents, delimiters, fractions, roots, operator limits, matrices, and line structure. \nIf the recognized text is correct, output only OK.\nIf you correct the expression output FIX on the first line, followed by the complete corrected LaTeX transcription on the next line, without Markdown fences, explanations, or $ delimiters.\nIf an image is empty or genuinely unreadable, output only REVIEW.
+
+# Кандидат (текст распознавания, который исправляет fix). Для пробы: внесите
+# ошибку-двойник в настоящий текст кропа — fix должен вернуть FIX и исходник.
+candidate = \frac{\mathrm{T}}{\mathrm{T} _{\mathrm{H.BPp}}} \approx \left(\frac{\mathrm{V} _{\mathrm{H.BPp}}}{\mathrm{V}}\right) ^ {n _{1} - 1} \left(1 + \frac{\overline{{\mathrm{B}}}}{\overline{{\mathrm{B}}} _{1}} \bar{\tau}\right) ^ {- \overline{{\mathrm{B}}} _{1}}. \tag{2.696}
+
+# --- Кроп изображения ---
+image = /Users/gladskikh/Git/LLocr/OCRtest/manual/crops/5.png
+
+# --- Параметры тела запроса: имя = json-значение, по одному на строку ---
+params = temperature = 0.0
+         top_p = 1.0
+         top_k = 0
+         min_p = 0.0
+         repeat_penalty = 1.0
+         presence_penalty = 0.0
+         stop = ["</CANDIDATE>"]

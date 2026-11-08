@@ -1,0 +1,4 @@
+python3 fix.py --fix_qwen3.5-4.txt
+python3 fix.py --fix_qwen3.5-9.txt
+
+python3 read.py --read_qwen3.5-4.txt

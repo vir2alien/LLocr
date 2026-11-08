@@ -104,6 +104,7 @@ void LayoutController::startNext()
             request.systemPrompt = m_systemPrompt;
             request.typePrompt = m_prompt;
             request.modelId = conn.modelId;
+            request.profileId = m_requestProfiles.activeProfileId();
             request.parameters = m_requestProfiles.activeProfile().parameters;
             request.task = CheckRequest::Task::Layout;
 

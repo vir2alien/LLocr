@@ -265,9 +265,10 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
 }
 
 // The fix task's profiles speak the same protocol (ADR 192): the system
-// prompt pins the three-token contract (OK / FIX / REVIEW) and the language
-// placeholder, the per-type prompts describe what a FIX may change, and the
-// alias map keeps formula/reference out of the prompt table.
+// prompt carries the OK / FIX / REVIEW contract, the per-type prompts
+// describe what a FIX may change, and the alias map keeps formula/reference
+// out of the prompt table. The texts are shared by default; a role may ship
+// its own measured wording instead (ADR 267) — qwen3.5-4b does.
 void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
@@ -277,69 +278,84 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
         QStringList(
             {QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3-vl-4b"), QStringLiteral("qwen3-vl-8b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
 
+    const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
+    QVERIFY(fixRequests);
+
     for (const QString &id : fixModels) {
         const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(fix, qPrintable(id));
         QCOMPARE(fix->protocol, QStringLiteral("full_block"));
-        const QString system = fix->systemPrompt;
-        QVERIFY2(system.contains(QStringLiteral("exactly one of these")), qPrintable(id));
-        QVERIFY2(system.contains(QStringLiteral("OK")), qPrintable(id));
-        QVERIFY2(system.contains(QStringLiteral("FIX")), qPrintable(id));
-        QVERIFY2(system.contains(QStringLiteral("REVIEW")), qPrintable(id));
-        // EMPTY is gone from the scheme, and the language is a placeholder the
-        // app fills in.
-        QVERIFY2(!system.contains(QStringLiteral("EMPTY")), qPrintable(id));
-        QVERIFY2(system.contains(QStringLiteral("Never truncate output")), qPrintable(id));
-        // The reply carries the whole block and nothing else.
-        QVERIFY2(system.contains(QStringLiteral("<the complete corrected block>")), qPrintable(id));
         QVERIFY2(fix->blockAliases.value(QStringLiteral("formula")) == QStringLiteral("equation"), qPrintable(id));
         QVERIFY2(fix->blockAliases.value(QStringLiteral("reference")) == QStringLiteral("ref_text"), qPrintable(id));
         QVERIFY2(!fix->blockMaxOutput.isEmpty(), qPrintable(id));
         QVERIFY2(!fix->blockPrompts.isEmpty(), qPrintable(id));
+        // The span contract is gone: no prompt may ask for `old => new` edits
+        // or for the old table's EDITS: section.
         for (auto it = fix->blockPrompts.constBegin(); it != fix->blockPrompts.constEnd(); ++it) {
-            QVERIFY2(it.value().contains(QStringLiteral("Mode after FIX: the complete corrected")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
-            // The span contract is gone: no prompt may ask for `old => new`
-            // edits or for the old table's EDITS: section.
             QVERIFY2(!it.value().contains(QStringLiteral("old => new")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
             QVERIFY2(!it.value().contains(QStringLiteral("EDITS:")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
         }
+        if (id == QStringLiteral("qwen3.5-4b"))
+            continue;  // its own measured fix wording, checked below
+        QCOMPARE(fix->systemPrompt, fixRequests->prompts.systemPrompt);
+        QCOMPARE(fix->blockPrompts, fixRequests->prompts.blockPrompts);
     }
+
+    // The shared system prompt pins the three-token contract; EMPTY is gone
+    // from the scheme, and the language is a placeholder the app fills in.
+    const QString system = fixRequests->prompts.systemPrompt;
+    QVERIFY2(system.contains(QStringLiteral("exactly one of these")), qPrintable(system));
+    QVERIFY2(system.contains(QStringLiteral("OK")), qPrintable(system));
+    QVERIFY2(system.contains(QStringLiteral("FIX")), qPrintable(system));
+    QVERIFY2(system.contains(QStringLiteral("REVIEW")), qPrintable(system));
+    QVERIFY2(!system.contains(QStringLiteral("EMPTY")), qPrintable(system));
+    QVERIFY2(system.contains(QStringLiteral("Never truncate the output")), qPrintable(system));
+    QVERIFY2(system.contains(QStringLiteral("<the complete corrected block>")), qPrintable(system));
+    // The per-type prompts tell the fixer what a FIX answers with (the whole
+    // block, the table, the printed page number — the shape differs per type).
+    for (auto it = fixRequests->prompts.blockPrompts.constBegin(); it != fixRequests->prompts.blockPrompts.constEnd(); ++it)
+        QVERIFY2(it.value().contains(QStringLiteral("After FIX, output")), qPrintable(it.key()));
 
     // The per-block output budget resolves through the alias chain: a formula
     // asks for the equation budget, an unknown type falls back to -1 (the
     // request profile's max_tokens stays untouched). The reply carries the
     // whole block, so the budget must fit the block (ADR 192).
-    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("formula")), 2048);
+    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("formula")), 4096);
     QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("reference")), 1024);
     QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("image_caption")), 1024);
     QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("page_number")), 64);
     QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("unknown-type")), -1);
 
-    // The alias hop serves the formula/reference prompts (the byte-for-byte
-    // duplicates are gone from the table), and key_value — the one decision
-    // type the fix vocabulary used to miss — ships its own.
-    const ModelProfiles::Role *qwenFix = ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"));
-    QVERIFY(qwenFix);
-    QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("formula")));
-    QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("reference")));
+    // The alias hop serves the formula/reference prompts, and key_value — the
+    // one decision type the fix vocabulary used to miss — ships its own.
     QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("formula")).isEmpty());
     QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("reference")).isEmpty());
     QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("key_value")).isEmpty());
 
-    // The equivalence rules are synced with the decision v6 block prompts
-    // (archive/models/docs/21-d3.md): the fixer treats the same things as equivalent and strictly
-    // different, or the two models would fight over е/ё, homoglyphs, LaTeX
-    // commands and table cells. All six fix models ship identical prompts.
-    const QString fixText = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("text"));
-    QVERIFY(fixText.contains(QStringLiteral("Never fix:")));
-    QVERIFY(fixText.contains(QStringLiteral("е/ё")));
-    const QString fixCode = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("code"));
-    QVERIFY(fixCode.contains(QStringLiteral("Nothing is equivalent here")));
-    const QString fixEquation = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("equation"));
-    QVERIFY(fixEquation.contains(QStringLiteral("the complete corrected formula as LaTeX")));
-    QVERIFY(fixEquation.contains(QStringLiteral("Do not change spacing, aliases, or operand order")));
-    const QString fixTable = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("table"));
-    QVERIFY(fixTable.contains(QStringLiteral("the complete corrected table, then stop")));
+    // The qwen3.5-4b fix calibration (ADR 267, the manual fix stand): a short
+    // system prompt, and every canonical block type of the shared profile,
+    // each prompt present twice in full — the doubling is what won the stand
+    // run. The equation prompt is the measured exception (prompt_ab stand):
+    // a single sentence, the minimum that keeps the model on the image and
+    // the candidate instead of the wording.
+    const ModelProfiles::Role *qwenFix = ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"));
+    QVERIFY(qwenFix);
+    QCOMPARE(qwenFix->systemPrompt,
+             QStringLiteral("You are an OCR agent. You receive an image, and a text that has been recognized by others from that image. Check the recognized text. And, if necessary, correct it."));
+    QCOMPARE(qwenFix->blockPrompts.size(), fixRequests->prompts.blockPrompts.size());
+    QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("formula")));
+    QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("reference")));
+    QCOMPARE(qwenFix->blockPrompts.value(QStringLiteral("equation")),
+             QStringLiteral("OK if the OCR candidate matches the image, FIX followed by the corrected LaTeX if not, REVIEW if the image is unreadable."));
+    for (auto it = fixRequests->prompts.blockPrompts.constBegin(); it != fixRequests->prompts.blockPrompts.constEnd(); ++it) {
+        if (it.key() == QStringLiteral("equation"))
+            continue;  // its own minimal measured wording, pinned above
+        const QString prompt = qwenFix->blockPrompts.value(it.key());
+        QVERIFY2(prompt.count(QStringLiteral("output only OK")) == 2, qPrintable(QStringLiteral("qwen3.5-4b/") + it.key()));
+    }
+    QVERIFY(qwenFix->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("rowspan")));
+    QVERIFY(qwenFix->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("colspan")));
+    QVERIFY(qwenFix->blockPrompts.value(QStringLiteral("text")).contains(QStringLiteral("do not reflow, join or translate lines")));
 }
 
 void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
@@ -528,8 +544,10 @@ void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
 }
 
 // The fix task sends the same request whatever model serves it, so the request
-// texts live in their own profile and the model roles only name it (ADR 182).
-// The parameters — launch, request, thresholds — stay in the model profile.
+// texts live in their own profile and the model roles only name it (ADR 182);
+// a role may ship its own measured wording instead (ADR 267) — qwen3.5-4b
+// does. The parameters — launch, request, thresholds — stay in the model
+// profile.
 void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
@@ -543,16 +561,19 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
     QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("decision-requests")));
     QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("no-such-profile")));
 
-    // Every fix model names the shared fix request profile and inherits its
-    // texts; the parameters stay in the model profile.
+    // Every fix model names the shared fix request profile; the texts come
+    // from it unless the role ships its own, the parameters stay in the model
+    // profile.
     const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
     QVERIFY(fixRequests);
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
         const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(role, qPrintable(id));
         QCOMPARE(role->promptProfile, QStringLiteral("fix-requests"));
-        QCOMPARE(role->systemPrompt, fixRequests->prompts.systemPrompt);
-        QVERIFY(!role->systemPrompt.isEmpty());
+        if (id == QStringLiteral("qwen3.5-4b"))
+            QVERIFY2(!role->systemPrompt.isEmpty(), qPrintable(id));  // its own measured wording (ADR 267)
+        else
+            QCOMPARE(role->systemPrompt, fixRequests->prompts.systemPrompt);
         QVERIFY(!role->blockPrompts.isEmpty());
         QVERIFY(!role->blockMaxOutput.isEmpty());
     }
@@ -564,7 +585,7 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
     QVERIFY(!fixRequests->prompts.blockMaxOutput.isEmpty());
     QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("text")), 2048);
     QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("page_number")), 64);
-    QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("table")), 8192);
+    QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("table")), 16384);
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
         const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(role, qPrintable(id));

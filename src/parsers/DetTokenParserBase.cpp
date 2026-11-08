@@ -2,8 +2,8 @@
 #include "parsers/BlockRender.h"
 #include "parsers/DetTokenFormat.h"
 
-#include "core/ServiceMarkers.h"
 #include "core/ServiceLabels.h"
+#include "core/ServiceMarkers.h"
 
 #include <QCoreApplication>
 #include <QSet>

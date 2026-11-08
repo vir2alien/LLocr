@@ -401,20 +401,20 @@ Item {
                     // The frame carries the state of the block (ADR 238): no
                     // frame = layout markup only, gray = recognized, red =
                     // verified with an error, green = verified without one.
-                    // The reader's state speaks for the block while it stands
-                    // (ADR 261): the reader compared the text with the image,
-                    // so its answer is a verdict — green when the block was
-                    // read, red when it could not be read. The fixer's states
-                    // stay out: the fixer is not a verifier (ADR 240).
+                    // The reader's confirmation speaks for the block while it
+                    // stands (ADR 261): a re-read that reproduced the text is
+                    // itself a verification — green. A re-read that replaced
+                    // the text judged nothing: the reader never sees the
+                    // candidate (ADR 266), the difference is the gate's own
+                    // comparison, and a difference is not a confirmation — the
+                    // block is a fresh re-recognition, gray until the deciding
+                    // model judges it, exactly like a read of a block nobody
+                    // had recognized (ADR 265; ADR 289). Red — the reader
+                    // could not read the block. The fixer's states stay out:
+                    // the fixer is not a verifier (ADR 240).
                     readonly property bool hasText: boxText.length > 0 || boxCorrectedText.length > 0
                     readonly property bool readDamaged: boxFixStatus === 6
-                    // The reader's answer is a verdict when it judged a text
-                    // that was there: it confirmed the text (Read) or replaced
-                    // it in the correction layer (ReadFixed with a correction).
-                    // A reader that wrote a block nobody had recognized judged
-                    // nothing — its answer is the recognition itself (ADR 265),
-                    // and such a block is gray like any other recognized one.
-                    readonly property bool readVerdict: boxFixStatus === 4 || (boxFixStatus === 5 && boxDelegate.correctionActive)
+                    readonly property bool readVerdict: boxFixStatus === 4
                     readonly property bool verified: effectiveStatus === 1 || effectiveStatus === 5 || effectiveStatus === 6
                     readonly property bool failed: boxDelegate.readDamaged || effectiveStatus === 3 || effectiveStatus === 4 || effectiveStatus === 7
                     readonly property color stateColor: boxDelegate.readDamaged ? Theme.error

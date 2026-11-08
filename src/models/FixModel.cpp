@@ -167,7 +167,7 @@ QByteArray FixModel::buildRequest(const CheckRequest &request)
     // is what the fixer and the reader misread); every other block passes
     // untouched. Both protocols share the model, so both get the scale.
     QImage image = request.image;
-    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("fix")))
+    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(request.profileId, QStringLiteral("fix")))
         image = applyCropScaling(image, request.blockType, policyForRole(role));
     return buildRequestBody(request, encodeImageDataUrl(image));
 }
@@ -180,7 +180,7 @@ QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteAr
     // The read protocol (ADR 259) has no candidate and no sample: the reader
     // gets the image, the system prompt and the block prompt, and writes the
     // block from the image alone (ADR 266).
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("fix"));
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.profileId, QStringLiteral("fix"));
     const bool promptFirst = role && role->promptBeforeImage;
 
     const QJsonObject typePromptPart = textPart(request.typePrompt);

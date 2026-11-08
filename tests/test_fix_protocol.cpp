@@ -70,6 +70,7 @@ CheckRequest fixRequest()
     request.recognizedText = QStringLiteral("The candidate text");
     request.blockType = QStringLiteral("text");
     request.modelId = QStringLiteral("qwen3.5-9b");
+    request.profileId = QStringLiteral("qwen3.5-9b");
     request.task = CheckRequest::Task::Fix;
     return request;
 }
@@ -470,6 +471,17 @@ void TestFixProtocol::glyphStageScalesTheFormulaCrop()
     CheckRequest text = fixRequest();
     text.image = crop;
     QCOMPARE(bodyImage(model.buildWithImage(text)).size(), crop.size());
+
+    // On a managed connection the wire modelId is the server's alias, which
+    // no profile carries: the stage keys on the profile id (ADR 288), and the
+    // body still routes to the alias.
+    CheckRequest managed = fixRequest();
+    managed.image = crop;
+    managed.blockType = QStringLiteral("equation");
+    managed.modelId = QStringLiteral("llocr-fix");
+    const QByteArray managedBody = model.buildWithImage(managed);
+    QCOMPARE(QJsonDocument::fromJson(managedBody).object().value("model").toString(), QStringLiteral("llocr-fix"));
+    QCOMPARE(bodyImage(managedBody).size(), QSize(120, 80));
 }
 
 QTEST_MAIN(TestFixProtocol)

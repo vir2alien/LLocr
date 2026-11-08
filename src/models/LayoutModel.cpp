@@ -22,7 +22,7 @@ QFuture<CheckResult> LayoutModel::check(const CheckRequest &request, const Conne
 
 QByteArray LayoutModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
 {
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("layout"));
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.profileId, QStringLiteral("layout"));
     const bool promptFirst = role && role->promptBeforeImage;
 
     QJsonArray content;

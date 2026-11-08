@@ -165,7 +165,10 @@ syntax), green = verified clean (Ok, approved, hand-written). The frame
 follows the **effective** layer; the confidence number (option
 `check/showConfidence`) is printed in the frame's color. The fixer's states
 never speak in the frame — it is not a verifier (ADR 240). Reader states do:
-green — read, red — could not be read (ADR 261). «Утвердить блок» stores
+green — a read that reproduced the text (the independent re-read is itself a
+verification, ADR 261); a read that **replaced** the text is a fresh
+re-recognition — the block goes gray until the deciding model judges it
+(ADR 289); red — could not be read. «Утвердить блок» stores
 `BoxCheckStatus::Approved` and can be revoked (ADR 185/187); a hand-written
 text is `BoxCheckStatus::Edited` (ADR 187). Moving or resizing a block erases
 its contents — it is markup again (ADR 241).

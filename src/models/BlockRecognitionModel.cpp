@@ -27,7 +27,7 @@ QByteArray BlockRecognitionModel::buildRequest(const CheckRequest &request)
     // resolution can overflow the slot the server caps at, so the crop
     // shrinks only when the estimate exceeds the budget the profile sets.
     QImage image = request.image;
-    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("blockRecognition")))
+    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(request.profileId, QStringLiteral("blockRecognition")))
         image = applyCropScaling(image, request.blockType, policyForRole(role));
     return buildRequestBody(request, encodeImageDataUrl(image));
 }
@@ -38,7 +38,7 @@ QByteArray BlockRecognitionModel::buildRequestBody(const CheckRequest &request, 
     // blockPrompts). An empty prompt is a valid transcription request
     // (LightOnOCR-3 trains "the image only") — empty parts are dropped rather
     // than sent.
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("blockRecognition"));
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.profileId, QStringLiteral("blockRecognition"));
     const bool promptFirst = role && role->promptBeforeImage;
 
     QJsonArray content;

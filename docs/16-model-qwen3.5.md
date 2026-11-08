@@ -157,6 +157,58 @@ top-level JSON field, plus two injected ones:
 | `stop` | `["</CANDIDATE>"]` | role `request` — ends the reply at the verdict. Only the protocol marker belongs here: llama-server already stops at the end-of-text token, and naming that in the stop list cuts the answer to nothing and lands every block on Review |
 | `max_tokens` | per block, §5 | role `maxOutput` 8192 as the default (`requestWithMaxOutput`); overridden per block type from `fix-requests.json → maxOutputByBlock` (`FixController::fixBlock`) |
 | `reasoning_budget_tokens` | `0` / 512 / 1024 / 1536 | injected by `applyReasoningBudget` from the global settings (`check/fixReasoningBudgetTokens` for fix, `check/readReasoningBudgetTokens` for read; default off) |
+
+**The 4B's measured fix prompts** (ADR 267; the prompt_ab stand,
+`OCRtest/fix_models/prompt_ab.py`): the fix role ships its own system prompt
+(one sentence) and block prompts; the block prompts state the task and the
+OK/FIX/REVIEW contract twice — the doubling won the earlier fix stand. The
+`equation` prompt is the measured exception, a single sentence:
+
+> OK if the OCR candidate matches the image, FIX followed by the corrected
+> LaTeX if not, REVIEW if the image is unreadable.
+
+A long formula prompt fixates the model on the wording instead of the image
+and the candidate: on initially-correct candidates it rewrites instead of
+`OK`, on an unreadable crop it hallucinates a formula instead of `REVIEW`.
+Measured on the 55 formulas of the OCR_TEST corpus (thinking 256, glyph
+stage 32 px, the app's own wire — profile prompts, gated replies):
+
+| prompt | correct → OK | unreadable → REVIEW | wrong: improved / spoiled |
+| --- | --- | --- | --- |
+| long, doubled (was) | 17/24 | 11/20 | 7 / 5 |
+| one sentence (ships) | **20/24** | **16/20** | **7 / 2** |
+
+Elaborate comparisons ("Compare the image with the candidate. OK — …") are
+worse on both ends: the strict-comparison wording raises REVIEW on broken
+crops but pushes the model to invent differences on correct candidates
+(10/24 OK, 13 spoiled).
+
+**The one-sentence shape does not transfer to the other types** (the
+alltypes stand, 142 blocks of the ten non-formula labels of the same
+corpus): the long per-type prompts win on every axis. Correct candidates
+stay OK 65/71 under the shipped wording against 49/71 under per-type one
+sentences and 44/71 under one shared sentence; on blocks with errors the
+shipped wording improves 12 and spoils 2 against 9 and 1. Two measured
+failure modes of the short wording:
+
+- **Service types collapse.** A page number's FIX payload would equal the
+  candidate, and the model refuses to write it: bare `FIX` with no body —
+  the gate files it under Review (0/10 page numbers, 0/5 headers OK). An
+  OK-first phrasing recovers only half (5/10, 2/5).
+- **Candidate echo.** On long candidates (text, tables) the short wording
+  makes the model quote the framed candidate — the reply's FIX body starts
+  with `OCR candidate:\n<CANDIDATE>…`, which the diff gate stores verbatim
+  (no echo strip in `FixDiffGate::fixBlock` yet): 7 of 26 fixed blocks
+  under the typed wording, 14 of 32 under the shared one, 0 of 55 under
+  the shipped prompts. A follow-up gate strip would make the wording safe;
+  without it the long prompts are the only echo-free option.
+
+Tables add their own finding: even the shipped table prompt does not hold
+the candidate's OTSL serialization — all 9 corpus tables came back
+re-serialized as HTML (which `BlockRender` passes through raw instead of
+`formatOtslTable`). A "in the candidate's own format" clause keeps the
+serialization but brings the echo along. Table wording needs its own
+iteration together with the gate echo strip.
 | `chat_template_kwargs.enable_thinking` | `true` iff `reasoning_budget_tokens` > 0 | `buildRoot` — the budget is also the switch (ADR 193) |
 
 **Read protocol** («Перераспознать», `FixProtocol::ReadBlock`) — same body

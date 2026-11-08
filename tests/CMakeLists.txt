@@ -572,6 +572,17 @@ qt_add_resources(candidate_render_dump "candidate_render_dump_preview_res"
     FILES ${TEST_CANDIDATE_PREVIEW_FILES}
 )
 
+# Helper, not a test: dumps the block crops of a .llocr project exactly as
+# the fix/read tasks send them (the page render, the block crop, the ADR 287
+# stages of the fix role) for the manual stand's crop folder.
+qt_add_executable(remedy_crop_dump remedy_crop_dump.cpp)
+
+target_link_libraries(remedy_crop_dump PRIVATE
+    Qt6::Gui
+    llocr_app
+)
+llocr_add_profile_resources(remedy_crop_dump)
+
 # ---- Shared HTTP policy (ADR 108) -----------------------------------------
 qt_add_executable(test_http_client test_http_client.cpp)
 

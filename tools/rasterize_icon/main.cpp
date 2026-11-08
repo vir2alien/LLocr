@@ -20,21 +20,22 @@
 //
 // This is a standalone regeneration helper; it is NOT part of the application
 // build. The generated PNGs/ICO/ICNS live under resources/icons.
+#include <cstdio>
+#include <QDir>
 #include <QImage>
 #include <QPainter>
 #include <QRectF>
 #include <QSvgRenderer>
-#include <QDir>
-#include <cstdio>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     if (argc < 4) {
         fprintf(stderr, "usage: rasterize_icon <in.svg> <outDir> <size> [<size>...]\n");
         return 2;
     }
 
     const QString inPath = QString::fromLocal8Bit(argv[1]);
-    const QString outDir  = QString::fromLocal8Bit(argv[2]);
+    const QString outDir = QString::fromLocal8Bit(argv[2]);
 
     QSvgRenderer renderer(inPath);
     if (!renderer.isValid()) {

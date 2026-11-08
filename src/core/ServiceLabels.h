@@ -9,9 +9,8 @@ namespace llocr {
 // page_header/page_footer).
 inline bool isPageFurnitureLabel(const QString &label)
 {
-    return label == QLatin1String("header") || label == QLatin1String("footer")
-           || label == QLatin1String("page_header") || label == QLatin1String("page_footer")
-           || label == QLatin1String("page_number");
+    return label == QLatin1String("header") || label == QLatin1String("footer") || label == QLatin1String("page_header") || label == QLatin1String("page_footer") ||
+           label == QLatin1String("page_number");
 }
 
 }  // namespace llocr

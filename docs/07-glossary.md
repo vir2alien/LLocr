@@ -1186,6 +1186,30 @@ appendix at the end of this file.
   model keeps. Known limit: a dense table's reply length is bounded by its
   content, not by the crop, so the budget guards the prompt, not the
   generation time.
+- **288.** The request carries the model profile's id next to the wire model
+  name. `CheckRequest.profileId` / `OcrRequest.profileId` is what the model
+  classes resolve the role by (`FixModel`, `BlockRecognitionModel`,
+  `LayoutModel`, `OcrModel` — the ADR 287 stages and `promptBeforeImage`);
+  the controllers fill it from their task's `RequestProfileStore`. The wire
+  `model` field keeps the connection's name — on a managed server that is
+  the role's alias (`llocr-fix`), which several profiles share and no
+  profile lookup can resolve, so keying the stages on it silently switched
+  every profile-driven stage off for the managed runtime (the crop stages of
+  ADR 287 among them) while the tests, which pass the profile id as
+  `modelId`, stayed green. Amends ADR 287 (the stages' lookup key) and ADR
+  206 (the profiles' index stays by id — aliases are wire names, not keys).
+- **289.** `ReadFixed` is not a verdict: a re-read that replaced the block's
+  text grays the frame. ADR 261 painted both reader confirmations green
+  («read is itself a verification»), but since ADR 266 the reader never sees
+  the candidate text — it can have confirmed or refuted nothing; the
+  difference lives in `FixDiffGate`'s own comparison, and a difference is a
+  dispute, not a clean bill. A replaced block therefore stands as a fresh
+  re-recognition in the correction layer — gray, waiting for the deciding
+  model and the fixer exactly like the never-recognized case of ADR 265 —
+  and the reader's green keeps only the matching re-read (`Read`), whose
+  independent transcription match is the verification. `ReadDamaged` stays
+  red. Amends ADR 261; the run tally («переписано / подтверждено / не
+  прочитано») is untouched.
 
 ### UI
 

@@ -4,8 +4,8 @@
 #include "parsers/TableLimits.h"
 
 #include "core/BoxTransitions.h"
-#include "core/ServiceMarkers.h"
 #include "core/ServiceLabels.h"
+#include "core/ServiceMarkers.h"
 #include "parsers/HtmlMarkup.h"
 
 #include <QRegularExpression>

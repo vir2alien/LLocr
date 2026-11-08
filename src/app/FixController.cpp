@@ -106,6 +106,7 @@ void FixController::fixBlock(
             request.recognizedText = recognizedText;
             request.blockType = blockType;
             request.modelId = conn.modelId;
+            request.profileId = m_requestProfiles.activeProfileId();
             request.parameters = requestParameters();
             applyReasoningBudget(request.parameters, protocol, m_requestProfiles, m_settings);
             request.fixProtocol = protocol;

@@ -26,6 +26,15 @@ THINK_BLOCK_RE = re.compile(r" thinking[\s\S]*? response\s*")
 QUOTES = "«»“”„‟"
 APOSTROPHES = "‘’‚‛"
 
+# ServiceMarkers.h: служебные токены сервера (--special кладёт их в content).
+SERVICE_TOKEN_RE = re.compile(
+    r"<(?:\||\uff5c)[^>]*>"                     # <|im_end|>, <|endoftext|>, …
+    r"|<label>[A-Za-z0-9_]*</label>"
+    r"|</?(?:content|figure|image)>"
+    r"|\bimage_index=\d+"
+    r"|(?:\n|^)[ \t]*<[ \t]*(?=\n|$)"
+    r"|(?:\n|^)[ \t]*\.{3}[ \t]*(?=\n|$)")
+
 
 # ---------------------------------------------------------------- нормализация
 
@@ -118,7 +127,8 @@ def math_equivalent(a: str, b: str) -> bool:
 # ------------------------------------------------------------------ разбор ответа
 
 def strip_control_tokens(text: str) -> str:
-    out = THINK_BLOCK_RE.sub("", text)
+    out = SERVICE_TOKEN_RE.sub("", text)
+    out = THINK_BLOCK_RE.sub("", out)
     idx = out.find(" thinking")
     if idx >= 0:
         out = out[:idx]
