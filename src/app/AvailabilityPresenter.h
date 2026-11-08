@@ -69,6 +69,12 @@ public:
     // selected pages, with a text or without one.
     int scopedReadBlockCount() const;
     bool scopeHasResults() const;
+    // What the scope already carries for each task (the re-run
+    // confirmations): the finished work a re-run would rewrite.
+    bool scopeRecognitionHasResults() const;
+    bool scopeCheckHasResults() const;
+    bool scopeFixHasResults() const;
+    bool scopeReadHasResults() const;
     bool scopeVerificationSupported() const;
     bool scopeBlocksRecognitionSupported() const;
 
@@ -106,6 +112,10 @@ private:
         // the count is the only thing that changes then.
         int scopedReadBlocks = 0;
         bool scopeHasResults = false;
+        bool scopeRecognitionResults = false;
+        bool scopeCheckResults = false;
+        bool scopeFixResults = false;
+        bool scopeReadResults = false;
         bool operator==(const Flags &) const = default;
     };
 

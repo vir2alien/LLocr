@@ -153,6 +153,12 @@ class AppController : public QObject
     Q_PROPERTY(bool scopeHasResults READ scopeHasResults NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeVerificationSupported READ scopeVerificationSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeBlocksRecognitionSupported READ scopeBlocksRecognitionSupported NOTIFY availabilityChanged)
+    // What the scope already carries for each task (the re-run confirmations):
+    // the finished work a re-run would rewrite.
+    Q_PROPERTY(bool scopeRecognitionHasResults READ scopeRecognitionHasResults NOTIFY availabilityChanged)
+    Q_PROPERTY(bool scopeCheckHasResults READ scopeCheckHasResults NOTIFY availabilityChanged)
+    Q_PROPERTY(bool scopeFixHasResults READ scopeFixHasResults NOTIFY availabilityChanged)
+    Q_PROPERTY(bool scopeReadHasResults READ scopeReadHasResults NOTIFY availabilityChanged)
 
     Q_PROPERTY(bool layoutBusy READ layoutBusy NOTIFY layoutStateChanged)
     Q_PROPERTY(int layoutProgressDone READ layoutProgressDone NOTIFY layoutProgressChanged)
@@ -195,6 +201,12 @@ class AppController : public QObject
     Q_PROPERTY(QString parseWarning READ parseWarning NOTIFY resultChanged)
 
 public:
+    // How a scope action treats the results already in it (the re-run
+    // confirmations): RedoAll re-runs over everything, erasing what is there;
+    // SkipDone takes only what the task has not answered yet.
+    enum class RerunMode { RedoAll, SkipDone };
+    Q_ENUM(RerunMode)
+
     explicit AppController(SettingsStore &settings,
                            RuntimeController &runtime,
                            RequestProfileStore &checkRequestProfiles,
@@ -298,6 +310,10 @@ public:
     bool scopeHasResults() const { return m_availability.scopeHasResults(); }
     bool scopeVerificationSupported() const { return m_availability.scopeVerificationSupported(); }
     bool scopeBlocksRecognitionSupported() const { return m_availability.scopeBlocksRecognitionSupported(); }
+    bool scopeRecognitionHasResults() const { return m_availability.scopeRecognitionHasResults(); }
+    bool scopeCheckHasResults() const { return m_availability.scopeCheckHasResults(); }
+    bool scopeFixHasResults() const { return m_availability.scopeFixHasResults(); }
+    bool scopeReadHasResults() const { return m_availability.scopeReadHasResults(); }
 
     bool layoutBusy() const { return m_layout.busy(); }
     int layoutProgressDone() const { return m_layout.progressDone(); }
@@ -421,18 +437,19 @@ public slots:
     Q_INVOKABLE void checkEnabledBlocksOnPage();
     Q_INVOKABLE void checkAllEnabledBlocks();
     // The toolbar's scoped spellings: the same runs over the thumbnail
-    // selection (empty selection = every page).
-    Q_INVOKABLE void recognizeScopeBlocks();
-    Q_INVOKABLE void layoutScopePages();
-    Q_INVOKABLE void checkScopeEnabledBlocks();
-    Q_INVOKABLE void fixScopeProblemBlocks();
+    // selection (empty selection = every page). The mode says what happens to
+    // the results already in scope (the re-run confirmations).
+    Q_INVOKABLE void recognizeScopeBlocks(RerunMode mode = RerunMode::SkipDone);
+    Q_INVOKABLE void layoutScopePages(RerunMode mode = RerunMode::RedoAll);
+    Q_INVOKABLE void checkScopeEnabledBlocks(RerunMode mode = RerunMode::SkipDone);
+    Q_INVOKABLE void fixScopeProblemBlocks(RerunMode mode = RerunMode::SkipDone);
     // The read task (ADR 259): the same work list as the fix, but the model
     // writes the block from the image instead of correcting the recognized
     // text.
-    Q_INVOKABLE void readScopeBlocks();
+    Q_INVOKABLE void readScopeBlocks(RerunMode mode = RerunMode::RedoAll);
     Q_INVOKABLE void stopCheck();
     // The auto pipeline (ADR 257): the run over the selected pages.
-    Q_INVOKABLE void startAutoPipeline();
+    Q_INVOKABLE void startAutoPipeline(RerunMode mode = RerunMode::RedoAll);
     Q_INVOKABLE void stopAutoPipeline();
     // Block (re-)recognition through the blockRecognition role: the selected
     // block regardless of status, or only the problem blocks (Mismatch/Review).
@@ -662,6 +679,10 @@ private:
     AutoVerificationStage *m_autoVerificationStage = nullptr;
     AutoFixStage *m_autoFixStage = nullptr;
     AutoVerificationStage *m_autoRecheckStage = nullptr;
+    // The continue mode of the run (the re-run confirmations): the markup
+    // stage sees only the pages without markup; the other stages keep the
+    // whole scope.
+    bool m_autoSkipMarkedPages = false;
     // The markup pass the pipeline waits for.
     std::function<void(bool)> m_markupPassDone;
     // The pages the pass marked up. A pass that marked none did nothing, and

@@ -220,8 +220,23 @@ AppController::AppController(SettingsStore &settings,
 
     // The auto pipeline (ADR 257): the stages in the order they run and the
     // orchestrator that owns the run. The stage that needs a model says so
-    // and the run passes it over.
-    m_autoMarkupStage = new AutoMarkupStage(m_layout, [this](const AutoPipelineStage::Scope &pages, const std::function<void(bool)> &done) { runMarkupPass(pages, done); }, this);
+    // and the run passes it over. The markup stage takes the continue mode's
+    // filter: the pages already marked are passed over, the recognition keeps
+    // the full scope and fills what the marked pages still miss.
+    m_autoMarkupStage = new AutoMarkupStage(
+        m_layout,
+        [this](const AutoPipelineStage::Scope &pages, const std::function<void(bool)> &done) { runMarkupPass(pages, done); },
+        [this](const AutoPipelineStage::Scope &pages) {
+            if (!m_autoSkipMarkedPages)
+                return pages;
+            AutoPipelineStage::Scope unmarked;
+            for (const int page : pages) {
+                if (!m_document.page(page).recognized)
+                    unmarked.append(page);
+            }
+            return unmarked;
+        },
+        this);
     m_autoRecognitionStage = new AutoRecognitionStage(m_recheckQueue, m_workList, [this]() { return m_availability.blockRecognitionModelAvailable(); }, this);
     m_autoVerificationStage = new AutoVerificationStage(m_decisionQueue, m_workList, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification"), this);
     m_autoFixStage = new AutoFixStage(m_remedyQueue, m_workList, [this]() { return m_availability.fixModelAvailable(); }, this);
@@ -1297,40 +1312,108 @@ void AppController::checkAllEnabledBlocks()
     startVerificationOrReport(collectEnabledWithCounts(pages, &answered, &rejected), answered, rejected);
 }
 
-void AppController::recognizeScopeBlocks()
+void AppController::recognizeScopeBlocks(RerunMode mode)
 {
     if (m_layout.busy())
         return;
-    m_recheckQueue.run(m_workList.unrecognizedBlocks(scopePages()));
+    const QList<BlockWorkList::Task> tasks = mode == RerunMode::RedoAll ? m_workList.reRecognizableBlocks(scopePages()) : m_workList.unrecognizedBlocks(scopePages());
+    if (tasks.isEmpty()) {
+        setStatus(StatusMessage::translate("AppController", "Nothing to recognize: the blocks in scope already carry text"));
+        return;
+    }
+    m_recheckQueue.run(tasks);
 }
 
-void AppController::layoutScopePages()
+void AppController::layoutScopePages(RerunMode mode)
 {
+    QList<int> pages = scopePages();
+    if (mode == RerunMode::SkipDone) {
+        QList<int> unmarked;
+        for (const int page : pages) {
+            if (!m_document.page(page).recognized)
+                unmarked.append(page);
+        }
+        if (unmarked.isEmpty()) {
+            setStatus(StatusMessage::translate("AppController", "Nothing to mark up: the pages in scope already carry markup"));
+            return;
+        }
+        pages = unmarked;
+    }
     m_autoTurnedPages.clear();
-    startLayout(scopePages());
+    startLayout(pages);
 }
 
-void AppController::checkScopeEnabledBlocks()
+void AppController::checkScopeEnabledBlocks(RerunMode mode)
 {
     if (m_layout.busy() || checkBusy())
         return;
+    if (mode == RerunMode::RedoAll) {
+        const QList<BlockWorkList::Task> tasks = m_workList.recheckableBlocks(scopePages());
+        if (tasks.isEmpty()) {
+            setStatus(StatusMessage::translate("AppController", "Nothing to check: the blocks in scope already carry a verdict"));
+            return;
+        }
+        m_decisionQueue.run(tasks);
+        return;
+    }
     int answered = 0;
     int rejected = 0;
     startVerificationOrReport(collectEnabledWithCounts(scopePages(), &answered, &rejected), answered, rejected);
 }
 
-void AppController::fixScopeProblemBlocks()
+void AppController::fixScopeProblemBlocks(RerunMode mode)
 {
     if (m_layout.busy() || checkBusy())
         return;
-    m_remedyQueue.runFix(m_workList.fixableBlocks(scopePages()));
+    if (mode == RerunMode::RedoAll) {
+        // The redo is a clean slate: the stored correction is erased before
+        // the request is built, so the fixer judges the block's own text —
+        // the hook runs inside the queue, ahead of the candidate readout.
+        const QList<BlockWorkList::Task> tasks = m_workList.refixableBlocks(scopePages());
+        if (tasks.isEmpty()) {
+            setStatus(StatusMessage::translate("AppController", "Nothing to fix: the blocks in scope already carry a remedy answer"));
+            return;
+        }
+        m_remedyQueue.runFix(tasks, [this](const BlockWorkList::Task &task) {
+            applyBoxTransition(task.page, task.box, [](BoundingBox &box) {
+                if (box.fixStatus != BoxFixStatus::None)
+                    BoxTransitions::correctionReverted(box);
+            });
+        });
+        return;
+    }
+    const QList<BlockWorkList::Task> tasks = m_workList.fixableBlocks(scopePages());
+    if (tasks.isEmpty()) {
+        setStatus(StatusMessage::translate("AppController", "Nothing to fix: the blocks in scope already carry a remedy answer"));
+        return;
+    }
+    m_remedyQueue.runFix(tasks);
 }
 
-void AppController::readScopeBlocks()
+void AppController::readScopeBlocks(RerunMode mode)
 {
     if (m_layout.busy() || checkBusy())
         return;
-    m_remedyQueue.runRead(m_workList.readableBlocks(scopePages()));
+    if (mode == RerunMode::RedoAll) {
+        const QList<BlockWorkList::Task> tasks = m_workList.readableBlocks(scopePages());
+        if (tasks.isEmpty()) {
+            setStatus(StatusMessage::translate("AppController", "Nothing to re-read: the blocks in scope already carry the reader's answer"));
+            return;
+        }
+        m_remedyQueue.runRead(tasks, [this](const BlockWorkList::Task &task) {
+            applyBoxTransition(task.page, task.box, [](BoundingBox &box) {
+                if (box.fixStatus != BoxFixStatus::None)
+                    BoxTransitions::correctionReverted(box);
+            });
+        });
+        return;
+    }
+    const QList<BlockWorkList::Task> tasks = m_workList.notReadBlocks(scopePages());
+    if (tasks.isEmpty()) {
+        setStatus(StatusMessage::translate("AppController", "Nothing to re-read: the blocks in scope already carry the reader's answer"));
+        return;
+    }
+    m_remedyQueue.runRead(tasks);
 }
 
 void AppController::stopCheck()
@@ -1558,8 +1641,9 @@ int AppController::autoPipelineProgressTotal() const
     return m_autoPipeline->progressTotal();
 }
 
-void AppController::startAutoPipeline()
+void AppController::startAutoPipeline(RerunMode mode)
 {
+    m_autoSkipMarkedPages = mode == RerunMode::SkipDone;
     m_autoPipeline->start();
 }
 

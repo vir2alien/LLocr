@@ -8,6 +8,26 @@
         <translation>Проверять нечего:</translation>
     </message>
     <message>
+        <source>Nothing to recognize: the blocks in scope already carry text</source>
+        <translation>Распознавать нечего: блоки в области уже имеют текст</translation>
+    </message>
+    <message>
+        <source>Nothing to mark up: the pages in scope already carry markup</source>
+        <translation>Размечать нечего: на страницах области уже есть разметка</translation>
+    </message>
+    <message>
+        <source>Nothing to fix: the blocks in scope already carry a remedy answer</source>
+        <translation>Исправлять нечего: блоки в области уже обработаны</translation>
+    </message>
+    <message>
+        <source>Nothing to re-read: the blocks in scope already carry the reader's answer</source>
+        <translation>Перераспознавать нечего: блоки в области уже перераспознаны</translation>
+    </message>
+    <message>
+        <source>Nothing to check: the blocks in scope already carry a verdict</source>
+        <translation>Проверять нечего: блоки в области уже имеют вердикт</translation>
+    </message>
+    <message>
         <source>%1 block(s) already verified</source>
         <translation>уже проверенных блоков: %1</translation>
     </message>
@@ -1324,13 +1344,13 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Marking up replaces the recognized blocks and text on every page. Continue?</source>
-        <translation>Разметка заменит распознанные блоки и текст на всех страницах. Продолжить?</translation>
+        <source>Every page already carries markup and results. Redo the markup (it replaces the blocks and all results) or mark up only the pages that still have none?</source>
+        <translation>На всех страницах уже есть разметка и результаты. Переделать разметку (заменит блоки и все результаты) или разметить только страницы, где её ещё нет?</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>Marking up replaces the recognized blocks and text on the selected pages. Continue?</source>
-        <translation>Разметка заменит распознанные блоки и текст на выбранных страницах. Продолжить?</translation>
+        <source>The selected pages already carry markup and results. Redo the markup (it replaces the blocks and all results) or mark up only the pages that still have none?</source>
+        <translation>На выбранных страницах уже есть разметка и результаты. Переделать разметку (заменит блоки и все результаты) или разметить только страницы, где её ещё нет?</translation>
     </message>
     <message>
         <location filename="../../src/qml/MainWindow/Header.qml" line="+167"/>
@@ -1343,19 +1363,67 @@
         <translation>Разметить, распознать, проверить и исправить %1 стр.</translation>
     </message>
     <message>
-        <location line="+423"/>
+        <location line="+1"/>
         <source>Automatic pipeline?</source>
         <translation>Автопайплайн?</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>The pipeline replaces the blocks and the text on every page. Continue?</source>
-        <translation>Пайплайн заменит блоки и текст на всех страницах. Продолжить?</translation>
+        <source>Every page already carries results. Redo everything from the start (the markup runs again, all results are erased) or fill in only what is missing?</source>
+        <translation>На всех страницах уже есть результаты. Переделать всё с начала (разметка заново, все результаты стираются) или дополнить только то, чего не хватает?</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>The pipeline replaces the blocks and the text on the selected pages. Continue?</source>
-        <translation>Пайплайн заменит блоки и текст на выбранных страницах. Продолжить?</translation>
+        <source>The selected pages already carry results. Redo everything from the start (the markup runs again, all results are erased) or fill in only what is missing?</source>
+        <translation>На выбранных страницах уже есть результаты. Переделать всё с начала (разметка заново, все результаты стираются) или дополнить только то, чего не хватает?</translation>
+    </message>
+    <message>
+        <source>Recognize blocks?</source>
+        <translation>Распознать блоки?</translation>
+    </message>
+    <message>
+        <source>The blocks on every page are already recognized. Redo the recognition (it erases the text, the corrections and the verdicts of these blocks) or recognize only the blocks that still have no text?</source>
+        <translation>Блоки на всех страницах уже распознаны. Переделать распознавание (стирает текст, исправления и вердикты этих блоков) или распознать только блоки, у которых ещё нет текста?</translation>
+    </message>
+    <message>
+        <source>The blocks on the selected pages are already recognized. Redo the recognition (it erases the text, the corrections and the verdicts of these blocks) or recognize only the blocks that still have no text?</source>
+        <translation>Блоки на выбранных страницах уже распознаны. Переделать распознавание (стирает текст, исправления и вердикты этих блоков) или распознать только блоки, у которых ещё нет текста?</translation>
+    </message>
+    <message>
+        <source>Verify?</source>
+        <translation>Проверить?</translation>
+    </message>
+    <message>
+        <source>Some of the blocks on every page are already verified. Redo the verification (the current verdicts are erased and the blocks are verified again) or verify only the blocks without a verdict?</source>
+        <translation>Часть блоков на всех страницах уже проверена. Переделать проверку (текущие вердикты стираются, блоки проверяются заново) или проверить только блоки без вердикта?</translation>
+    </message>
+    <message>
+        <source>Some of the blocks on the selected pages are already verified. Redo the verification (the current verdicts are erased and the blocks are verified again) or verify only the blocks without a verdict?</source>
+        <translation>Часть блоков на выбранных страницах уже проверена. Переделать проверку (текущие вердикты стираются, блоки проверяются заново) или проверить только блоки без вердикта?</translation>
+    </message>
+    <message>
+        <source>Fix?</source>
+        <translation>Исправить?</translation>
+    </message>
+    <message>
+        <source>Some of the blocks on every page are already fixed. Redo the fix (it erases the corrections and repeats them over the recognized text) or fix only the blocks that still wait for a fix?</source>
+        <translation>Часть блоков на всех страницах уже исправлена. Переделать исправление (стирает исправления и повторяет их по распознанному тексту) или исправить только блоки, которые ещё ждут исправления?</translation>
+    </message>
+    <message>
+        <source>Some of the blocks on the selected pages are already fixed. Redo the fix (it erases the corrections and repeats them over the recognized text) or fix only the blocks that still wait for a fix?</source>
+        <translation>Часть блоков на выбранных страницах уже исправлена. Переделать исправление (стирает исправления и повторяет их по распознанному тексту) или исправить только блоки, которые ещё ждут исправления?</translation>
+    </message>
+    <message>
+        <source>Re-recognize?</source>
+        <translation>Перераспознать?</translation>
+    </message>
+    <message>
+        <source>Some of the blocks on every page have already been re-recognized. Redo the re-reading (it erases its results) or re-recognize only the blocks that have not been re-recognized yet?</source>
+        <translation>Часть блоков на всех страницах уже перераспознана. Переделать перераспознавание (стирает его результаты) или перераспознать только блоки, которые ещё не перераспознавались?</translation>
+    </message>
+    <message>
+        <source>Some of the blocks on the selected pages have already been re-recognized. Redo the re-reading (it erases its results) or re-recognize only the blocks that have not been re-recognized yet?</source>
+        <translation>Часть блоков на выбранных страницах уже перераспознана. Переделать перераспознавание (стирает его результаты) или перераспознать только блоки, которые ещё не перераспознавались?</translation>
     </message>
 </context>
 <context>
@@ -2839,6 +2907,21 @@
         <location line="+19"/>
         <source>The decision model answers in a single forward pass and generates no text, so it has no sampling parameters — the threshold above is its only setting here.</source>
         <translation>Модель decision отвечает за один проход и не генерирует текста, поэтому параметров сэмплирования у неё нет — порог выше является единственной настройкой здесь.</translation>
+    </message>
+</context>
+<context>
+    <name>RerunConfirmDialog</name>
+    <message>
+        <source>Only what's not done</source>
+        <translation>Только где не сделано</translation>
+    </message>
+    <message>
+        <source>Redo all</source>
+        <translation>Переделать всё</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>
@@ -4682,6 +4765,10 @@
         <location filename="../../src/app/AutoPipelineStages.cpp" line="+34"/>
         <source>Markup</source>
         <translation>Разметка</translation>
+    </message>
+    <message>
+        <source>Nothing to mark up</source>
+        <translation>Нет страниц для разметки</translation>
     </message>
     <message>
         <location line="+7"/>

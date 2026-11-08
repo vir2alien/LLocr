@@ -1070,6 +1070,10 @@ appendix at the end of this file.
   not abort the run, a missing model skips the stage with a reason in the
   footer; layout always restarts with confirmation; the fifth stage is the
   same check over the correction layer. Details: `docs/11-auto-pipeline.md`.
+  (The «layout always restarts with confirmation» clause is amended by
+  ADR 291: the full restart is now the rerun dialog's «Переделать всё»
+  answer; the continue mode marks up only the unmarked pages and the stages
+  skip done blocks through their collectors.)
 - **258.** Visual-diff thresholds are measured on the OCR_TEST corpus (177
   blocks, MinerU2.5-Pro recognition, app request bit-for-bit): text 0.92,
   equation 0.87, table 0.4, base 0.5 — FN 10 (13.7 %) / FP 41 (39.4 %) versus
@@ -1210,6 +1214,40 @@ appendix at the end of this file.
   independent transcription match is the verification. `ReadDamaged` stays
   red. Amends ADR 261; the run tally («переписано / подтверждено / не
   прочитано») is untouched.
+- **291.** A task that has already run on the scope asks before re-running:
+  the six toolbar buttons (markup, recognition, verify, fix, re-read, auto)
+  open one dialog — «Отмена» / «Переделать всё» / «Только где не сделано»
+  (cancel / redo all / only what's not done) — and a scope with nothing done
+  starts directly, so the question appears only where real results would be
+  lost. The mode is `AppController::RerunMode {RedoAll, SkipDone}` (QML:
+  `Controller.RerunMode.*`), the dialog is
+  `src/qml/Common/RerunConfirmDialog.qml`, and the per-task has-results
+  flags ride `AvailabilityPresenter` beside the enablement predicates
+  (ADR 286). The modes differ in the work list, not in machinery: SkipDone
+  keeps ADR 286's collectors (unrecognized / enabled / fixable; read narrows
+  to `notReadBlocks` — readable minus read-done), RedoAll widens them to the
+  done blocks too (`reRecognizableBlocks`, `recheckableBlocks`,
+  `refixableBlocks`, `readableBlocks` — every block the task can serve,
+  recognized and verdict-carrying included). A user-owned block
+  (Edited/Approved on either layer) is neither re-run nor erased in any
+  mode. Erasure follows the stack — a redo erases its own level and
+  everything above it: recognition erases on arrival (`ocrResultApplied`
+  clears the correction layer and both verdicts, ADR 164 — no new code),
+  verification erases the judged layer's verdict before each request
+  (`verificationStarted`), and a fix/read redo erases the remedy result per
+  block just before the request is built — a `BlockQueue` prepare hook runs
+  `BoxTransitions::correctionReverted` (the correction layer and `fixStatus`
+  go, the text layer and its verdict stay) so the fixer's candidate is the
+  recognized text again. Erasure is just-in-time, per block: a failed or
+  interrupted run leaves the not-yet-processed blocks' results intact, and
+  a failed response writes nothing further. Markup replaces the page result
+  entirely, as before. The auto pipeline (ADR 257) gets the same two
+  answers: RedoAll is the old run — markup from scratch over all scope
+  pages; SkipDone is the continue mode — the markup stage filters its scope
+  to unmarked pages (a fully-marked scope skips the stage with «Нет страниц
+  для разметки»), and the recognition/verification/fix stages keep the full
+  scope, skipping done blocks through their collectors. Amends ADR 257
+  (in part — the markup stage is no longer always from scratch).
 
 ### UI
 

@@ -57,6 +57,10 @@ void AvailabilityPresenter::refresh(const Revisions &revisions)
         scopedPendingFixCount(),
         scopedReadBlockCount(),
         scopeHasResults(),
+        scopeRecognitionHasResults(),
+        scopeCheckHasResults(),
+        scopeFixHasResults(),
+        scopeReadHasResults(),
     };
     if (current == m_flags)
         return;
@@ -171,6 +175,26 @@ bool AvailabilityPresenter::scopeHasResults() const
             return true;
     }
     return false;
+}
+
+bool AvailabilityPresenter::scopeRecognitionHasResults() const
+{
+    return m_deps.workList.hasRecognizedBlocks(scopePages());
+}
+
+bool AvailabilityPresenter::scopeCheckHasResults() const
+{
+    return m_deps.workList.hasVerifiedBlocks(scopePages());
+}
+
+bool AvailabilityPresenter::scopeFixHasResults() const
+{
+    return m_deps.workList.hasRemedyResults(scopePages());
+}
+
+bool AvailabilityPresenter::scopeReadHasResults() const
+{
+    return m_deps.workList.hasReadResults(scopePages());
 }
 
 bool AvailabilityPresenter::scopeVerificationSupported() const

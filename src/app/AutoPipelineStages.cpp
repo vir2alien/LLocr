@@ -22,12 +22,17 @@ QString stageText(const QString &key)
 
 }  // namespace
 
-AutoMarkupStage::AutoMarkupStage(LayoutController &layout, RunPass runPass, QObject *parent) : AutoPipelineStage(QStringLiteral("Markup"), parent), m_layout(layout), m_runPass(std::move(runPass)) {}
+AutoMarkupStage::AutoMarkupStage(LayoutController &layout, RunPass runPass, ScopeFilter scopeFilter, QObject *parent)
+    : AutoPipelineStage(QStringLiteral("Markup"), parent), m_layout(layout), m_runPass(std::move(runPass)), m_scopeFilter(std::move(scopeFilter))
+{
+}
 
-QString AutoMarkupStage::skipReason(const AutoPipelineStage::Scope &) const
+QString AutoMarkupStage::skipReason(const AutoPipelineStage::Scope &pages) const
 {
     if (!m_layout.available())
         return stageText(QStringLiteral("The markup model does not support page markup"));
+    if ((m_scopeFilter ? m_scopeFilter(pages) : pages).isEmpty())
+        return stageText(QStringLiteral("Nothing to mark up"));
     return QString();
 }
 
@@ -37,7 +42,7 @@ void AutoMarkupStage::start(const AutoPipelineStage::Scope &pages)
     // The stage can be destroyed while the pass is in flight, so the callback
     // holds a guarded pointer and not the raw one.
     const QPointer<AutoMarkupStage> self(this);
-    m_runPass(pages, [self](bool ok) {
+    m_runPass(m_scopeFilter ? m_scopeFilter(pages) : pages, [self](bool ok) {
         if (!self || !self->m_running)
             return;
         self->m_running = false;

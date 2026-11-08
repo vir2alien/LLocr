@@ -7,6 +7,24 @@
 
 namespace llocr {
 
+namespace {
+
+// A block the user wrote or confirmed by hand — on either layer, a re-run
+// never rewrites or re-judges it.
+bool userOwned(const BoundingBox &box)
+{
+    return box.checkStatus == BoxCheckStatus::Edited || box.checkStatus == BoxCheckStatus::Approved || box.correctedCheckStatus == BoxCheckStatus::Edited ||
+           box.correctedCheckStatus == BoxCheckStatus::Approved;
+}
+
+// The reader's three outcomes (ADR 260).
+bool readAnswered(BoxFixStatus status)
+{
+    return status == BoxFixStatus::Read || status == BoxFixStatus::ReadFixed || status == BoxFixStatus::ReadDamaged;
+}
+
+}  // namespace
+
 BlockWorkList::BlockWorkList(Deps deps) : m_deps(std::move(deps)) {}
 
 QList<BlockWorkList::Task> BlockWorkList::unrecognizedBlocks(const QList<int> &pages, const TypeFilter &filter) const
@@ -95,6 +113,104 @@ QList<BlockWorkList::Task> BlockWorkList::readableBlocks(const QList<int> &pages
             continue;
         for (const int box : PageStatus::readableBoxes(docPage.result.pages.first()))
             tasks.append({page, box});
+    }
+    return tasks;
+}
+
+QList<BlockWorkList::Task> BlockWorkList::reRecognizableBlocks(const QList<int> &pages, const TypeFilter &filter) const
+{
+    QList<Task> tasks;
+    const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
+    for (const int page : pages) {
+        if (!m_deps.document.isValidIndex(page))
+            continue;
+        const DocumentPage &docPage = m_deps.document.page(page);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        const OcrPage &ocrPage = docPage.result.pages.first();
+        for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+            const BoundingBox &box = ocrPage.boxes.at(i);
+            if (filter && !filter(box.label))
+                continue;
+            if (userOwned(box))
+                continue;
+            if (blockStyleForLabel(box.label, modelId).style == BlockStyle::ImagePlaceholder)
+                continue;
+            tasks.append({page, i});
+        }
+    }
+    return tasks;
+}
+
+QList<BlockWorkList::Task> BlockWorkList::recheckableBlocks(const QList<int> &pages, const TypeFilter &filter) const
+{
+    QList<Task> tasks;
+    for (const int page : pages) {
+        if (!m_deps.document.isValidIndex(page))
+            continue;
+        const DocumentPage &docPage = m_deps.document.page(page);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        const OcrPage &ocrPage = docPage.result.pages.first();
+        for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+            const BoundingBox &box = ocrPage.boxes.at(i);
+            if (filter && !filter(box.label))
+                continue;
+            if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
+                continue;
+            if (userOwned(box))
+                continue;
+            // A formula the app rejected on its LaTeX syntax waits for a new
+            // recognition, not for another verdict (ADR 194).
+            if (BoxTransitions::effectiveCheckStatus(box) == BoxCheckStatus::InvalidSyntax)
+                continue;
+            if (BoxTransitions::effectiveText(box).isEmpty())
+                continue;
+            tasks.append({page, i});
+        }
+    }
+    return tasks;
+}
+
+QList<BlockWorkList::Task> BlockWorkList::refixableBlocks(const QList<int> &pages, const TypeFilter &filter) const
+{
+    QList<Task> tasks;
+    for (const int page : pages) {
+        if (!m_deps.document.isValidIndex(page))
+            continue;
+        const DocumentPage &docPage = m_deps.document.page(page);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        const OcrPage &ocrPage = docPage.result.pages.first();
+        for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+            const BoundingBox &box = ocrPage.boxes.at(i);
+            if (filter && !filter(box.label))
+                continue;
+            if (userOwned(box))
+                continue;
+            if (!BoxTransitions::needsFix(box) && box.fixStatus == BoxFixStatus::None)
+                continue;
+            tasks.append({page, i});
+        }
+    }
+    return tasks;
+}
+
+QList<BlockWorkList::Task> BlockWorkList::notReadBlocks(const QList<int> &pages) const
+{
+    QList<Task> tasks;
+    for (const int page : pages) {
+        if (!m_deps.document.isValidIndex(page))
+            continue;
+        const DocumentPage &docPage = m_deps.document.page(page);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        const OcrPage &ocrPage = docPage.result.pages.first();
+        for (const int box : PageStatus::readableBoxes(ocrPage)) {
+            if (readAnswered(ocrPage.boxes.at(box).fixStatus))
+                continue;
+            tasks.append({page, box});
+        }
     }
     return tasks;
 }
@@ -202,6 +318,87 @@ bool BlockWorkList::hasUnrecognizedBlocks(int pageIndex) const
         if (blockStyleForLabel(box.label, modelId).style == BlockStyle::ImagePlaceholder)
             continue;
         return true;
+    }
+    return false;
+}
+
+bool BlockWorkList::hasRecognizedBlocks(const QList<int> &pages) const
+{
+    const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
+    for (const int page : pages) {
+        if (!m_deps.document.isValidIndex(page))
+            continue;
+        const DocumentPage &docPage = m_deps.document.page(page);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        const OcrPage &ocrPage = docPage.result.pages.first();
+        for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+            const BoundingBox &box = ocrPage.boxes.at(i);
+            if (blockStyleForLabel(box.label, modelId).style == BlockStyle::ImagePlaceholder)
+                continue;
+            if (box.checkStatus == BoxCheckStatus::NotChecked && box.text.isEmpty() && box.correctedText.isEmpty())
+                continue;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool BlockWorkList::hasVerifiedBlocks(const QList<int> &pages) const
+{
+    for (const int page : pages) {
+        if (!m_deps.document.isValidIndex(page))
+            continue;
+        const DocumentPage &docPage = m_deps.document.page(page);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        const OcrPage &ocrPage = docPage.result.pages.first();
+        for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+            const BoundingBox &box = ocrPage.boxes.at(i);
+            if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
+                continue;
+            // A formula the app rejected on its LaTeX syntax is never asked
+            // about (ADR 194): the checker has not run there.
+            if (BoxTransitions::effectiveCheckStatus(box) == BoxCheckStatus::InvalidSyntax)
+                continue;
+            if (BoxTransitions::effectiveCheckStatus(box) == BoxCheckStatus::NotChecked)
+                continue;
+            if (BoxTransitions::effectiveText(box).isEmpty())
+                continue;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool BlockWorkList::hasRemedyResults(const QList<int> &pages) const
+{
+    for (const int page : pages) {
+        if (!m_deps.document.isValidIndex(page))
+            continue;
+        const DocumentPage &docPage = m_deps.document.page(page);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        for (const BoundingBox &box : std::as_const(docPage.result.pages.first().boxes)) {
+            if (box.fixStatus != BoxFixStatus::None)
+                return true;
+        }
+    }
+    return false;
+}
+
+bool BlockWorkList::hasReadResults(const QList<int> &pages) const
+{
+    for (const int page : pages) {
+        if (!m_deps.document.isValidIndex(page))
+            continue;
+        const DocumentPage &docPage = m_deps.document.page(page);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        for (const BoundingBox &box : std::as_const(docPage.result.pages.first().boxes)) {
+            if (readAnswered(box.fixStatus))
+                return true;
+        }
     }
     return false;
 }

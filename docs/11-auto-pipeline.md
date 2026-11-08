@@ -1,7 +1,8 @@
 # 11. Auto mode: the «markup → recognition → verification → fix → verification» pipeline
 
 > What the Auto pass button in the header's «Target pages» group does, how
-> the pipeline is built and why it is split into stages. Decision — ADR 257.
+> the pipeline is built and why it is split into stages. Decisions —
+> ADR 257 (the stages), ADR 291 (the rerun modes).
 
 ## 1. What it is
 
@@ -27,6 +28,14 @@ reason is the cost of a model switch (ADR 252): the managed llama-server
 holds one loaded model, and a transition between tasks (`layout` →
 `blockRecognition` → `decision` → `fix`) reloads it. A page-by-page run would
 give 4 model switches per page instead of 4 per document.
+
+The starting point is the rerun question (ADR 291): when the scope already
+carries results, the button offers «Переделать всё» — the full cycle
+described here — or «Только где не сделано» — the **continue mode**. In the
+continue mode the markup stage filters its scope to the pages without markup
+(a fully-marked scope skips the stage with «Нет страниц для разметки»),
+while the recognition/verification/fix stages keep the full scope and skip
+the done blocks through their collectors.
 
 ## 2. The stage boundary
 
@@ -128,8 +137,10 @@ effective layer» by itself.
   (`pipelineIdle`);
 * turns into a stop button during the run — the same trick the Mark up,
   Verify and Fix buttons use;
-* asks before starting when the scope carries results: markup replaces the
-  blocks and the texts of the pages.
+* asks before starting when the scope carries results (ADR 291):
+  «Переделать всё» restarts the markup from scratch — the blocks and the
+  texts of the pages are replaced; «Только где не сделано» marks up only
+  the pages without markup and fills in what is missing.
 
 **The status line in the footer** (`TaskStatus.qml`) shows the current stage
 and its progress: `Auto 3/5: Verification 12 / 40`. An empty progress
@@ -195,7 +206,9 @@ The full check is `scripts/check.sh` (build + ctest + clang-format + qmllint).
 2. **A stage's failure does not drop the run** — the reasons are collected
    and shown in the footer.
 3. **No model — the stage is skipped**, not blocking the start.
-4. **Markup always from scratch** (with confirmation): a run is a full cycle.
+4. **Markup from scratch is the redo mode** (ADR 291): a full cycle erases
+   the results; the continue mode marks up only the unmarked pages and the
+   stages skip done blocks.
 5. **The fifth stage is the same verification stage**: the collector itself
    finds the blocks without a verdict on the effective layer.
 6. **The modularity boundary is the stage contract**, not a set of buttons.
@@ -231,5 +244,6 @@ Postponed deliberately (the next step, not a defect):
 - The four tasks and the verification pipeline: `docs/09-tasks-and-verification.md`.
 - Model manuals: `docs/13-model-mineru.md` (layout, blockRecognition),
   `docs/17-model-minicpm-jev.md` (decision), `docs/16-model-qwen3.5.md` (fix).
-- Glossary: `docs/07-glossary.md` (ADR 257 — the auto mode).
+- Glossary: `docs/07-glossary.md` (ADR 257 — the auto mode, ADR 291 — the
+  rerun modes).
 - Russian mirror: `docs/11-auto-pipeline.ru.md`.

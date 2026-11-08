@@ -8,7 +8,7 @@ namespace llocr {
 
 BlockQueue::BlockQueue(Deps deps, QObject *parent) : QObject(parent), m_deps(std::move(deps)) {}
 
-bool BlockQueue::run(const QList<Task> &tasks)
+bool BlockQueue::run(const QList<Task> &tasks, const PrepareTask &prepare)
 {
     if (m_active || tasks.isEmpty())
         return false;
@@ -20,6 +20,7 @@ bool BlockQueue::run(const QList<Task> &tasks)
     m_finished = false;
     beginRun();
     m_queue = tasks;
+    m_prepare = prepare;
     m_page = -1;
     m_boxIndex = -1;
     m_total = tasks.size();
@@ -83,6 +84,10 @@ void BlockQueue::startNext()
         return;
     }
     const BoundingBox &box = boxes.at(m_boxIndex);
+    // The hook may rewrite the box in place, and the candidate text must come
+    // from the rewritten box — so the text is computed after the call.
+    if (m_prepare)
+        m_prepare(task);
     const QString text = BoxTransitions::effectiveText(box);
     const QImage crop = m_deps.cropProvider(m_page, m_boxIndex);
     if (crop.isNull()) {

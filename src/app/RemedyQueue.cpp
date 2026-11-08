@@ -49,17 +49,17 @@ RemedyQueue::RemedyQueue(Deps deps, QObject *parent)
 // not re-route the results of a run still in flight on the other protocol.
 // The first task starts one event-loop turn later (the queue's own deferred
 // start), so the protocol is in place before any result can arrive.
-bool RemedyQueue::runFix(const QList<Task> &tasks)
+bool RemedyQueue::runFix(const QList<Task> &tasks, const PrepareTask &prepare)
 {
-    if (!run(tasks))
+    if (!run(tasks, prepare))
         return false;
     m_protocol = Protocol::Fix;
     return true;
 }
 
-bool RemedyQueue::runRead(const QList<Task> &tasks)
+bool RemedyQueue::runRead(const QList<Task> &tasks, const PrepareTask &prepare)
 {
-    if (!run(tasks))
+    if (!run(tasks, prepare))
         return false;
     m_protocol = Protocol::Read;
     return true;

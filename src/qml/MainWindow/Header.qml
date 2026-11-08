@@ -202,7 +202,11 @@ ToolBar {
                                 Controller.stopAutoPipeline()
                                 return
                             }
-                            autoConfirmDialog.requestAutoPipeline()
+                            if (!Controller.scopeHasResults) {
+                                Controller.startAutoPipeline(Controller.RerunMode.SkipDone)
+                                return
+                            }
+                            autoRerunDialog.requestAutoPipeline()
                         }
                     }
                 }
@@ -231,7 +235,11 @@ ToolBar {
                             Controller.stopLayout()
                             return
                         }
-                        markupConfirmDialog.requestMarkup()
+                        if (!Controller.scopeHasResults) {
+                            Controller.layoutScopePages(Controller.RerunMode.SkipDone)
+                            return
+                        }
+                        markupRerunDialog.requestMarkup()
                     }
                 }
 
@@ -250,7 +258,11 @@ ToolBar {
                             Controller.stopCheck()
                             return
                         }
-                        Controller.recognizeScopeBlocks()
+                        if (!Controller.scopeRecognitionHasResults) {
+                            Controller.recognizeScopeBlocks(Controller.RerunMode.SkipDone)
+                            return
+                        }
+                        recognitionRerunDialog.requestRecognition()
                     }
                 }
             }
@@ -278,7 +290,11 @@ ToolBar {
                             Controller.stopCheck()
                             return
                         }
-                        Controller.checkScopeEnabledBlocks()
+                        if (!Controller.scopeCheckHasResults) {
+                            Controller.checkScopeEnabledBlocks(Controller.RerunMode.SkipDone)
+                            return
+                        }
+                        checkRerunDialog.requestCheck()
                     }
                 }
 
@@ -299,7 +315,11 @@ ToolBar {
                             Controller.stopCheck()
                             return
                         }
-                        Controller.fixScopeProblemBlocks()
+                        if (!Controller.scopeFixHasResults) {
+                            Controller.fixScopeProblemBlocks(Controller.RerunMode.SkipDone)
+                            return
+                        }
+                        fixRerunDialog.requestFix()
                     }
                 }
 
@@ -319,7 +339,11 @@ ToolBar {
                             Controller.stopCheck()
                             return
                         }
-                        Controller.readScopeBlocks()
+                        if (!Controller.scopeReadHasResults) {
+                            Controller.readScopeBlocks(Controller.RerunMode.SkipDone)
+                            return
+                        }
+                        readRerunDialog.requestRead()
                     }
                 }
             }
@@ -567,50 +591,115 @@ ToolBar {
         }
     }
 
-    // The markup pass replaces the pages' blocks (and drops their text), so a
-    // document that already carries results asks first.
-    InterruptConfirmDialog {
-        id: markupConfirmDialog
+    // The markup pass replaces the pages' blocks (and drops their text), so
+    // a scope that already carries results asks whether to redo it or to
+    // mark up only the pages that still have none.
+    RerunConfirmDialog {
+        id: markupRerunDialog
 
         function requestMarkup() {
             // Only the pages in scope lose their blocks, so their results —
             // not another page's — are what the confirmation asks about.
-            if (!Controller.scopeHasResults) {
-                Controller.layoutScopePages()
-                return
-            }
             const n = Controller.selectedPageCount
             const all = n === 0 || n === Controller.pageCount
             title = qsTr("Mark up?")
-            prompt = all ? qsTr("Marking up replaces the recognized blocks and text on every page. Continue?")
-                         : qsTr("Marking up replaces the recognized blocks and text on the selected pages. Continue?")
+            prompt = all ? qsTr("Every page already carries markup and results. Redo the markup (it replaces the blocks and all results) or mark up only the pages that still have none?")
+                         : qsTr("The selected pages already carry markup and results. Redo the markup (it replaces the blocks and all results) or mark up only the pages that still have none?")
             open()
         }
 
-        onConfirmed: Controller.layoutScopePages()
+        onRedoRequested: Controller.layoutScopePages(Controller.RerunMode.RedoAll)
+        onContinueRequested: Controller.layoutScopePages(Controller.RerunMode.SkipDone)
     }
 
     // The auto pipeline starts with the markup pass, and the markup pass
     // replaces the pages' blocks (and drops their text) — the same loss the
     // markup button asks about.
-    InterruptConfirmDialog {
-        id: autoConfirmDialog
+    RerunConfirmDialog {
+        id: autoRerunDialog
 
         function requestAutoPipeline() {
-            if (!Controller.scopeHasResults) {
-                Controller.startAutoPipeline()
-                return
-            }
-            // An empty selection means the whole document, and the markup pass
-            // wipes the blocks and the text of every page in scope.
+            // An empty selection means the whole document, and the redo wipes
+            // the blocks and the text of every page in scope.
             const n = Controller.selectedPageCount
             const all = n === 0 || n === Controller.pageCount
             title = qsTr("Automatic pipeline?")
-            prompt = all ? qsTr("The pipeline replaces the blocks and the text on every page. Continue?")
-                         : qsTr("The pipeline replaces the blocks and the text on the selected pages. Continue?")
+            prompt = all ? qsTr("Every page already carries results. Redo everything from the start (the markup runs again, all results are erased) or fill in only what is missing?")
+                         : qsTr("The selected pages already carry results. Redo everything from the start (the markup runs again, all results are erased) or fill in only what is missing?")
             open()
         }
 
-        onConfirmed: Controller.startAutoPipeline()
+        onRedoRequested: Controller.startAutoPipeline(Controller.RerunMode.RedoAll)
+        onContinueRequested: Controller.startAutoPipeline(Controller.RerunMode.SkipDone)
+    }
+
+    // The redo erases the text of the blocks it runs over — and with it their
+    // corrections and verdicts.
+    RerunConfirmDialog {
+        id: recognitionRerunDialog
+
+        function requestRecognition() {
+            const n = Controller.selectedPageCount
+            const all = n === 0 || n === Controller.pageCount
+            title = qsTr("Recognize blocks?")
+            prompt = all ? qsTr("The blocks on every page are already recognized. Redo the recognition (it erases the text, the corrections and the verdicts of these blocks) or recognize only the blocks that still have no text?")
+                         : qsTr("The blocks on the selected pages are already recognized. Redo the recognition (it erases the text, the corrections and the verdicts of these blocks) or recognize only the blocks that still have no text?")
+            open()
+        }
+
+        onRedoRequested: Controller.recognizeScopeBlocks(Controller.RerunMode.RedoAll)
+        onContinueRequested: Controller.recognizeScopeBlocks(Controller.RerunMode.SkipDone)
+    }
+
+    // The redo erases the verdicts the verification has already given.
+    RerunConfirmDialog {
+        id: checkRerunDialog
+
+        function requestCheck() {
+            const n = Controller.selectedPageCount
+            const all = n === 0 || n === Controller.pageCount
+            title = qsTr("Verify?")
+            prompt = all ? qsTr("Some of the blocks on every page are already verified. Redo the verification (the current verdicts are erased and the blocks are verified again) or verify only the blocks without a verdict?")
+                         : qsTr("Some of the blocks on the selected pages are already verified. Redo the verification (the current verdicts are erased and the blocks are verified again) or verify only the blocks without a verdict?")
+            open()
+        }
+
+        onRedoRequested: Controller.checkScopeEnabledBlocks(Controller.RerunMode.RedoAll)
+        onContinueRequested: Controller.checkScopeEnabledBlocks(Controller.RerunMode.SkipDone)
+    }
+
+    // The redo erases the stored corrections and repeats the fix over the
+    // recognized text.
+    RerunConfirmDialog {
+        id: fixRerunDialog
+
+        function requestFix() {
+            const n = Controller.selectedPageCount
+            const all = n === 0 || n === Controller.pageCount
+            title = qsTr("Fix?")
+            prompt = all ? qsTr("Some of the blocks on every page are already fixed. Redo the fix (it erases the corrections and repeats them over the recognized text) or fix only the blocks that still wait for a fix?")
+                         : qsTr("Some of the blocks on the selected pages are already fixed. Redo the fix (it erases the corrections and repeats them over the recognized text) or fix only the blocks that still wait for a fix?")
+            open()
+        }
+
+        onRedoRequested: Controller.fixScopeProblemBlocks(Controller.RerunMode.RedoAll)
+        onContinueRequested: Controller.fixScopeProblemBlocks(Controller.RerunMode.SkipDone)
+    }
+
+    // The redo erases the reader's previous answers.
+    RerunConfirmDialog {
+        id: readRerunDialog
+
+        function requestRead() {
+            const n = Controller.selectedPageCount
+            const all = n === 0 || n === Controller.pageCount
+            title = qsTr("Re-recognize?")
+            prompt = all ? qsTr("Some of the blocks on every page have already been re-recognized. Redo the re-reading (it erases its results) or re-recognize only the blocks that have not been re-recognized yet?")
+                         : qsTr("Some of the blocks on the selected pages have already been re-recognized. Redo the re-reading (it erases its results) or re-recognize only the blocks that have not been re-recognized yet?")
+            open()
+        }
+
+        onRedoRequested: Controller.readScopeBlocks(Controller.RerunMode.RedoAll)
+        onContinueRequested: Controller.readScopeBlocks(Controller.RerunMode.SkipDone)
     }
 } // ToolBar

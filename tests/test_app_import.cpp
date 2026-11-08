@@ -34,6 +34,7 @@
 #include <set>
 
 #include "app/AppController.h"
+#include "app/BlockWorkList.h"
 #include "app/BoxListModel.h"
 #include "app/DocumentModel.h"
 #include "app/PageListModel.h"
@@ -475,6 +476,92 @@ void recognizePage(AppController &controller)
     controller.recognizeScopeBlocks();
     QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
 }
+
+namespace {
+
+// A block of the given type and text.
+BoundingBox textBox(const QString &label, const QString &text)
+{
+    BoundingBox box;
+    box.label = label;
+    box.text = text;
+    return box;
+}
+
+QList<int> boxIndices(const QList<BlockWorkList::Task> &tasks)
+{
+    QList<int> boxes;
+    for (const BlockWorkList::Task &task : tasks)
+        boxes.append(task.box);
+    return boxes;
+}
+
+// A recognized one-page document carrying the given blocks, with the work
+// list over it. The collector tests set the block states by hand; no server
+// runs.
+class CollectorPage
+{
+public:
+    CollectorPage(const QString &imagePath, VerificationPromptStore &verification, RequestProfileStore &checkProfiles, const QList<BoundingBox> &boxes)
+    {
+        QVERIFY(document.appendImage(imagePath));
+        document.page(0).recognized = true;
+        OcrPage page;
+        page.boxes = boxes;
+        document.page(0).result.pages = {page};
+        workList = std::make_unique<BlockWorkList>(BlockWorkList::Deps{document, verification, checkProfiles});
+    }
+
+    DocumentModel document;
+    std::unique_ptr<BlockWorkList> workList;
+};
+
+// One block of every state the re-run dialogs ask about; the slots name the
+// index each assertion talks about. The footer types are disabled for
+// verification by default, the "image" label styles as a placeholder.
+QList<BoundingBox> rerunCast()
+{
+    BoundingBox markupOnly = textBox(QStringLiteral("text"), QString());
+    BoundingBox recognized = textBox(QStringLiteral("text"), QStringLiteral("recognized"));
+    BoundingBox mismatched = textBox(QStringLiteral("text"), QStringLiteral("wrong"));
+    mismatched.checkStatus = BoxCheckStatus::Mismatch;
+    BoundingBox confirmed = textBox(QStringLiteral("text"), QStringLiteral("right"));
+    confirmed.checkStatus = BoxCheckStatus::Ok;
+    BoundingBox handWritten = textBox(QStringLiteral("text"), QStringLiteral("user wrote"));
+    handWritten.checkStatus = BoxCheckStatus::Edited;
+    BoundingBox handApproved = textBox(QStringLiteral("text"), QStringLiteral("model text"));
+    handApproved.correctedText = QStringLiteral("user text");
+    handApproved.correctedCheckStatus = BoxCheckStatus::Approved;
+    BoundingBox damaged = textBox(QStringLiteral("text"), QStringLiteral("unreadable"));
+    damaged.checkStatus = BoxCheckStatus::Mismatch;
+    damaged.correctedCheckStatus = BoxCheckStatus::Review;
+    damaged.fixStatus = BoxFixStatus::Damaged;
+    BoundingBox fixed = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+    fixed.correctedText = QStringLiteral("fixed text");
+    fixed.checkStatus = BoxCheckStatus::Mismatch;
+    fixed.fixStatus = BoxFixStatus::Fixed;
+    BoundingBox remismatched = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+    remismatched.correctedText = QStringLiteral("fixed text");
+    remismatched.checkStatus = BoxCheckStatus::Mismatch;
+    remismatched.correctedCheckStatus = BoxCheckStatus::Mismatch;
+    remismatched.fixStatus = BoxFixStatus::Fixed;
+    BoundingBox readFixed = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+    readFixed.correctedText = QStringLiteral("read text");
+    readFixed.fixStatus = BoxFixStatus::ReadFixed;
+    BoundingBox read = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+    read.fixStatus = BoxFixStatus::Read;
+    BoundingBox readDamaged = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+    readDamaged.fixStatus = BoxFixStatus::ReadDamaged;
+    BoundingBox placeholder = textBox(QStringLiteral("image"), QString());
+    BoundingBox brokenFormula = textBox(QStringLiteral("equation"), QStringLiteral("\\frac{1}{"));
+    brokenFormula.checkStatus = BoxCheckStatus::InvalidSyntax;
+    BoundingBox disabledType = textBox(QStringLiteral("footer"), QStringLiteral("page footer"));
+    BoundingBox suspect = textBox(QStringLiteral("footer"), QStringLiteral("repeated"));
+    suspect.duplicateSuspect = true;
+    return {markupOnly, recognized, mismatched, confirmed, handWritten, handApproved, damaged, fixed, remismatched, readFixed, read, readDamaged, placeholder, brokenFormula, disabledType, suspect};
+}
+
+}  // namespace
 
 class TestAppImport : public QObject
 {
@@ -2495,6 +2582,226 @@ private slots:
         QCOMPARE(m_controller->scopedPendingFixCount(), 2);
     }
 
+    // The fix re-run (RedoAll) erases the stored correction before the request
+    // is built: the model judges the block's own text again, not the
+    // correction it wrote last time. SkipDone leaves the answered blocks
+    // unasked. The availability flags follow the finished work of each task.
+    void redoFixSendsTheBlockTextAndSkipDoneSendsNothing()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("redo-fix-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        recognizePage(*m_controller);
+        QVERIFY(m_controller->scopeRecognitionHasResults());
+        QVERIFY(!m_controller->scopeCheckHasResults());
+        QVERIFY(!m_controller->scopeFixHasResults());
+        QVERIFY(!m_controller->scopeReadHasResults());
+
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 5);  // 1 layout + 2 transcriptions + 2 decision
+        QVERIFY(m_controller->scopeCheckHasResults());
+
+        // The fixer answers both blocks: both carry a correction now.
+        m_controller->fixAllProblemBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 7);
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("Fixed block text"));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::FixStatusRole).toInt(), int(BoxFixStatus::Fixed));
+        QVERIFY(m_controller->scopeFixHasResults());
+        QVERIFY(!m_controller->scopeReadHasResults());
+
+        // Skip done: both blocks are answered, the fix sends nothing.
+        const int answered = server.requests();
+        m_controller->fixScopeProblemBlocks(AppController::RerunMode::SkipDone);
+        QVERIFY(!m_controller->checkRunning());
+        QCOMPARE(server.requests(), answered);
+
+        // Redo all: both blocks go out again, and the candidate on the wire is
+        // the block's own text — not the correction from the first run.
+        m_controller->fixScopeProblemBlocks(AppController::RerunMode::RedoAll);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), answered + 2);
+        const QList<QByteArray> &requests = server.chatRequests();
+        QVERIFY2(requests.at(requests.size() - 2).contains("<CANDIDATE>\\n1. Introduction\\n</CANDIDATE>"), requests.at(requests.size() - 2).constData());
+        QVERIFY2(requests.at(requests.size() - 1).contains("<CANDIDATE>\\nSecond block text\\n</CANDIDATE>"), requests.at(requests.size() - 1).constData());
+    }
+
+    // The read re-run (RedoAll) takes every block the reader may write — the
+    // user's own block is not one of them: it is not queued and its text
+    // stays as the user wrote it (the reader's list never carries it).
+    void redoReadLeavesTheUsersBlockAlone()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+        // The reader's wording is the shared profile's only when the fix
+        // request profile ships no reader texts of its own (see
+        // readEntriesCarryNoSample).
+        m_settings->setFixRequestProfileId(QStringLiteral("qwen3.5-9b"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("redo-read-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        recognizePage(*m_controller);
+
+        // The user writes the first block by hand (ADR 187).
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->setSelectedBlockText(QStringLiteral("User wrote this"), false);
+
+        m_controller->readScopeBlocks(AppController::RerunMode::RedoAll);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+
+        // One read went out — for the second block; a queued user block would
+        // have made it two.
+        QCOMPARE(server.readRequests().size(), 1);
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), QStringLiteral("User wrote this"));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Edited));
+        // The reader's answer landed on the second block.
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::CorrectedRole).toString(), QStringLiteral("Read block text"));
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::FixStatusRole).toInt(), int(BoxFixStatus::ReadFixed));
+        QVERIFY(m_controller->scopeReadHasResults());
+    }
+
+    // The re-recognition re-run takes every block the model may transcribe
+    // again — the markup-only one (index 0), the recognized and the answered
+    // ones, the broken formula (13) whose text itself is broken — but never
+    // the user's own blocks (4 hand-written, 5 hand-approved on the
+    // correction layer) and never the placeholders (12).
+    void reRecognitionCollectsEveryBlockTheModelMayReread()
+    {
+        CollectorPage page(m_raster, *m_verification, *m_checkRequestProfiles, rerunCast());
+        QCOMPARE(boxIndices(page.workList->reRecognizableBlocks({0})), QList<int>({0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14, 15}));
+    }
+
+    // The re-check re-run takes the subjects the decision stage may judge
+    // again: the ones already carrying a verdict included (2 mismatch, 3 ok,
+    // 8 the fix the decision rejected again), the broken formula left to a
+    // new recognition, the user's own text never re-judged, the disabled
+    // footer type (14) out — the duplicate suspect (15) stays a subject.
+    void recheckCollectsTheAnsweredSubjectsToo()
+    {
+        CollectorPage page(m_raster, *m_verification, *m_checkRequestProfiles, rerunCast());
+        QCOMPARE(boxIndices(page.workList->recheckableBlocks({0})), QList<int>({1, 2, 3, 6, 7, 8, 9, 10, 11, 15}));
+    }
+
+    // The fix re-run takes the blocks that wait for the fixer (2) plus every
+    // block a remedy has answered (6 damaged, 7 fixed, 9-11 read, 8 both) —
+    // the double match is collected once.
+    void reFixCollectsTheRemedyAnswersAndTheOpenMismatches()
+    {
+        CollectorPage page(m_raster, *m_verification, *m_checkRequestProfiles, rerunCast());
+        QCOMPARE(boxIndices(page.workList->refixableBlocks({0})), QList<int>({2, 6, 7, 8, 9, 10, 11}));
+    }
+
+    // The read re-run continues where the reader stopped: the readable set
+    // minus the three reader outcomes (9, 10, 11).
+    void theReadRerunContinuesWhereTheReaderStopped()
+    {
+        CollectorPage page(m_raster, *m_verification, *m_checkRequestProfiles, rerunCast());
+        QCOMPARE(boxIndices(page.workList->readableBlocks({0})), QList<int>({0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14, 15}));
+        QCOMPARE(boxIndices(page.workList->notReadBlocks({0})), QList<int>({0, 1, 2, 3, 6, 7, 8, 13, 14, 15}));
+    }
+
+    // The recognition confirmation asks whether results would be rewritten: a
+    // page of markup-only blocks and placeholders has no finished
+    // recognition, one recognized block answers it. An out-of-range page
+    // carries nothing.
+    void hasRecognizedBlocksSpotsFinishedRecognition()
+    {
+        CollectorPage markup(m_raster, *m_verification, *m_checkRequestProfiles, {textBox(QStringLiteral("text"), QString()), textBox(QStringLiteral("image"), QString())});
+        QVERIFY(!markup.workList->hasRecognizedBlocks({0}));
+
+        CollectorPage recognized(m_raster, *m_verification, *m_checkRequestProfiles, {textBox(QStringLiteral("text"), QString()), textBox(QStringLiteral("text"), QStringLiteral("recognized"))});
+        QVERIFY(recognized.workList->hasRecognizedBlocks({0}));
+        QVERIFY(!recognized.workList->hasRecognizedBlocks({1}));
+    }
+
+    // The check confirmation asks about verdicts: a fresh recognition alone
+    // is no finished check, a verdict on a subject block is — a verdict on a
+    // disabled type is not, and neither is the broken formula the app
+    // rejected on its LaTeX syntax (the checker never asks about it, ADR 194).
+    void hasVerifiedBlocksSpotsExistingVerdicts()
+    {
+        CollectorPage fresh(m_raster, *m_verification, *m_checkRequestProfiles, {textBox(QStringLiteral("text"), QStringLiteral("recognized"))});
+        QVERIFY(!fresh.workList->hasVerifiedBlocks({0}));
+
+        CollectorPage judged(m_raster, *m_verification, *m_checkRequestProfiles, rerunCast());
+        QVERIFY(judged.workList->hasVerifiedBlocks({0}));
+
+        BoundingBox footerVerdict = textBox(QStringLiteral("footer"), QStringLiteral("page footer"));
+        footerVerdict.checkStatus = BoxCheckStatus::Mismatch;
+        CollectorPage disabledType(m_raster, *m_verification, *m_checkRequestProfiles, {footerVerdict});
+        QVERIFY(!disabledType.workList->hasVerifiedBlocks({0}));
+
+        BoundingBox brokenFormula = textBox(QStringLiteral("equation"), QStringLiteral("\\frac{1}{"));
+        brokenFormula.checkStatus = BoxCheckStatus::InvalidSyntax;
+        CollectorPage rejectedFormula(m_raster, *m_verification, *m_checkRequestProfiles, {brokenFormula});
+        QVERIFY(!rejectedFormula.workList->hasVerifiedBlocks({0}));
+    }
+
+    // The fix confirmation asks about remedy outcomes: an open mismatch is
+    // none, and the fixer's OK (NotNeeded) counts though it stores nothing —
+    // the fix status is its only trace.
+    void hasRemedyResultsSpotsTheRemedyOutcomes()
+    {
+        BoundingBox mismatched = textBox(QStringLiteral("text"), QStringLiteral("wrong"));
+        mismatched.checkStatus = BoxCheckStatus::Mismatch;
+        BoundingBox confirmed = textBox(QStringLiteral("text"), QStringLiteral("right"));
+        confirmed.fixStatus = BoxFixStatus::NotNeeded;
+        BoundingBox fixed = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+        fixed.correctedText = QStringLiteral("fixed text");
+        fixed.fixStatus = BoxFixStatus::Fixed;
+
+        CollectorPage open(m_raster, *m_verification, *m_checkRequestProfiles, {mismatched});
+        QVERIFY(!open.workList->hasRemedyResults({0}));
+
+        CollectorPage answered(m_raster, *m_verification, *m_checkRequestProfiles, {mismatched, confirmed, fixed});
+        QVERIFY(answered.workList->hasRemedyResults({0}));
+    }
+
+    // The read confirmation follows the reader alone: the fixer's outcome
+    // does not count, the reader's three do.
+    void hasReadResultsSpotsTheReaderOutcomes()
+    {
+        BoundingBox fixed = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+        fixed.correctedText = QStringLiteral("fixed text");
+        fixed.fixStatus = BoxFixStatus::Fixed;
+        CollectorPage fixerWork(m_raster, *m_verification, *m_checkRequestProfiles, {fixed});
+        QVERIFY(!fixerWork.workList->hasReadResults({0}));
+
+        BoundingBox read = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+        read.fixStatus = BoxFixStatus::Read;
+        BoundingBox readDamaged = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+        readDamaged.fixStatus = BoxFixStatus::ReadDamaged;
+        CollectorPage readerWork(m_raster, *m_verification, *m_checkRequestProfiles, {fixed, read, readDamaged});
+        QVERIFY(readerWork.workList->hasReadResults({0}));
+    }
+
     // Moving a block empties it (ADR 241): the text was recognized for the
     // region the block used to cover, so the block goes back to markup — no
     // text, no verdict — and the page text follows.
@@ -3799,6 +4106,73 @@ private slots:
         QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("Another job is running")), qPrintable(m_controller->statusMessage()));
 
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->layoutBusy(), kImportTimeoutMs);
+    }
+
+    // The auto pipeline's continue (SkipDone): the markup runs only for the
+    // pages without markup, while the recognition keeps the full scope — the
+    // textless block of an already marked page is still transcribed.
+    void autoContinueMarksOnlyTheUnmarkedPages()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+        // No decision or fix model: those stages pass themselves over, the
+        // run's observables are the markup scope and the transcription list.
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-continue-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster), QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 2, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        QVERIFY(!m_controller->scopeRecognitionHasResults());
+
+        // The default scope is the first page: it is marked and transcribed.
+        recognizePage(*m_controller);
+        QVERIFY(m_controller->scopeRecognitionHasResults());
+        QCOMPARE(server.requests(), 3);  // 1 layout + 2 transcriptions
+
+        // A block the user moved lost its text (ADR 241): the marked page is
+        // recognized only partially now.
+        m_controller->onBoxRectChanged(0, 0.5, 0.5, 0.2, 0.1);
+
+        // The scope opens to every page: page 2 carries no markup at all.
+        auto *pages = qobject_cast<PageListModel *>(m_controller->pageModel());
+        QVERIFY(pages);
+        pages->setSelected(0, false);
+
+        server.transcriptionSequence.clear();  // every block reads `transcription`
+        m_controller->startAutoPipeline(AppController::RerunMode::SkipDone);
+        QVERIFY(m_controller->autoPipelineRunning());
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->autoPipelineRunning(), kImportTimeoutMs);
+
+        // The markup ran for page 2 only: one more layout request in the log.
+        int layoutRequests = 0;
+        for (const QByteArray &request : server.chatRequests()) {
+            if (request.contains("Layout Detection:"))
+                ++layoutRequests;
+        }
+        QCOMPARE(layoutRequests, 2);
+        QCOMPARE(server.requests(), 7);  // + 1 layout + 3 transcriptions
+
+        // The recognition still saw the textless block of the marked page,
+        // and the sibling keeps the text it already carried — the page was
+        // not re-marked.
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), server.transcription);
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), QStringLiteral("Second block text"));
+
+        // Page 2 got the markup and its fresh blocks were transcribed.
+        m_controller->setCurrentPage(1);
+        QCOMPARE(boxes->rowCount(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), server.transcription);
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), server.transcription);
     }
 
 #ifdef LLOCR_HAVE_DJVU

@@ -36,9 +36,9 @@ public:
 
     // The fix pipeline (ADR 163): the Mismatch/Review blocks go through the
     // fix task's OK / FIX / REVIEW protocol.
-    bool runFix(const QList<Task> &tasks);
+    bool runFix(const QList<Task> &tasks, const PrepareTask &prepare = {});
     // The read task (ADR 259): the model writes the block from the image.
-    bool runRead(const QList<Task> &tasks);
+    bool runRead(const QList<Task> &tasks, const PrepareTask &prepare = {});
 
     bool requestBusy() const override;
     // Which remedy is in flight: the header maps the stop button by it

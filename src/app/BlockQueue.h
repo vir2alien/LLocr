@@ -26,6 +26,9 @@ public:
     // One block of the work list: the page and the box on it. The work-list
     // vocabulary lives on BlockWorkList; the queue runs the lists it collects.
     using Task = BlockWorkList::Task;
+    // A per-task hook the caller may pass to run(): it fires before the queue
+    // computes the candidate text and may rewrite the box in place.
+    using PrepareTask = std::function<void(const Task &)>;
 
     struct Deps {
         DocumentModel &document;
@@ -37,7 +40,7 @@ public:
 
     // Takes the work list if no other run holds the gate; a refusal is not an
     // error — the caller reports it.
-    bool run(const QList<Task> &tasks);
+    bool run(const QList<Task> &tasks, const PrepareTask &prepare = {});
     // The run stops and the waiter hears it (ADR 257): the finished signal
     // fires even though nothing was delivered.
     void stop();
@@ -89,6 +92,7 @@ private:
 
     Deps m_deps;
     QList<Task> m_queue;
+    PrepareTask m_prepare;
     int m_page = -1;
     int m_boxIndex = -1;
     bool m_active = false;

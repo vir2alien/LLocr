@@ -18,7 +18,9 @@ class LayoutController;
 // The markup stage: the layout pass over the scope. The prompt, the parser
 // and the orientation check live in the facade, so the stage asks for the
 // pass and is told when the whole pass is over — including the second pass
-// of a page the markup turned (ADR 246).
+// of a page the markup turned (ADR 246). The scope filter lets the facade
+// narrow the pass (the continue mode's unmarked pages) for both the skip
+// decision and the run.
 class AutoMarkupStage : public AutoPipelineStage
 {
     Q_OBJECT
@@ -27,8 +29,9 @@ public:
     // Runs the markup pass over the pages and calls done(ok) when the pass
     // is over; ok is false when the pass could not complete.
     using RunPass = std::function<void(const AutoPipelineStage::Scope &, const std::function<void(bool)> &)>;
+    using ScopeFilter = std::function<AutoPipelineStage::Scope(const AutoPipelineStage::Scope &)>;
 
-    explicit AutoMarkupStage(LayoutController &layout, RunPass runPass, QObject *parent = nullptr);
+    explicit AutoMarkupStage(LayoutController &layout, RunPass runPass, ScopeFilter scopeFilter = {}, QObject *parent = nullptr);
 
     QString skipReason(const AutoPipelineStage::Scope &pages) const override;
     void start(const AutoPipelineStage::Scope &pages) override;
@@ -39,6 +42,7 @@ public:
 private:
     LayoutController &m_layout;
     RunPass m_runPass;
+    ScopeFilter m_scopeFilter;
     bool m_running = false;
 };
 

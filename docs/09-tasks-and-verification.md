@@ -85,7 +85,10 @@ The **effective text** is the correction when present, else the text. Each
 layer carries its own verdict (`checkStatus`/`confidence` vs
 `correctedCheckStatus`/`correctedConfidence`). There is no automatic
 promotion of the correction into the text: export, page-text rebuild and the
-preview always use the effective text. The transitions are pure functions in
+preview always use the effective text. A fix/read redo (ADR 291) erases the
+correction layer deliberately (`BoxTransitions::correctionReverted`) just
+before the block is re-sent — the fixer's candidate is the recognized text
+again. The transitions are pure functions in
 `src/core/BoxTransitions.*`, covered by `test_box_transitions`.
 
 ## 4. The fix protocol (`full_block`, ADR 181/192)
@@ -170,8 +173,9 @@ verification, ADR 261); a read that **replaced** the text is a fresh
 re-recognition — the block goes gray until the deciding model judges it
 (ADR 289); red — could not be read. «Утвердить блок» stores
 `BoxCheckStatus::Approved` and can be revoked (ADR 185/187); a hand-written
-text is `BoxCheckStatus::Edited` (ADR 187). Moving or resizing a block erases
-its contents — it is markup again (ADR 241).
+text is `BoxCheckStatus::Edited` (ADR 187). Neither layer of a user-owned
+block is erased nor re-run by any redo (ADR 291). Moving or resizing a
+block erases its contents — it is markup again (ADR 241).
 
 **Page** — two independent values (ADR 165):
 
@@ -195,11 +199,23 @@ the thumbnail selection (empty selection = whole document).
   automatic check/fix switches are gone (ADR 178).
 - «Исправить» carries the `scopedPendingFixCount` badge (ADR 188) and runs
   the fix task over the problem blocks of the whole scope.
-- «Перераспознать» runs the read task over every text block of the selected
-  pages except user-owned ones (ADR 260/266); the count rides the button
-  (ADR 264).
+- «Перераспознать» runs the read task over the text blocks of the selected
+  pages except user-owned ones — the not-yet-read blocks first, every block
+  on redo (ADR 260/266); the count rides the button (ADR 264).
 - While a run is active, the started action's button becomes the stop
   control; the mapping is by flags/phases (ADR 171).
+
+Every task re-runs over a scope that already carries its results only after
+a three-option question (`RerunConfirmDialog`, ADR 291): «Отмена» /
+«Переделать всё» / «Только где не сделано»; a scope with nothing done starts
+directly. «Только где не сделано» keeps the task's usual work list (blocks
+without text, blocks without a verdict, problem blocks, not-yet-read
+blocks); «Переделать всё» widens it to the done blocks too. Erasure rides
+the run, not the mode: processing a block clears the task's own level of
+the stack and everything above it — recognition erases text, corrections
+and verdicts on arrival (ADR 164), verification erases the judged layer's
+verdicts, a fix/read request erases the stored remedy per block just before
+it is sent. User-owned blocks (Edited/Approved) are never erased nor re-run.
 
 Page toolbar: page navigation, block-add buttons (T / image / table / Σ /
 code + a ▾ menu of every type, ADR 177), rotation. The selected block
