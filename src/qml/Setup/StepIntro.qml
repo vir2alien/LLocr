@@ -18,7 +18,7 @@ Item {
         id: contentColumn
         anchors.fill: parent
         anchors.margins: 20
-        spacing: 12
+        spacing: Theme.spacingMedium
 
         LLOLabel {
             Layout.fillWidth: true

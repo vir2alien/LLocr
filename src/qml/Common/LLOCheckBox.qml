@@ -8,7 +8,7 @@ import LLocr
 CheckBox {
     id: control
 
-    spacing: 10
+    spacing: Theme.spacing
     font.pixelSize: Theme.bodySize
 
     indicator: Rectangle {

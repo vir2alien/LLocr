@@ -10,7 +10,7 @@ import "../Common"
 ColumnLayout {
     id: runtimeLayout
     clip: true
-    spacing: 4
+    spacing: Theme.spacingSmall
 
     Layout.maximumHeight: Number.POSITIVE_INFINITY
 
@@ -52,10 +52,10 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        spacing: 12
+        spacing: Theme.spacingMedium
 
         ColumnLayout {
-            spacing: 4
+            spacing: Theme.spacingSmall
             Layout.fillWidth: true
 
             LLOLabel {
@@ -74,7 +74,7 @@ ColumnLayout {
         }
 
         ColumnLayout {
-            spacing: 4
+            spacing: Theme.spacingSmall
             Layout.fillWidth: true
 
             LLOLabel {

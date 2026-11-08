@@ -10,7 +10,7 @@ ColumnLayout {
 
     signal toggled(bool value)
 
-    spacing: 2
+    spacing: Theme.spacingTiny
 
     LLOCheckBox {
         id: box

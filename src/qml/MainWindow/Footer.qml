@@ -323,7 +323,7 @@ Item {
                     RowLayout {
                         id: badgeRow
                         anchors.fill: parent
-                        spacing: 6
+                        spacing: Theme.spacingSmall
 
                         Rectangle {
                             id: stateDot

@@ -25,7 +25,7 @@ Item {
         id: contentColumn
         anchors.fill: parent
         anchors.margins: 20
-        spacing: 12
+        spacing: Theme.spacingMedium
 
         LLOLabel {
             Layout.fillWidth: true
@@ -77,11 +77,11 @@ Item {
                     anchors.fill: parent
                     anchors.margins: 12
                     anchors.rightMargin: 20
-                    spacing: 8
+                    spacing: Theme.spacing
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 4
+                        spacing: Theme.spacingSmall
                         LLOLabel {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap

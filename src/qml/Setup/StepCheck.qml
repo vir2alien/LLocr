@@ -123,7 +123,7 @@ Item {
         id: contentColumn
         anchors.fill: parent
         anchors.margins: 20
-        spacing: 10
+        spacing: Theme.spacing
 
         LLOLabel {
             Layout.fillWidth: true
@@ -145,7 +145,7 @@ Item {
         ColumnLayout {
             Layout.fillWidth: true
             visible: root.needsRuntime || root.needsModels
-            spacing: 4
+            spacing: Theme.spacingSmall
 
             LLOLabel {
                 text: qsTr("To download")

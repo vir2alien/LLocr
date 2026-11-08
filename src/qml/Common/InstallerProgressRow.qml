@@ -15,7 +15,7 @@ RowLayout {
 
     signal cancelClicked()
 
-    spacing: 6
+    spacing: Theme.spacingSmall
 
     ProgressBar {
         Layout.fillWidth: true

@@ -71,7 +71,7 @@ ToolBar {
             title: qsTr("Document")
 
             RowLayout {
-                spacing: 4
+                spacing: Theme.spacingSmall
 
                 IconToolButton {
                     id: fileButton
@@ -109,7 +109,7 @@ ToolBar {
             title: qsTr("Target pages")
 
             RowLayout {
-                spacing: 4
+                spacing: Theme.spacingSmall
 
                 TextField {
                     id: pagesField
@@ -216,7 +216,7 @@ ToolBar {
             title: qsTr("Markup and OCR")
 
             RowLayout {
-                spacing: 4
+                spacing: Theme.spacingSmall
 
                 IconToolButton {
                     text: qsTr("Mark up")
@@ -271,7 +271,7 @@ ToolBar {
             title: qsTr("Verification and AI correction")
 
             RowLayout {
-                spacing: 4
+                spacing: Theme.spacingSmall
 
                 IconToolButton {
                     text: qsTr("Verify")
@@ -354,7 +354,7 @@ ToolBar {
             captionLine: false
 
             RowLayout {
-                spacing: 4
+                spacing: Theme.spacingSmall
 
                 IconToolButton {
                     id: settingsButton
@@ -408,7 +408,7 @@ ToolBar {
                 opacity: iconButton.stopMode ? 0 : 1
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 4
+                spacing: Theme.spacingSmall
 
                 Icon {
                     visible: iconButton.iconName.length > 0
@@ -474,7 +474,7 @@ ToolBar {
         property string title: ""
         property bool captionLine: true
 
-        spacing: 3
+        spacing: Theme.spacingTiny
         Layout.fillWidth: false
         Layout.alignment: groupRoot.captionLine ? Qt.AlignTop : Qt.AlignBottom
 

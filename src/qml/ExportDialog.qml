@@ -160,7 +160,7 @@ Dialog {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 4
+        spacing: Theme.spacingSmall
 
         ButtonGroup { id: scopeGroup }
 
@@ -187,7 +187,7 @@ Dialog {
         RowLayout {
             Layout.leftMargin: 24
             Layout.topMargin: 2
-            spacing: 8
+            spacing: Theme.spacing
             enabled: scopeRange.checked
 
             LLOLabel {

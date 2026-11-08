@@ -218,7 +218,7 @@ Item {
 
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: 4
+        spacing: Theme.spacingSmall
 
         RowLayout {
             Layout.fillWidth: true

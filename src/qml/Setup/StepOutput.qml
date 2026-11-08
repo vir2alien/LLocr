@@ -19,7 +19,7 @@ Item {
         id: contentColumn
         anchors.fill: parent
         anchors.margins: 20
-        spacing: 10
+        spacing: Theme.spacing
 
         LLOLabel {
             Layout.fillWidth: true
@@ -69,7 +69,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Theme.spacing
 
             LLOLabel {
                 text: qsTr("Orientation")
@@ -88,7 +88,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Theme.spacing
 
             LLOLabel {
                 text: qsTr("Margins (mm)")

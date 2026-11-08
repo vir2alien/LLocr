@@ -13,7 +13,7 @@ import "../Common"
 ColumnLayout {
     id: extRoot
 
-    spacing: 4
+    spacing: Theme.spacingSmall
 
     // The wizard's external step shows the shared server only: the tasks are
     // configured in the settings.

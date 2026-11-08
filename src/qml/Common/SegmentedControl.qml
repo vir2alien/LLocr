@@ -40,7 +40,7 @@ Rectangle {
         id: row
         x: 2
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 2
+        spacing: Theme.spacingTiny
 
         Repeater {
             model: root.options

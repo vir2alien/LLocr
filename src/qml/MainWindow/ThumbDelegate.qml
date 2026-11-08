@@ -52,7 +52,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 5
-            spacing: 3
+            spacing: Theme.spacingTiny
 
             Image {
                 id: pageThumb

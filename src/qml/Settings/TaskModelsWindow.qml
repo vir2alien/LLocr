@@ -91,7 +91,7 @@ ApplicationWindow {
 
         anchors.fill: parent
         anchors.margins: Theme.paddingWindow
-        spacing: 8
+        spacing: Theme.spacing
 
         // The tasks of the app: model + quantization per row (model name in
         // the external mode); the gear opens that task's Launch/Request
@@ -108,7 +108,7 @@ ApplicationWindow {
         ColumnLayout {
             Layout.fillWidth: true
             visible: ModelInstaller.busy
-            spacing: 4
+            spacing: Theme.spacingSmall
 
             InstallerStatusLabel {
                 Layout.fillWidth: true
@@ -156,7 +156,7 @@ ApplicationWindow {
                 // content, and a long list scrolls instead of stretching.
                 implicitHeight: Math.min(contentHeight, 300)
                 clip: true
-                spacing: 2
+                spacing: Theme.spacingTiny
                 visible: ModelInstaller.installedCount > 0
                 model: ModelInstaller.installedFiles
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -290,7 +290,7 @@ ApplicationWindow {
         title: qsTr("Models to download")
 
         ColumnLayout {
-            spacing: 4
+            spacing: Theme.spacingSmall
 
             Repeater {
                 model: missingDialog.items

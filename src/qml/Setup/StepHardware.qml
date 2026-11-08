@@ -48,7 +48,7 @@ Item {
         id: contentColumn
         anchors.fill: parent
         anchors.margins: 20
-        spacing: 10
+        spacing: Theme.spacing
 
         LLOLabel {
             Layout.fillWidth: true
@@ -68,7 +68,7 @@ Item {
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: Theme.spacingSmall
 
             LLOLabel {
                 text: qsTr("Detected hardware")
@@ -93,7 +93,7 @@ Item {
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: Theme.spacingSmall
 
             LLOLabel {
                 text: qsTr("Runtime backend")

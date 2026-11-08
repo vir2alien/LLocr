@@ -119,7 +119,7 @@ Rectangle {
                 RowLayout {
                     id: badgeRow
                     anchors.centerIn: parent
-                    spacing: 4
+                    spacing: Theme.spacingSmall
 
                     Rectangle {
                         Layout.preferredWidth: 6

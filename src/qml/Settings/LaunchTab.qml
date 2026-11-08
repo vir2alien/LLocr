@@ -123,7 +123,7 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         visible: root.externalMode
-        spacing: 6
+        spacing: Theme.spacingSmall
 
         LLOLabel {
             Layout.fillWidth: true

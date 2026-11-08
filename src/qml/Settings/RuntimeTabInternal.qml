@@ -77,7 +77,7 @@ ScrollView {
     ColumnLayout {
         id: formLayout
         width: parent.width
-        spacing: 4
+        spacing: Theme.spacingSmall
 
         // The cleanup belongs to the section, not to the action row: it acts
         // on the installed builds, and the list right below shows them.
@@ -147,7 +147,7 @@ ScrollView {
                 id: updatePlaque
                 anchors.fill: parent
                 anchors.margins: 8
-                spacing: 4
+                spacing: Theme.spacingSmall
 
                 LLOLabel {
                     Layout.fillWidth: true
@@ -169,7 +169,7 @@ ScrollView {
                           : qsTr("You can keep working — updating installs in the background.")
                 }
                 RowLayout {
-                    spacing: 6
+                    spacing: Theme.spacingSmall
                     LLOButton {
                         text: Runtime.state === Runtime.Ready ? qsTr("Stop server and update")
                                                               : qsTr("Update")

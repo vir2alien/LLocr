@@ -10,7 +10,7 @@ import LLocr
 // first step show exactly these, and both apply the pick immediately — there
 // is no Save step for interface settings.
 ColumnLayout {
-    spacing: 4
+    spacing: Theme.spacingSmall
 
     LLOLabel {
         text: qsTr("Language")

@@ -71,8 +71,10 @@ QtObject {
     readonly property color overlayServiceInner: "#D9D9D9"
     readonly property color overlayServiceFill: "#10757575"
 
+    readonly property int spacingTiny: 2
     readonly property int spacingSmall: 4
     readonly property int spacing: 8
+    readonly property int spacingMedium: 12
     readonly property int spacingLarge: 16
     readonly property int spacingXLarge: 24
     readonly property int paddingWindow: 24

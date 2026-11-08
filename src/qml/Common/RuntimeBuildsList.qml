@@ -97,7 +97,7 @@ ListView {
                 anchors.left: parent.left
                 anchors.right: controls.left
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 2
+                spacing: Theme.spacingTiny
 
                 LLOLabel {
                     Layout.fillWidth: true
@@ -125,7 +125,7 @@ ListView {
                 id: controls
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 4
+                spacing: Theme.spacingSmall
 
                 LLOLabel {
                     Layout.preferredWidth: root.sizeColumn
@@ -162,7 +162,7 @@ ListView {
 
                     Column {
                         anchors.centerIn: parent
-                        spacing: 3
+                        spacing: Theme.spacingTiny
                         Repeater {
                             model: 3
                             delegate: Rectangle {
