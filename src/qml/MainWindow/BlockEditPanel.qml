@@ -298,9 +298,7 @@ Rectangle {
             html: root.originalHtml
             plainText: Controller.selectedBlockText
             mono: root.monoBlock
-            editable: !Controller.checkBusy && !Controller.busy
             onActivated: Controller.selectedBlockUsesCorrected = false
-            onEdited: (text) => Controller.setSelectedBlockText(text, false)
         }
 
         // The correction layer: the universal model's fix, judged separately
@@ -321,9 +319,28 @@ Rectangle {
             html: root.correctedHtml
             plainText: Controller.selectedBlockCorrected
             mono: root.monoBlock
-            editable: !Controller.checkBusy && !Controller.busy
             onActivated: Controller.selectedBlockUsesCorrected = true
-            onEdited: (text) => Controller.setSelectedBlockText(text, true)
+        }
+
+        // The edited document is the user's (ADR 295): a pipeline change that
+        // landed in this block waits in a queue until it is taken over. The
+        // text itself is edited in the work panel's editor, not here.
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.isTextBlock && Controller.currentPageEdited
+                     && Controller.selectedBlockDocumentDiverged
+            spacing: Theme.spacingSmall
+
+            LLOLabel {
+                Layout.fillWidth: true
+                text: qsTr("The document keeps a different version of this text.")
+                color: Theme.textMuted
+                wrapMode: Text.WordWrap
+            }
+            LLOButton {
+                text: qsTr("Take the block text")
+                onClicked: Controller.takeSelectedBlockTextIntoDocument()
+            }
         }
     }
 }

@@ -1472,7 +1472,8 @@ appendix at the end of this file.
   alone, cleared by Revert. A block removal moves the revert target forward
   and never replaces the user's text, and a pipeline change landing on a
   hand-edited page is merged into that text (the common part anchors the
-  change, the user's wording wins where it diverges).
+  change, the user's wording wins where it diverges). (The merge part is
+  superseded by ADR 295: the change is queued, not merged.)
 - **199.** The page index is clamped to the document, not the manifest: a
   project whose embedded files are all missing opens to page 0
   (`max(0, pageCount() - 1)`) instead of hitting undefined behaviour with
@@ -1663,6 +1664,30 @@ appendix at the end of this file.
   `'unsafe-inline'` beside `'wasm-unsafe-eval'` (Lute WASM) — the page has
   no network surface. `test_editor_page` loads the page headless and is the
   offline gate for the whole stack.
+
+- **295.** An edited document is the user's, block by block: a pipeline
+  change (recognition, fix, read) that lands while the page carries a
+  manual edit no longer merges into the page text — the merge under the
+  editor's hands was promptly overwritten by the editor's own pull, so the
+  AI fix looked applied and silently vanished. The change lands in the
+  block layers and is queued per page (`PendingDocumentChange`, the diff's
+  previous/rebuilt pair); the block panel shows the divergence notice with
+  a «Взять текст из блока» button that applies the queued changes on demand
+  through the former merge machinery (`takeSelectedBlockTextIntoDocument`;
+  superseding ADR 190's merge half). Text is no longer edited in the block
+  panel at all — the version cards are read-only and
+  `setSelectedBlockText`/hand-written blocks are gone (ADR 187's
+  approval-revocation half stands); the work panel's editor is the single
+  writing surface. Undo policy: any model-originated push (rebuild of a
+  non-edited page, revert, a taken-over block, a page switch) is a
+  checkpoint that clears the editor's undo stack, while the editor's own
+  commits no longer echo back — a pull updates the page's push baseline,
+  so the follow-up push of the same text no-ops and the typing session's
+  history survives. A pull is also dropped when the model text moved on
+  independently (`m_editorServedText`) or the page changed
+  (`m_editorMarkdownPage`) — a stale DOM never writes over a newer model
+  (`editorPullIsDroppedWhenTheModelMovedOn`,
+  `blockChangeKeepsTheEditedDocumentUntilTakenOver`).
 
 ### Security & secrets
 

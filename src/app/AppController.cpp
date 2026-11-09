@@ -134,7 +134,9 @@ AppController::AppController(SettingsStore &settings,
 
     // The inspector owns the selected block: its signals are the facade's.
     connect(&m_inspector, &BlockInspector::selectedBoxChanged, this, &AppController::selectedBoxChanged);
+    connect(&m_inspector, &BlockInspector::selectedBoxChanged, this, &AppController::blockDocumentDivergedChanged);
     connect(&m_inspector, &BlockInspector::blockTextRangeChanged, this, &AppController::blockTextRangeChanged);
+    connect(this, &AppController::resultChanged, this, &AppController::blockDocumentDivergedChanged);
     connect(&m_inspector, &BlockInspector::blockDiffChanged, this, &AppController::blockDiffChanged);
     connect(&m_inspector, &BlockInspector::highlightDifferencesChanged, this, &AppController::highlightDifferencesChanged);
     connect(&m_inspector, &BlockInspector::pageTextEditorFocusedChanged, this, &AppController::pageTextEditorFocusedChanged);
@@ -413,6 +415,26 @@ QString mergePipelineChange(const QString &userText, const QString &previous, co
     if (pos < 0)
         return userText;
     return userText.left(pos) + newMiddle + userText.mid(pos + oldMiddle.size());
+}
+
+// The changed middle of a diff between two texts (mergePipelineChange's
+// prefix/suffix walk): what the pipeline replaced.
+struct TextDiffMiddle {
+    QString oldMiddle;
+    QString newMiddle;
+};
+
+TextDiffMiddle diffMiddle(const QString &previous, const QString &rebuilt)
+{
+    int prefix = 0;
+    const int maxPrefix = qMin(previous.size(), rebuilt.size());
+    while (prefix < maxPrefix && previous.at(prefix) == rebuilt.at(prefix))
+        ++prefix;
+    int suffix = 0;
+    const int maxSuffix = qMin(previous.size() - prefix, rebuilt.size() - prefix);
+    while (suffix < maxSuffix && previous.at(previous.size() - 1 - suffix) == rebuilt.at(rebuilt.size() - 1 - suffix))
+        ++suffix;
+    return {previous.mid(prefix, previous.size() - prefix - suffix), rebuilt.mid(prefix, rebuilt.size() - prefix - suffix)};
 }
 
 // The formula blocks of a fresh recognition result (ADR 194): the canonical
@@ -959,10 +981,86 @@ void AppController::setCurrentPageTextFromEditor(const QString &text)
     // tab's pendingReload tolerates, and the follow-up push rebinds the view.
     if (m_editorMarkdownPage != m_currentPage)
         return;
+    // The model moved on without the editor's page knowing (an edit from the
+    // raw tab, a revert): the stale DOM must not overwrite it. The change's
+    // own resultChanged already scheduled the resync push.
+    if (pageText(m_currentPage) != m_editorServedText)
+        return;
     QString decoded = text;
     for (const auto &ref : m_editorCropRefs)
         decoded.replace(ref.first, ref.second);
     setCurrentPageText(decoded);
+    m_editorServedText = decoded;
+}
+
+int AppController::pendingChangeBox(int pageIndex, const QString &previous, const QString &rebuilt) const
+{
+    const TextDiffMiddle middle = diffMiddle(previous, rebuilt);
+    if (middle.newMiddle.isEmpty())
+        return -1;
+    IOutputParser::RebuiltPageText canonical;
+    {
+        QReadLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
+            return -1;
+        const auto parser = makeParser();
+        if (!parser)
+            return -1;
+        canonical = parser->rebuildTextWithRanges(m_document.page(pageIndex).result.pages.first());
+    }
+    for (const BlockTextRange &range : canonical.ranges) {
+        const QString rendered = canonical.text.mid(range.start, range.length);
+        // A block's rendered text carries its style markers ("## "); the
+        // diff middle is the bare text the pipeline changed.
+        if (rendered == middle.newMiddle || rendered.endsWith(QLatin1Char(' ') + middle.newMiddle))
+            return range.boxIndex;
+    }
+    return -1;
+}
+
+bool AppController::selectedBlockDocumentDiverged() const
+{
+    if (!m_editStore.isEdited(m_currentPage))
+        return false;
+    const int box = m_inspector.selectedBoxIndex();
+    const QList<PendingDocumentChange> pending = m_pendingDocumentChanges.value(m_currentPage);
+    for (const PendingDocumentChange &change : pending)
+        if (change.boxIndex < 0 || change.boxIndex == box)
+            return true;
+    return false;
+}
+
+void AppController::takeSelectedBlockTextIntoDocument()
+{
+    const int page = m_currentPage;
+    const QList<PendingDocumentChange> pending = m_pendingDocumentChanges.value(page);
+    if (!m_editStore.isEdited(page) || pending.isEmpty()) {
+        m_pendingDocumentChanges.remove(page);
+        emit blockDocumentDivergedChanged();
+        return;
+    }
+    m_pendingDocumentChanges.remove(page);
+
+    // The queued changes apply against the current user text — the anchors
+    // are re-searched now, not remembered from the landing moment.
+    QString text = pageText(page);
+    bool applied = false;
+    for (const PendingDocumentChange &change : pending) {
+        const QString merged = mergePipelineChange(text, change.previous, change.rebuilt);
+        if (merged != text) {
+            text = merged;
+            applied = true;
+        }
+    }
+    if (!applied) {
+        setStatus(StatusMessage::translate("AppController", "The changed fragment is no longer in the document text."));
+        emit blockDocumentDivergedChanged();
+        return;
+    }
+    setPageText(page, text);
+    emit resultChanged();
+    emit blockDocumentDivergedChanged();
+    setStatus(StatusMessage::translate("AppController", "The block text was taken into the document."));
 }
 
 void AppController::setCurrentPageText(const QString &text)
@@ -999,10 +1097,14 @@ void AppController::revertCurrentPageEdits()
         return;
     const QString original = m_editStore.baseline(index);
     m_editStore.revert(index);
+    // The document follows the blocks again: the queued pipeline changes are
+    // already part of the baseline the revert restores.
+    m_pendingDocumentChanges.remove(index);
     setPageText(index, original);
     m_pageModel.setEdited(index, false);
     emit resultChanged();
     emit editStateChanged();
+    emit blockDocumentDivergedChanged();
 }
 
 void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height)
@@ -1282,24 +1384,6 @@ void AppController::selectNextProblemBlock()
     if (next < 0)
         return;
     setSelectedBoxIndex(next);
-}
-
-void AppController::setSelectedBlockText(const QString &text, bool correctedLayer)
-{
-    if (m_inspector.selectedBoxIndex() < 0)
-        return;
-
-    const int pageIndex = m_currentPage;
-    const int boxIndex = m_inspector.selectedBoxIndex();
-    if (!applyBoxTransition(pageIndex, boxIndex, [&text, correctedLayer](BoundingBox &box) { BoxTransitions::blockTextEdited(box, text, correctedLayer); }))
-        return;
-
-    // The page text follows the block, exactly as a correction does.
-    applyPageTextChanged(pageIndex);
-    setStatus(StatusMessage::translate("AppController", "Block text changed."));
-    updateAvailability();
-    emit checkStateChanged();
-    emit resultChanged();
 }
 
 void AppController::checkEnabledBlocksOnPage()
@@ -2042,20 +2126,18 @@ void AppController::applyPageTextChanged(int pageIndex)
     // reset, and the next «Отменить изменения» did nothing. The revert target
     // moves forward to the block-derived text instead.
     if (m_editStore.isEdited(pageIndex)) {
-        // The pipeline's change still lands in the user's text: dropping it
-        // would leave the block the operator just made out of the document
-        // (ADR 190).
+        // The pipeline's change no longer lands in the user's text (ADR 295
+        // supersedes ADR 190): a merge under the editor's hands was promptly
+        // reverted by the editor's own pull. The change is queued instead;
+        // the block panel's «Взять текст из блока» applies it on demand.
         const QString previous = m_editStore.baseline(pageIndex);
+        m_pendingDocumentChanges[pageIndex].append({pendingChangeBox(pageIndex, previous, rebuilt), previous, rebuilt});
         m_editStore.rebase(pageIndex, rebuilt);
-        const QString merged = mergePipelineChange(pageText(pageIndex), previous, rebuilt);
-        if (merged != pageText(pageIndex)) {
-            setPageText(pageIndex, merged);
-            emit resultChanged();
-            emit editStateChanged();
-        }
+        emit blockDocumentDivergedChanged();
         return;
     }
 
+    m_pendingDocumentChanges.remove(pageIndex);
     setPageText(pageIndex, rebuilt);
     // Rebase only: recognition and fix produce the page text themselves —
     // this must not read as a manual edit («Изменено»).
@@ -2458,6 +2540,7 @@ void AppController::requestEditorMarkdown(const QString &markdown)
     if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown) {
         m_editorCropRefs = m_previewCacheRefs;
         m_editorMarkdownPage = m_currentPage;
+        m_editorServedText = markdown;
         emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap());
         return;
     }
@@ -2480,6 +2563,7 @@ void AppController::requestEditorMarkdown(const QString &markdown)
         m_previewCacheRefs = result.second;
         m_editorCropRefs = result.second;
         m_editorMarkdownPage = page;
+        m_editorServedText = markdown;
         emit editorMarkdownReady(result.first, blockMap);
     });
     const QPointer<AppController> self(this);

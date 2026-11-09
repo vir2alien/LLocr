@@ -41,8 +41,15 @@ function pull() {
     if (!bridge || !vditor)
         return;
     const value = vditor.getValue();
-    if (value !== reference && value !== lastPushed)
+    if (value !== reference && value !== lastPushed) {
+        // The commit becomes the page's own baseline: the follow-up push of
+        // the same text (the model's encode of this very pull) must no-op in
+        // pushPage instead of setValue-ing over it — a setValue here would
+        // clear the undo stack mid-typing.
+        reference = value;
+        lastPushed = value;
         bridge.notifyTextChanged(value, pushToken);
+    }
 }
 
 function applyTheme(t) {

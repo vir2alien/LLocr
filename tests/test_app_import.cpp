@@ -2643,51 +2643,6 @@ private slots:
         QVERIFY2(requests.at(requests.size() - 1).contains("<CANDIDATE>\\nSecond block text\\n</CANDIDATE>"), requests.at(requests.size() - 1).constData());
     }
 
-    // The read re-run (RedoAll) takes every block the reader may write — the
-    // user's own block is not one of them: it is not queued and its text
-    // stays as the user wrote it (the reader's list never carries it).
-    void redoReadLeavesTheUsersBlockAlone()
-    {
-        DetTokenChatServer server;
-        QVERIFY(server.start());
-        m_settings->setBaseUrl(server.baseUrl());
-        m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setFixModelName(QStringLiteral("fix-test"));
-        // The reader's wording is the shared profile's only when the fix
-        // request profile ships no reader texts of its own (see
-        // readEntriesCarryNoSample).
-        m_settings->setFixRequestProfileId(QStringLiteral("qwen3.5-9b"));
-
-        QImage page(480, 360, QImage::Format_RGB32);
-        page.fill(Qt::yellow);
-        const QString raster = m_dir.filePath(QStringLiteral("redo-read-raster.png"));
-        QVERIFY(page.save(raster));
-
-        m_controller->openFiles({QUrl::fromLocalFile(raster)});
-        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        recognizePage(*m_controller);
-
-        // The user writes the first block by hand (ADR 187).
-        m_controller->setSelectedBoxIndex(0);
-        m_controller->setSelectedBlockText(QStringLiteral("User wrote this"), false);
-
-        m_controller->readScopeBlocks(AppController::RerunMode::RedoAll);
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-
-        // One read went out — for the second block; a queued user block would
-        // have made it two.
-        QCOMPARE(server.readRequests().size(), 1);
-        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
-        QVERIFY(boxes);
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), QStringLiteral("User wrote this"));
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Edited));
-        // The reader's answer landed on the second block.
-        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::CorrectedRole).toString(), QStringLiteral("Read block text"));
-        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::FixStatusRole).toInt(), int(BoxFixStatus::ReadFixed));
-        QVERIFY(m_controller->scopeReadHasResults());
-    }
-
     // The re-recognition re-run takes every block the model may transcribe
     // again — the markup-only one (index 0), the recognized and the answered
     // ones, the broken formula (13) whose text itself is broken — but never
@@ -2984,40 +2939,6 @@ private slots:
         QVERIFY(!original.isEmpty());
         QVERIFY(!corrected.isEmpty());
     }
-
-    // The hand-written text (ADR 187): it is stored in the version the user
-    // wrote in, marked as the user's own text, and the page text follows it.
-    void handWrittenTextIsMarkedAsEditedAndFollowsThePage()
-    {
-        DetTokenChatServer server;
-        QVERIFY(server.start());
-        m_settings->setBaseUrl(server.baseUrl());
-        m_settings->setModelName(QStringLiteral("det-token-test"));
-
-        QImage page(480, 360, QImage::Format_RGB32);
-        page.fill(Qt::yellow);
-        const QString raster = m_dir.filePath(QStringLiteral("hand-raster.png"));
-        QVERIFY(page.save(raster));
-
-        m_controller->openFiles({QUrl::fromLocalFile(raster)});
-        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        recognizePage(*m_controller);
-        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
-
-        m_controller->setSelectedBoxIndex(0);
-        m_controller->setSelectedBlockText(QStringLiteral("Hand written text"), false);
-
-        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
-        QVERIFY(boxes);
-        // The text is the user's own — not a confirmation of the model's verdict.
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Edited));
-        QCOMPARE(m_controller->selectedBlockText(), QStringLiteral("Hand written text"));
-        QVERIFY(m_controller->resultText().contains(QStringLiteral("Hand written text")));
-        // The version the user wrote in is the one the document carries.
-        QVERIFY(!m_controller->selectedBlockUsesCorrected());
-    }
-
     // «Отозвать утверждение» (ADR 187): the approval is undone and the
     // verdict the decision model gave stands again.
     void theApprovalCanBeRevoked()
@@ -4210,6 +4131,88 @@ private slots:
         controller.setCurrentPageTextFromEditor(QStringLiteral("misplaced pull"));
         QCOMPARE(controller.resultText(), page1Text);
         QCOMPARE(controller.currentPageEdited(), false);
+    }
+
+    // An edited document is the user's (ADR 295): a block the pipeline
+    // re-recognizes keeps its new text in the block layers, but the document
+    // keeps the user's wording — the divergence is visible and the block's
+    // text can be taken over explicitly, block by block.
+    void blockChangeKeepsTheEditedDocumentUntilTakenOver()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        recognizePage(*m_controller);
+        QVERIFY(m_controller->hasResult());
+
+        // The user rewrites the second block in the editor; the heading stays
+        // as recognized (the merge's old anchor must still be findable — the
+        // point of the test is that no merge happens at all).
+        m_controller->setCurrentPageText(QStringLiteral("## 1. Introduction\n\nSecond block, mine"));
+        QVERIFY(m_controller->currentPageEdited());
+
+        // The pipeline re-recognizes the first block.
+        server.transcriptionSequence.clear();  // every block reads `transcription`
+        server.transcription = QStringLiteral("Changed by AI");
+        m_controller->setSelectedBoxIndex(0);
+        const int requests = server.requests();
+        m_controller->recognizeSelectedBlock();
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->selectedBlockText(), server.transcription, kImportTimeoutMs);
+
+        // The document keeps the user's wording, block and page disagree.
+        QCOMPARE(m_controller->resultText(), QStringLiteral("## 1. Introduction\n\nSecond block, mine"));
+        QVERIFY(m_controller->property("selectedBlockDocumentDiverged").toBool());
+
+        // «Взять текст из блока»: the block's new text replaces the document's
+        // heading; the user's second block survives.
+        m_controller->takeSelectedBlockTextIntoDocument();
+        QVERIFY2(m_controller->resultText().contains(QStringLiteral("## Changed by AI")), qPrintable(m_controller->resultText()));
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("Second block, mine")));
+        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(!m_controller->property("selectedBlockDocumentDiverged").toBool());
+    }
+
+    // A pull from the WYSIWYG editor is dropped when the model text moved on
+    // independently (an edit from the raw tab, a revert): the stale DOM must
+    // not overwrite the newer model text; the resync push brings the page
+    // back.
+    void editorPullIsDroppedWhenTheModelMovedOn()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        AppController &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        recognizePage(controller);
+        QVERIFY(controller.hasResult());
+        const QString recognized = controller.resultText();
+
+        QSignalSpy ready(&controller, &AppController::editorMarkdownReady);
+        controller.requestEditorMarkdown(recognized);
+        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 1, kImportTimeoutMs);
+
+        // The model moves on without the editor's page knowing.
+        controller.setCurrentPageText(QStringLiteral("edited elsewhere"));
+        QCOMPARE(controller.resultText(), QStringLiteral("edited elsewhere"));
+
+        // The editor's pull (its stale base plus a keystroke) is dropped.
+        controller.setCurrentPageTextFromEditor(recognized + QStringLiteral("\n\nstale keystroke"));
+        QCOMPARE(controller.resultText(), QStringLiteral("edited elsewhere"));
+
+        // A fresh serve re-binds the editor; pulls are accepted again.
+        ready.clear();
+        controller.requestEditorMarkdown(controller.resultText());
+        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 1, kImportTimeoutMs);
+        controller.setCurrentPageTextFromEditor(QStringLiteral("edited elsewhere\n\nfresh keystroke"));
+        QCOMPARE(controller.resultText(), QStringLiteral("edited elsewhere\n\nfresh keystroke"));
     }
 
 #ifdef LLOCR_HAVE_DJVU

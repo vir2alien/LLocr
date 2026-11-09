@@ -96,6 +96,9 @@ class AppController : public QObject
     Q_PROPERTY(int selectedBlockSyntaxProblem READ selectedBlockSyntaxProblem NOTIFY selectedBoxChanged)
     Q_PROPERTY(bool selectedBlockUsesCorrected READ selectedBlockUsesCorrected WRITE setSelectedBlockUsesCorrected NOTIFY selectedBoxChanged)
     Q_PROPERTY(QVariantList selectedBlockTextRange READ selectedBlockTextRange NOTIFY blockTextRangeChanged)
+    // The selected block's text and the edited document disagree (ADR 295):
+    // the block carries a pipeline text the document did not take.
+    Q_PROPERTY(bool selectedBlockDocumentDiverged READ selectedBlockDocumentDiverged NOTIFY blockDocumentDivergedChanged)
     // What the correction changed (ADR 186): the ranges the panel tints — the
     // fragments the fix dropped from the original and the ones it put in.
     Q_PROPERTY(QVariantList selectedBlockRemovedRanges READ selectedBlockRemovedRanges NOTIFY blockDiffChanged)
@@ -268,6 +271,19 @@ public:
     bool selectedBlockUsesCorrected() const { return m_inspector.selectedBlockUsesCorrected(); }
     void setSelectedBlockUsesCorrected(bool corrected);
     QVariantList selectedBlockTextRange() const { return m_inspector.selectedBlockTextRange(); }
+    bool selectedBlockDocumentDiverged() const;
+    // The box a queued pipeline change belongs to, when the diff names one
+    // block (-1 otherwise); used to aim the block panel's divergence notice.
+    int pendingChangeBox(int pageIndex, const QString &previous, const QString &rebuilt) const;
+
+    // A pipeline change that landed in the blocks while the page carried the
+    // user's text: queued by applyPageTextChanged, applied by
+    // takeSelectedBlockTextIntoDocument (ADR 295).
+    struct PendingDocumentChange {
+        int boxIndex;
+        QString previous;
+        QString rebuilt;
+    };
     void setSelectedBoxIndex(int index) { m_inspector.setSelectedBoxIndex(index); }
     QVariantList selectedBlockRemovedRanges() const { return m_inspector.selectedBlockRemovedRanges(); }
     QVariantList selectedBlockAddedRanges() const { return m_inspector.selectedBlockAddedRanges(); }
@@ -378,6 +394,7 @@ signals:
 
     void selectedBoxChanged();
     void blockTextRangeChanged();
+    void blockDocumentDivergedChanged();
     // The panel's diff view changed: a new block, a new correction or the
     // highlight toggle.
     void blockDiffChanged();
@@ -407,6 +424,9 @@ public slots:
     // are data: URIs, written back as image://ocr/crop before the model sees
     // them; data: URIs the page never saw from us pass through unchanged.
     Q_INVOKABLE void setCurrentPageTextFromEditor(const QString &text);
+    // «Взять текст из блока»: the selected block's current text replaces the
+    // document's wording for that block (ADR 295).
+    Q_INVOKABLE void takeSelectedBlockTextIntoDocument();
     Q_INVOKABLE void revertCurrentPageEdits();
     Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height);
     Q_INVOKABLE bool removeBlock(int boxIndex);
@@ -436,9 +456,6 @@ public slots:
     Q_INVOKABLE void approveSelectedBlockAndSelectNext();
     // Selects the next block the decision model left open on this page.
     Q_INVOKABLE void selectNextProblemBlock();
-    // The user corrects the text of a version by hand (ADR 187): the version
-    // is written, marked as the user's own, and the page text follows.
-    Q_INVOKABLE void setSelectedBlockText(const QString &text, bool correctedLayer);
     Q_INVOKABLE bool blockTextMapped() const;
     Q_INVOKABLE QList<int> blockTextRange(int boxIndex) const;
     Q_INVOKABLE int boxIndexForTextPosition(int position) const;
@@ -646,6 +663,8 @@ private:
     quint64 m_previewMarkdownGeneration = 0;          ///< the request an in-flight preview encode belongs to; a newer request drops it
     QList<QPair<QString, QString>> m_editorCropRefs;  ///< data: URI → image://ocr/crop for the editor's last push
     int m_editorMarkdownPage = -1;                    ///< the page the editor's current content was pushed for; pulls for another page are dropped
+    QString m_editorServedText;                       ///< the model text the editor's content derives from; a pull against a newer model is dropped
+    QHash<int, QList<PendingDocumentChange>> m_pendingDocumentChanges;
     PageEditStore m_editStore;
     StatusMessage m_statusMessage;        ///< stored untranslated, rendered on read
     StatusMessage m_autoPipelineMessage;  ///< the run's outcome and its caveats

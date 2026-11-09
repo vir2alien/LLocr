@@ -56,9 +56,14 @@
         <translation>Утверждение блока отозвано.</translation>
     </message>
     <message>
-        <location line="+48"/>
-        <source>Block text changed.</source>
-        <translation>Текст блока изменён.</translation>
+        <location line="+0"/>
+        <source>The block text was taken into the document.</source>
+        <translation>Текст блока взят в документ.</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>The changed fragment is no longer in the document text.</source>
+        <translation>Изменённый фрагмент больше не найден в тексте документа.</translation>
     </message>
     <message>
         <location line="+562"/>
@@ -209,6 +214,16 @@
 </context>
 <context>
     <name>BlockEditPanel</name>
+    <message>
+        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+0"/>
+        <source>The document keeps a different version of this text.</source>
+        <translation>В документе — другая версия этого текста.</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Take the block text</source>
+        <translation>Взять текст из блока</translation>
+    </message>
     <message>
         <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+63"/>
         <location line="+61"/>
