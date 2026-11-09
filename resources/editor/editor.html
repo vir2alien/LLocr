@@ -9,6 +9,9 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
   <link rel="stylesheet" href="vditor/dist/index.css">
+  <link rel="stylesheet" href="vditor/dist/js/katex/katex.min.css">
+  <script src="vditor/dist/js/katex/katex.min.js"></script>
+  <script>window.onerror = function(message, source, line) { window.__err = message + '@' + line; return false; };</script>
   <style>
     html, body {
       margin: 0;

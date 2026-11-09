@@ -42,6 +42,55 @@ function refreshMath() {
     });
 }
 
+// "Keep tables as HTML" pushes the tables through as html-blocks: Vditor
+// stores the source in a hidden <pre> and shows the raw HTML in the preview,
+// where $…$ stays literal — lute never touches an html-block's content. The
+// preview is visual only (the serialization reads the hidden source), so the
+// dollar spans can be rendered with KaTeX right in it. KaTeX itself is loaded
+// statically (editor.html): Vditor fetches it lazily only when it meets a
+// formula of its own, and a page of html-table formulas never triggers that.
+function refreshHtmlTableMath() {
+    if (typeof katex === "undefined")
+        return;
+    document.querySelectorAll(".vditor-wysiwyg__preview").forEach((preview) => {
+        if (!preview.querySelector("table"))
+            return;
+        const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT, null);
+        const targets = [];
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (node.parentElement.closest(".ll-math"))
+                continue;
+            if (/\$[^$]+\$/.test(node.nodeValue))
+                targets.push(node);
+        }
+        for (const node of targets) {
+            const value = node.nodeValue;
+            const frag = document.createDocumentFragment();
+            const re = /\$[^$]+\$/g;
+            let last = 0;
+            let match;
+            while ((match = re.exec(value)) !== null) {
+                if (match.index > last)
+                    frag.appendChild(document.createTextNode(value.slice(last, match.index)));
+                const raw = match[0].slice(1, -1);
+                const span = document.createElement("span");
+                span.className = "ll-math";
+                try {
+                    span.innerHTML = katex.renderToString(raw, { displayMode: false, output: "html" });
+                } catch (e) {
+                    span.textContent = match[0];
+                }
+                frag.appendChild(span);
+                last = match.index + match[0].length;
+            }
+            if (last < value.length)
+                frag.appendChild(document.createTextNode(value.slice(last)));
+            node.parentNode.replaceChild(frag, node);
+        }
+    });
+}
+
 function watchMath() {
     const content = contentElement();
     if (!content || typeof MutationObserver === "undefined")
@@ -53,6 +102,7 @@ function watchMath() {
         timer = setTimeout(() => {
             timer = null;
             refreshMath();
+            refreshHtmlTableMath();
         }, 100);
     });
     observer.observe(content, { childList: true, subtree: true });
@@ -90,6 +140,7 @@ function schedulePull() {
         return;
     retagBlocks();
     refreshMath();
+    refreshHtmlTableMath();
 }
 
 function pull() {
@@ -177,6 +228,7 @@ function pushPage(markdown, theme) {
         // setValue rebuilds the content DOM asynchronously — the tags that
         // retagBlocks() laid before it are gone by now.
         retagBlocks();
+        refreshHtmlTableMath();
         if (bridge)
             bridge.notifyReferenceChanged(reference, pushToken);
     }, 0);

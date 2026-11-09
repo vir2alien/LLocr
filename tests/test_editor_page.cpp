@@ -25,6 +25,7 @@ private slots:
     void blockEditReportsThePullAndKeepsTheDomClean();
     void blockWithInnerBlankLineKeepsThePullAlive();
     void toolbarActionAsksTheModelInsteadOfMutating();
+    void htmlTableMathRendersInThePreviewOnly();
 
 private:
     void spinUntil(const std::function<bool()> &done, int timeoutMs = 60000);
@@ -405,6 +406,67 @@ void TestEditorPage::toolbarActionAsksTheModelInsteadOfMutating()
         return blocks == 3;
     });
     QCOMPARE(blocks, 3);
+}
+
+// "Keep tables as HTML" pushes tables through as html-blocks: the preview
+// shows the raw HTML where $…$ stays literal. The formulas render with KaTeX
+// inside the preview, and the serialization — which reads the block's hidden
+// source — carries none of it.
+void TestEditorPage::htmlTableMathRendersInThePreviewOnly()
+{
+    EditorBridge bridge;
+    QWebChannel channel;
+    channel.registerObject(QStringLiteral("editorBridge"), &bridge);
+    QWebEnginePage page;
+    page.setWebChannel(&channel);
+
+    bool loaded = false;
+    bool loadOk = false;
+    bool ready = false;
+    QObject::connect(&page, &QWebEnginePage::loadFinished, [&](bool ok) {
+        loaded = true;
+        loadOk = ok;
+    });
+    QObject::connect(&bridge, &EditorBridge::pageReady, [&ready]() { ready = true; });
+    bool rendererGone = false;
+    QObject::connect(&page, &QWebEnginePage::renderProcessTerminated, [&rendererGone]() { rendererGone = true; });
+
+    page.load(QUrl(QStringLiteral("qrc:/editor/editor.html")));
+    spinUntil([&]() { return loaded; });
+    QVERIFY2(loadOk, "editor.html failed to load");
+    spinUntil([&]() { return ready; });
+    QVERIFY2(!rendererGone, "the renderer died during page load");
+
+    bool pushed = false;
+    page.runJavaScript(
+        QStringLiteral(
+            R"js(pushDocument("<table><tr><th>a</th><th>b</th></tr><tr><td>$x^2$</td><td>ok</td></tr></table>", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["t"]);)js"),
+        [&pushed](const QVariant &) { pushed = true; });
+    spinUntil([&]() { return pushed; });
+
+    // The preview holds the KaTeX output inside our marker span; the render
+    // settles within the MutationObserver's debounce beat.
+    QString state;
+    spinUntil([&]() {
+        state.clear();
+        page.runJavaScript(QStringLiteral("JSON.stringify({err: window.__err || null, rendered: document.querySelectorAll('.ll-math .katex').length})"),
+                           [&state](const QVariant &v) { state = v.toString(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return state.contains(QLatin1String("\"rendered\":1"));
+    });
+    QVERIFY2(!state.contains(QLatin1String("err\":\"")), qPrintable(state));
+
+    // And the serialization carries the dollar source, not the render: the
+    // hidden <pre> source of the html-block is what getValue() speaks.
+    QString value;
+    spinUntil([&]() {
+        value.clear();
+        page.runJavaScript(QStringLiteral("vditor.getValue()"), [&value](const QVariant &v) { value = v.toString(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return value.contains(QLatin1String("$x^2$"));
+    });
+    QVERIFY2(!value.contains(QLatin1String("katex")), qPrintable(value));
+    QVERIFY2(!value.contains(QLatin1String("ll-math")), qPrintable(value));
 }
 
 int main(int argc, char *argv[])
