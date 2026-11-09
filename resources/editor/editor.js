@@ -16,6 +16,42 @@ function contentElement() {
     return document.querySelector(".vditor-wysiwyg [contenteditable]");
 }
 
+// Undo/redo restores DOM snapshots whose math previews come back empty (or
+// carrying the raw source instead of the render), while Vditor's own pass
+// skips elements that already carry data-math — so the formulas vanish until
+// the next full push. Re-render the stale previews ourselves.
+function refreshMath() {
+    if (typeof katex === "undefined")
+        return;
+    document.querySelectorAll(".language-math[data-math]").forEach((el) => {
+        const raw = el.getAttribute("data-math");
+        const rendered = el.childElementCount > 0;
+        if (rendered && el.textContent.trim() !== raw)
+            return;
+        try {
+            el.innerHTML = katex.renderToString(raw, { displayMode: el.tagName === "DIV", output: "html" });
+        } catch (e) {
+            el.textContent = raw;
+        }
+    });
+}
+
+function watchMath() {
+    const content = contentElement();
+    if (!content || typeof MutationObserver === "undefined")
+        return;
+    let timer = null;
+    const observer = new MutationObserver(() => {
+        if (timer !== null)
+            clearTimeout(timer);
+        timer = setTimeout(() => {
+            timer = null;
+            refreshMath();
+        }, 100);
+    });
+    observer.observe(content, { childList: true, subtree: true });
+}
+
 function retagBlocks() {
     const content = contentElement();
     if (!content)
@@ -117,16 +153,18 @@ function initVditor() {
                   "quote", "inline-code", "code", "table"],
         after() {
             const content = contentElement();
-            if (content)
+            if (content) {
                 content.addEventListener("click", (event) => {
                     const block = event.target.closest("[data-ll-block]");
                     if (block && bridge)
                         bridge.notifyBlockClicked(parseInt(block.getAttribute("data-ll-block"), 10));
                 });
+                watchMath();
+            }
             if (bridge)
                 bridge.notifyPageReady();
         },
-        input() { schedulePull(); },
+        input() { schedulePull(); refreshMath(); },
         focus() { if (bridge) bridge.notifyEditorFocus(true); },
         blur() { if (bridge) bridge.notifyEditorFocus(false); },
     });

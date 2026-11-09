@@ -21,6 +21,7 @@ class TestEditorPage : public QObject
 
 private slots:
     void loadsVditorUnderThePageCspAndRendersPushedMarkdown();
+    void undoBrokenMathPreviewsAreReRendered();
 
 private:
     void spinUntil(const std::function<bool()> &done, int timeoutMs = 60000);
@@ -90,6 +91,64 @@ void TestEditorPage::loadsVditorUnderThePageCspAndRendersPushedMarkdown()
         return blocks > 0;
     });
     QCOMPARE(blocks, 2);
+}
+
+// Undo restores DOM snapshots whose math previews carry the raw source (or
+// nothing) instead of the render; refreshMath must turn them back into
+// KaTeX output without a full push.
+void TestEditorPage::undoBrokenMathPreviewsAreReRendered()
+{
+    EditorBridge bridge;
+    QWebChannel channel;
+    channel.registerObject(QStringLiteral("editorBridge"), &bridge);
+    QWebEnginePage page;
+    page.setWebChannel(&channel);
+
+    bool loaded = false;
+    bool loadOk = false;
+    bool ready = false;
+    QObject::connect(&page, &QWebEnginePage::loadFinished, [&](bool ok) {
+        loaded = true;
+        loadOk = ok;
+    });
+    QObject::connect(&bridge, &EditorBridge::pageReady, [&ready]() { ready = true; });
+
+    page.load(QUrl(QStringLiteral("qrc:/editor/editor.html")));
+    spinUntil([&]() { return loaded; });
+    QVERIFY2(loadOk, "editor.html failed to load");
+    spinUntil([&]() { return ready; });
+
+    bool pushed = false;
+    page.runJavaScript(QStringLiteral(R"js(pushPage("Body\n\n$$E=mc^2$$", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"});)js"),
+                       [&pushed](const QVariant &) { pushed = true; });
+    spinUntil([&]() { return pushed; });
+
+    // The pushed formula renders into a .language-math element.
+    int rendered = 0;
+    spinUntil([&]() {
+        page.runJavaScript(QStringLiteral("document.querySelectorAll('.language-math[data-math]').length"), [&rendered](const QVariant &v) { rendered = v.toInt(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return rendered > 0;
+    });
+    QCOMPARE(rendered, 1);
+
+    // Simulate the undo snapshot: the preview keeps data-math but holds the
+    // raw source instead of the KaTeX output.
+    bool broken = false;
+    page.runJavaScript(QStringLiteral("refreshMath !== undefined && (function(){const el=document.querySelector('.language-math[data-math]');"
+                                      "el.innerHTML=el.getAttribute('data-math');return true;})()"),
+                       [&broken](const QVariant &v) { broken = v.toBool(); });
+    spinUntil([&]() { return broken; });
+
+    // refreshMath repairs it: children (KaTeX spans) come back.
+    int children = 0;
+    spinUntil([&]() {
+        page.runJavaScript(QStringLiteral("refreshMath(); const el=document.querySelector('.language-math[data-math]'); el ? el.childElementCount : -1"),
+                           [&children](const QVariant &v) { children = v.toInt(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return children > 0;
+    });
+    QVERIFY(children > 0);
 }
 
 int main(int argc, char *argv[])

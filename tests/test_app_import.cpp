@@ -4177,6 +4177,47 @@ private slots:
         QVERIFY(!m_controller->property("selectedBlockDocumentDiverged").toBool());
     }
 
+    // The same take-over, with the user's edits BEFORE the changed block: the
+    // page-level common-prefix anchor of the old merge cannot survive that
+    // (the user typed somewhere earlier on the page), so the applied change
+    // must anchor locally on the changed fragment itself.
+    void blockTakeOverAppliesWhenTheUserEditedEarlierBlocks()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        recognizePage(*m_controller);
+        QVERIFY(m_controller->hasResult());
+
+        // The user edits the FIRST block in the editor.
+        m_controller->setCurrentPageText(QStringLiteral("## 1. Introduction (annotated)\n\nSecond block text"));
+        QVERIFY(m_controller->currentPageEdited());
+
+        // The pipeline re-recognizes the SECOND block.
+        server.transcriptionSequence.clear();  // every block reads `transcription`
+        server.transcription = QStringLiteral("Second block, verified");
+        m_controller->setSelectedBoxIndex(1);
+        const int requests = server.requests();
+        m_controller->recognizeSelectedBlock();
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->selectedBlockText(), server.transcription, kImportTimeoutMs);
+
+        QVERIFY(m_controller->property("selectedBlockDocumentDiverged").toBool());
+        m_controller->takeSelectedBlockTextIntoDocument();
+
+        // The user's first-block wording survives; the second block's AI text
+        // lands.
+        QVERIFY2(m_controller->resultText().contains(QStringLiteral("## 1. Introduction (annotated)")), qPrintable(m_controller->resultText()));
+        QVERIFY2(m_controller->resultText().contains(QStringLiteral("Second block, verified")), qPrintable(m_controller->resultText()));
+        QVERIFY(!m_controller->resultText().contains(QStringLiteral("Second block text\n")));
+        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(!m_controller->property("selectedBlockDocumentDiverged").toBool());
+    }
+
     // A pull from the WYSIWYG editor is dropped when the model text moved on
     // independently (an edit from the raw tab, a revert): the stale DOM must
     // not overwrite the newer model text; the resync push brings the page

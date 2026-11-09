@@ -418,11 +418,60 @@ QString mergePipelineChange(const QString &userText, const QString &previous, co
 }
 
 // The changed middle of a diff between two texts (mergePipelineChange's
-// prefix/suffix walk): what the pipeline replaced.
+// prefix/suffix walk): what the pipeline replaced, and where it starts.
 struct TextDiffMiddle {
     QString oldMiddle;
     QString newMiddle;
+    qsizetype changeOffset = 0;
 };
+
+// How many characters of the rebuilt page flank the changed fragment and
+// serve as its local anchor in the user's text.
+constexpr qsizetype kChangeAnchorContext = 80;
+
+// The queued fragment lands in the user's text by a direct search for the
+// old fragment, anchored by the rebuilt page's neighboring characters: the
+// user's edits elsewhere on the page cannot break the match, and a fragment
+// the user rewrote themselves is reported as missed instead of matched
+// somewhere wrong.
+QString applyFragmentChange(const QString &text, const TextDiffMiddle &middle, const QString &contextBefore, bool &applied, bool &missed)
+{
+    if (middle.oldMiddle.isEmpty()) {
+        // An addition: the new content goes after its context.
+        const qsizetype anchorPos = text.lastIndexOf(contextBefore);
+        if (anchorPos < 0) {
+            missed = true;
+            return text;
+        }
+        const qsizetype insertAt = anchorPos + contextBefore.size();
+        QString separator;
+        if (!text.isEmpty() && !text.endsWith(QLatin1Char('\n')))
+            separator = QStringLiteral("\n\n");
+        else if (text.endsWith(QLatin1Char('\n')) && !text.endsWith(QStringLiteral("\n\n")))
+            separator = QStringLiteral("\n");
+        applied = true;
+        return text.left(insertAt) + separator + middle.newMiddle + text.mid(insertAt);
+    }
+
+    qsizetype pos = -1;
+    if (!contextBefore.isEmpty()) {
+        const qsizetype ctxPos = text.lastIndexOf(contextBefore);
+        if (ctxPos >= 0)
+            pos = text.indexOf(middle.oldMiddle, ctxPos + contextBefore.size());
+    }
+    if (pos < 0)
+        pos = text.indexOf(middle.oldMiddle);
+    if (pos < 0) {
+        missed = true;
+        return text;
+    }
+    // A removal takes the old fragment out; a replacement swaps in the new.
+    applied = true;
+    QString result = text.left(pos) + middle.newMiddle + text.mid(pos + middle.oldMiddle.size());
+    if (middle.newMiddle.isEmpty())
+        result.replace(QStringLiteral("\n\n\n\n"), QStringLiteral("\n\n"));
+    return result;
+}
 
 TextDiffMiddle diffMiddle(const QString &previous, const QString &rebuilt)
 {
@@ -434,7 +483,7 @@ TextDiffMiddle diffMiddle(const QString &previous, const QString &rebuilt)
     const int maxSuffix = qMin(previous.size() - prefix, rebuilt.size() - prefix);
     while (suffix < maxSuffix && previous.at(previous.size() - 1 - suffix) == rebuilt.at(rebuilt.size() - 1 - suffix))
         ++suffix;
-    return {previous.mid(prefix, previous.size() - prefix - suffix), rebuilt.mid(prefix, rebuilt.size() - prefix - suffix)};
+    return {previous.mid(prefix, previous.size() - prefix - suffix), rebuilt.mid(prefix, rebuilt.size() - prefix - suffix), prefix};
 }
 
 // The formula blocks of a fresh recognition result (ADR 194): the canonical
@@ -996,8 +1045,10 @@ void AppController::setCurrentPageTextFromEditor(const QString &text)
 int AppController::pendingChangeBox(int pageIndex, const QString &previous, const QString &rebuilt) const
 {
     const TextDiffMiddle middle = diffMiddle(previous, rebuilt);
-    if (middle.newMiddle.isEmpty())
+    if (middle.oldMiddle.isEmpty() && middle.newMiddle.isEmpty())
         return -1;
+    // The change starts at the common prefix's end: the canonical block whose
+    // range covers that offset is the block the pipeline changed.
     IOutputParser::RebuiltPageText canonical;
     {
         QReadLocker locker(&m_documentLock);
@@ -1008,11 +1059,10 @@ int AppController::pendingChangeBox(int pageIndex, const QString &previous, cons
             return -1;
         canonical = parser->rebuildTextWithRanges(m_document.page(pageIndex).result.pages.first());
     }
+    if (middle.newMiddle.isEmpty())
+        return -1;  // a removal leaves no canonical block to point at
     for (const BlockTextRange &range : canonical.ranges) {
-        const QString rendered = canonical.text.mid(range.start, range.length);
-        // A block's rendered text carries its style markers ("## "); the
-        // diff middle is the bare text the pipeline changed.
-        if (rendered == middle.newMiddle || rendered.endsWith(QLatin1Char(' ') + middle.newMiddle))
+        if (middle.changeOffset >= range.start && middle.changeOffset < range.start + range.length)
             return range.boxIndex;
     }
     return -1;
@@ -1041,26 +1091,33 @@ void AppController::takeSelectedBlockTextIntoDocument()
     }
     m_pendingDocumentChanges.remove(page);
 
-    // The queued changes apply against the current user text — the anchors
-    // are re-searched now, not remembered from the landing moment.
+    // The queued change applies to its own fragment: the changed middle of
+    // the landing diff is searched in the user's text directly, anchored by
+    // the neighboring characters of the rebuilt page. The old page-level
+    // common-prefix anchor missed as soon as the user edited anything
+    // earlier on the page — the very editing the WYSIWYG tab invites.
     QString text = pageText(page);
     bool applied = false;
+    bool missed = false;
     for (const PendingDocumentChange &change : pending) {
-        const QString merged = mergePipelineChange(text, change.previous, change.rebuilt);
-        if (merged != text) {
-            text = merged;
-            applied = true;
-        }
+        const TextDiffMiddle middle = diffMiddle(change.previous, change.rebuilt);
+        if (middle.oldMiddle.isEmpty() && middle.newMiddle.isEmpty())
+            continue;
+        const QString contextBefore = change.rebuilt.left(middle.changeOffset).right(kChangeAnchorContext);
+        const QString contextAfter = middle.newMiddle.isEmpty() ? QString() : change.rebuilt.mid(middle.changeOffset + middle.newMiddle.size(), kChangeAnchorContext);
+        text = applyFragmentChange(text, middle, contextBefore, applied, missed);
     }
-    if (!applied) {
+    if (missed)
         setStatus(StatusMessage::translate("AppController", "The changed fragment is no longer in the document text."));
+    if (!applied) {
         emit blockDocumentDivergedChanged();
         return;
     }
     setPageText(page, text);
     emit resultChanged();
     emit blockDocumentDivergedChanged();
-    setStatus(StatusMessage::translate("AppController", "The block text was taken into the document."));
+    if (!missed)
+        setStatus(StatusMessage::translate("AppController", "The block text was taken into the document."));
 }
 
 void AppController::setCurrentPageText(const QString &text)
