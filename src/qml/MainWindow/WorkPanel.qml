@@ -15,7 +15,6 @@ Rectangle {
     property var editorBlockMap: []
     property var editorBlockMd: []
     property var editorBlockFlags: []
-    property bool pendingEditorReload: false
     // The segmented switch's state: raw markdown editor or the WYSIWYG one.
     property bool wysiwygActive: false
 
@@ -88,9 +87,6 @@ Rectangle {
                 visible: Controller.currentPageEditable && Controller.currentPageEdited
                 onClicked: {
                     Controller.revertCurrentPageEdits()
-                    // The panel defers reloads while it holds focus; a revert
-                    // must show the stored text immediately, not on blur.
-                    root.pendingEditorReload = false
                     editorDebounce.restart()
                 }
             }
@@ -201,27 +197,16 @@ Rectangle {
                     Connections {
                         target: Controller
                         function onResultChanged() {
-                            // The WYSIWYG editor defers its reload while the
-                            // user is typing; the raw field follows the model
-                            // right away — it is the join of the blocks.
-                            const ed = editorLoader.item as MarkdownEditor
-                            if (root.wysiwygActive) {
-                                if (ed && ed.editorFocused)
-                                    root.pendingEditorReload = true
-                                else
-                                    editorDebounce.restart()
-                            }
+                            // The push defers itself inside the page while
+                            // the user is typing (editor.js dirty/pendingSync).
+                            if (root.wysiwygActive)
+                                editorDebounce.restart()
                             textArea.reload()
                         }
                         function onPageChanged() {
                             textArea.reload()
-                            const ed = editorLoader.item as MarkdownEditor
-                            if (root.wysiwygActive) {
-                                if (ed && ed.editorFocused)
-                                    root.pendingEditorReload = true
-                                else
-                                    editorDebounce.restart()
-                            }
+                            if (root.wysiwygActive)
+                                editorDebounce.restart()
                         }
                     }
                 }
@@ -284,16 +269,6 @@ Rectangle {
             onBlockClicked: (blockIndex) => {
                 if (blockIndex >= 0 && blockIndex < root.editorBlockMap.length && root.editorBlockMap[blockIndex] >= 0)
                     Controller.selectedBoxIndex = root.editorBlockMap[blockIndex]
-            }
-            // A rebuild that landed while the user typed in the WYSIWYG
-            // editor reaches it when the editor loses focus — the same
-            // deferral the raw field's pendingReload implements. (The
-            // property's change signal carries no value; read it.)
-            onEditorFocusedChanged: {
-                if (!editor.editorFocused && root.pendingEditorReload) {
-                    root.pendingEditorReload = false
-                    editorDebounce.restart()
-                }
             }
         }
     }

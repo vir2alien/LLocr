@@ -143,7 +143,7 @@ void TestEditorPage::undoBrokenMathPreviewsAreReRendered()
     // refreshMath repairs it: children (KaTeX spans) come back.
     int children = 0;
     spinUntil([&]() {
-        page.runJavaScript(QStringLiteral("refreshMath(); const el=document.querySelector('.language-math[data-math]'); el ? el.childElementCount : -1"),
+        page.runJavaScript(QStringLiteral("refreshMath(); (function(){ var el = document.querySelector('.language-math[data-math]'); return el ? el.childElementCount : -1; })()"),
                            [&children](const QVariant &v) { children = v.toInt(); });
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
         return children > 0;

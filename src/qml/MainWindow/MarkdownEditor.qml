@@ -35,7 +35,6 @@ Item {
     property bool _channelReady: false
     property string _reference: ""
     property int _referenceToken: -1
-    property bool _pendingPush: false
     property string _loadError: ""
 
     function _pushPage() {
@@ -66,13 +65,7 @@ Item {
         web.runJavaScript("highlightBlocks(" + JSON.stringify(indices) + ");")
     }
 
-    Timer {
-        id: pushDebounce
-        interval: 250
-        onTriggered: root._pushPage()
-    }
-
-    onMarkdownChanged: pushDebounce.restart()
+    onMarkdownChanged: _pushPage()
     onDarkChanged: _pushPage()
     onBgColorChanged: _pushPage()
     onFgColorChanged: _pushPage()
@@ -161,8 +154,6 @@ Item {
         }
         function onEditorFocusChanged(focused) {
             root.editorFocused = focused
-            if (!focused && root._pendingPush)
-                root._pushPage()
         }
     }
 }
