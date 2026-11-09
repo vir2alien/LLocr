@@ -173,6 +173,16 @@ void BoxListModel::removeBox(int index)
     endRemoveRows();
 }
 
+void BoxListModel::moveBox(int from, int to)
+{
+    if (from < 0 || from >= m_boxes.size() || to < 0 || to >= m_boxes.size() || from == to)
+        return;
+    if (!beginMoveRows({}, from, from, {}, to > from ? to + 1 : to))
+        return;
+    m_boxes.move(from, to);
+    endMoveRows();
+}
+
 // The picture labels of the shipped vocabularies (the MinerU layout model).
 // Rendering itself stays data-driven through BlockStyleMap; this only decides
 // which blocks the UI treats as images (no text editing, canvas handles).

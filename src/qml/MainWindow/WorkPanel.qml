@@ -260,6 +260,18 @@ Rectangle {
                     && root.editorBlockMap[blockOrdinal] >= 0)
                     Controller.setUserBlockText(blockOrdinal, markdown)
             }
+            onBlockStructureRequested: (blockOrdinal, action) => {
+                if (blockOrdinal < 0 || blockOrdinal >= root.editorBlockMap.length
+                    || root.editorBlockMap[blockOrdinal] < 0)
+                    return
+                const boxIndex = root.editorBlockMap[blockOrdinal]
+                if (action === "up")
+                    Controller.moveBlock(boxIndex, boxIndex - 1)
+                else if (action === "down")
+                    Controller.moveBlock(boxIndex, boxIndex + 1)
+                else if (action === "remove")
+                    Controller.removeBlock(boxIndex)
+            }
             onBlockClicked: (blockIndex) => {
                 if (blockIndex >= 0 && blockIndex < root.editorBlockMap.length && root.editorBlockMap[blockIndex] >= 0)
                     Controller.selectedBoxIndex = root.editorBlockMap[blockIndex]

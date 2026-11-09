@@ -4150,6 +4150,34 @@ private slots:
     // A block nobody edited takes the recognition as it lands: the document
     // is the join of the blocks, so a re-recognition is visible immediately —
     // no merge, no notice, no queue.
+    // Moving a block reorders the join: the document follows the box order
+    // and the block's layer travels with it.
+    void moveBlockReordersTheJoinWithItsLayer()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        recognizePage(*m_controller);
+        QVERIFY(m_controller->hasResult());
+        QCOMPARE(m_controller->resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text"));
+
+        setEditorPageText(*m_controller, QStringLiteral("## 1. Introduction\n\nSecond block, mine"));
+        QVERIFY(m_controller->currentPageEdited());
+        m_controller->setSelectedBoxIndex(1);
+
+        QVERIFY(m_controller->moveBlock(1, 0));
+
+        // The layer moved with its block: the user's text is still the
+        // second block's, now rendered first.
+        QCOMPARE(m_controller->resultText(), QStringLiteral("Second block, mine\n\n## 1. Introduction"));
+        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(m_controller->property("selectedBlockDocumentDiverged").toBool());
+    }
+
     void aiLandsIntoTheDocumentForUntouchedBlocks()
     {
         DetTokenChatServer server;

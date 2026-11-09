@@ -23,11 +23,13 @@ private slots:
         QSignalSpy click(&bridge, &EditorBridge::editorBlockClicked);
         QSignalSpy blockChanged(&bridge, &EditorBridge::editorBlockChanged);
         QSignalSpy resync(&bridge, &EditorBridge::editorResyncRequested);
+        QSignalSpy structure(&bridge, &EditorBridge::editorBlockStructureRequested);
 
         bridge.notifyPageReady();
         bridge.notifyTextChanged(QStringLiteral("$$x$$"), 3);
         bridge.notifyBlockChanged(2, QStringLiteral("block md"), 3);
         bridge.notifyResyncRequested();
+        bridge.notifyBlockStructureAction(7, QStringLiteral("down"));
         bridge.notifyReferenceChanged(QStringLiteral("# t"), 4);
         bridge.notifyEditorFocus(true);
         bridge.notifyBlockClicked(3);
@@ -52,6 +54,9 @@ private slots:
         QCOMPARE(blockChanged.first().at(1).toString(), QStringLiteral("block md"));
         QCOMPARE(blockChanged.first().at(2).toLongLong(), 3);
         QCOMPARE(resync.count(), 1);
+        QCOMPARE(structure.count(), 1);
+        QCOMPARE(structure.first().at(0).toInt(), 7);
+        QCOMPARE(structure.first().at(1).toString(), QStringLiteral("down"));
     }
 };
 

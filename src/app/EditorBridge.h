@@ -27,6 +27,9 @@ signals:
     // The page skipped a model push while the user was typing and asks for
     // the current state now that its typing has settled.
     void editorResyncRequested();
+    // The editor's hover toolbar asked to move or drop the block the caret
+    // sits in ("up", "down", "remove"); the model owns the structure.
+    void editorBlockStructureRequested(int blockOrdinal, QString action);
     void editorReferenceChanged(const QString &markdown, qint64 pushToken);
     void editorFocusChanged(bool focused);
     void editorBlockClicked(int blockIndex);
@@ -36,6 +39,7 @@ public slots:
     void notifyTextChanged(const QString &markdown, qint64 pushToken);
     void notifyBlockChanged(int blockOrdinal, const QString &markdown, qint64 pushToken);
     void notifyResyncRequested();
+    void notifyBlockStructureAction(int blockOrdinal, const QString &action);
     void notifyReferenceChanged(const QString &markdown, qint64 pushToken);
     void notifyEditorFocus(bool focused);
     void notifyBlockClicked(int blockIndex);

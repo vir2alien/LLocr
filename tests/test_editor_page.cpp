@@ -24,6 +24,7 @@ private slots:
     void undoBrokenMathPreviewsAreReRendered();
     void blockEditReportsThePullAndKeepsTheDomClean();
     void blockWithInnerBlankLineKeepsThePullAlive();
+    void toolbarActionAsksTheModelInsteadOfMutating();
 
 private:
     void spinUntil(const std::function<bool()> &done, int timeoutMs = 60000);
@@ -318,6 +319,92 @@ void TestEditorPage::blockWithInnerBlankLineKeepsThePullAlive()
     spinUntil([&]() { return reportedOrdinal >= 0; }, 5000);
     QCOMPARE(reportedOrdinal, 2);
     QCOMPARE(reportedMarkdown, QStringLiteral("Bx"));
+}
+
+// The hover toolbar (up/down/remove) is Vditor's own; a click must reach
+// the model as a structure request instead of mutating the DOM — the settle
+// would throw a mutated document away seconds later.
+void TestEditorPage::toolbarActionAsksTheModelInsteadOfMutating()
+{
+    EditorBridge bridge;
+    QWebChannel channel;
+    channel.registerObject(QStringLiteral("editorBridge"), &bridge);
+    QWebEnginePage page;
+    page.setWebChannel(&channel);
+
+    bool loaded = false;
+    bool loadOk = false;
+    bool ready = false;
+    QObject::connect(&page, &QWebEnginePage::loadFinished, [&](bool ok) {
+        loaded = true;
+        loadOk = ok;
+    });
+    QObject::connect(&bridge, &EditorBridge::pageReady, [&ready]() { ready = true; });
+
+    page.load(QUrl(QStringLiteral("qrc:/editor/editor.html")));
+    spinUntil([&]() { return loaded; });
+    QVERIFY2(loadOk, "editor.html failed to load");
+    spinUntil([&]() { return ready; });
+
+    bool pushed = false;
+    page.runJavaScript(QStringLiteral(R"js(pushDocument("First\n\nSecond\n\nThird", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["First", "Second", "Third"]);)js"),
+                       [&pushed](const QVariant &) { pushed = true; });
+    spinUntil([&]() { return pushed; });
+
+    // The report must listen before the click: the request travels while
+    // the staging script is still running.
+    int reportedOrdinal = -1;
+    QString reportedAction;
+    QObject::connect(&bridge, &EditorBridge::editorBlockStructureRequested, [&](int ordinal, const QString &action) {
+        reportedOrdinal = ordinal;
+        reportedAction = action;
+    });
+
+    // The caret into the middle block, a toolbar button into the popover —
+    // the same setup Vditor builds, with the same data-type.
+    bool staged = false;
+    page.runJavaScript(QStringLiteral(R"js((function(){
+        var blocks = document.querySelectorAll('.vditor-wysiwyg [data-ll-block]');
+        var target = blocks[1];
+        var sel = window.getSelection();
+        var range = document.createRange();
+        range.selectNodeContents(target);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try {
+            target.focus();
+            var popover = document.querySelector('.vditor-wysiwyg .vditor-panel--none');
+            var button = document.createElement('button');
+            button.setAttribute('type', 'button');
+            button.setAttribute('data-type', 'down');
+            popover.innerHTML = '';
+            popover.appendChild(button);
+            button.click();
+            return JSON.stringify({
+                blocks: document.querySelectorAll('.vditor-wysiwyg [data-ll-block]').length,
+                inPopover: popover.contains(button)
+            });
+        } catch (e) { return 'ERR: ' + e.message; }
+    })())js"),
+                       [&staged](const QVariant &v) {
+                           staged = v.toString().contains(QLatin1String("\"blocks\":3"));
+                           qWarning() << "STAGE" << qPrintable(v.toString());
+                       });
+    spinUntil([&]() { return staged; });
+
+    spinUntil([&]() { return reportedOrdinal >= 0; }, 5000);
+    QCOMPARE(reportedOrdinal, 1);
+    QCOMPARE(reportedAction, QStringLiteral("down"));
+
+    // The DOM stayed untouched: the button never mutated the blocks.
+    int blocks = 0;
+    spinUntil([&]() {
+        page.runJavaScript(QStringLiteral("document.querySelectorAll('.vditor-wysiwyg [data-ll-block]').length"), [&blocks](const QVariant &v) { blocks = v.toInt(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return blocks == 3;
+    });
+    QCOMPARE(blocks, 3);
 }
 
 int main(int argc, char *argv[])

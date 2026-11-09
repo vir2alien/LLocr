@@ -419,6 +419,9 @@ public slots:
     Q_INVOKABLE void revertCurrentPageEdits();
     Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height);
     Q_INVOKABLE bool removeBlock(int boxIndex);
+    // Reorders the blocks of the current page (the join follows the box
+    // order, so the document moves with its layers).
+    Q_INVOKABLE bool moveBlock(int from, int to);
     // Adds an empty block of the given type to the current page and selects it.
     Q_INVOKABLE bool addBlock(const QString &type);
     // Adds an empty block with the rectangle the user drew on the page (the

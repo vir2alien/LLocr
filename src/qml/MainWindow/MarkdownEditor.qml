@@ -25,6 +25,9 @@ Item {
     // The per-block pull (ADR 296): the editor reports the ordinal and the
     // markdown of the block the user typed in.
     signal editorBlockChanged(int blockOrdinal, string markdown)
+    // The hover toolbar asked to move or drop the block under the caret;
+    // the model owns the structure.
+    signal blockStructureRequested(int blockOrdinal, string action)
     signal blockClicked(int blockIndex)
 
     property bool _pageLoaded: false
@@ -134,6 +137,9 @@ Item {
         }
         function onEditorBlockClicked(blockIndex) {
             root.blockClicked(blockIndex)
+        }
+        function onEditorBlockStructureRequested(blockOrdinal, action) {
+            root.blockStructureRequested(blockOrdinal, action)
         }
         function onEditorResyncRequested() {
             root._pushPage()

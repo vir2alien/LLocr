@@ -246,6 +246,33 @@ function highlightBlocks(indices) {
         first.scrollIntoView({ block: "center" });
 }
 
+// The hover toolbar Vditor builds for the block under the caret carries
+// move-up/move-down/remove. Left alone it mutates the DOM and the settle
+// throws the change away; the model owns the structure, so the click is
+// intercepted before the button's own handler and turned into a request.
+// The caret sits in the block the toolbar was built for — the popover takes
+// no focus and the selection survives the click.
+function interceptToolbarActions() {
+    document.addEventListener("click", (event) => {
+        const button = event.target.closest('[data-type="up"],[data-type="down"],[data-type="remove"]');
+        if (!button || !bridge)
+            return;
+        if (!button.closest(".vditor-panel"))
+            return;
+        const selection = window.getSelection();
+        const anchor = selection && selection.anchorNode
+            ? (selection.anchorNode.nodeType === 1 ? selection.anchorNode : selection.anchorNode.parentElement)
+            : null;
+        const tag = anchor ? anchor.closest("[data-ll-block]") : null;
+        if (!tag)
+            return;
+        event.preventDefault();
+        event.stopPropagation();
+        bridge.notifyBlockStructureAction(parseInt(tag.getAttribute("data-ll-block"), 10),
+                                          button.getAttribute("data-type"));
+    }, true);
+}
+
 function initVditor() {
     vditor = new Vditor("editor", {
         cdn: "qrc:/editor/vditor",
@@ -267,6 +294,7 @@ function initVditor() {
                 });
                 watchMath();
             }
+            interceptToolbarActions();
             if (bridge)
                 bridge.notifyPageReady();
         },

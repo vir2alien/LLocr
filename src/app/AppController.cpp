@@ -1100,6 +1100,37 @@ bool AppController::removeBlock(int boxIndex)
     return true;
 }
 
+bool AppController::moveBlock(int from, int to)
+{
+    if (m_layout.busy() || m_importing || checkBusy())
+        return false;
+    {
+        QWriteLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(m_currentPage))
+            return false;
+        DocumentPage &page = m_document.page(m_currentPage);
+        if (!page.recognized || page.result.pages.isEmpty())
+            return false;
+        QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+        if (from < 0 || from >= boxes.size() || to < 0 || to >= boxes.size() || from == to)
+            return false;
+        boxes.move(from, to);
+    }
+    m_boxModel.moveBox(from, to);
+    refreshPageDocument(m_currentPage);
+
+    if (m_inspector.selectedBoxIndex() == from)
+        setSelectedBoxIndex(to);
+    else {
+        const int low = qMin(from, to);
+        const int high = qMax(from, to);
+        const int selected = m_inspector.selectedBoxIndex();
+        if (selected >= low && selected <= high)
+            setSelectedBoxIndex(selected + (to > from ? -1 : 1));
+    }
+    return true;
+}
+
 bool AppController::addBlock(const QString &type)
 {
     return addBlockAt(type, 0.35, 0.45, 0.3, 0.08);

@@ -27,6 +27,11 @@ void EditorBridge::notifyResyncRequested()
     emit editorResyncRequested();
 }
 
+void EditorBridge::notifyBlockStructureAction(int blockOrdinal, const QString &action)
+{
+    emit editorBlockStructureRequested(blockOrdinal, action);
+}
+
 void EditorBridge::notifyReferenceChanged(const QString &markdown, qint64 pushToken)
 {
     emit editorReferenceChanged(markdown, pushToken);

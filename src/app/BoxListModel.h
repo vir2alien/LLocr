@@ -58,6 +58,7 @@ public:
     // confidence) and the fix outcome with the layer the user reads.
     void updateBoxState(int index, const BoundingBox &box);
     void removeBox(int index);
+    void moveBox(int from, int to);
     Q_INVOKABLE bool isImageBox(int index) const;
 
 private:
