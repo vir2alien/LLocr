@@ -198,7 +198,7 @@ Rectangle {
                         target: Controller
                         function onResultChanged() {
                             // The push defers itself inside the page while
-                            // the user is typing (editor.js dirty/pendingSync).
+                            // the user is typing (editor.js dirty/stale).
                             if (root.wysiwygActive)
                                 editorDebounce.restart()
                             textArea.reload()

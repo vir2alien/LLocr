@@ -10,8 +10,9 @@ let lastPushed = null;   // markdown of the last push, as received
 let blockMd = [];        // the pushed markdown of every tagged block
 let blockFlags = [];     // per block: the recognition carries another text
 let pushToken = 0;       // identifies the push the page's content derives from
-let dirty = false;       // a pull is in flight or just landed: the DOM owns newer text
-let pendingSync = null;  // a model push that arrived while dirty; applied on the next settle
+let dirty = false;       // the DOM holds text the model has not seen yet
+let stale = false;       // a model push was skipped while dirty; fetched at the next settle
+let settleTimer = null;  // the beat of quiet typing that closes the dirty window
 let pullTimer = null;
 let highlighted = [];
 let suppressPull = false;
@@ -105,6 +106,7 @@ function blockStructureChanged() {
 }
 
 function schedulePull() {
+    dirty = true;
     // The timer arms even during a push-settle: a keystroke landing there
     // must not stay uncommitted just because the window was brief.
     if (pullTimer !== null)
@@ -158,12 +160,10 @@ function pull() {
     blockMd[ordinal] = newMd;
     lastPushed = value;
     reference = value;
-    // The DOM owns newer text than the model until this lands; a model push
-    // arriving meanwhile must wait, or it would setValue over the caret.
-    dirty = true;
     bridge.notifyBlockChanged(ordinal, newMd, pushToken);
-    // The pull reached the model synchronously; its join comes back as a
-    // push, so the dirty window closes on that push — nothing to flush here.
+    // The model's join answers as a push. While the typing continues it
+    // parks — a setValue now would clobber the caret — and the settle that
+    // follows the last keystroke fetches the model's current state.
 }
 
 function applyTheme(t) {
@@ -186,6 +186,7 @@ function pushPage(markdown, theme) {
     lastPushed = markdown;
     pushToken += 1;
     dirty = false;
+    stale = false;
     suppressPull = true;
     vditor.setValue(markdown, true);
     setTimeout(() => {
@@ -201,26 +202,55 @@ function pushPage(markdown, theme) {
 }
 
 // The model pushes whenever its text changes (a block landing, a release,
-// a revert). While the user is typing the DOM owns newer text: the push
-// waits as pendingSync and applies at the next settle (a pull commit, a
-// blur, the next push attempt) — never over in-flight keystrokes, and
-// never waiting for a tab switch.
+// a revert). While the user is typing the DOM owns newer text: applying
+// would setValue over the caret and the un-pulled keystrokes — the push
+// marks the model stale instead, and the state it skipped is fetched from
+// QML (which always holds the current join) at the next settle. The pull's
+// own echo is a settle in itself: the pushed join equals the editor's
+// serialization, so the flags it carries for the badges are all that is new.
 function pushDocument(markdown, theme, nextBlockMd, nextBlockFlags) {
+    blockFlags = nextBlockFlags || [];
     if (dirty) {
-        pendingSync = { md: markdown, theme: theme, blockMd: nextBlockMd || [], blockFlags: nextBlockFlags || [] };
+        if (markdown === lastPushed && vditor.getValue() === lastPushed) {
+            blockMd = nextBlockMd || [];
+            dirty = false;
+            requestMissingSync();
+            pushPage(markdown, theme);
+            return;
+        }
+        stale = true;
+        armSettle();
+        refreshBadges();
         return;
     }
     blockMd = nextBlockMd || [];
-    blockFlags = nextBlockFlags || [];
     pushPage(markdown, theme);
 }
 
-function flushPendingSync() {
-    if (!pendingSync)
+function armSettle() {
+    if (settleTimer !== null)
+        clearTimeout(settleTimer);
+    settleTimer = setTimeout(settleIfQuiet, 400);
+}
+
+function settleIfQuiet() {
+    settleTimer = null;
+    if (!dirty)
         return;
-    const ps = pendingSync;
-    pendingSync = null;
-    pushDocument(ps.md, ps.theme, ps.blockMd, ps.blockFlags);
+    if (vditor.getValue() !== lastPushed) {
+        armSettle();
+        return;
+    }
+    dirty = false;
+    requestMissingSync();
+}
+
+function requestMissingSync() {
+    if (!stale)
+        return;
+    stale = false;
+    if (bridge)
+        bridge.notifyResyncRequested();
 }
 
 // A model-side release of a layer («Взять текст из блока», the badge): the
@@ -275,17 +305,16 @@ function initVditor() {
         blur() {
             if (bridge)
                 bridge.notifyEditorFocus(false);
-            flushPendingSync();
+            // Leaving the field settles everything: the un-pulled keystrokes
+            // commit (the caret may already be gone — the accepted ≤300 ms
+            // loss), and a state the page skipped applies with no caret to
+            // clobber.
+            if (pullTimer !== null)
+                pull();
+            dirty = false;
+            requestMissingSync();
         },
     });
-}
-
-// The push carries what the badges need: the markdown of every block and
-// which of them hold a user layer.
-function pushDocument(markdown, theme, nextBlockMd, nextBlockFlags) {
-    blockMd = nextBlockMd || [];
-    blockFlags = nextBlockFlags || [];
-    pushPage(markdown, theme);
 }
 
 new QWebChannel(qt.webChannelTransport, (channel) => {

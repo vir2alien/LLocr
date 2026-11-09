@@ -23,7 +23,6 @@ Item {
     property color bgColor: "white"
     property color fgColor: "black"
     property string hl: "#308cc6"
-    property bool editorFocused: false
 
     // The per-block pull (ADR 296): the editor reports the ordinal and the
     // markdown of the block the user typed in.
@@ -40,14 +39,6 @@ Item {
     function _pushPage() {
         if (!_pageLoaded || !_channelReady)
             return
-        // A push while the user types rebuilds the DOM under the caret and
-        // clears the editor's undo stack; the refresh waits for blur — the
-        // same deferral the raw field's pendingReload implements.
-        if (root.editorFocused) {
-            root._pendingPush = true
-            return
-        }
-        root._pendingPush = false
         var js = "pushDocument(" + JSON.stringify(root.markdown) + ", "
                + JSON.stringify({ dark: root.dark, bg: String(root.bgColor), fg: String(root.fgColor), hl: root.hl }) + ", "
                + JSON.stringify(root.blockMd) + ", "
@@ -152,8 +143,8 @@ Item {
         function onEditorBlockClicked(blockIndex) {
             root.blockClicked(blockIndex)
         }
-        function onEditorFocusChanged(focused) {
-            root.editorFocused = focused
+        function onEditorResyncRequested() {
+            root._pushPage()
         }
     }
 }
