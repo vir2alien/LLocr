@@ -32,10 +32,12 @@ Rectangle {
     Connections {
         target: Controller
         function onEditorMarkdownReady(markdown, blockMap, blockMd, blockFlags) {
-            root.editorMarkdown = markdown
+            // The markdown goes last: its change triggers the push, and the
+            // push must carry the fragments and flags of that same answer.
             root.editorBlockMap = blockMap
             root.editorBlockMd = blockMd
             root.editorBlockFlags = blockFlags
+            root.editorMarkdown = markdown
         }
     }
     LLOLabel {

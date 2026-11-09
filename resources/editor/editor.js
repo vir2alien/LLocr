@@ -5,8 +5,10 @@
 // else (markdown in) arrives through runJavaScript calls on the view.
 let bridge = null;
 let vditor = null;
-let reference = "";      // normalized markdown of the last push
-let lastPushed = null;   // markdown of the last push, as received
+let reference = "";      // the editor's serialization of the last applied push
+let rawLast = null;      // the markdown of the last model push, as received
+let lastEditor = "";     // the editor's serialization the pulls slice against
+let domBlocks = 0;       // the DOM block count of the synced state
 let blockMd = [];        // the pushed markdown of every tagged block
 let blockFlags = [];     // per block: the recognition carries another text
 let pushToken = 0;       // identifies the push the page's content derives from
@@ -97,12 +99,14 @@ function refreshBadges() {
 
 // The editor edits one block at a time: a structural change (a block added
 // or removed by Enter/Backspace across boundaries) is out of scope — the
-// page is pushed back over it.
+// page is pushed back over it. The baseline is the DOM block count of the
+// synced state, not the model fragment count: a fragment may span several
+// DOM blocks (an inner blank line).
 function blockStructureChanged() {
     const content = contentElement();
     if (!content)
         return false;
-    return content.children.length !== blockMd.length;
+    return content.children.length !== domBlocks;
 }
 
 function schedulePull() {
@@ -126,7 +130,7 @@ function pull() {
     if (suppressPull)
         return;
     if (blockStructureChanged()) {
-        pushPage(lastPushed, null);
+        pushPage(rawLast, null);
         return;
     }
     retagBlocks();
@@ -144,22 +148,24 @@ function pull() {
         return;
 
     const value = vditor.getValue();
-    if (value === reference || value === lastPushed)
+    if (value === reference || value === lastEditor)
         return;
     // The typed markdown of the block: the whole document's serialization
     // shrinks and grows only inside the edited block, so its slice is the
-    // old fragment shifted by the document's size delta.
+    // old fragment shifted by the document's size delta. Both sides are the
+    // editor's serialization — a raw push and getValue() disagree in
+    // normalization details, and a delta across them steals a tail.
     const oldMd = blockMd[ordinal];
-    const at = lastPushed.indexOf(oldMd);
+    const at = lastEditor.indexOf(oldMd);
     if (at < 0)
         return;
-    const delta = value.length - lastPushed.length;
+    const delta = value.length - lastEditor.length;
     const newMd = value.substr(at, oldMd.length + delta);
     if (newMd === oldMd)
         return;
     blockMd[ordinal] = newMd;
-    lastPushed = value;
     reference = value;
+    lastEditor = value;
     bridge.notifyBlockChanged(ordinal, newMd, pushToken);
     // The model's join answers as a push. While the typing continues it
     // parks — a setValue now would clobber the caret — and the settle that
@@ -181,9 +187,15 @@ function pushPage(markdown, theme) {
     applyTheme(theme);
     retagBlocks();
     refreshBadges();
-    if (markdown === lastPushed)
+    rawLast = markdown;
+    if (markdown === lastEditor) {
+        // The model's raw join already equals the editor's serialization:
+        // the badges above refresh with the fresh flags, and the DOM — and
+        // with it the caret and the undo stack — stays untouched.
+        dirty = false;
+        stale = false;
         return;
-    lastPushed = markdown;
+    }
     pushToken += 1;
     dirty = false;
     stale = false;
@@ -192,6 +204,9 @@ function pushPage(markdown, theme) {
     setTimeout(() => {
         suppressPull = false;
         reference = vditor.getValue();
+        lastEditor = reference;
+        const content = contentElement();
+        domBlocks = content ? content.children.length : 0;
         // setValue rebuilds the content DOM asynchronously — the tags that
         // retagBlocks() laid before it are gone by now.
         retagBlocks();
@@ -204,20 +219,12 @@ function pushPage(markdown, theme) {
 // The model pushes whenever its text changes (a block landing, a release,
 // a revert). While the user is typing the DOM owns newer text: applying
 // would setValue over the caret and the un-pulled keystrokes — the push
-// marks the model stale instead, and the state it skipped is fetched from
-// QML (which always holds the current join) at the next settle. The pull's
-// own echo is a settle in itself: the pushed join equals the editor's
-// serialization, so the flags it carries for the badges are all that is new.
+// parks (only its flags land, the badges refresh at once) and the state it
+// skipped is fetched from QML — which always holds the current join — at
+// the next settle.
 function pushDocument(markdown, theme, nextBlockMd, nextBlockFlags) {
     blockFlags = nextBlockFlags || [];
     if (dirty) {
-        if (markdown === lastPushed && vditor.getValue() === lastPushed) {
-            blockMd = nextBlockMd || [];
-            dirty = false;
-            requestMissingSync();
-            pushPage(markdown, theme);
-            return;
-        }
         stale = true;
         armSettle();
         refreshBadges();
@@ -237,7 +244,7 @@ function settleIfQuiet() {
     settleTimer = null;
     if (!dirty)
         return;
-    if (vditor.getValue() !== lastPushed) {
+    if (vditor.getValue() !== lastEditor) {
         armSettle();
         return;
     }

@@ -22,6 +22,11 @@ IOutputParser::RebuiltPageText renderPageText(const OcrPage &page, const ParserO
 // blocks with this order and maps clicks and highlights back through it.
 QVariantList blockBoxMap(const QString &pageText, const QList<BlockTextRange> &ranges);
 
+// The top-level "\n\n"-separated blocks of the page text: the same order the
+// editor's DOM blocks walk, one entry per block (a model fragment may span
+// several of them).
+QVariantList blockSegments(const QString &pageText);
+
 // A legacy project's page text (the user's edits already inside it) maps back
 // into per-block user layers (ADR 296). False when the fragments do not
 // appear in order — the canonical document stands, nothing is layered.

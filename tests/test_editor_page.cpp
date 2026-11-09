@@ -22,6 +22,8 @@ class TestEditorPage : public QObject
 private slots:
     void loadsVditorUnderThePageCspAndRendersPushedMarkdown();
     void undoBrokenMathPreviewsAreReRendered();
+    void blockEditReportsThePullAndRendersTheBadge();
+    void blockWithInnerBlankLineKeepsThePullAlive();
 
 private:
     void spinUntil(const std::function<bool()> &done, int timeoutMs = 60000);
@@ -149,6 +151,162 @@ void TestEditorPage::undoBrokenMathPreviewsAreReRendered()
         return children > 0;
     });
     QVERIFY(children > 0);
+}
+
+// The user's flow: a keystroke in a block pulls the block's markdown, the
+// model answers with a push carrying the fresh layer flags, and the block
+// gets its take-over badge. Every link must survive the real page.
+void TestEditorPage::blockEditReportsThePullAndRendersTheBadge()
+{
+    EditorBridge bridge;
+    QWebChannel channel;
+    channel.registerObject(QStringLiteral("editorBridge"), &bridge);
+    QWebEnginePage page;
+    page.setWebChannel(&channel);
+
+    bool loaded = false;
+    bool loadOk = false;
+    bool ready = false;
+    QObject::connect(&page, &QWebEnginePage::loadFinished, [&](bool ok) {
+        loaded = true;
+        loadOk = ok;
+    });
+    QObject::connect(&bridge, &EditorBridge::pageReady, [&ready]() { ready = true; });
+
+    page.load(QUrl(QStringLiteral("qrc:/editor/editor.html")));
+    spinUntil([&]() { return loaded; });
+    QVERIFY2(loadOk, "editor.html failed to load");
+    spinUntil([&]() { return ready; });
+
+    // The app-level push: the document plus the per-block fragments/flags.
+    bool pushed = false;
+    page.runJavaScript(QStringLiteral(R"js(pushDocument("Body\n\nSecond", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["Body", "Second"], [false, false]);)js"),
+                       [&pushed](const QVariant &) { pushed = true; });
+    spinUntil([&]() { return pushed; });
+
+    // Type into the second block like the user does: caret at its end, one
+    // keystroke through execCommand, which fires the input events Vditor
+    // listens to.
+    bool typed = false;
+    page.runJavaScript(QStringLiteral(R"js((function(){
+        var blocks = document.querySelectorAll('.vditor-wysiwyg [data-ll-block]');
+        var target = blocks[1];
+        target.focus();
+        var sel = window.getSelection();
+        var range = document.createRange();
+        range.selectNodeContents(target);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand('insertText', false, 'x');
+        return true;
+    })())js"),
+                       [&typed](const QVariant &v) { typed = v.toBool(); });
+    spinUntil([&]() { return typed; });
+
+    // The pull reports the edited block within a pull timer's beat.
+    int reportedOrdinal = -1;
+    QString reportedMarkdown;
+    qint64 reportedToken = -1;
+    QObject::connect(&bridge, &EditorBridge::editorBlockChanged, [&](int ordinal, const QString &md, qint64 token) {
+        reportedOrdinal = ordinal;
+        reportedMarkdown = md;
+        reportedToken = token;
+    });
+    spinUntil([&]() { return reportedOrdinal >= 0; }, 5000);
+    QCOMPARE(reportedOrdinal, 1);
+    QCOMPARE(reportedToken, 1);
+    // The pull's slice uses the editor's serialization on both sides: a raw
+    // push and getValue() disagree in normalization details (the trailing
+    // newline), and a delta across them would steal a tail into the fragment.
+    QCOMPARE(reportedMarkdown, QStringLiteral("Secondx"));
+
+    // The echo push carrying the fresh flags renders the badge on the block.
+    bool echoed = false;
+    page.runJavaScript(QStringLiteral(R"js(pushDocument("Body\n\nSecondx", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["Body", "Secondx"], [false, true]);)js"),
+                       [&echoed](const QVariant &) { echoed = true; });
+    spinUntil([&]() { return echoed; });
+
+    int badge = 0;
+    spinUntil([&]() {
+        page.runJavaScript(QStringLiteral("document.querySelectorAll('[data-ll-block=\"1\"] > .ll-ai-badge').length"), [&badge](const QVariant &v) { badge = v.toInt(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return badge > 0;
+    });
+    QCOMPARE(badge, 1);
+}
+
+// A canonical fragment may carry a blank line inside itself (a multi-paragraph
+// block, an HTML table): then one model fragment renders as several DOM
+// blocks. The pull must survive that — it anchors on the DOM tags and the
+// fragment list length must not gate it away.
+void TestEditorPage::blockWithInnerBlankLineKeepsThePullAlive()
+{
+    EditorBridge bridge;
+    QWebChannel channel;
+    channel.registerObject(QStringLiteral("editorBridge"), &bridge);
+    QWebEnginePage page;
+    page.setWebChannel(&channel);
+
+    bool loaded = false;
+    bool loadOk = false;
+    bool ready = false;
+    QObject::connect(&page, &QWebEnginePage::loadFinished, [&](bool ok) {
+        loaded = true;
+        loadOk = ok;
+    });
+    QObject::connect(&bridge, &EditorBridge::pageReady, [&ready]() { ready = true; });
+
+    page.load(QUrl(QStringLiteral("qrc:/editor/editor.html")));
+    spinUntil([&]() { return loaded; });
+    QVERIFY2(loadOk, "editor.html failed to load");
+    spinUntil([&]() { return ready; });
+
+    // The push: three page segments, one model fragment spanning the last two.
+    bool pushed = false;
+    page.runJavaScript(QStringLiteral(R"js(pushDocument("First\n\nA\n\nB", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["First", "A", "B"], [false, false, false]);)js"),
+                       [&pushed](const QVariant &) { pushed = true; });
+    spinUntil([&]() { return pushed; });
+
+    // The DOM renders three blocks; the pull walks the same segmentation.
+    int children = 0;
+    spinUntil([&]() {
+        page.runJavaScript(QStringLiteral("(function(){ var c = document.querySelector('.vditor-wysiwyg [contenteditable]'); return c ? c.children.length : -1; })()"),
+                           [&children](const QVariant &v) { children = v.toInt(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return children > 0;
+    });
+    QCOMPARE(children, 3);
+
+    // Type into the third DOM block ("B") like the user does.
+    bool typed = false;
+    page.runJavaScript(QStringLiteral(R"js((function(){
+        var blocks = document.querySelectorAll('.vditor-wysiwyg [data-ll-block]');
+        var target = blocks[blocks.length - 1];
+        target.focus();
+        var sel = window.getSelection();
+        var range = document.createRange();
+        range.selectNodeContents(target);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand('insertText', false, 'x');
+        return true;
+    })())js"),
+                       [&typed](const QVariant &v) { typed = v.toBool(); });
+    spinUntil([&]() { return typed; });
+
+    // The pull must still report the edit — the fragment spanning several
+    // DOM blocks must not gate it away.
+    int reportedOrdinal = -1;
+    QString reportedMarkdown;
+    QObject::connect(&bridge, &EditorBridge::editorBlockChanged, [&](int ordinal, const QString &md, qint64) {
+        reportedOrdinal = ordinal;
+        reportedMarkdown = md;
+    });
+    spinUntil([&]() { return reportedOrdinal >= 0; }, 5000);
+    QCOMPARE(reportedOrdinal, 2);
+    QCOMPARE(reportedMarkdown, QStringLiteral("Bx"));
 }
 
 int main(int argc, char *argv[])

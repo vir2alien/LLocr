@@ -273,4 +273,21 @@ QVariantList blockBoxMap(const QString &pageText, const QList<BlockTextRange> &r
     return map;
 }
 
+QVariantList blockSegments(const QString &pageText)
+{
+    QVariantList segments;
+    if (pageText.isEmpty())
+        return segments;
+    int blockStart = 0;
+    while (true) {
+        const qsizetype separator = pageText.indexOf(QStringLiteral("\n\n"), blockStart);
+        const qsizetype end = separator < 0 ? pageText.size() : separator;
+        segments.append(pageText.mid(blockStart, end - blockStart));
+        if (separator < 0)
+            break;
+        blockStart = static_cast<int>(separator + 2);
+    }
+    return segments;
+}
+
 }  // namespace llocr

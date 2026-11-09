@@ -951,24 +951,35 @@ bool AppController::movePage(int from, int to)
     return true;
 }
 
-void AppController::setUserBlockText(int blockIndex, const QString &markdown)
+void AppController::setUserBlockText(int segmentIndex, const QString &markdown)
 {
     QWriteLocker locker(&m_documentLock);
     if (!m_document.isValidIndex(m_currentPage) || m_document.page(m_currentPage).result.pages.isEmpty())
         return;
     QList<BoundingBox> &boxes = m_document.page(m_currentPage).result.pages[0].boxes;
-    // The block index is the ordinal of the document's top-level blocks —
-    // the same order renderPageText's ranges walk (page furniture skipped).
+    // The index is the ordinal of the page's top-level markdown blocks — the
+    // same order the editor's DOM blocks are tagged with. A model fragment
+    // may span several of them; the layer replaces the box's whole fragment,
+    // its segments with the edited one taken from the editor. Returning every
+    // segment to its canonical text dissolves the layer again.
     const ParserOptions options = parserOptions();
     const auto document = renderPageText(m_document.page(m_currentPage).result.pages.first(), options);
-    int ordinal = -1;
-    for (const BlockTextRange &range : document.ranges)
-        if (++ordinal == blockIndex) {
-            if (range.boxIndex < 0 || range.boxIndex >= boxes.size())
-                return;
-            BoxTransitions::setUserText(boxes[range.boxIndex], decodeEditorMarkdown(markdown));
-            break;
-        }
+    const QVariantList map = blockBoxMap(document.text, document.ranges);
+    if (segmentIndex < 0 || segmentIndex >= map.size())
+        return;
+    const int boxIndex = map.at(segmentIndex).toInt();
+    if (boxIndex < 0 || boxIndex >= boxes.size())
+        return;
+    const QVariantList segments = blockSegments(document.text);
+    QString layer;
+    for (int i = 0; i < map.size() && i < segments.size(); ++i) {
+        if (map.at(i).toInt() != boxIndex)
+            continue;
+        if (!layer.isEmpty())
+            layer += QStringLiteral("\n\n");
+        layer += (i == segmentIndex) ? decodeEditorMarkdown(markdown) : segments.at(i).toString();
+    }
+    BoxTransitions::setUserText(boxes[boxIndex], layer);
     locker.unlock();
     refreshPageDocument(m_currentPage);
 }
@@ -2382,9 +2393,21 @@ void AppController::migrateLegacyProjectText()
     }
 }
 
-QVariantList AppController::editorBlockFlags() const
+// The segments the page pushes must live in the same serialization as the
+// markdown itself (data: URIs), or the editor's slice anchoring never finds
+// a fragment with an image inside it.
+QVariantList AppController::encodedBlockSegments() const
 {
-    return m_inspector.blockUserLayerFlags();
+    const QVariantList segments = m_inspector.blockSegments();
+    QVariantList encoded;
+    encoded.reserve(segments.size());
+    for (const QVariant &segment : segments) {
+        QString text = segment.toString();
+        for (const auto &ref : m_editorCropRefs)
+            text.replace(ref.second, ref.first);
+        encoded.append(text);
+    }
+    return encoded;
 }
 
 void AppController::requestEditorMarkdown(const QString &markdown)
@@ -2396,7 +2419,7 @@ void AppController::requestEditorMarkdown(const QString &markdown)
     if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown) {
         m_editorCropRefs = m_previewCacheRefs;
         m_editorMarkdownPage = m_currentPage;
-        emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap(), m_inspector.blockFragments(), m_inspector.blockUserLayerFlags());
+        emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap(), encodedBlockSegments(), m_inspector.blockSegmentFlags());
         return;
     }
 
@@ -2418,7 +2441,7 @@ void AppController::requestEditorMarkdown(const QString &markdown)
         m_previewCacheRefs = result.second;
         m_editorCropRefs = result.second;
         m_editorMarkdownPage = page;
-        emit editorMarkdownReady(result.first, blockMap, m_inspector.blockFragments(), m_inspector.blockUserLayerFlags());
+        emit editorMarkdownReady(result.first, blockMap, encodedBlockSegments(), m_inspector.blockSegmentFlags());
     });
     const QPointer<AppController> self(this);
     watcher->setFuture(QtConcurrent::run([self, page, markdown]() {

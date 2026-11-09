@@ -75,10 +75,10 @@ public:
     QVariantList blockBoxMap() const;
     // Per-ordinal: the block carries a user layer (ADR 296) — the editor
     // badges such blocks with the AI-version notice.
-    QVariantList blockUserLayerFlags() const;
+    QVariantList blockSegmentFlags() const;
     // Per-ordinal: the block's document markdown (its slice of the shown
     // text) — the editor slices per-block pulls with it.
-    QVariantList blockFragments() const;
+    QVariantList blockSegments() const;
     void attachBlockTextHighlighter(QObject *textDocument, const QColor &color);
     void invalidateRebuildCache();
     // The page text changed under the blocks: the mapping and the paint of the

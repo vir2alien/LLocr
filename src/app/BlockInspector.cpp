@@ -197,29 +197,25 @@ QVariantList BlockInspector::blockBoxMap() const
     return llocr::blockBoxMap(rebuild.text, rebuild.ranges);
 }
 
-QVariantList BlockInspector::blockFragments() const
+QVariantList BlockInspector::blockSegments() const
 {
-    QVariantList fragments;
     const auto rebuild = currentPageRebuild();
-    for (const BlockTextRange &range : rebuild.ranges)
-        fragments.append(rebuild.text.mid(range.start, range.length));
-    return fragments;
+    return llocr::blockSegments(rebuild.text);
 }
 
-QVariantList BlockInspector::blockUserLayerFlags() const
+QVariantList BlockInspector::blockSegmentFlags() const
 {
-    QVariantList flags;
     const auto rebuild = currentPageRebuild();
+    const QVariantList map = llocr::blockBoxMap(rebuild.text, rebuild.ranges);
     const DocumentModel &document = m_deps.document;
     const int page = m_deps.currentPage();
+    QVariantList flags;
     if (!document.isValidIndex(page) || document.page(page).result.pages.isEmpty())
         return flags;
     const QList<BoundingBox> &boxes = document.page(page).result.pages.first().boxes;
-    for (const BlockTextRange &range : rebuild.ranges) {
-        if (range.boxIndex >= 0 && range.boxIndex < boxes.size())
-            flags.append(!boxes.at(range.boxIndex).userText.isEmpty());
-        else
-            flags.append(false);
+    for (const QVariant &owner : map) {
+        const int boxIndex = owner.toInt();
+        flags.append(boxIndex >= 0 && boxIndex < boxes.size() ? !boxes.at(boxIndex).userText.isEmpty() : false);
     }
     return flags;
 }

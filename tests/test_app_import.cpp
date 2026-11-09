@@ -46,6 +46,7 @@
 #include "config/RequestProfileStore.h"
 #include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"
+#include "parsers/BlockRender.h"
 #include "runtime/LaunchProfileStore.h"
 #include "runtime/ZipWriter.h"
 #include "testsettings.h"
@@ -566,8 +567,10 @@ QList<BoundingBox> rerunCast()
 
 // The WYSIWYG editor's per-block pull, replayed by the tests: the page text
 // the old tests wrote wholesale now lands as one block's user layer (ADR
-// 296). The changed block is located by its document range; text identical
-// to the canonical render releases the layer, an empty text releases all.
+// 296). The edited block is the page's top-level markdown segment the change
+// falls into (the editor's DOM blocks walk the same segmentation); text
+// identical to the canonical render releases the layer, an empty text
+// releases all.
 void setEditorPageText(AppController &controller, const QString &newText)
 {
     auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
@@ -577,35 +580,36 @@ void setEditorPageText(AppController &controller, const QString &newText)
     if (old == newText)
         return;
     if (newText.isEmpty()) {
-        for (int i = 0; i < boxes->rowCount(); ++i)
+        const QVariantList segments = blockSegments(old);
+        for (int i = 0; i < segments.size(); ++i)
             controller.setUserBlockText(i, QString());
         return;
     }
 
-    qsizetype prefix = 0;
-    const qsizetype maxPrefix = qMin(old.size(), newText.size());
-    while (prefix < maxPrefix && old.at(prefix) == newText.at(prefix))
-        ++prefix;
-    const qsizetype delta = newText.size() - old.size();
-
-    int ordinal = -1;
-    int owner = -1;
-    QList<int> ownerRange;
-    for (int boxIndex = 0; boxIndex < boxes->rowCount(); ++boxIndex) {
-        const QList<int> range = controller.blockTextRange(boxIndex);
-        if (range.size() != 2)
-            continue;
-        ++ordinal;
-        if (range.at(0) <= prefix && (owner < 0 || range.at(0) >= ownerRange.at(0))) {
-            owner = ordinal;
-            ownerRange = range;
+    // The first segment whose text differs owns the edit. A segment the old
+    // document never had (a hand-added paragraph) extends the layer of its
+    // last existing block, exactly what the editor's layering produces.
+    const QVariantList oldSegments = blockSegments(old);
+    const QVariantList segments = blockSegments(newText);
+    int firstDiff = -1;
+    for (int i = 0; i < segments.size(); ++i) {
+        if (i >= oldSegments.size() || oldSegments.at(i).toString() != segments.at(i).toString()) {
+            firstDiff = i;
+            break;
         }
     }
-    if (owner < 0)
+    if (firstDiff < 0)
         QFAIL(qPrintable(QStringLiteral("no block owns the edited position: %1").arg(newText)));
-    const qsizetype blockStart = ownerRange.at(0);
-    const qsizetype blockEnd = blockStart + ownerRange.at(1) + delta;
-    controller.setUserBlockText(owner, newText.mid(blockStart, blockEnd - blockStart));
+    if (firstDiff >= oldSegments.size()) {
+        // A hand-added paragraph extends the layer of its last existing
+        // block: the layer takes everything from that block's own segment.
+        qsizetype start = 0;
+        for (int i = 0; i < oldSegments.size() - 1; ++i)
+            start += oldSegments.at(i).toString().size() + 2;
+        controller.setUserBlockText(oldSegments.size() - 1, newText.mid(start));
+        return;
+    }
+    controller.setUserBlockText(firstDiff, segments.at(firstDiff).toString());
 }
 
 class TestAppImport : public QObject
@@ -4176,6 +4180,42 @@ private slots:
         QVERIFY2(m_controller->resultText().contains(QStringLiteral("## First block, verified")), qPrintable(m_controller->resultText()));
         QVERIFY2(m_controller->resultText().contains(QStringLiteral("Second block, mine")), qPrintable(m_controller->resultText()));
         QVERIFY(m_controller->currentPageEdited());
+    }
+
+    // A block's layer may span several editor blocks (an inner blank line —
+    // a hand-added paragraph makes one): the edited segment rides into the
+    // layer together with the rest of its fragment, not instead of it.
+    void editedSegmentKeepsTheRestOfItsFragment()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        recognizePage(*m_controller);
+        QVERIFY(m_controller->hasResult());
+
+        // The hand-added paragraph turns the second block's layer into a
+        // two-segment fragment.
+        setEditorPageText(*m_controller, m_controller->resultText() + QStringLiteral("\n\nhand-added para"));
+        QCOMPARE(m_controller->property("selectedBlockDocumentDiverged").toBool(), false);
+
+        setEditorPageText(*m_controller, QStringLiteral("## 1. Introduction\n\nSecond block text, mine\n\nhand-added para"));
+
+        // The whole layer survived the edit: the untouched paragraph rides
+        // inside the same fragment.
+        m_controller->setSelectedBoxIndex(1);
+        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(m_controller->property("selectedBlockDocumentDiverged").toBool());
+        QCOMPARE(m_controller->resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text, mine\n\nhand-added para"));
+
+        // Returning the segment to its canonical text keeps the fragment's
+        // remaining part layered, not the whole thing.
+        setEditorPageText(*m_controller, QStringLiteral("## 1. Introduction\n\nSecond block text\n\nhand-added para"));
+        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(m_controller->property("selectedBlockDocumentDiverged").toBool());
     }
 
 #ifdef LLOCR_HAVE_DJVU

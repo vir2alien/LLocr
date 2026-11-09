@@ -432,7 +432,6 @@ public slots:
     // editor tags its DOM blocks with; the answer comes back through
     // editorMarkdownReady, the latest request wins.
     Q_INVOKABLE void requestEditorMarkdown(const QString &markdown);
-    Q_INVOKABLE QVariantList editorBlockFlags() const;
     void migrateLegacyProjectText();
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();
@@ -565,6 +564,9 @@ private:
     void refreshPageDocument(int pageIndex);
     bool pageUserEdited(int index) const;
     QString decodeEditorMarkdown(const QString &text) const;
+    // The pull segments the page sends in the markdown's own serialization:
+    // crop references back-encoded to data: URIs.
+    QVariantList encodedBlockSegments() const;
     // The pipeline-driven form of the above: while a run is active the rebuild
     // and its signal fan-out are coalesced into one flush per trailing-edge
     // window (plus a guaranteed flush when the run ends); without a run it is
