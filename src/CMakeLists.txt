@@ -289,6 +289,8 @@ qt_add_library(llocr_app STATIC
     app/BlockTextHighlighter.cpp
     app/DocumentModel.h
     app/DocumentModel.cpp
+    app/EditorBridge.h
+    app/EditorBridge.cpp
     app/Exporter.h
     app/Exporter.cpp
     app/LruImageCache.h
@@ -468,6 +470,16 @@ qt_add_resources(llocr "preview"
     PREFIX "/preview"
     BASE "${CMAKE_SOURCE_DIR}/resources/preview"
     FILES ${PREVIEW_FILES}
+)
+
+file(GLOB_RECURSE EDITOR_FILES
+    "${CMAKE_SOURCE_DIR}/resources/editor/*")
+list(FILTER EDITOR_FILES EXCLUDE REGEX "\\.DS_Store$")
+
+qt_add_resources(llocr "editor"
+    PREFIX "/editor"
+    BASE "${CMAKE_SOURCE_DIR}/resources/editor"
+    FILES ${EDITOR_FILES}
 )
 
 # --- App icon ------------------------------------------------------------------

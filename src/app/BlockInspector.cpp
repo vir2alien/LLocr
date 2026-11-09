@@ -1,6 +1,7 @@
 #include "app/BlockInspector.h"
 #include "app/BlockTextHighlighter.h"
 #include "app/DocumentModel.h"
+#include "parsers/BlockRender.h"
 
 #include <QQuickTextDocument>
 #include <QTextDocument>
@@ -188,6 +189,12 @@ QList<int> BlockInspector::blockTextRange(int boxIndex) const
             return {range.start, range.length};
     }
     return {};
+}
+
+QVariantList BlockInspector::blockBoxMap() const
+{
+    const auto rebuild = currentPageRebuild();
+    return llocr::blockBoxMap(rebuild.text, rebuild.ranges);
 }
 
 int BlockInspector::boxIndexForTextPosition(int position) const

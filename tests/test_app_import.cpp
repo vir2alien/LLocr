@@ -37,6 +37,7 @@
 #include "app/BlockWorkList.h"
 #include "app/BoxListModel.h"
 #include "app/DocumentModel.h"
+#include "app/EditorBridge.h"
 #include "app/PageListModel.h"
 #include "app/PageRotation.h"
 #include "app/ProblemLog.h"
@@ -3306,6 +3307,9 @@ private slots:
         qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", m_settings.get());
         llocr::UiController uiController(*m_settings);
         qmlRegisterSingletonInstance("LLocr", 1, 0, "UiController", &uiController);
+        // The WYSIWYG tab instantiates its bridge (main.cpp registers the
+        // type; this engine has no main.cpp registration cascade).
+        qmlRegisterType<llocr::EditorBridge>("LLocr", 1, 0, "EditorBridge");
         // A disk-loaded WorkPanel.qml reaches the QML singletons through the
         // LLocr module; the engine here has no main.cpp registration cascade,
         // so the five module singletons are registered from their source files.
@@ -4173,6 +4177,39 @@ private slots:
         QCOMPARE(boxes->rowCount(), 2);
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), server.transcription);
         QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), server.transcription);
+    }
+
+    // A WYSIWYG pull carries the page its editor content was pushed for; a
+    // page switch inside the pull's latency window must not write one page's
+    // text onto another.
+    void editorPullCannotLandOnAnotherPage()
+    {
+        AppController &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_multipage)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        QVERIFY(controller.pageCount() >= 2);
+
+        // A hand-placed block marks the page recognized — editable without a
+        // recognition run, which this test does not need.
+        controller.setCurrentPage(0);
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 10, 10, 40, 40));
+        controller.setCurrentPage(1);
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 10, 10, 40, 40));
+
+        // The encode is requested while page 0 is current: the pull's content
+        // belongs to page 0, wherever the user has moved by the time it lands.
+        controller.setCurrentPage(0);
+        const QString page0Text = controller.resultText();
+        QSignalSpy ready(&controller, &AppController::editorMarkdownReady);
+        controller.requestEditorMarkdown(page0Text);
+        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 1, kImportTimeoutMs);
+
+        controller.setCurrentPage(1);
+        const QString page1Text = controller.resultText();
+
+        controller.setCurrentPageTextFromEditor(QStringLiteral("misplaced pull"));
+        QCOMPARE(controller.resultText(), page1Text);
+        QCOMPARE(controller.currentPageEdited(), false);
     }
 
 #ifdef LLOCR_HAVE_DJVU

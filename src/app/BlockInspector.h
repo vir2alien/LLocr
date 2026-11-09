@@ -69,6 +69,10 @@ public:
     bool blockTextMapped() const;
     QList<int> blockTextRange(int boxIndex) const;
     int boxIndexForTextPosition(int position) const;
+    // The box owning every top-level markdown block of the shown page text,
+    // in order (-1 where the mapping no longer reaches): the WYSIWYG editor
+    // tags its DOM blocks with the same ordinals.
+    QVariantList blockBoxMap() const;
     void attachBlockTextHighlighter(QObject *textDocument, const QColor &color);
     void invalidateRebuildCache();
     // The page text changed under the blocks: the mapping and the paint of the

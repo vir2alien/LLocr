@@ -13,6 +13,7 @@ the licenses that govern it. Each component's full license text is kept in the
 | marked         | Markdown → HTML in the preview          | MIT         | [`licenses/marked-LICENSE.txt`](licenses/marked-LICENSE.txt) |
 | KaTeX          | LaTeX rendering in the preview          | MIT         | [`licenses/KaTeX-LICENSE.txt`](licenses/KaTeX-LICENSE.txt) |
 | DOMPurify      | HTML sanitization in the preview        | Apache-2.0 OR MPL-2.0 | [`licenses/DOMPurify-LICENSE.txt`](licenses/DOMPurify-LICENSE.txt) |
+| Vditor (incl. Lute) | WYSIWYG Markdown editor of the work panel (`resources/editor/vditor/`, vendored 4.0.1 by `scripts/fetch-vditor-dist.sh`) | MIT | [`licenses/Vditor-LICENSE.txt`](licenses/Vditor-LICENSE.txt) |
 | zlib           | ZIP/gzip decompression + CRC-32 in the runtime installer (`ArchiveExtractor`) | zlib License | [`licenses/zlib-LICENSE.txt`](licenses/zlib-LICENSE.txt) |
 | DjVuLibre      | DjVu document decoding through `ddjvuapi` | GPL-2.0-or-later | [`licenses/DjVuLibre-COPYING`](licenses/DjVuLibre-COPYING) |
 | Lucide icons   | Toolbar/block UI icons (`resources/icons/ui/`) | ISC (with MIT portions) | [`licenses/Lucide-LICENSE.txt`](licenses/Lucide-LICENSE.txt) |

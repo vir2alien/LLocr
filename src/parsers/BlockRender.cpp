@@ -213,4 +213,26 @@ IOutputParser::RebuiltPageText renderPageText(const OcrPage &page, const ParserO
     return {blocks.join(QStringLiteral("\n\n")), ranges};
 }
 
+QVariantList blockBoxMap(const QString &pageText, const QList<BlockTextRange> &ranges)
+{
+    QVariantList map;
+    if (pageText.isEmpty())
+        return map;
+    int blockStart = 0;
+    int nextRange = 0;
+    while (true) {
+        while (nextRange < ranges.size() && ranges.at(nextRange).start + ranges.at(nextRange).length <= blockStart)
+            ++nextRange;
+        int owner = -1;
+        if (nextRange < ranges.size() && ranges.at(nextRange).start <= blockStart)
+            owner = ranges.at(nextRange).boxIndex;
+        map.append(owner);
+        const qsizetype separator = pageText.indexOf(QStringLiteral("\n\n"), blockStart);
+        if (separator < 0)
+            break;
+        blockStart = static_cast<int>(separator + 2);
+    }
+    return map;
+}
+
 }  // namespace llocr

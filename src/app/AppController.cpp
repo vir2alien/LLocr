@@ -951,6 +951,20 @@ bool AppController::movePage(int from, int to)
     return true;
 }
 
+void AppController::setCurrentPageTextFromEditor(const QString &text)
+{
+    // The pull belongs to the page the editor's content was pushed for; a
+    // page switch inside the pull's latency window must not write one page's
+    // text onto another. The dropped edit is the same ≤300 ms loss the raw
+    // tab's pendingReload tolerates, and the follow-up push rebinds the view.
+    if (m_editorMarkdownPage != m_currentPage)
+        return;
+    QString decoded = text;
+    for (const auto &ref : m_editorCropRefs)
+        decoded.replace(ref.first, ref.second);
+    setCurrentPageText(decoded);
+}
+
 void AppController::setCurrentPageText(const QString &text)
 {
     if (!currentPageEditable())
@@ -2407,9 +2421,9 @@ void AppController::requestPreviewMarkdown(const QString &markdown)
     const int cropRevision = m_cropRevision;
     const quint64 generation = ++m_previewMarkdownGeneration;
 
-    auto *watcher = new QFutureWatcher<QString>(this);
-    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher, markdown, imageRevision, cropRevision, generation]() {
-        const QString result = watcher->result();
+    auto *watcher = new QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>(this);
+    connect(watcher, &QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>::finished, this, [this, watcher, markdown, imageRevision, cropRevision, generation]() {
+        const auto result = watcher->result();
         watcher->deleteLater();
         if (generation != m_previewMarkdownGeneration)
             return;
@@ -2419,20 +2433,66 @@ void AppController::requestPreviewMarkdown(const QString &markdown)
         m_previewCacheRevision = imageRevision;
         m_previewCacheCropRevision = cropRevision;
         m_previewCacheText = markdown;
-        m_previewCacheResult = result;
-        emit previewMarkdownReady(result);
+        m_previewCacheResult = result.first;
+        m_previewCacheRefs = result.second;
+        emit previewMarkdownReady(result.first);
     });
     // The worker can outlive the controller (app quit mid-encode), so the
     // lambda holds a guarded pointer and not the raw one.
     const QPointer<AppController> self(this);
     watcher->setFuture(QtConcurrent::run([self, page, markdown]() {
         if (!self)
-            return QString();
-        return self->encodePreviewMarkdown(page, markdown);
+            return QPair<QString, QList<QPair<QString, QString>>>();
+        QList<QPair<QString, QString>> refs;
+        const QString encoded = self->encodePreviewMarkdown(page, markdown, &refs);
+        return qMakePair(encoded, refs);
     }));
 }
 
-QString AppController::encodePreviewMarkdown(int pageIndex, const QString &markdown)
+void AppController::requestEditorMarkdown(const QString &markdown)
+{
+    // The generation moves on every request, cache hit included: a hit answers
+    // synchronously, and an encode already in flight from an older request
+    // must not land after it and overwrite the newer answer.
+    const quint64 generation = ++m_previewMarkdownGeneration;
+    if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown) {
+        m_editorCropRefs = m_previewCacheRefs;
+        m_editorMarkdownPage = m_currentPage;
+        emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap());
+        return;
+    }
+
+    const int page = m_currentPage;
+    const int imageRevision = m_imageRevision;
+    const int cropRevision = m_cropRevision;
+    const QVariantList blockMap = m_inspector.blockBoxMap();
+
+    auto *watcher = new QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>(this);
+    connect(watcher, &QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>::finished, this, [this, watcher, markdown, imageRevision, cropRevision, generation, page, blockMap]() {
+        const auto result = watcher->result();
+        watcher->deleteLater();
+        if (generation != m_previewMarkdownGeneration)
+            return;
+        m_previewCacheRevision = imageRevision;
+        m_previewCacheCropRevision = cropRevision;
+        m_previewCacheText = markdown;
+        m_previewCacheResult = result.first;
+        m_previewCacheRefs = result.second;
+        m_editorCropRefs = result.second;
+        m_editorMarkdownPage = page;
+        emit editorMarkdownReady(result.first, blockMap);
+    });
+    const QPointer<AppController> self(this);
+    watcher->setFuture(QtConcurrent::run([self, page, markdown]() {
+        if (!self)
+            return QPair<QString, QList<QPair<QString, QString>>>();
+        QList<QPair<QString, QString>> refs;
+        const QString encoded = self->encodePreviewMarkdown(page, markdown, &refs);
+        return qMakePair(encoded, refs);
+    }));
+}
+
+QString AppController::encodePreviewMarkdown(int pageIndex, const QString &markdown, QList<QPair<QString, QString>> *refs)
 {
     static const QRegularExpression re(QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)\))"));
 
@@ -2453,7 +2513,10 @@ QString AppController::encodePreviewMarkdown(int pageIndex, const QString &markd
             QBuffer buffer(&bytes);
             if (buffer.open(QIODevice::WriteOnly)) {
                 img.save(&buffer, "PNG");
-                result += QStringLiteral("![%1](data:image/png;base64,%2)").arg(m.captured(1), QString::fromLatin1(bytes.toBase64()));
+                const QString dataUri = QStringLiteral("data:image/png;base64,%1").arg(QString::fromLatin1(bytes.toBase64()));
+                result += QStringLiteral("![%1](%2)").arg(m.captured(1), dataUri);
+                if (refs)
+                    refs->append({dataUri, m.capturedView().toString()});
             } else {
                 result += m.capturedView();
             }

@@ -11,31 +11,34 @@ Rectangle {
     id: root
     color: Theme.surfaceAlt
 
-    property string previewMarkdown: ""
-    // The segmented switch's state: text editor or the Markdown preview.
-    property bool previewActive: false
+    property string editorMarkdown: ""
+    property var editorBlockMap: []
+    property bool pendingEditorReload: false
+    // The segmented switch's state: raw markdown editor or the WYSIWYG one.
+    property bool wysiwygActive: false
 
     readonly property var selectedRange: Controller.selectedBlockTextRange
 
     Timer {
-        id: previewDebounce
+        id: editorDebounce
         interval: 250
         onTriggered: {
-            if (root.previewActive)
-                Controller.requestPreviewMarkdown(textArea.text)
+            if (root.wysiwygActive)
+                Controller.requestEditorMarkdown(textArea.text)
         }
     }
 
     Connections {
         target: Controller
-        function onPreviewMarkdownReady(markdown) {
-            root.previewMarkdown = markdown
+        function onEditorMarkdownReady(markdown, blockMap) {
+            root.editorMarkdown = markdown
+            root.editorBlockMap = blockMap
         }
     }
     LLOLabel {
         anchors.centerIn: parent
         verticalAlignment: Text.AlignVCenter
-        visible: !Controller.hasResult && !root.previewActive
+        visible: !Controller.hasResult && !root.wysiwygActive
         text: qsTr("Recognized text will appear here")
         color: Theme.textMuted
         horizontalAlignment: Text.AlignHCenter
@@ -85,6 +88,7 @@ Rectangle {
                     // must show the stored text immediately, not on blur.
                     textArea.pendingReload = false
                     textArea.reload()
+                    root.pendingEditorReload = false
                 }
             }
 
@@ -112,10 +116,10 @@ Rectangle {
                 id: viewSwitch
                 options: [
                     { label: qsTr("Text (MD)") },
-                    { label: qsTr("Preview") }
+                    { label: qsTr("WYSIWYG") }
                 ]
-                currentIndex: root.previewActive ? 1 : 0
-                onActivated: (index) => root.previewActive = index === 1
+                currentIndex: root.wysiwygActive ? 1 : 0
+                onActivated: (index) => root.wysiwygActive = index === 1
             }
         }// RowLayout text menu
         Rectangle {
@@ -127,7 +131,7 @@ Rectangle {
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: root.previewActive ? 1 : 0
+            currentIndex: root.wysiwygActive ? 1 : 0
 
             Flickable {
                 id: textFlickable
@@ -171,9 +175,13 @@ Rectangle {
                     }
 
                     onTextChanged: {
-                        previewDebounce.restart()
                         if (syncing || !activeFocus || text === modelText)
                             return
+                        // Real typing only: a programmatic reload (syncing)
+                        // must not schedule a WYSIWYG push — the echo would
+                        // setValue over in-flight keystrokes and clear the
+                        // editor's undo stack.
+                        editorDebounce.restart()
                         Controller.setCurrentPageText(text)
                         // A document-backed field re-emits textChanged for an
                         // already-handled edit when the next event is
@@ -222,9 +230,17 @@ Rectangle {
                     Connections {
                         target: Controller
                         function onResultChanged() {
-                            // Defer only while uncommitted typing is on the
-                            // field; an idle field must show the stored text
-                            // right away, or a revert looks like a no-op.
+                            // The WYSIWYG editor defers its reload while the
+                            // user is typing; the raw field follows the model
+                            // right away, hidden or not — a hidden-but-stale
+                            // field would encode the wrong page text.
+                            const ed = editorLoader.item as MarkdownEditor
+                            if (root.wysiwygActive) {
+                                if (ed && ed.editorFocused)
+                                    root.pendingEditorReload = true
+                                else
+                                    editorDebounce.restart()
+                            }
                             if (textArea.activeFocus && textArea.text !== textArea.modelText)
                                 textArea.pendingReload = true
                             else
@@ -233,15 +249,23 @@ Rectangle {
                         function onPageChanged() {
                             textArea.pendingReload = false
                             textArea.reload()
+                            const ed = editorLoader.item as MarkdownEditor
+                            if (root.wysiwygActive) {
+                                if (ed && ed.editorFocused)
+                                    root.pendingEditorReload = true
+                                else
+                                    editorDebounce.restart()
+                            }
                         }
                     }
                 }
             }
 
             Loader {
-                active: root.previewActive
-                onActiveChanged: if (active) previewDebounce.restart()
-                sourceComponent: previewComponent
+                id: editorLoader
+                active: root.wysiwygActive
+                onActiveChanged: if (active) editorDebounce.restart()
+                sourceComponent: editorComponent
             }
         }//StackLayout
     }//ColumnLayout
@@ -249,8 +273,14 @@ Rectangle {
     Connections {
         target: Controller
         function onSelectedBoxChanged() {
+            if (root.wysiwygActive) {
+                const ed = editorLoader.item as MarkdownEditor
+                if (ed)
+                    ed.highlightBox(Controller.selectedBoxIndex)
+                return
+            }
             const range = root.selectedRange
-            if (range.length !== 2 || root.previewActive)
+            if (range.length !== 2)
                 return
             if (textArea.activeFocus)
                 return
@@ -259,12 +289,35 @@ Rectangle {
     }
 
     Component {
-        id: previewComponent
-        MarkdownPreview {
-            markdown: root.previewMarkdown
+        id: editorComponent
+        MarkdownEditor {
+            id: editor
+
+            markdown: root.editorMarkdown
+            blockMap: root.editorBlockMap
             dark: Theme.dark
             bgColor: Theme.surfaceAlt
             fgColor: Theme.textPrimary
+            hl: {
+                const c = Theme.selected
+                return "rgba(" + Math.round(c.r * 255) + "," + Math.round(c.g * 255) + ","
+                       + Math.round(c.b * 255) + "," + (Math.round(c.a * 255) / 255).toFixed(3) + ")"
+            }
+            onEditorTextChanged: (markdown) => Controller.setCurrentPageTextFromEditor(markdown)
+            onBlockClicked: (blockIndex) => {
+                if (blockIndex >= 0 && blockIndex < root.editorBlockMap.length && root.editorBlockMap[blockIndex] >= 0)
+                    Controller.selectedBoxIndex = root.editorBlockMap[blockIndex]
+            }
+            // A rebuild that landed while the user typed in the WYSIWYG
+            // editor reaches it when the editor loses focus — the same
+            // deferral the raw field's pendingReload implements. (The
+            // property's change signal carries no value; read it.)
+            onEditorFocusedChanged: {
+                if (!editor.editorFocused && root.pendingEditorReload) {
+                    root.pendingEditorReload = false
+                    editorDebounce.restart()
+                }
+            }
         }
     }
 }

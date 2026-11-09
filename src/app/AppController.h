@@ -366,6 +366,7 @@ signals:
     void pageImageReady(int index);
     void previewRenderingChanged();
     void previewMarkdownReady(const QString &markdown);
+    void editorMarkdownReady(const QString &markdown, const QVariantList &blockMap);
     void layoutStateChanged();
     void layoutProgressChanged();
     void layoutAvailableChanged();
@@ -402,6 +403,10 @@ public slots:
     Q_INVOKABLE bool movePage(int from, int to);
     Q_INVOKABLE bool exportPages(const QUrl &fileUrl, int scope, int fromPage = 1, int toPage = 1);
     Q_INVOKABLE void setCurrentPageText(const QString &text);
+    // Text pulled from the WYSIWYG editor: the crop references it returns
+    // are data: URIs, written back as image://ocr/crop before the model sees
+    // them; data: URIs the page never saw from us pass through unchanged.
+    Q_INVOKABLE void setCurrentPageTextFromEditor(const QString &text);
     Q_INVOKABLE void revertCurrentPageEdits();
     Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height);
     Q_INVOKABLE bool removeBlock(int boxIndex);
@@ -414,6 +419,10 @@ public slots:
     // thread; the answer comes back through previewMarkdownReady, the latest
     // request wins.
     Q_INVOKABLE void requestPreviewMarkdown(const QString &markdown);
+    // The same encode for the WYSIWYG editor, plus the block→box order the
+    // editor tags its DOM blocks with; the answer comes back through
+    // editorMarkdownReady, the latest request wins.
+    Q_INVOKABLE void requestEditorMarkdown(const QString &markdown);
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();
     // The user confirms the block by hand (ADR 185): the layer in view is
@@ -522,8 +531,9 @@ private:
     void updateBoxesForCurrent();
     // Walks the markdown and inlines every image://ocr/crop reference as a
     // base64 PNG. Runs on a worker; croppedImage copies the crops out under
-    // the document lock.
-    QString encodePreviewMarkdown(int pageIndex, const QString &markdown);
+    // the document lock. The refs list collects the data: URI each image
+    // reference became, so the editor pull can map them back.
+    QString encodePreviewMarkdown(int pageIndex, const QString &markdown, QList<QPair<QString, QString>> *refs = nullptr);
 
     // The verification queue's result sources (ADR 164): a decision verdict
     // lands on the effective layer, a block-recognition reply is an OCR
@@ -632,7 +642,10 @@ private:
     mutable int m_previewCacheCropRevision = -1;
     mutable QString m_previewCacheText;
     mutable QString m_previewCacheResult;
-    quint64 m_previewMarkdownGeneration = 0;  ///< the request an in-flight preview encode belongs to; a newer request drops it
+    mutable QList<QPair<QString, QString>> m_previewCacheRefs;
+    quint64 m_previewMarkdownGeneration = 0;          ///< the request an in-flight preview encode belongs to; a newer request drops it
+    QList<QPair<QString, QString>> m_editorCropRefs;  ///< data: URI → image://ocr/crop for the editor's last push
+    int m_editorMarkdownPage = -1;                    ///< the page the editor's current content was pushed for; pulls for another page are dropped
     PageEditStore m_editStore;
     StatusMessage m_statusMessage;        ///< stored untranslated, rendered on read
     StatusMessage m_autoPipelineMessage;  ///< the run's outcome and its caveats

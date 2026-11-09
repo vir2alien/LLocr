@@ -1631,6 +1631,39 @@ appendix at the end of this file.
   application font is what reaches plain `Text` too, which per-window fonts
   would miss.
 
+- **294.** The work panel's preview tab becomes a WYSIWYG editor:
+  `MarkdownEditor.qml` (a `WebEngineView` on `qrc:/editor/editor.html`)
+  runs the vendored Vditor 4.0.1 (`resources/editor/vditor/`, refreshed by
+  `scripts/fetch-vditor-dist.sh`; MIT, in `THIRD_PARTY_NOTICES.md`) in
+  `wysiwyg` mode with KaTeX math rendering, while the raw «Текст (MD)»
+  `TextArea` stays untouched — tap-to-block and the block-range highlight
+  live there. Markdown flows in through `runJavaScript` (`pushPage`), edits
+  flow back through a `QWebChannel` bridge (`app/EditorBridge` — the first
+  web→QML channel in the app): the page reports the lute-normalized
+  `getValue` of its last push as a reference, and a pull equal to it is an
+  echo, not an edit. Crop references travel as `data:` URIs (the existing
+  `encodePreviewMarkdown` cache, now also collecting the data↔crop map) and
+  are rewritten back to `image://ocr/crop` in `setCurrentPageTextFromEditor`
+  before the model sees them. The page tags its DOM blocks with the order
+  `blockBoxMap` (`renderPageText` ranges) computed, so a click on a block
+  selects the box and a box selection highlights and scrolls to its blocks;
+  a page edited beyond recognition degrades the way the raw search already
+  does. Pushes are gated on editor focus — a rebuild landing mid-typing
+  waits for blur, the same deferral the raw field's `pendingReload`
+  implements — and every pull carries the push token of the content it edits
+  plus a page binding in the controller, so a pull from a replaced document
+  or a switched-away page is dropped instead of written elsewhere
+  (`test_app_import::editorPullCannotLandOnAnotherPage`). The first real
+  edit saves the whole page in lute-normalized markdown
+  (accepted; `mergePipelineChange` anchors may miss more often after it —
+  per-block write-back is the documented v2 fallback if the normalization
+  turns out not to be identity on untouched blocks). The export pipeline
+  (ADR 63) is untouched. `editor.html` CSP is local-only; Vditor's asset
+  loader injects fetched scripts inline, so `script-src` carries
+  `'unsafe-inline'` beside `'wasm-unsafe-eval'` (Lute WASM) — the page has
+  no network surface. `test_editor_page` loads the page headless and is the
+  offline gate for the whole stack.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

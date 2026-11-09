@@ -7,6 +7,7 @@
 #include <QtWebEngineQuick/qtwebenginequickglobal.h>
 
 #include "app/AppController.h"
+#include "app/EditorBridge.h"
 #include "app/I18n.h"
 #include "app/OcrImageProvider.h"
 #include "app/ProblemLog.h"
@@ -89,6 +90,9 @@ void setupQmlEngine(QQmlApplicationEngine &engine, llocr::AppController &appCont
 {
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Controller", &appController);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "UiController", &uiController);
+    // The editor wrapper instantiates its bridge per view; a bare type name
+    // inside WebChannel.registeredObjects resolves to null.
+    qmlRegisterType<llocr::EditorBridge>("LLocr", 1, 0, "EditorBridge");
 
     engine.addImageProvider(QStringLiteral("ocr"), new llocr::OcrImageProvider(&appController));
 }

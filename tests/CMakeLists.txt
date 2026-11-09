@@ -80,6 +80,70 @@ target_link_libraries(mock_llama_server PRIVATE
     Qt6::Network
 )
 
+qt_add_executable(test_block_box_map test_block_box_map.cpp)
+
+target_link_libraries(test_block_box_map PRIVATE
+    Qt6::Test
+    llocr_parsers
+)
+
+# --- Parsers ---
+add_test(NAME test_block_box_map COMMAND test_block_box_map)
+
+qt_add_executable(test_editor_bridge test_editor_bridge.cpp)
+
+target_link_libraries(test_editor_bridge PRIVATE
+    Qt6::Test
+    llocr_app
+)
+
+add_test(NAME test_editor_bridge COMMAND test_editor_bridge)
+
+# ---- Editor page: the offline gate for the WYSIWYG web stack ---------------
+# editor.html must load the vendored Vditor from qrc, compile the Lute WASM
+# under the page CSP and answer over the QWebChannel bridge.
+qt_add_executable(test_editor_page test_editor_page.cpp)
+
+target_link_libraries(test_editor_page PRIVATE
+    Qt6::Test
+    Qt6::WebEngineQuick
+    Qt6::WebEngineCore
+    Qt6::WebChannel
+    llocr_app
+)
+
+file(GLOB_RECURSE TEST_EDITOR_FILES
+    "${CMAKE_SOURCE_DIR}/resources/editor/*")
+list(FILTER TEST_EDITOR_FILES EXCLUDE REGEX "\\.DS_Store$")
+
+qt_add_resources(test_editor_page "editor_page_res"
+    PREFIX "/editor"
+    BASE "${CMAKE_SOURCE_DIR}/resources/editor"
+    FILES ${TEST_EDITOR_FILES}
+)
+add_test(NAME test_editor_page COMMAND test_editor_page)
+
+# ---- Editor QML wiring: the bridge must reach the page ---------------------
+# MarkdownEditor.qml must hand its WebChannel a live EditorBridge (a null
+# registration leaves the page silent: toolbar renders, markdown never
+# arrives) and reach pageReady through it.
+qt_add_executable(test_editor_qml test_editor_qml.cpp)
+
+target_link_libraries(test_editor_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::WebEngineQuick
+    llocr_app
+)
+
+qt_add_resources(test_editor_qml "editor_qml_res"
+    PREFIX "/editor"
+    BASE "${CMAKE_SOURCE_DIR}/resources/editor"
+    FILES ${TEST_EDITOR_FILES}
+)
+add_test(NAME test_editor_qml COMMAND test_editor_qml)
+
 qt_add_executable(test_det_parser test_det_parser.cpp)
 
 target_link_libraries(test_det_parser PRIVATE

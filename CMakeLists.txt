@@ -54,6 +54,7 @@ set(LLOCR_QT6_COMPONENTS
     Pdf
     Test
     LinguistTools
+    WebChannel
     WebEngineQuick
 )
 

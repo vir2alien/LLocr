@@ -1640,6 +1640,14 @@
     </message>
 </context>
 <context>
+    <name>MarkdownEditor</name>
+    <message>
+        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+64"/>
+        <source>Failed to load the editor page (%1).</source>
+        <translation>Не удалось загрузить страницу редактора (%1).</translation>
+    </message>
+</context>
+<context>
     <name>OcrModel</name>
     <message>
         <location filename="../../src/models/OcrModel.cpp" line="+179"/>
@@ -4101,8 +4109,8 @@
     </message>
     <message>
         <location line="+0"/>
-        <source>Preview</source>
-        <translation>Предпросмотр</translation>
+        <source>WYSIWYG</source>
+        <translation>WYSIWYG</translation>
     </message>
 </context>
 <context>
