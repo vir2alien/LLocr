@@ -110,6 +110,8 @@ QJsonObject boxToJson(const BoundingBox &box)
         {"positioned", box.positioned},
         {"duplicateSuspect", box.duplicateSuspect},
     };
+    if (!box.userText.isEmpty())
+        object.insert("userText", box.userText);
     if (box.confidence >= 0.0)
         object.insert("confidence", box.confidence);
     if (box.correctedConfidence >= 0.0)
@@ -140,6 +142,9 @@ BoundingBox boxFromJson(const QJsonObject &object, int schemaVersion)
     // before them reads the defaults (no fix ran, the correction is in view).
     box.fixStatus = boxFixStatusFromInt(object.value("fixStatus").toInt(int(BoxFixStatus::None)));
     box.useCorrectedText = object.value("useCorrectedText").toBool(true);
+    // The user's document layer (ADR 296): optional, a project written before
+    // it reads the default (the block follows the recognition).
+    box.userText = object.value("userText").toString();
     box.label = object.value("label").toString();
     box.rect = QRectF(object.value("x").toDouble(), object.value("y").toDouble(), object.value("w").toDouble(), object.value("h").toDouble());
     box.positioned = object.value("positioned").toBool(true);
@@ -220,7 +225,6 @@ bool ProjectStore::save(const QString &path, const ProjectData &data, QString *e
             {"userOriented", page.userOriented},
             {"orientationProblem", int(page.orientationProblem)},
             {"text", page.text},
-            {"baseline", page.baseline},
             {"parseNote", page.parseNote},
             {"boxes", boxes},
         });
@@ -366,7 +370,6 @@ ProjectStore::LoadResult ProjectStore::load(const QString &path, const QString &
         // A project written before the flag: the check finds the page again.
         page.orientationProblem = PageOrientationProblem(object.value("orientationProblem").toInt(0));
         page.text = object.value("text").toString();
-        page.baseline = object.value("baseline").toString();
         page.parseNote = object.value("parseNote").toString();
         const QJsonArray boxes = object.value("boxes").toArray();
         for (const QJsonValue &boxValue : boxes)

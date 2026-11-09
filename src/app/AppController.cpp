@@ -281,6 +281,7 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_export, &ExportController::exportingChanged, this, &AppController::exportingChanged);
 
     connect(&m_project, &ProjectController::busyChanged, this, &AppController::projectBusyChanged);
+    connect(&m_project, &ProjectController::restored, this, &AppController::migrateLegacyProjectText);
     connect(&m_project, &ProjectController::pathChanged, this, &AppController::projectPathChanged);
     connect(&m_export, &ExportController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
 
@@ -370,121 +371,6 @@ std::unique_ptr<IOutputParser> AppController::makeParser() const
 }
 
 namespace {
-
-// The pipeline changed the block-derived text from `previous` to `rebuilt`.
-// The page carries the user's own text: the change must land in it, or the
-// block the operator just made is missing from the document. The user's
-// wording wins where it diverges from the recognition — the change is applied
-// where the two still agree (ADR 190).
-QString mergePipelineChange(const QString &userText, const QString &previous, const QString &rebuilt)
-{
-    int prefix = 0;
-    const int maxPrefix = qMin(previous.size(), rebuilt.size());
-    while (prefix < maxPrefix && previous.at(prefix) == rebuilt.at(prefix))
-        ++prefix;
-    int suffix = 0;
-    const int maxSuffix = qMin(previous.size() - prefix, rebuilt.size() - prefix);
-    while (suffix < maxSuffix && previous.at(previous.size() - 1 - suffix) == rebuilt.at(rebuilt.size() - 1 - suffix))
-        ++suffix;
-    const QString oldMiddle = previous.mid(prefix, previous.size() - prefix - suffix);
-    const QString newMiddle = rebuilt.mid(prefix, rebuilt.size() - prefix - suffix);
-    if (newMiddle.isEmpty())
-        return userText;  // a removal: the removed text is the user's to keep
-
-    // The anchor is the part the two texts still share; the change belongs
-    // right after it.
-    const QString anchor = rebuilt.left(prefix);
-    const int anchorPos = anchor.isEmpty() ? 0 : userText.lastIndexOf(anchor);
-    if (anchorPos < 0)
-        return userText;  // the user's text diverged: their wording stands
-    const int searchFrom = anchorPos + anchor.size();
-
-    if (oldMiddle.isEmpty()) {
-        // An addition: the new content goes where the blocks put it.
-        QString separator;
-        if (!userText.isEmpty() && !userText.endsWith(QLatin1Char('\n')))
-            separator = QStringLiteral("\n\n");
-        else if (userText.endsWith(QLatin1Char('\n')) && !userText.endsWith(QStringLiteral("\n\n")))
-            separator = QStringLiteral("\n");
-        return userText.left(searchFrom) + separator + newMiddle + userText.mid(searchFrom);
-    }
-
-    // A replacement: the old text gives way to the new one, where the user's
-    // text still carries the old one.
-    const int pos = userText.indexOf(oldMiddle, searchFrom);
-    if (pos < 0)
-        return userText;
-    return userText.left(pos) + newMiddle + userText.mid(pos + oldMiddle.size());
-}
-
-// The changed middle of a diff between two texts (mergePipelineChange's
-// prefix/suffix walk): what the pipeline replaced, and where it starts.
-struct TextDiffMiddle {
-    QString oldMiddle;
-    QString newMiddle;
-    qsizetype changeOffset = 0;
-};
-
-// How many characters of the rebuilt page flank the changed fragment and
-// serve as its local anchor in the user's text.
-constexpr qsizetype kChangeAnchorContext = 80;
-
-// The queued fragment lands in the user's text by a direct search for the
-// old fragment, anchored by the rebuilt page's neighboring characters: the
-// user's edits elsewhere on the page cannot break the match, and a fragment
-// the user rewrote themselves is reported as missed instead of matched
-// somewhere wrong.
-QString applyFragmentChange(const QString &text, const TextDiffMiddle &middle, const QString &contextBefore, bool &applied, bool &missed)
-{
-    if (middle.oldMiddle.isEmpty()) {
-        // An addition: the new content goes after its context.
-        const qsizetype anchorPos = text.lastIndexOf(contextBefore);
-        if (anchorPos < 0) {
-            missed = true;
-            return text;
-        }
-        const qsizetype insertAt = anchorPos + contextBefore.size();
-        QString separator;
-        if (!text.isEmpty() && !text.endsWith(QLatin1Char('\n')))
-            separator = QStringLiteral("\n\n");
-        else if (text.endsWith(QLatin1Char('\n')) && !text.endsWith(QStringLiteral("\n\n")))
-            separator = QStringLiteral("\n");
-        applied = true;
-        return text.left(insertAt) + separator + middle.newMiddle + text.mid(insertAt);
-    }
-
-    qsizetype pos = -1;
-    if (!contextBefore.isEmpty()) {
-        const qsizetype ctxPos = text.lastIndexOf(contextBefore);
-        if (ctxPos >= 0)
-            pos = text.indexOf(middle.oldMiddle, ctxPos + contextBefore.size());
-    }
-    if (pos < 0)
-        pos = text.indexOf(middle.oldMiddle);
-    if (pos < 0) {
-        missed = true;
-        return text;
-    }
-    // A removal takes the old fragment out; a replacement swaps in the new.
-    applied = true;
-    QString result = text.left(pos) + middle.newMiddle + text.mid(pos + middle.oldMiddle.size());
-    if (middle.newMiddle.isEmpty())
-        result.replace(QStringLiteral("\n\n\n\n"), QStringLiteral("\n\n"));
-    return result;
-}
-
-TextDiffMiddle diffMiddle(const QString &previous, const QString &rebuilt)
-{
-    int prefix = 0;
-    const int maxPrefix = qMin(previous.size(), rebuilt.size());
-    while (prefix < maxPrefix && previous.at(prefix) == rebuilt.at(prefix))
-        ++prefix;
-    int suffix = 0;
-    const int maxSuffix = qMin(previous.size() - prefix, rebuilt.size() - prefix);
-    while (suffix < maxSuffix && previous.at(previous.size() - 1 - suffix) == rebuilt.at(rebuilt.size() - 1 - suffix))
-        ++suffix;
-    return {previous.mid(prefix, previous.size() - prefix - suffix), rebuilt.mid(prefix, rebuilt.size() - prefix - suffix), prefix};
-}
 
 // The formula blocks of a fresh recognition result (ADR 194): the canonical
 // LaTeX form of the text and the syntax verdict on it. A formula whose LaTeX
@@ -623,7 +509,50 @@ bool AppController::currentPageEditable() const
 
 bool AppController::currentPageEdited() const
 {
-    return m_editStore.isEdited(m_currentPage);
+    return pageUserEdited(m_currentPage);
+}
+
+bool AppController::pageUserEdited(int index) const
+{
+    QReadLocker locker(&m_documentLock);
+    if (!m_document.isValidIndex(index) || m_document.page(index).result.pages.isEmpty())
+        return false;
+    for (const BoundingBox &box : m_document.page(index).result.pages.first().boxes)
+        if (!box.userText.isEmpty())
+            return true;
+    return false;
+}
+
+// The document is the join of the blocks (ADR 296): the page text is derived,
+// never written by hand.
+void AppController::refreshPageDocument(int pageIndex)
+{
+    QString joined;
+    bool edited = false;
+    {
+        QReadLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
+            return;
+        joined = rebuildPageText(m_document.page(pageIndex).result.pages[0]);
+        for (const BoundingBox &box : m_document.page(pageIndex).result.pages.first().boxes)
+            edited = edited || !box.userText.isEmpty();
+    }
+    setPageText(pageIndex, joined);
+    m_pageModel.setEdited(pageIndex, edited);
+    m_editStore.setEdited(pageIndex, edited);
+    emit resultChanged();
+    emit editStateChanged();
+    emit blockDocumentDivergedChanged();
+}
+
+// The editor's pull speaks data: URIs for the crops; the model stores the
+// compact image://ocr/crop references.
+QString AppController::decodeEditorMarkdown(const QString &text) const
+{
+    QString decoded = text;
+    for (const auto &ref : m_editorCropRefs)
+        decoded.replace(ref.first, ref.second);
+    return decoded;
 }
 
 QImage AppController::pageImage(int index, QString *error)
@@ -1022,146 +951,65 @@ bool AppController::movePage(int from, int to)
     return true;
 }
 
-void AppController::setCurrentPageTextFromEditor(const QString &text)
+void AppController::setUserBlockText(int blockIndex, const QString &markdown)
 {
-    // The pull belongs to the page the editor's content was pushed for; a
-    // page switch inside the pull's latency window must not write one page's
-    // text onto another. The dropped edit is the same ≤300 ms loss the raw
-    // tab's pendingReload tolerates, and the follow-up push rebinds the view.
-    if (m_editorMarkdownPage != m_currentPage)
+    QWriteLocker locker(&m_documentLock);
+    if (!m_document.isValidIndex(m_currentPage) || m_document.page(m_currentPage).result.pages.isEmpty())
         return;
-    // The model moved on without the editor's page knowing (an edit from the
-    // raw tab, a revert): the stale DOM must not overwrite it. The change's
-    // own resultChanged already scheduled the resync push.
-    if (pageText(m_currentPage) != m_editorServedText)
-        return;
-    QString decoded = text;
-    for (const auto &ref : m_editorCropRefs)
-        decoded.replace(ref.first, ref.second);
-    setCurrentPageText(decoded);
-    m_editorServedText = decoded;
+    QList<BoundingBox> &boxes = m_document.page(m_currentPage).result.pages[0].boxes;
+    // The block index is the ordinal of the document's top-level blocks —
+    // the same order renderPageText's ranges walk (page furniture skipped).
+    const ParserOptions options = parserOptions();
+    const auto document = renderPageText(m_document.page(m_currentPage).result.pages.first(), options);
+    int ordinal = -1;
+    for (const BlockTextRange &range : document.ranges)
+        if (++ordinal == blockIndex) {
+            if (range.boxIndex < 0 || range.boxIndex >= boxes.size())
+                return;
+            BoxTransitions::setUserText(boxes[range.boxIndex], decodeEditorMarkdown(markdown));
+            break;
+        }
+    locker.unlock();
+    refreshPageDocument(m_currentPage);
 }
 
-int AppController::pendingChangeBox(int pageIndex, const QString &previous, const QString &rebuilt) const
+void AppController::releaseSelectedBlockUserText()
 {
-    const TextDiffMiddle middle = diffMiddle(previous, rebuilt);
-    if (middle.oldMiddle.isEmpty() && middle.newMiddle.isEmpty())
-        return -1;
-    // The change starts at the common prefix's end: the canonical block whose
-    // range covers that offset is the block the pipeline changed.
-    IOutputParser::RebuiltPageText canonical;
+    releaseBlockUserText(m_inspector.selectedBoxIndex());
+}
+
+void AppController::releaseBlockUserText(int boxIndex)
+{
     {
-        QReadLocker locker(&m_documentLock);
-        if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
-            return -1;
-        const auto parser = makeParser();
-        if (!parser)
-            return -1;
-        canonical = parser->rebuildTextWithRanges(m_document.page(pageIndex).result.pages.first());
+        QWriteLocker locker(&m_documentLock);
+        if (boxIndex < 0 || !m_document.isValidIndex(m_currentPage) || m_document.page(m_currentPage).result.pages.isEmpty())
+            return;
+        QList<BoundingBox> &boxes = m_document.page(m_currentPage).result.pages[0].boxes;
+        if (boxIndex >= boxes.size())
+            return;
+        boxes[boxIndex].userText.clear();
     }
-    if (middle.newMiddle.isEmpty())
-        return -1;  // a removal leaves no canonical block to point at
-    for (const BlockTextRange &range : canonical.ranges) {
-        if (middle.changeOffset >= range.start && middle.changeOffset < range.start + range.length)
-            return range.boxIndex;
-    }
-    return -1;
+    refreshPageDocument(m_currentPage);
+    setStatus(StatusMessage::translate("AppController", "The block text was taken into the document."));
 }
 
 bool AppController::selectedBlockDocumentDiverged() const
 {
-    if (!m_editStore.isEdited(m_currentPage))
-        return false;
-    const int box = m_inspector.selectedBoxIndex();
-    const QList<PendingDocumentChange> pending = m_pendingDocumentChanges.value(m_currentPage);
-    for (const PendingDocumentChange &change : pending)
-        if (change.boxIndex < 0 || change.boxIndex == box)
-            return true;
-    return false;
-}
-
-void AppController::takeSelectedBlockTextIntoDocument()
-{
-    const int page = m_currentPage;
-    const QList<PendingDocumentChange> pending = m_pendingDocumentChanges.value(page);
-    if (!m_editStore.isEdited(page) || pending.isEmpty()) {
-        m_pendingDocumentChanges.remove(page);
-        emit blockDocumentDivergedChanged();
-        return;
-    }
-    m_pendingDocumentChanges.remove(page);
-
-    // The queued change applies to its own fragment: the changed middle of
-    // the landing diff is searched in the user's text directly, anchored by
-    // the neighboring characters of the rebuilt page. The old page-level
-    // common-prefix anchor missed as soon as the user edited anything
-    // earlier on the page — the very editing the WYSIWYG tab invites.
-    QString text = pageText(page);
-    bool applied = false;
-    bool missed = false;
-    for (const PendingDocumentChange &change : pending) {
-        const TextDiffMiddle middle = diffMiddle(change.previous, change.rebuilt);
-        if (middle.oldMiddle.isEmpty() && middle.newMiddle.isEmpty())
-            continue;
-        const QString contextBefore = change.rebuilt.left(middle.changeOffset).right(kChangeAnchorContext);
-        const QString contextAfter = middle.newMiddle.isEmpty() ? QString() : change.rebuilt.mid(middle.changeOffset + middle.newMiddle.size(), kChangeAnchorContext);
-        text = applyFragmentChange(text, middle, contextBefore, applied, missed);
-    }
-    if (missed)
-        setStatus(StatusMessage::translate("AppController", "The changed fragment is no longer in the document text."));
-    if (!applied) {
-        emit blockDocumentDivergedChanged();
-        return;
-    }
-    setPageText(page, text);
-    emit resultChanged();
-    emit blockDocumentDivergedChanged();
-    if (!missed)
-        setStatus(StatusMessage::translate("AppController", "The block text was taken into the document."));
-}
-
-void AppController::setCurrentPageText(const QString &text)
-{
-    if (!currentPageEditable())
-        return;
-
-    const int index = m_currentPage;
-    if (text == pageText(index))
-        return;
-
-    if (!text.isEmpty()) {
-        for (int i = 0; i < m_document.pageCount(); ++i) {
-            if (i != index && m_document.page(i).recognized && pageText(i) == text) {
-                qWarning().noquote() << "Panel text matches page" << i + 1 << "while saving page" << index + 1 << "— write refused";
-                emit resultChanged();  // snap the panel back to the stored text
-                return;
-            }
-        }
-    }
-
-    // First edit on this page remembers the pre-edit text for Revert.
-    if (!m_editStore.isEdited(index))
-        m_editStore.reset(index, pageText(index));
-    setPageText(index, text);
-    markPageEdited(index);
-    emit resultChanged();
+    const BoundingBox *box = m_inspector.selectedBox();
+    return box && !box->userText.isEmpty();
 }
 
 void AppController::revertCurrentPageEdits()
 {
     const int index = m_currentPage;
-    if (!m_editStore.isEdited(index))
-        return;
-    const QString original = m_editStore.baseline(index);
-    m_editStore.revert(index);
-    // The document follows the blocks again: the queued pipeline changes are
-    // already part of the baseline the revert restores.
-    m_pendingDocumentChanges.remove(index);
-    setPageText(index, original);
-    m_pageModel.setEdited(index, false);
-    emit resultChanged();
-    emit editStateChanged();
-    emit blockDocumentDivergedChanged();
+    {
+        QWriteLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(index) || m_document.page(index).result.pages.isEmpty())
+            return;
+        for (BoundingBox &box : m_document.page(index).result.pages[0].boxes)
+            box.userText.clear();
+    }
+    refreshPageDocument(index);
 }
 
 void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height)
@@ -1201,20 +1049,8 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width
     // once — when the block still carried something.
     refreshRecognitionModeAfterBlockText(m_currentPage);
     refreshPageVerification(m_currentPage);
-    const QString rebuilt = rebuildPageText(m_document.page(m_currentPage).result.pages[0]);
-    if (m_editStore.isEdited(m_currentPage)) {
-        // The user's own text owns the page: the emptied block changes the
-        // blocks, not the text under the panel. The revert target moves
-        // forward, so the next Revert lands on the consistent text.
-        m_editStore.rebase(m_currentPage, rebuilt);
-    } else {
-        setPageText(m_currentPage, rebuilt);
-        // A structural change is not a manual edit (ADR 190): the text still
-        // follows the blocks, so a later recognition may write it again.
-        m_editStore.reset(m_currentPage, rebuilt);
-    }
-    emit resultChanged();
-    emit editStateChanged();
+    // The emptied block's user layer dies with its content (ADR 296).
+    refreshPageDocument(m_currentPage);
 }
 
 bool AppController::removeBlock(int boxIndex)
@@ -1241,20 +1077,7 @@ bool AppController::removeBlock(int boxIndex)
     refreshRecognitionModeAfterBlockText(m_currentPage);
     refreshPageVerification(m_currentPage);
 
-    const QString rebuilt = rebuildPageText(m_document.page(m_currentPage).result.pages[0]);
-    if (m_editStore.isEdited(m_currentPage)) {
-        // The user's own text owns the page: a removal changes the blocks, not
-        // the text under the panel. The revert target moves forward, so the
-        // next Revert lands on the structurally-consistent text.
-        m_editStore.rebase(m_currentPage, rebuilt);
-    } else {
-        setPageText(m_currentPage, rebuilt);
-        // A removed block is a structural change, not a manual edit: the text
-        // still follows the blocks, so a later recognition may write it again
-        // — the same rule as a block landing. The revert target moves forward:
-        // the removed block's text must not come back (ADR 190).
-        m_editStore.reset(m_currentPage, rebuilt);
-    }
+    refreshPageDocument(m_currentPage);
 
     if (m_inspector.selectedBoxIndex() == boxIndex)
         setSelectedBoxIndex(-1);
@@ -1305,18 +1128,10 @@ bool AppController::addBlockAt(const QString &type, qreal x, qreal y, qreal widt
 
     updateBoxesForCurrent();
 
-    const OcrPage &page = m_document.page(m_currentPage).result.pages[0];
-    const QString rebuilt = rebuildPageText(page);
-    if (pageText(m_currentPage) == blockDerivedText) {
-        setPageText(m_currentPage, rebuilt);
-    }
-    // The revert target moves forward with the blocks — also when the page
-    // carries the user's own text: the next Revert must land on the text the
-    // blocks stand for.
-    m_editStore.rebase(m_currentPage, rebuilt);
+    refreshPageDocument(m_currentPage);
 
     refreshPageVerification(m_currentPage);
-    setSelectedBoxIndex(page.boxes.size() - 1);
+    setSelectedBoxIndex(m_document.page(m_currentPage).result.pages.first().boxes.size() - 1);
 
     setStatus(StatusMessage::translate("AppController", "Block added."));
     emit resultChanged();
@@ -1954,17 +1769,12 @@ bool AppController::applyLayout(int pageIndex, const QString &rawText)
     if (pageData.hasDuplicates)
         m_pageModel.setHasDuplicates(pageIndex, true);
 
-    const bool droppedEdit = m_editStore.reset(pageIndex, parsed.text);
-    if (droppedEdit)
-        m_pageModel.setEdited(pageIndex, false);
+    refreshPageDocument(pageIndex);
 
     ++m_cropRevision;
 
     if (pageIndex == m_currentPage)
         updateBoxesForCurrent();
-    emit resultChanged();
-    if (droppedEdit)
-        emit editStateChanged();
 
     setStatus(StatusMessage::translate("AppController", "Page %1 marked up: %2 block(s).").arg(pageIndex + 1).arg(blockCount));
     return true;
@@ -2169,40 +1979,11 @@ void AppController::applyRemedyToBox(int pageIndex, int boxIndex, const CheckRes
 
 void AppController::applyPageTextChanged(int pageIndex)
 {
-    QString rebuilt;
-    {
-        QReadLocker locker(&m_documentLock);
-        if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
-            return;
-        rebuilt = rebuildPageText(m_document.page(pageIndex).result.pages[0]);
-    }
-
-    // A manual edit owns the page text until it is reverted: a block landing
-    // (recognition, fix, re-check) updates the blocks but must not wipe the
-    // user's text out from under the panel — that used to read as a silent
-    // reset, and the next «Отменить изменения» did nothing. The revert target
-    // moves forward to the block-derived text instead.
-    if (m_editStore.isEdited(pageIndex)) {
-        // The pipeline's change no longer lands in the user's text (ADR 295
-        // supersedes ADR 190): a merge under the editor's hands was promptly
-        // reverted by the editor's own pull. The change is queued instead;
-        // the block panel's «Взять текст из блока» applies it on demand.
-        const QString previous = m_editStore.baseline(pageIndex);
-        m_pendingDocumentChanges[pageIndex].append({pendingChangeBox(pageIndex, previous, rebuilt), previous, rebuilt});
-        m_editStore.rebase(pageIndex, rebuilt);
-        emit blockDocumentDivergedChanged();
-        return;
-    }
-
-    m_pendingDocumentChanges.remove(pageIndex);
-    setPageText(pageIndex, rebuilt);
-    // Rebase only: recognition and fix produce the page text themselves —
-    // this must not read as a manual edit («Изменено»).
-    const bool droppedEdit = m_editStore.reset(pageIndex, rebuilt);
-    if (droppedEdit)
-        m_pageModel.setEdited(pageIndex, false);
-    emit resultChanged();
-    emit editStateChanged();
+    // The document is the join of the blocks (ADR 296): the user's layers are
+    // already part of the rebuild, a landing block refreshes the page around
+    // them, and the block whose recognition changed shows its AI-version
+    // notice wherever a user layer now differs from the block.
+    refreshPageDocument(pageIndex);
 }
 
 void AppController::schedulePageTextChanged(int pageIndex)
@@ -2340,9 +2121,6 @@ void AppController::retranslate()
 
 void AppController::markPageEdited(int index)
 {
-    if (m_editStore.isEdited(index))
-        return;
-    m_editStore.setEdited(index, true);
     m_pageModel.setEdited(index, true);
     // The «Изменено» label and the Revert button read this flag through
     // properties with different NOTIFY signals; without the broadcast the
@@ -2442,7 +2220,6 @@ bool AppController::turnPage(int index, int degrees, bool byUser)
         page.parseNote.clear();
     }
 
-    m_editStore.reset(index, QString());
     m_pageModel.setRecognized(index, false);
     m_pageModel.setEdited(index, false);
     m_pageModel.setHasDuplicates(index, false);
@@ -2495,7 +2272,6 @@ void AppController::applyPageDeskew(int index, double degrees)
     if (!changed)
         return;
     if (hadResult) {
-        m_editStore.reset(index, QString());
         m_pageModel.setRecognized(index, false);
         m_pageModel.setEdited(index, false);
         m_pageModel.setHasDuplicates(index, false);
@@ -2588,6 +2364,29 @@ void AppController::requestPreviewMarkdown(const QString &markdown)
     }));
 }
 
+// One-time mapping of a legacy project's hand-written page text into the
+// per-block user layers (ADR 296). New projects already carry both the join
+// and the layers, so the canonical comparison leaves them alone.
+void AppController::migrateLegacyProjectText()
+{
+    const ParserOptions options = parserOptions();
+    QWriteLocker locker(&m_documentLock);
+    for (int i = 0; i < m_document.pageCount(); ++i) {
+        DocumentPage &page = m_document.page(i);
+        if (!page.recognized || page.result.pages.isEmpty())
+            continue;
+        OcrPage &ocrPage = page.result.pages[0];
+        if (renderPageText(ocrPage, options).text == page.result.text)
+            continue;
+        migrateLegacyPageText(ocrPage, page.result.text, options);
+    }
+}
+
+QVariantList AppController::editorBlockFlags() const
+{
+    return m_inspector.blockUserLayerFlags();
+}
+
 void AppController::requestEditorMarkdown(const QString &markdown)
 {
     // The generation moves on every request, cache hit included: a hit answers
@@ -2597,8 +2396,7 @@ void AppController::requestEditorMarkdown(const QString &markdown)
     if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown) {
         m_editorCropRefs = m_previewCacheRefs;
         m_editorMarkdownPage = m_currentPage;
-        m_editorServedText = markdown;
-        emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap());
+        emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap(), m_inspector.blockFragments(), m_inspector.blockUserLayerFlags());
         return;
     }
 
@@ -2620,8 +2418,7 @@ void AppController::requestEditorMarkdown(const QString &markdown)
         m_previewCacheRefs = result.second;
         m_editorCropRefs = result.second;
         m_editorMarkdownPage = page;
-        m_editorServedText = markdown;
-        emit editorMarkdownReady(result.first, blockMap);
+        emit editorMarkdownReady(result.first, blockMap, m_inspector.blockFragments(), m_inspector.blockUserLayerFlags());
     });
     const QPointer<AppController> self(this);
     watcher->setFuture(QtConcurrent::run([self, page, markdown]() {

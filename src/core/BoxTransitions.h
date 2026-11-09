@@ -35,6 +35,15 @@ bool remedyAnswered(BoxFixStatus status);
 // What the user reads, verifies and exports: the correction when the layer is
 // selected, else the OCR text.
 QString effectiveText(const BoundingBox &box);
+
+// The block's document text (ADR 296): the user's layer when it is set, else
+// the canonical effective text.
+QString documentText(const BoundingBox &box);
+
+// The user's document text for this block (ADR 296). Text identical to the
+// canonical document text (or empty) releases the layer — the block follows
+// the recognition again.
+void setUserText(BoundingBox &box, const QString &text);
 BoxCheckStatus effectiveCheckStatus(const BoundingBox &box);
 double effectiveConfidence(const BoundingBox &box);
 

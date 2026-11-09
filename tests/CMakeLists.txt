@@ -90,6 +90,16 @@ target_link_libraries(test_block_box_map PRIVATE
 # --- Parsers ---
 add_test(NAME test_block_box_map COMMAND test_block_box_map)
 
+qt_add_executable(test_page_document test_page_document.cpp)
+
+target_link_libraries(test_page_document PRIVATE
+    Qt6::Test
+    llocr_parsers
+    llocr_core
+)
+
+add_test(NAME test_page_document COMMAND test_page_document)
+
 qt_add_executable(test_editor_bridge test_editor_bridge.cpp)
 
 target_link_libraries(test_editor_bridge PRIVATE

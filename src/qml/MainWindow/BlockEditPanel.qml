@@ -339,7 +339,7 @@ Rectangle {
             }
             LLOButton {
                 text: qsTr("Take the block text")
-                onClicked: Controller.takeSelectedBlockTextIntoDocument()
+                onClicked: Controller.releaseSelectedBlockUserText()
             }
         }
     }

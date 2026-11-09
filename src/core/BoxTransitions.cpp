@@ -100,6 +100,21 @@ QString effectiveText(const BoundingBox &box)
     return correctionSelected(box) ? box.correctedText : box.text;
 }
 
+QString documentText(const BoundingBox &box)
+{
+    return box.userText.isEmpty() ? effectiveText(box) : box.userText;
+}
+
+void setUserText(BoundingBox &box, const QString &text)
+{
+    // Identical to what the blocks already render (or empty): the layer
+    // releases, the block follows the recognition again.
+    if (text.isEmpty() || text == effectiveText(box))
+        box.userText.clear();
+    else
+        box.userText = text;
+}
+
 BoxCheckStatus effectiveCheckStatus(const BoundingBox &box)
 {
     return judgedLayerIsCorrection(box) ? box.correctedCheckStatus : box.checkStatus;

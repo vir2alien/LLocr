@@ -67,7 +67,6 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     // The straightening the check measured travels with the page too.
     imagePage.skewDegrees = 2.5;
     imagePage.text = QStringLiteral("edited text");
-    imagePage.baseline = QStringLiteral("recognized text");
     imagePage.parseNote = QStringLiteral("no layout tokens");
     BoundingBox box;
     box.text = QStringLiteral("block text");
@@ -249,7 +248,6 @@ private slots:
         QCOMPARE(imagePage.orientationProblem, PageOrientationProblem::Sideways);
         QCOMPARE(imagePage.skewDegrees, 2.5);
         QCOMPARE(imagePage.text, QStringLiteral("edited text"));
-        QCOMPARE(imagePage.baseline, QStringLiteral("recognized text"));
         QCOMPARE(imagePage.parseNote, QStringLiteral("no layout tokens"));
         QCOMPARE(imagePage.boxes.size(), 5);
         QCOMPARE(imagePage.boxes.at(0).text, QStringLiteral("block text"));
@@ -491,7 +489,6 @@ private slots:
                  {"edited", false},
                  {"hasDuplicates", false},
                  {"text", QStringLiteral("t")},
-                 {"baseline", QStringLiteral("t")},
                  {"parseNote", QString()},
                  {"boxes", QJsonArray{boxJson(QStringLiteral("original"), QStringLiteral("second variant"), 2), boxJson(QStringLiteral("checked"), QString(), 1)}},
              }}},
@@ -538,7 +535,6 @@ private slots:
                 {"edited", false},
                 {"hasDuplicates", false},
                 {"text", QString()},
-                {"baseline", QString()},
                 {"parseNote", QString()},
             };
             if (withBoxes)

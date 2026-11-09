@@ -13,6 +13,8 @@ Rectangle {
 
     property string editorMarkdown: ""
     property var editorBlockMap: []
+    property var editorBlockMd: []
+    property var editorBlockFlags: []
     property bool pendingEditorReload: false
     // The segmented switch's state: raw markdown editor or the WYSIWYG one.
     property bool wysiwygActive: false
@@ -30,9 +32,11 @@ Rectangle {
 
     Connections {
         target: Controller
-        function onEditorMarkdownReady(markdown, blockMap) {
+        function onEditorMarkdownReady(markdown, blockMap, blockMd, blockFlags) {
             root.editorMarkdown = markdown
             root.editorBlockMap = blockMap
+            root.editorBlockMd = blockMd
+            root.editorBlockFlags = blockFlags
         }
     }
     LLOLabel {
@@ -86,9 +90,8 @@ Rectangle {
                     Controller.revertCurrentPageEdits()
                     // The panel defers reloads while it holds focus; a revert
                     // must show the stored text immediately, not on blur.
-                    textArea.pendingReload = false
-                    textArea.reload()
                     root.pendingEditorReload = false
+                    editorDebounce.restart()
                 }
             }
 
@@ -149,7 +152,10 @@ Rectangle {
                 TextArea {
                     id: textArea
                     width: textFlickable.width
-                    readOnly: !Controller.currentPageEditable
+                    // The document is the join of the blocks (ADR 296): the
+                    // raw pane is its read-only view — editing happens in the
+                    // WYSIWYG tab, per block.
+                    readOnly: true
                     textFormat: TextArea.PlainText
                     wrapMode: TextArea.Wrap
                     selectByMouse: true
@@ -157,49 +163,14 @@ Rectangle {
                     placeholderTextColor: Theme.textMuted
                     background: null
 
-                    property bool syncing: false
-                    // The text the model last served: a panel change that
-                    // still matches it is an echo, not a user edit.
-                    property string modelText: ""
-                    // A rebuild that lands mid-edit (background re-check)
-                    // must not clobber the panel: the reload waits until
-                    // the field loses focus.
-                    property bool pendingReload: false
-
                     function reload() {
-                        var t = Controller.resultText
-                        modelText = t
-                        syncing = true
-                        text = t
-                        syncing = false
-                    }
-
-                    onTextChanged: {
-                        if (syncing || !activeFocus || text === modelText)
-                            return
-                        // Real typing only: a programmatic reload (syncing)
-                        // must not schedule a WYSIWYG push — the echo would
-                        // setValue over in-flight keystrokes and clear the
-                        // editor's undo stack.
-                        editorDebounce.restart()
-                        Controller.setCurrentPageText(text)
-                        // A document-backed field re-emits textChanged for an
-                        // already-handled edit when the next event is
-                        // processed — a keystroke's late duplicate lands
-                        // mid-click. The committed text is the model now:
-                        // without this the replay re-commits over a revert,
-                        // and «Отменить изменения» needs two clicks.
-                        modelText = text
+                        text = Controller.resultText
                     }
 
                     onActiveFocusChanged: {
                         // The panel's approve hotkey must not take the Return
                         // away from a text the user is typing in.
                         Controller.pageTextEditorFocused = activeFocus
-                        if (!activeFocus && pendingReload) {
-                            pendingReload = false
-                            reload()
-                        }
                     }
 
                     Component.onCompleted: {
@@ -232,8 +203,7 @@ Rectangle {
                         function onResultChanged() {
                             // The WYSIWYG editor defers its reload while the
                             // user is typing; the raw field follows the model
-                            // right away, hidden or not — a hidden-but-stale
-                            // field would encode the wrong page text.
+                            // right away — it is the join of the blocks.
                             const ed = editorLoader.item as MarkdownEditor
                             if (root.wysiwygActive) {
                                 if (ed && ed.editorFocused)
@@ -241,13 +211,9 @@ Rectangle {
                                 else
                                     editorDebounce.restart()
                             }
-                            if (textArea.activeFocus && textArea.text !== textArea.modelText)
-                                textArea.pendingReload = true
-                            else
-                                textArea.reload()
+                            textArea.reload()
                         }
                         function onPageChanged() {
-                            textArea.pendingReload = false
                             textArea.reload()
                             const ed = editorLoader.item as MarkdownEditor
                             if (root.wysiwygActive) {
@@ -295,6 +261,8 @@ Rectangle {
 
             markdown: root.editorMarkdown
             blockMap: root.editorBlockMap
+            blockMd: root.editorBlockMd
+            blockFlags: root.editorBlockFlags
             dark: Theme.dark
             bgColor: Theme.surfaceAlt
             fgColor: Theme.textPrimary
@@ -303,7 +271,16 @@ Rectangle {
                 return "rgba(" + Math.round(c.r * 255) + "," + Math.round(c.g * 255) + ","
                        + Math.round(c.b * 255) + "," + (Math.round(c.a * 255) / 255).toFixed(3) + ")"
             }
-            onEditorTextChanged: (markdown) => Controller.setCurrentPageTextFromEditor(markdown)
+            onEditorBlockChanged: (blockOrdinal, markdown) => {
+                if (blockOrdinal >= 0 && blockOrdinal < root.editorBlockMap.length
+                    && root.editorBlockMap[blockOrdinal] >= 0)
+                    Controller.setUserBlockText(blockOrdinal, markdown)
+            }
+            onEditorBlockReleased: (blockOrdinal) => {
+                if (blockOrdinal >= 0 && blockOrdinal < root.editorBlockMap.length
+                    && root.editorBlockMap[blockOrdinal] >= 0)
+                    Controller.releaseBlockUserText(root.editorBlockMap[blockOrdinal])
+            }
             onBlockClicked: (blockIndex) => {
                 if (blockIndex >= 0 && blockIndex < root.editorBlockMap.length && root.editorBlockMap[blockIndex] >= 0)
                     Controller.selectedBoxIndex = root.editorBlockMap[blockIndex]

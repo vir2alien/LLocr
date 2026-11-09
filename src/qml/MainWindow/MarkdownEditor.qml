@@ -12,17 +12,23 @@ Item {
 
     property string markdown: ""
     // The box owning every top-level markdown block, in page order; the
-    // editor's DOM blocks are tagged with the same ordinals.
+    // editor's DOM blocks are tagged with the same ordinals. blockFlags[i]
+    // marks the blocks whose recognition differs from the document (ADR 296).
     property var blockMap: []
+    // The pushed markdown of every tagged block: the per-block pull names its
+    // ordinal, and the editor's page needs the fragments to slice the pull.
+    property var blockMd: []
+    property var blockFlags: []
     property bool dark: false
     property color bgColor: "white"
     property color fgColor: "black"
     property string hl: "#308cc6"
     property bool editorFocused: false
 
-    // The reference is the normalization of the last push: a pull matching
-    // it is the editor's own echo of the pushed text, not a user edit.
-    signal editorTextChanged(string markdown)
+    // The per-block pull (ADR 296): the editor reports the ordinal and the
+    // markdown of the block the user typed in.
+    signal editorBlockChanged(int blockOrdinal, string markdown)
+    signal editorBlockReleased(int blockOrdinal)
     signal blockClicked(int blockIndex)
 
     property bool _pageLoaded: false
@@ -43,8 +49,10 @@ Item {
             return
         }
         root._pendingPush = false
-        var js = "pushPage(" + JSON.stringify(root.markdown) + ", "
-               + JSON.stringify({ dark: root.dark, bg: String(root.bgColor), fg: String(root.fgColor), hl: root.hl }) + ");"
+        var js = "pushDocument(" + JSON.stringify(root.markdown) + ", "
+               + JSON.stringify({ dark: root.dark, bg: String(root.bgColor), fg: String(root.fgColor), hl: root.hl }) + ", "
+               + JSON.stringify(root.blockMd) + ", "
+               + JSON.stringify(root.blockFlags) + ");"
         web.runJavaScript(js)
     }
 
@@ -137,13 +145,16 @@ Item {
             root._reference = markdown
             root._referenceToken = pushToken
         }
-        function onEditorTextChanged(markdown, pushToken) {
+        function onEditorBlockChanged(blockOrdinal, markdown, pushToken) {
             // A pull whose base push is no longer the current one (a newer
             // push replaced the document) edits text that is already gone.
             if (pushToken !== root._referenceToken)
                 return
-            if (markdown !== root._reference)
-                root.editorTextChanged(markdown)
+            root.editorBlockChanged(blockOrdinal, markdown)
+        }
+        function onEditorBlockReleased(blockOrdinal, pushToken) {
+            if (pushToken === root._referenceToken)
+                root.editorBlockReleased(blockOrdinal)
         }
         function onEditorBlockClicked(blockIndex) {
             root.blockClicked(blockIndex)

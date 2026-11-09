@@ -62,6 +62,9 @@ public slots:
 signals:
     void busyChanged();
     void pathChanged();
+    // The document is in place (ADR 296): legacy projects' hand-written page
+    // text is due its one-time mapping into the per-block layers.
+    void restored();
 
 private:
     bool collect(ProjectData *data, QString *error);

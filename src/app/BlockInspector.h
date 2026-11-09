@@ -73,6 +73,12 @@ public:
     // in order (-1 where the mapping no longer reaches): the WYSIWYG editor
     // tags its DOM blocks with the same ordinals.
     QVariantList blockBoxMap() const;
+    // Per-ordinal: the block carries a user layer (ADR 296) — the editor
+    // badges such blocks with the AI-version notice.
+    QVariantList blockUserLayerFlags() const;
+    // Per-ordinal: the block's document markdown (its slice of the shown
+    // text) — the editor slices per-block pulls with it.
+    QVariantList blockFragments() const;
     void attachBlockTextHighlighter(QObject *textDocument, const QColor &color);
     void invalidateRebuildCache();
     // The page text changed under the blocks: the mapping and the paint of the

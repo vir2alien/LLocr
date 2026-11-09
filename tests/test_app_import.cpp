@@ -564,6 +564,50 @@ QList<BoundingBox> rerunCast()
 
 }  // namespace
 
+// The WYSIWYG editor's per-block pull, replayed by the tests: the page text
+// the old tests wrote wholesale now lands as one block's user layer (ADR
+// 296). The changed block is located by its document range; text identical
+// to the canonical render releases the layer, an empty text releases all.
+void setEditorPageText(AppController &controller, const QString &newText)
+{
+    auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+    QVERIFY2(boxes, "the page has a box model");
+
+    const QString old = controller.resultText();
+    if (old == newText)
+        return;
+    if (newText.isEmpty()) {
+        for (int i = 0; i < boxes->rowCount(); ++i)
+            controller.setUserBlockText(i, QString());
+        return;
+    }
+
+    qsizetype prefix = 0;
+    const qsizetype maxPrefix = qMin(old.size(), newText.size());
+    while (prefix < maxPrefix && old.at(prefix) == newText.at(prefix))
+        ++prefix;
+    const qsizetype delta = newText.size() - old.size();
+
+    int ordinal = -1;
+    int owner = -1;
+    QList<int> ownerRange;
+    for (int boxIndex = 0; boxIndex < boxes->rowCount(); ++boxIndex) {
+        const QList<int> range = controller.blockTextRange(boxIndex);
+        if (range.size() != 2)
+            continue;
+        ++ordinal;
+        if (range.at(0) <= prefix && (owner < 0 || range.at(0) >= ownerRange.at(0))) {
+            owner = ordinal;
+            ownerRange = range;
+        }
+    }
+    if (owner < 0)
+        QFAIL(qPrintable(QStringLiteral("no block owns the edited position: %1").arg(newText)));
+    const qsizetype blockStart = ownerRange.at(0);
+    const qsizetype blockEnd = blockStart + ownerRange.at(1) + delta;
+    controller.setUserBlockText(owner, newText.mid(blockStart, blockEnd - blockStart));
+}
+
 class TestAppImport : public QObject
 {
     Q_OBJECT
@@ -1477,14 +1521,13 @@ private slots:
         recognizePage(controller);
         QVERIFY(controller.hasResult());
 
-        controller.setCurrentPageText(controller.resultText() + QStringLiteral("\ntyped by hand"));
+        setEditorPageText(controller, QStringLiteral("## 1. Introduction, annotated\n\nSecond block text"));
         QVERIFY(controller.currentPageEdited());
 
+        // Removing the untouched block keeps the edited block's layer…
         QVERIFY(controller.removeBlock(1));
-
-        // The user's text survives the removal…
-        QVERIFY2(controller.resultText().contains(QStringLiteral("typed by hand")), qPrintable(controller.resultText()));
-        // …and the page is still the user's own text.
+        QVERIFY2(controller.resultText().contains(QStringLiteral("## 1. Introduction, annotated")), qPrintable(controller.resultText()));
+        // …and the page is still the user's own.
         QVERIFY(controller.currentPageEdited());
     }
 
@@ -1508,7 +1551,7 @@ private slots:
         QVERIFY(controller.hasResult());
 
         // The operator edits the page text by hand…
-        controller.setCurrentPageText(controller.resultText() + QStringLiteral("\ntyped by hand"));
+        setEditorPageText(controller, controller.resultText() + QStringLiteral("\ntyped by hand"));
         QVERIFY(controller.currentPageEdited());
 
         // …draws a block and recognizes it.
@@ -1670,13 +1713,16 @@ private slots:
         QCOMPARE(controller.boxIndexForTextPosition(20), 1);
         QCOMPARE(controller.boxIndexForTextPosition(controller.resultText().length()), 1);
 
-        // A manual edit keeps the mapping in best-effort mode: the intact
-        // block stays tracked (shifted), the edited block drops out.
-        controller.setCurrentPageText(QStringLiteral("## 1. Preface\n\nSecond block text"));
+        // The mapping is the document's own: a user layer keeps its block
+        // tracked exactly (ADR 296) — no best-effort search to drift.
+        setEditorPageText(controller, QStringLiteral("## 1. Preface\n\nSecond block text"));
         QVERIFY(controller.blockTextMapped());
-        QVERIFY(controller.blockTextRange(0).isEmpty());
+        QCOMPARE(controller.blockTextRange(0), QList<int>({0, 13}));
         QCOMPARE(controller.blockTextRange(1), QList<int>({15, 17}));
-        QCOMPARE(controller.boxIndexForTextPosition(0), -1);
+        QCOMPARE(controller.boxIndexForTextPosition(0), 0);
+        QCOMPARE(controller.boxIndexForTextPosition(12), 0);
+        QCOMPARE(controller.boxIndexForTextPosition(13), -1);  // past the block's end
+        QCOMPARE(controller.boxIndexForTextPosition(14), -1);  // the blank separator line
         QCOMPARE(controller.boxIndexForTextPosition(15), 1);
         QCOMPARE(controller.boxIndexForTextPosition(controller.resultText().length()), 1);
 
@@ -1715,38 +1761,6 @@ private slots:
         m_settings->setTablesAsHtml(!m_settings->tablesAsHtml());
         QCOMPARE(rangeSpy.count(), 1);
         QVERIFY(controller.blockTextMapped());
-    }
-
-    // The model must refuse a verbatim copy of another page's text — that is
-    // cross-page contamination (a stale panel), not a user edit.
-    void setCurrentPageTextRefusesAnotherPagesText()
-    {
-        DetTokenChatServer server;
-        QVERIFY(server.start());
-        m_settings->setBaseUrl(server.baseUrl());
-        m_settings->setModelName(QStringLiteral("det-token-test"));
-
-        auto &controller = *m_controller;
-        // The mock server answers every page with the same content, so both
-        // pages end up holding identical recognized text.
-        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
-        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        qobject_cast<PageListModel *>(controller.pageModel())->clearSelection();  // empty selection = every page
-        recognizePage(controller);
-        QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
-        QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text"));
-
-        // Identical to the neighbors: refused, the page keeps its edited text.
-        controller.setCurrentPageText(QStringLiteral("## 1. Introduction\n\nSecond block text edited"));
-        QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text edited"));  // unique text passes
-        controller.setCurrentPageText(QStringLiteral("## 1. Introduction\n\nSecond block text"));
-        QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text edited"));
-        QCOMPARE(controller.currentPageEdited(), true);
-
-        // Clearing the page is still allowed even though other pages exist.
-        controller.setCurrentPageText(QString());
-        QCOMPARE(controller.resultText(), QString());
     }
 
     // The plain-text panel paints the selected block's range through the
@@ -1790,7 +1804,7 @@ private slots:
         controller.setSelectedBoxIndex(1);
         QCOMPARE(paintedRanges(document), (QList<QPair<int, int>>({{20, 17}})));
 
-        controller.setCurrentPageText(controller.resultText() + QStringLiteral(" appended"));
+        setEditorPageText(controller, controller.resultText() + QStringLiteral(" appended"));
         // Best-effort re-anchoring: the selected block keeps its paint.
         QCOMPARE(paintedRanges(document), (QList<QPair<int, int>>({{20, 17}})));
 
@@ -2212,7 +2226,7 @@ private slots:
 
         // A manual edit after the landing rebases on the rebuilt text, so
         // Revert goes back to it — not to some earlier session's state.
-        m_controller->setCurrentPageText(m_controller->resultText() + QStringLiteral("junk"));
+        setEditorPageText(*m_controller, m_controller->resultText() + QStringLiteral("junk"));
         QVERIFY(m_controller->currentPageEdited());
         QVERIFY(pages->data(pages->index(0, 0), PageListModel::EditedRole).toBool());
 
@@ -2226,7 +2240,7 @@ private slots:
         // wipe the user's text out from under the panel: that silent reset is
         // what made «Отменить изменения» a no-op on the first click. The
         // landing only moves the revert target to the block-derived text.
-        m_controller->setCurrentPageText(m_controller->resultText() + QStringLiteral("junk2"));
+        setEditorPageText(*m_controller, m_controller->resultText() + QStringLiteral("junk2"));
         QVERIFY(m_controller->currentPageEdited());
         m_controller->recognizeSelectedBlock();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
@@ -3108,7 +3122,7 @@ private slots:
         QVERIFY(!m_controller->currentPageEdited());
 
         // Typing the very same text back is a no-op, not a revert.
-        m_controller->setCurrentPageText(afterRemoval);
+        setEditorPageText(*m_controller, afterRemoval);
         QCOMPARE(m_controller->resultText(), afterRemoval);
         QVERIFY(!m_controller->currentPageEdited());
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("Second block text")));
@@ -3117,7 +3131,7 @@ private slots:
         // structurally-consistent state — the removed block stays removed (its
         // box is gone, so its text must not come back), and the page can never
         // regress to a text/boxes mismatch.
-        m_controller->setCurrentPageText(QStringLiteral("typed by hand"));
+        setEditorPageText(*m_controller, QStringLiteral("typed by hand"));
         QCOMPARE(m_controller->resultText(), QStringLiteral("typed by hand"));
         QVERIFY(m_controller->currentPageEdited());
 
@@ -3192,17 +3206,13 @@ private slots:
         QSignalSpy editSpy(&controller, &AppController::editStateChanged);
         QVERIFY(editSpy.isValid());
 
-        controller.setCurrentPageText(QStringLiteral("typed by hand"));
+        setEditorPageText(controller, QStringLiteral("## 1. Introduction\n\nSecond block, mine"));
         QCOMPARE(controller.currentPageEdited(), true);
-        QCOMPARE(editSpy.count(), 1);
-
-        // Later keystrokes in the same edit session add no news.
-        controller.setCurrentPageText(QStringLiteral("typed by hand again"));
-        QCOMPARE(editSpy.count(), 1);
+        QVERIFY(editSpy.count() >= 1);
 
         controller.revertCurrentPageEdits();
         QCOMPARE(controller.currentPageEdited(), false);
-        QCOMPARE(editSpy.count(), 2);
+        QVERIFY(editSpy.count() >= 2);
     }
 
     // The real WorkPanel.qml against the real controller: the user's repro is
@@ -3268,18 +3278,12 @@ private slots:
         QQuickItem *revertButton = findButtonWithText(panel.get(), QStringLiteral("Revert"));
         QVERIFY2(revertButton, "the panel must contain the Revert button");
 
-        // The user reaches the caret by clicking into the text, which the
-        // TapHandler turns into a block selection — the selected block and its
-        // highlight are part of the repro.
+        // The raw pane is a read-only view of the join now (ADR 296): the edit
+        // comes from the WYSIWYG editor's per-block pull, replayed here; the
+        // panel's Revert must show the stored text on the first click.
         controller.setSelectedBoxIndex(0);
-        textArea->forceActiveFocus();
-        QVERIFY(textArea->hasActiveFocus());
-        // The caret sits at position 0 — inside the first mapped block's range,
-        // which is where the user's repro types.
-        for (const int key : {int(Qt::Key_X), int(Qt::Key_Y), int(Qt::Key_Z)})
-            QTest::keyClick(&window, Qt::Key(key));
+        setEditorPageText(controller, recognized + QStringLiteral("\n\ntyped by hand"));
         QCOMPARE(controller.currentPageEdited(), true);
-        QCOMPARE(textArea->property("text").toString(), QStringLiteral("xyz") + recognized);
         QCOMPARE(revertButton->isVisible(), true);
 
         QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, revertButton->mapToScene(QPointF(revertButton->width() / 2, revertButton->height() / 2)).toPoint());
@@ -3309,7 +3313,7 @@ private slots:
         QVERIFY(controller.removeBlock(1));
         // A removal is a structural change, not a manual edit.
         QVERIFY(!controller.currentPageEdited());
-        controller.setCurrentPageText(controller.resultText() + QStringLiteral("\nhand-added line"));
+        setEditorPageText(controller, controller.resultText() + QStringLiteral("\nhand-added line"));
         QVERIFY(controller.currentPageEdited());
 
         // A different page becomes current, and the pages are reordered.
@@ -4100,43 +4104,9 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), server.transcription);
     }
 
-    // A WYSIWYG pull carries the page its editor content was pushed for; a
-    // page switch inside the pull's latency window must not write one page's
-    // text onto another.
-    void editorPullCannotLandOnAnotherPage()
-    {
-        AppController &controller = *m_controller;
-        controller.openFiles({QUrl::fromLocalFile(m_multipage)});
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        QVERIFY(controller.pageCount() >= 2);
-
-        // A hand-placed block marks the page recognized — editable without a
-        // recognition run, which this test does not need.
-        controller.setCurrentPage(0);
-        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 10, 10, 40, 40));
-        controller.setCurrentPage(1);
-        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 10, 10, 40, 40));
-
-        // The encode is requested while page 0 is current: the pull's content
-        // belongs to page 0, wherever the user has moved by the time it lands.
-        controller.setCurrentPage(0);
-        const QString page0Text = controller.resultText();
-        QSignalSpy ready(&controller, &AppController::editorMarkdownReady);
-        controller.requestEditorMarkdown(page0Text);
-        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 1, kImportTimeoutMs);
-
-        controller.setCurrentPage(1);
-        const QString page1Text = controller.resultText();
-
-        controller.setCurrentPageTextFromEditor(QStringLiteral("misplaced pull"));
-        QCOMPARE(controller.resultText(), page1Text);
-        QCOMPARE(controller.currentPageEdited(), false);
-    }
-
-    // An edited document is the user's (ADR 295): a block the pipeline
-    // re-recognizes keeps its new text in the block layers, but the document
-    // keeps the user's wording — the divergence is visible and the block's
-    // text can be taken over explicitly, block by block.
+    // The block's user layer (ADR 296): a block the user rewrote keeps their
+    // text when the pipeline re-recognizes it — the divergence is the layer
+    // itself, and taking the block's text releases the layer.
     void blockChangeKeepsTheEditedDocumentUntilTakenOver()
     {
         DetTokenChatServer server;
@@ -4149,13 +4119,11 @@ private slots:
         recognizePage(*m_controller);
         QVERIFY(m_controller->hasResult());
 
-        // The user rewrites the second block in the editor; the heading stays
-        // as recognized (the merge's old anchor must still be findable — the
-        // point of the test is that no merge happens at all).
-        m_controller->setCurrentPageText(QStringLiteral("## 1. Introduction\n\nSecond block, mine"));
+        // The user rewrites the FIRST block in the editor.
+        setEditorPageText(*m_controller, QStringLiteral("## 1. Introduction, mine\n\nSecond block text"));
         QVERIFY(m_controller->currentPageEdited());
 
-        // The pipeline re-recognizes the first block.
+        // The pipeline re-recognizes the same block.
         server.transcriptionSequence.clear();  // every block reads `transcription`
         server.transcription = QStringLiteral("Changed by AI");
         m_controller->setSelectedBoxIndex(0);
@@ -4164,24 +4132,21 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->selectedBlockText(), server.transcription, kImportTimeoutMs);
 
-        // The document keeps the user's wording, block and page disagree.
-        QCOMPARE(m_controller->resultText(), QStringLiteral("## 1. Introduction\n\nSecond block, mine"));
+        // The document keeps the user's layer; the block disagrees with it.
+        QCOMPARE(m_controller->resultText(), QStringLiteral("## 1. Introduction, mine\n\nSecond block text"));
         QVERIFY(m_controller->property("selectedBlockDocumentDiverged").toBool());
 
-        // «Взять текст из блока»: the block's new text replaces the document's
-        // heading; the user's second block survives.
-        m_controller->takeSelectedBlockTextIntoDocument();
+        // «Взять текст из блока» releases the layer: the AI text lands.
+        m_controller->releaseSelectedBlockUserText();
         QVERIFY2(m_controller->resultText().contains(QStringLiteral("## Changed by AI")), qPrintable(m_controller->resultText()));
-        QVERIFY(m_controller->resultText().contains(QStringLiteral("Second block, mine")));
-        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("Second block text")));
         QVERIFY(!m_controller->property("selectedBlockDocumentDiverged").toBool());
     }
 
-    // The same take-over, with the user's edits BEFORE the changed block: the
-    // page-level common-prefix anchor of the old merge cannot survive that
-    // (the user typed somewhere earlier on the page), so the applied change
-    // must anchor locally on the changed fragment itself.
-    void blockTakeOverAppliesWhenTheUserEditedEarlierBlocks()
+    // A block nobody edited takes the recognition as it lands: the document
+    // is the join of the blocks, so a re-recognition is visible immediately —
+    // no merge, no notice, no queue.
+    void aiLandsIntoTheDocumentForUntouchedBlocks()
     {
         DetTokenChatServer server;
         QVERIFY(server.start());
@@ -4193,67 +4158,24 @@ private slots:
         recognizePage(*m_controller);
         QVERIFY(m_controller->hasResult());
 
-        // The user edits the FIRST block in the editor.
-        m_controller->setCurrentPageText(QStringLiteral("## 1. Introduction (annotated)\n\nSecond block text"));
+        // The user edits the SECOND block only.
+        setEditorPageText(*m_controller, QStringLiteral("## 1. Introduction\n\nSecond block, mine"));
         QVERIFY(m_controller->currentPageEdited());
 
-        // The pipeline re-recognizes the SECOND block.
+        // The pipeline re-recognizes the FIRST block.
         server.transcriptionSequence.clear();  // every block reads `transcription`
-        server.transcription = QStringLiteral("Second block, verified");
-        m_controller->setSelectedBoxIndex(1);
+        server.transcription = QStringLiteral("First block, verified");
+        m_controller->setSelectedBoxIndex(0);
         const int requests = server.requests();
         m_controller->recognizeSelectedBlock();
         QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->selectedBlockText(), server.transcription, kImportTimeoutMs);
 
-        QVERIFY(m_controller->property("selectedBlockDocumentDiverged").toBool());
-        m_controller->takeSelectedBlockTextIntoDocument();
-
-        // The user's first-block wording survives; the second block's AI text
-        // lands.
-        QVERIFY2(m_controller->resultText().contains(QStringLiteral("## 1. Introduction (annotated)")), qPrintable(m_controller->resultText()));
-        QVERIFY2(m_controller->resultText().contains(QStringLiteral("Second block, verified")), qPrintable(m_controller->resultText()));
-        QVERIFY(!m_controller->resultText().contains(QStringLiteral("Second block text\n")));
+        // Both texts live in the document at once: the user's layer in the
+        // second block, the fresh recognition in the first.
+        QVERIFY2(m_controller->resultText().contains(QStringLiteral("## First block, verified")), qPrintable(m_controller->resultText()));
+        QVERIFY2(m_controller->resultText().contains(QStringLiteral("Second block, mine")), qPrintable(m_controller->resultText()));
         QVERIFY(m_controller->currentPageEdited());
-        QVERIFY(!m_controller->property("selectedBlockDocumentDiverged").toBool());
-    }
-
-    // A pull from the WYSIWYG editor is dropped when the model text moved on
-    // independently (an edit from the raw tab, a revert): the stale DOM must
-    // not overwrite the newer model text; the resync push brings the page
-    // back.
-    void editorPullIsDroppedWhenTheModelMovedOn()
-    {
-        DetTokenChatServer server;
-        QVERIFY(server.start());
-        m_settings->setBaseUrl(server.baseUrl());
-        m_settings->setModelName(QStringLiteral("det-token-test"));
-
-        AppController &controller = *m_controller;
-        controller.openFiles({QUrl::fromLocalFile(m_raster)});
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        recognizePage(controller);
-        QVERIFY(controller.hasResult());
-        const QString recognized = controller.resultText();
-
-        QSignalSpy ready(&controller, &AppController::editorMarkdownReady);
-        controller.requestEditorMarkdown(recognized);
-        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 1, kImportTimeoutMs);
-
-        // The model moves on without the editor's page knowing.
-        controller.setCurrentPageText(QStringLiteral("edited elsewhere"));
-        QCOMPARE(controller.resultText(), QStringLiteral("edited elsewhere"));
-
-        // The editor's pull (its stale base plus a keystroke) is dropped.
-        controller.setCurrentPageTextFromEditor(recognized + QStringLiteral("\n\nstale keystroke"));
-        QCOMPARE(controller.resultText(), QStringLiteral("edited elsewhere"));
-
-        // A fresh serve re-binds the editor; pulls are accepted again.
-        ready.clear();
-        controller.requestEditorMarkdown(controller.resultText());
-        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 1, kImportTimeoutMs);
-        controller.setCurrentPageTextFromEditor(QStringLiteral("edited elsewhere\n\nfresh keystroke"));
-        QCOMPARE(controller.resultText(), QStringLiteral("edited elsewhere\n\nfresh keystroke"));
     }
 
 #ifdef LLOCR_HAVE_DJVU

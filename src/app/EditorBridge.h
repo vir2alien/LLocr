@@ -20,6 +20,12 @@ signals:
     // pushToken identifies the push the text derives from: a pull whose token
     // is no longer the page's current one is an echo of a replaced document.
     void editorTextChanged(const QString &markdown, qint64 pushToken);
+    // The per-block pull (ADR 296): the ordinal of the editor's tagged block
+    // and its new markdown. The ordinal travels through the block map of the
+    // push it belongs to.
+    void editorBlockChanged(int blockOrdinal, const QString &markdown, qint64 pushToken);
+    // A block's AI-version badge was clicked: the layer releases.
+    void editorBlockReleased(int blockOrdinal, qint64 pushToken);
     void editorReferenceChanged(const QString &markdown, qint64 pushToken);
     void editorFocusChanged(bool focused);
     void editorBlockClicked(int blockIndex);
@@ -27,6 +33,8 @@ signals:
 public slots:
     void notifyPageReady();
     void notifyTextChanged(const QString &markdown, qint64 pushToken);
+    void notifyBlockChanged(int blockOrdinal, const QString &markdown, qint64 pushToken);
+    void notifyBlockReleased(int blockOrdinal, qint64 pushToken);
     void notifyReferenceChanged(const QString &markdown, qint64 pushToken);
     void notifyEditorFocus(bool focused);
     void notifyBlockClicked(int blockIndex);

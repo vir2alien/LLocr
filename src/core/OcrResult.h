@@ -62,6 +62,9 @@ struct BoundingBox {
     QString text;                                                      ///< OCR result of this fragment (the text layer).
     QString correctedText;                                             ///< Correction layer: the universal model's fix (ADR 163);
                                                                        ///< empty when the block was never corrected.
+    QString userText;                                                  ///< The user's markdown for this block (ADR 296): the
+                                                                       ///< document text of the block when non-empty, written
+                                                                       ///< verbatim (with the style markers).
     BoxCheckStatus checkStatus = BoxCheckStatus::NotChecked;           ///< Verdict on the text layer.
     BoxCheckStatus correctedCheckStatus = BoxCheckStatus::NotChecked;  ///< Verdict on the correction layer.
     BoxFixStatus fixStatus = BoxFixStatus::None;                       ///< Outcome of the last remedy — the fix or the read (ADR 185, ADR 260).

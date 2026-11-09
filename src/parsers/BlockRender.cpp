@@ -202,15 +202,53 @@ IOutputParser::RebuiltPageText renderPageText(const OcrPage &page, const ParserO
         BlockStyleInfo style = blockStyleForLabel(box.label, options.modelId);
         if (style.style == BlockStyle::ImagePlaceholder)
             style.imageIndex = i;
-        const QString text = BoxTransitions::effectiveText(box);
-        if (text.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
+        // The user's layer (ADR 296) carries the final markdown verbatim; the
+        // canonical text goes through the block's style. A block without any
+        // text renders nothing.
+        if (BoxTransitions::effectiveText(box).isEmpty() && box.userText.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
             continue;
-        const QString rendered = renderBlockText(text, style, options);
+        const QString canonical = renderBlockText(BoxTransitions::effectiveText(box), style, options);
+        const QString rendered = box.userText.isEmpty() ? canonical : box.userText;
         ranges.append({i, offset, static_cast<int>(rendered.size())});
         blocks << rendered;
         offset += rendered.size() + 2;  // blocks.join("\n\n") separator
     }
     return {blocks.join(QStringLiteral("\n\n")), ranges};
+}
+
+bool migrateLegacyPageText(OcrPage &page, const QString &legacyText, const ParserOptions &options)
+{
+    const auto canonical = renderPageText(page, options);
+    if (canonical.text == legacyText)
+        return true;
+    // Locate every canonical fragment in the legacy text, in order; the
+    // segment between a fragment's predecessor's end and its successor's
+    // start is the block's document text — when it holds more than the
+    // canonical fragment itself, that extra is the user's wording (ADR 296).
+    // One fragment that does not appear in order refuses the whole map.
+    QList<qsizetype> ends;
+    ends.reserve(canonical.ranges.size());
+    for (const BlockTextRange &range : canonical.ranges) {
+        const QString fragment = canonical.text.mid(range.start, range.length);
+        const qsizetype pos = legacyText.indexOf(fragment, ends.isEmpty() ? 0 : ends.last());
+        if (pos < 0)
+            return false;
+        ends.append(pos + fragment.size());
+    }
+    for (int i = 0; i < canonical.ranges.size(); ++i) {
+        const QString fragment = canonical.text.mid(canonical.ranges.at(i).start, canonical.ranges.at(i).length);
+        const qsizetype start = i == 0 ? 0 : ends.at(i - 1);
+        const qsizetype end = i + 1 == canonical.ranges.size() ? legacyText.size() : [&] {
+            const BlockTextRange &next = canonical.ranges.at(i + 1);
+            return legacyText.indexOf(canonical.text.mid(next.start, next.length), ends.at(i));
+        }();
+        if (end < 0)
+            return false;
+        const QString segment = legacyText.mid(start, end - start).trimmed();
+        if (!segment.isEmpty() && segment != fragment)
+            page.boxes[canonical.ranges.at(i).boxIndex].userText = segment;
+    }
+    return true;
 }
 
 QVariantList blockBoxMap(const QString &pageText, const QList<BlockTextRange> &ranges)

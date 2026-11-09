@@ -33,7 +33,6 @@ struct ProjectPageData {
     bool userOriented = false;                                                 // The user turned the page: the orientation check leaves it alone.
     PageOrientationProblem orientationProblem = PageOrientationProblem::None;  // What the orientation check found.
     QString text;                                                              // effective page text, manual edits included
-    QString baseline;                                                          // recognized text, the "revert" target
     QString parseNote;
     QList<BoundingBox> boxes;
 };

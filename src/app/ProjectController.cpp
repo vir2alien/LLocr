@@ -71,10 +71,8 @@ bool ProjectController::collect(ProjectData *data, QString *error)
         entry.text = page.result.text;
         entry.parseNote = page.parseNote;
         entry.boxes = page.result.pages.isEmpty() ? QList<BoundingBox>() : page.result.pages.first().boxes;
-        if (page.recognized) {
-            entry.baseline = m_deps.editStore.baseline(i);
+        if (page.recognized)
             entry.edited = m_deps.editStore.isEdited(i);
-        }
         data->pages.append(entry);
     }
     return true;
@@ -231,9 +229,7 @@ void ProjectController::apply(const ProjectData &data)
 
     for (int slot = 0; slot < kept.size(); ++slot) {
         const ProjectPageData &entry = data.pages.at(savedIndexForSlot.at(slot));
-        m_deps.editStore.reset(slot, entry.baseline);
-        if (entry.edited)
-            m_deps.editStore.setEdited(slot, true);
+        m_deps.editStore.setEdited(slot, entry.edited);
         m_deps.pageModel.setRecognized(slot, entry.recognized);
         m_deps.pageModel.setEdited(slot, entry.edited);
         m_deps.pageModel.setHasDuplicates(slot, entry.hasDuplicates);
@@ -264,6 +260,7 @@ void ProjectController::apply(const ProjectData &data)
         m_deps.status(StatusMessage::translate("ProjectController", "Project opened: %1 page(s), %2 skipped.").arg(m_deps.document.pageCount()).arg(skipped.size()));
 
     m_deps.documentChanged();
+    emit restored();
 }
 
 void ProjectController::open(const QUrl &fileUrl)

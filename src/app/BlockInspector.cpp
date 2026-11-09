@@ -197,6 +197,33 @@ QVariantList BlockInspector::blockBoxMap() const
     return llocr::blockBoxMap(rebuild.text, rebuild.ranges);
 }
 
+QVariantList BlockInspector::blockFragments() const
+{
+    QVariantList fragments;
+    const auto rebuild = currentPageRebuild();
+    for (const BlockTextRange &range : rebuild.ranges)
+        fragments.append(rebuild.text.mid(range.start, range.length));
+    return fragments;
+}
+
+QVariantList BlockInspector::blockUserLayerFlags() const
+{
+    QVariantList flags;
+    const auto rebuild = currentPageRebuild();
+    const DocumentModel &document = m_deps.document;
+    const int page = m_deps.currentPage();
+    if (!document.isValidIndex(page) || document.page(page).result.pages.isEmpty())
+        return flags;
+    const QList<BoundingBox> &boxes = document.page(page).result.pages.first().boxes;
+    for (const BlockTextRange &range : rebuild.ranges) {
+        if (range.boxIndex >= 0 && range.boxIndex < boxes.size())
+            flags.append(!boxes.at(range.boxIndex).userText.isEmpty());
+        else
+            flags.append(false);
+    }
+    return flags;
+}
+
 int BlockInspector::boxIndexForTextPosition(int position) const
 {
     const auto rebuild = currentPageRebuild();

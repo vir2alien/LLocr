@@ -1689,6 +1689,27 @@ appendix at the end of this file.
   (`editorPullIsDroppedWhenTheModelMovedOn`,
   `blockChangeKeepsTheEditedDocumentUntilTakenOver`).
 
+- **296.** The document is the join of the blocks (superseding ADR 295 and
+  the merge half of ADR 190 outright): the page text is derived —
+  `renderPageText` joins the blocks, each carrying an optional `userText`
+  layer (the user's markdown for that block, written verbatim). The WYSIWYG
+  editor's pull is per-block: the page reports `{ordinal, markdown}` and the
+  layer is written (or released, when the markdown equals the canonical
+  render) — no full-page writes, no merges, no queues, no anchor searches.
+  A block nobody layered takes its recognition as it lands; a block with a
+  layer keeps the user's wording and shows the AI-version badge (the panel's
+  notice, or the badge in the editor — both release the layer). «Изменено» =
+  any layer set; Revert releases all layers of the page. The raw «Текст
+  (MD)» pane is the read-only view of the join (copy, tap-to-block over the
+  exact ranges, highlight remain); structural edits stay on the canvas.
+  Legacy projects' hand-written page text maps into the layers once, at
+  load (`migrateLegacyProjectText`; a text the fragments cannot reproduce
+  stands canonical). Undo stays the editor's own within a typing session —
+  the user's commits no longer push at all, and every model-side push is a
+  checkpoint (`test_page_document`,
+  `blockChangeKeepsTheEditedDocumentUntilTakenOver`,
+  `aiLandsIntoTheDocumentForUntouchedBlocks`).
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

@@ -1,12 +1,14 @@
 "use strict";
 
-// The bridge is the only channel back to QML: page lifecycle, the edited
-// text, block clicks and editor focus all travel through it. Everything else
-// (markdown in) arrives through runJavaScript calls on the view.
+// The bridge is the only channel back to QML: page lifecycle, per-block
+// edits, block clicks and editor focus all travel through it. Everything
+// else (markdown in) arrives through runJavaScript calls on the view.
 let bridge = null;
 let vditor = null;
 let reference = "";      // normalized markdown of the last push
 let lastPushed = null;   // markdown of the last push, as received
+let blockMd = [];        // the pushed markdown of every tagged block
+let blockFlags = [];     // per block: the recognition carries another text
 let pushToken = 0;       // identifies the push the page's content derives from
 let pullTimer = null;
 let highlighted = [];
@@ -61,6 +63,45 @@ function retagBlocks() {
         children[i].setAttribute("data-ll-block", String(i));
 }
 
+// The blocks the user layered get a badge: the recognition carries a
+// different text, and the badge click releases the layer.
+function refreshBadges() {
+    const content = contentElement();
+    if (!content)
+        return;
+    const children = Array.from(content.children);
+    for (let i = 0; i < children.length; ++i) {
+        let badge = children[i].querySelector(":scope > .ll-ai-badge");
+        if (blockFlags[i]) {
+            if (!badge) {
+                badge = document.createElement("button");
+                badge.className = "ll-ai-badge";
+                badge.textContent = "AI";
+                badge.title = "The recognition carries a different text — click to take it";
+                badge.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (bridge)
+                        bridge.notifyBlockReleased(i, pushToken);
+                });
+                children[i].appendChild(badge);
+            }
+        } else if (badge) {
+            badge.remove();
+        }
+    }
+}
+
+// The editor edits one block at a time: a structural change (a block added
+// or removed by Enter/Backspace across boundaries) is out of scope — the
+// page is pushed back over it.
+function blockStructureChanged() {
+    const content = contentElement();
+    if (!content)
+        return false;
+    return content.children.length !== blockMd.length;
+}
+
 function schedulePull() {
     // The timer arms even during a push-settle: a keystroke landing there
     // must not stay uncommitted just because the window was brief.
@@ -70,26 +111,56 @@ function schedulePull() {
     if (suppressPull)
         return;
     retagBlocks();
+    refreshBadges();
+    refreshMath();
 }
 
 function pull() {
     pullTimer = null;
     if (!bridge || !vditor)
         return;
-    const value = vditor.getValue();
-    if (value !== reference && value !== lastPushed) {
-        // The commit becomes the page's own baseline: the follow-up push of
-        // the same text (the model's encode of this very pull) must no-op in
-        // pushPage instead of setValue-ing over it — a setValue here would
-        // clear the undo stack mid-typing.
-        reference = value;
-        lastPushed = value;
-        bridge.notifyTextChanged(value, pushToken);
+    if (suppressPull)
+        return;
+    if (blockStructureChanged()) {
+        pushPage(lastPushed, null);
+        return;
     }
+    retagBlocks();
+    refreshBadges();
+
+    const selection = window.getSelection();
+    const anchor = selection && selection.anchorNode
+        ? (selection.anchorNode.nodeType === 1 ? selection.anchorNode : selection.anchorNode.parentElement)
+        : null;
+    const tag = anchor ? anchor.closest("[data-ll-block]") : null;
+    if (!tag)
+        return;
+    const ordinal = parseInt(tag.getAttribute("data-ll-block"), 10);
+    if (!(ordinal >= 0) || ordinal >= blockMd.length)
+        return;
+
+    const value = vditor.getValue();
+    if (value === reference || value === lastPushed)
+        return;
+    // The typed markdown of the block: the whole document's serialization
+    // shrinks and grows only inside the edited block, so its slice is the
+    // old fragment shifted by the document's size delta.
+    const oldMd = blockMd[ordinal];
+    const at = lastPushed.indexOf(oldMd);
+    if (at < 0)
+        return;
+    const delta = value.length - lastPushed.length;
+    const newMd = value.substr(at, oldMd.length + delta);
+    if (newMd === oldMd)
+        return;
+    blockMd[ordinal] = newMd;
+    lastPushed = value;
+    reference = value;
+    bridge.notifyBlockChanged(ordinal, newMd, pushToken);
 }
 
 function applyTheme(t) {
-    if (!vditor)
+    if (!vditor || !t)
         return;
     vditor.setTheme(t.dark ? "dark" : "classic",
                     t.dark ? "dark" : "light",
@@ -102,6 +173,7 @@ function applyTheme(t) {
 function pushPage(markdown, theme) {
     applyTheme(theme);
     retagBlocks();
+    refreshBadges();
     if (markdown === lastPushed)
         return;
     lastPushed = markdown;
@@ -114,14 +186,17 @@ function pushPage(markdown, theme) {
         // setValue rebuilds the content DOM asynchronously — the tags that
         // retagBlocks() laid before it are gone by now.
         retagBlocks();
+        refreshBadges();
         if (bridge)
             bridge.notifyReferenceChanged(reference, pushToken);
     }, 0);
 }
 
+// A model-side release of a layer («Взять текст из блока», the badge): the
+// changed document comes in through the next push — nothing to do here.
 function highlightBlocks(indices) {
-    for (const el of highlighted)
-        el.classList.remove("ll-hl");
+    for (const marked of highlighted)
+        marked.classList.remove("ll-hl");
     highlighted = [];
     const content = contentElement();
     if (!content)
@@ -148,7 +223,7 @@ function initVditor() {
         height: "100%",
         placeholder: "",
         preview: { math: { inlineMath: true } },
-        toolbar: ["undo", "redo", "headings", "bold", "italic", "strike", "|",
+        toolbar: ["headings", "bold", "italic", "strike", "|",
                   "list", "ordered-list", "check", "|",
                   "quote", "inline-code", "code", "table"],
         after() {
@@ -156,7 +231,7 @@ function initVditor() {
             if (content) {
                 content.addEventListener("click", (event) => {
                     const block = event.target.closest("[data-ll-block]");
-                    if (block && bridge)
+                    if (block && bridge && !event.target.classList.contains("ll-ai-badge"))
                         bridge.notifyBlockClicked(parseInt(block.getAttribute("data-ll-block"), 10));
                 });
                 watchMath();
@@ -164,10 +239,18 @@ function initVditor() {
             if (bridge)
                 bridge.notifyPageReady();
         },
-        input() { schedulePull(); refreshMath(); },
+        input() { schedulePull(); },
         focus() { if (bridge) bridge.notifyEditorFocus(true); },
         blur() { if (bridge) bridge.notifyEditorFocus(false); },
     });
+}
+
+// The push carries what the badges need: the markdown of every block and
+// which of them hold a user layer.
+function pushDocument(markdown, theme, nextBlockMd, nextBlockFlags) {
+    blockMd = nextBlockMd || [];
+    blockFlags = nextBlockFlags || [];
+    pushPage(markdown, theme);
 }
 
 new QWebChannel(qt.webChannelTransport, (channel) => {

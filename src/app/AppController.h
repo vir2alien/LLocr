@@ -96,8 +96,8 @@ class AppController : public QObject
     Q_PROPERTY(int selectedBlockSyntaxProblem READ selectedBlockSyntaxProblem NOTIFY selectedBoxChanged)
     Q_PROPERTY(bool selectedBlockUsesCorrected READ selectedBlockUsesCorrected WRITE setSelectedBlockUsesCorrected NOTIFY selectedBoxChanged)
     Q_PROPERTY(QVariantList selectedBlockTextRange READ selectedBlockTextRange NOTIFY blockTextRangeChanged)
-    // The selected block's text and the edited document disagree (ADR 295):
-    // the block carries a pipeline text the document did not take.
+    // The selected block carries a user layer different from the recognition
+    // (the block panel's divergence notice).
     Q_PROPERTY(bool selectedBlockDocumentDiverged READ selectedBlockDocumentDiverged NOTIFY blockDocumentDivergedChanged)
     // What the correction changed (ADR 186): the ranges the panel tints — the
     // fragments the fix dropped from the original and the ones it put in.
@@ -272,18 +272,6 @@ public:
     void setSelectedBlockUsesCorrected(bool corrected);
     QVariantList selectedBlockTextRange() const { return m_inspector.selectedBlockTextRange(); }
     bool selectedBlockDocumentDiverged() const;
-    // The box a queued pipeline change belongs to, when the diff names one
-    // block (-1 otherwise); used to aim the block panel's divergence notice.
-    int pendingChangeBox(int pageIndex, const QString &previous, const QString &rebuilt) const;
-
-    // A pipeline change that landed in the blocks while the page carried the
-    // user's text: queued by applyPageTextChanged, applied by
-    // takeSelectedBlockTextIntoDocument (ADR 295).
-    struct PendingDocumentChange {
-        int boxIndex;
-        QString previous;
-        QString rebuilt;
-    };
     void setSelectedBoxIndex(int index) { m_inspector.setSelectedBoxIndex(index); }
     QVariantList selectedBlockRemovedRanges() const { return m_inspector.selectedBlockRemovedRanges(); }
     QVariantList selectedBlockAddedRanges() const { return m_inspector.selectedBlockAddedRanges(); }
@@ -382,7 +370,7 @@ signals:
     void pageImageReady(int index);
     void previewRenderingChanged();
     void previewMarkdownReady(const QString &markdown);
-    void editorMarkdownReady(const QString &markdown, const QVariantList &blockMap);
+    void editorMarkdownReady(const QString &markdown, const QVariantList &blockMap, const QVariantList &blockMd, const QVariantList &blockFlags);
     void layoutStateChanged();
     void layoutProgressChanged();
     void layoutAvailableChanged();
@@ -419,14 +407,15 @@ public slots:
     Q_INVOKABLE bool removePage(int index);
     Q_INVOKABLE bool movePage(int from, int to);
     Q_INVOKABLE bool exportPages(const QUrl &fileUrl, int scope, int fromPage = 1, int toPage = 1);
-    Q_INVOKABLE void setCurrentPageText(const QString &text);
-    // Text pulled from the WYSIWYG editor: the crop references it returns
-    // are data: URIs, written back as image://ocr/crop before the model sees
-    // them; data: URIs the page never saw from us pass through unchanged.
-    Q_INVOKABLE void setCurrentPageTextFromEditor(const QString &text);
-    // «Взять текст из блока»: the selected block's current text replaces the
-    // document's wording for that block (ADR 295).
-    Q_INVOKABLE void takeSelectedBlockTextIntoDocument();
+    // The WYSIWYG editor's per-block pull (ADR 296): the markdown the user
+    // typed into the block becomes its document layer; text identical to the
+    // canonical render releases the layer.
+    Q_INVOKABLE void setUserBlockText(int blockIndex, const QString &markdown);
+    // Releases the selected block's user layer: the document follows the
+    // recognition again («Взять текст из блока»).
+    Q_INVOKABLE void releaseSelectedBlockUserText();
+    // The same by box: the editor's badge names the block its ordinal maps to.
+    Q_INVOKABLE void releaseBlockUserText(int boxIndex);
     Q_INVOKABLE void revertCurrentPageEdits();
     Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height);
     Q_INVOKABLE bool removeBlock(int boxIndex);
@@ -443,6 +432,8 @@ public slots:
     // editor tags its DOM blocks with; the answer comes back through
     // editorMarkdownReady, the latest request wins.
     Q_INVOKABLE void requestEditorMarkdown(const QString &markdown);
+    Q_INVOKABLE QVariantList editorBlockFlags() const;
+    void migrateLegacyProjectText();
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();
     // The user confirms the block by hand (ADR 185): the layer in view is
@@ -569,6 +560,11 @@ private:
     // The effective text of the page changed structurally: rebuild it, rebase
     // the edit baseline and refresh the views.
     void applyPageTextChanged(int pageIndex);
+    // The page text derived from its blocks (ADR 296): the join with the user
+    // layers, the derived edited flag, the signal fan-out.
+    void refreshPageDocument(int pageIndex);
+    bool pageUserEdited(int index) const;
+    QString decodeEditorMarkdown(const QString &text) const;
     // The pipeline-driven form of the above: while a run is active the rebuild
     // and its signal fan-out are coalesced into one flush per trailing-edge
     // window (plus a guaranteed flush when the run ends); without a run it is
@@ -663,8 +659,6 @@ private:
     quint64 m_previewMarkdownGeneration = 0;          ///< the request an in-flight preview encode belongs to; a newer request drops it
     QList<QPair<QString, QString>> m_editorCropRefs;  ///< data: URI → image://ocr/crop for the editor's last push
     int m_editorMarkdownPage = -1;                    ///< the page the editor's current content was pushed for; pulls for another page are dropped
-    QString m_editorServedText;                       ///< the model text the editor's content derives from; a pull against a newer model is dropped
-    QHash<int, QList<PendingDocumentChange>> m_pendingDocumentChanges;
     PageEditStore m_editStore;
     StatusMessage m_statusMessage;        ///< stored untranslated, rendered on read
     StatusMessage m_autoPipelineMessage;  ///< the run's outcome and its caveats
