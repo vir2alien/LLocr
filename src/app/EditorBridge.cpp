@@ -22,11 +22,6 @@ void EditorBridge::notifyBlockChanged(int blockOrdinal, const QString &markdown,
     emit editorBlockChanged(blockOrdinal, markdown, pushToken);
 }
 
-void EditorBridge::notifyBlockReleased(int blockOrdinal, qint64 pushToken)
-{
-    emit editorBlockReleased(blockOrdinal, pushToken);
-}
-
 void EditorBridge::notifyResyncRequested()
 {
     emit editorResyncRequested();

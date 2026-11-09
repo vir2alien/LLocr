@@ -24,8 +24,6 @@ signals:
     // and its new markdown. The ordinal travels through the block map of the
     // push it belongs to.
     void editorBlockChanged(int blockOrdinal, const QString &markdown, qint64 pushToken);
-    // A block's AI-version badge was clicked: the layer releases.
-    void editorBlockReleased(int blockOrdinal, qint64 pushToken);
     // The page skipped a model push while the user was typing and asks for
     // the current state now that its typing has settled.
     void editorResyncRequested();
@@ -37,7 +35,6 @@ public slots:
     void notifyPageReady();
     void notifyTextChanged(const QString &markdown, qint64 pushToken);
     void notifyBlockChanged(int blockOrdinal, const QString &markdown, qint64 pushToken);
-    void notifyBlockReleased(int blockOrdinal, qint64 pushToken);
     void notifyResyncRequested();
     void notifyReferenceChanged(const QString &markdown, qint64 pushToken);
     void notifyEditorFocus(bool focused);

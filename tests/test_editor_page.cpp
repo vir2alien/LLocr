@@ -22,7 +22,7 @@ class TestEditorPage : public QObject
 private slots:
     void loadsVditorUnderThePageCspAndRendersPushedMarkdown();
     void undoBrokenMathPreviewsAreReRendered();
-    void blockEditReportsThePullAndRendersTheBadge();
+    void blockEditReportsThePullAndKeepsTheDomClean();
     void blockWithInnerBlankLineKeepsThePullAlive();
 
 private:
@@ -153,10 +153,10 @@ void TestEditorPage::undoBrokenMathPreviewsAreReRendered()
     QVERIFY(children > 0);
 }
 
-// The user's flow: a keystroke in a block pulls the block's markdown, the
-// model answers with a push carrying the fresh layer flags, and the block
-// gets its take-over badge. Every link must survive the real page.
-void TestEditorPage::blockEditReportsThePullAndRendersTheBadge()
+// The user's flow: a keystroke in a block pulls the block's markdown, and
+// the model's answering push leaves the content exactly the user's text —
+// nothing injects itself into the blocks.
+void TestEditorPage::blockEditReportsThePullAndKeepsTheDomClean()
 {
     EditorBridge bridge;
     QWebChannel channel;
@@ -178,9 +178,9 @@ void TestEditorPage::blockEditReportsThePullAndRendersTheBadge()
     QVERIFY2(loadOk, "editor.html failed to load");
     spinUntil([&]() { return ready; });
 
-    // The app-level push: the document plus the per-block fragments/flags.
+    // The app-level push: the document plus the per-block fragments.
     bool pushed = false;
-    page.runJavaScript(QStringLiteral(R"js(pushDocument("Body\n\nSecond", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["Body", "Second"], [false, false]);)js"),
+    page.runJavaScript(QStringLiteral(R"js(pushDocument("Body\n\nSecond", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["Body", "Second"]);)js"),
                        [&pushed](const QVariant &) { pushed = true; });
     spinUntil([&]() { return pushed; });
 
@@ -221,19 +221,30 @@ void TestEditorPage::blockEditReportsThePullAndRendersTheBadge()
     // newline), and a delta across them would steal a tail into the fragment.
     QCOMPARE(reportedMarkdown, QStringLiteral("Secondx"));
 
-    // The echo push carrying the fresh flags renders the badge on the block.
+    // The echo push answers the layer. The DOM is read as text: running the
+    // lute serializer in a loop crashes the renderer under the offscreen
+    // platform.
     bool echoed = false;
-    page.runJavaScript(QStringLiteral(R"js(pushDocument("Body\n\nSecondx", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["Body", "Secondx"], [false, true]);)js"),
+    page.runJavaScript(QStringLiteral(R"js(pushDocument("Body\n\nSecondx", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["Body", "Secondx"]);)js"),
                        [&echoed](const QVariant &) { echoed = true; });
     spinUntil([&]() { return echoed; });
 
-    int badge = 0;
+    // The verdict travels as a number: a JS string handed to a QVariant in a
+    // tight loop corrupts the renderer heap under the offscreen platform.
+    int verdict = 0;
     spinUntil([&]() {
-        page.runJavaScript(QStringLiteral("document.querySelectorAll('[data-ll-block=\"1\"] > .ll-ai-badge').length"), [&badge](const QVariant &v) { badge = v.toInt(); });
+        page.runJavaScript(QStringLiteral("(function(){"
+                                          " var c = document.querySelector('.vditor-wysiwyg [contenteditable]');"
+                                          " if (!c) return 0;"
+                                          " var t = c.textContent;"
+                                          " if (t.indexOf('Secondx') < 0) return 0;"
+                                          " return (t.indexOf('ll-ai-badge') >= 0 || t.indexOf('AI') >= 0) ? 2 : 1;"
+                                          "})()"),
+                           [&verdict](const QVariant &v) { verdict = v.toInt(); });
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-        return badge > 0;
+        return verdict > 0;
     });
-    QCOMPARE(badge, 1);
+    QCOMPARE(verdict, 1);
 }
 
 // A canonical fragment may carry a blank line inside itself (a multi-paragraph
@@ -264,7 +275,7 @@ void TestEditorPage::blockWithInnerBlankLineKeepsThePullAlive()
 
     // The push: three page segments, one model fragment spanning the last two.
     bool pushed = false;
-    page.runJavaScript(QStringLiteral(R"js(pushDocument("First\n\nA\n\nB", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["First", "A", "B"], [false, false, false]);)js"),
+    page.runJavaScript(QStringLiteral(R"js(pushDocument("First\n\nA\n\nB", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"}, ["First", "A", "B"]);)js"),
                        [&pushed](const QVariant &) { pushed = true; });
     spinUntil([&]() { return pushed; });
 

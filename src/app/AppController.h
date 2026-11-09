@@ -370,7 +370,7 @@ signals:
     void pageImageReady(int index);
     void previewRenderingChanged();
     void previewMarkdownReady(const QString &markdown);
-    void editorMarkdownReady(const QString &markdown, const QVariantList &blockMap, const QVariantList &blockMd, const QVariantList &blockFlags);
+    void editorMarkdownReady(const QString &markdown, const QVariantList &blockMap, const QVariantList &blockMd);
     void layoutStateChanged();
     void layoutProgressChanged();
     void layoutAvailableChanged();

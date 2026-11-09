@@ -2419,7 +2419,7 @@ void AppController::requestEditorMarkdown(const QString &markdown)
     if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown) {
         m_editorCropRefs = m_previewCacheRefs;
         m_editorMarkdownPage = m_currentPage;
-        emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap(), encodedBlockSegments(), m_inspector.blockSegmentFlags());
+        emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap(), encodedBlockSegments());
         return;
     }
 
@@ -2441,7 +2441,7 @@ void AppController::requestEditorMarkdown(const QString &markdown)
         m_previewCacheRefs = result.second;
         m_editorCropRefs = result.second;
         m_editorMarkdownPage = page;
-        emit editorMarkdownReady(result.first, blockMap, encodedBlockSegments(), m_inspector.blockSegmentFlags());
+        emit editorMarkdownReady(result.first, blockMap, encodedBlockSegments());
     });
     const QPointer<AppController> self(this);
     watcher->setFuture(QtConcurrent::run([self, page, markdown]() {

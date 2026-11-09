@@ -12,13 +12,11 @@ Item {
 
     property string markdown: ""
     // The box owning every top-level markdown block, in page order; the
-    // editor's DOM blocks are tagged with the same ordinals. blockFlags[i]
-    // marks the blocks whose recognition differs from the document (ADR 296).
+    // editor's DOM blocks are tagged with the same ordinals (ADR 296).
     property var blockMap: []
     // The pushed markdown of every tagged block: the per-block pull names its
     // ordinal, and the editor's page needs the fragments to slice the pull.
     property var blockMd: []
-    property var blockFlags: []
     property bool dark: false
     property color bgColor: "white"
     property color fgColor: "black"
@@ -27,7 +25,6 @@ Item {
     // The per-block pull (ADR 296): the editor reports the ordinal and the
     // markdown of the block the user typed in.
     signal editorBlockChanged(int blockOrdinal, string markdown)
-    signal editorBlockReleased(int blockOrdinal)
     signal blockClicked(int blockIndex)
 
     property bool _pageLoaded: false
@@ -41,8 +38,7 @@ Item {
             return
         var js = "pushDocument(" + JSON.stringify(root.markdown) + ", "
                + JSON.stringify({ dark: root.dark, bg: String(root.bgColor), fg: String(root.fgColor), hl: root.hl }) + ", "
-               + JSON.stringify(root.blockMd) + ", "
-               + JSON.stringify(root.blockFlags) + ");"
+               + JSON.stringify(root.blockMd) + ");"
         web.runJavaScript(js)
     }
 
@@ -135,10 +131,6 @@ Item {
             if (pushToken !== root._referenceToken)
                 return
             root.editorBlockChanged(blockOrdinal, markdown)
-        }
-        function onEditorBlockReleased(blockOrdinal, pushToken) {
-            if (pushToken === root._referenceToken)
-                root.editorBlockReleased(blockOrdinal)
         }
         function onEditorBlockClicked(blockIndex) {
             root.blockClicked(blockIndex)

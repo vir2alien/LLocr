@@ -10,7 +10,6 @@ let rawLast = null;      // the markdown of the last model push, as received
 let lastEditor = "";     // the editor's serialization the pulls slice against
 let domBlocks = 0;       // the DOM block count of the synced state
 let blockMd = [];        // the pushed markdown of every tagged block
-let blockFlags = [];     // per block: the recognition carries another text
 let pushToken = 0;       // identifies the push the page's content derives from
 let dirty = false;       // the DOM holds text the model has not seen yet
 let stale = false;       // a model push was skipped while dirty; fetched at the next settle
@@ -68,35 +67,6 @@ function retagBlocks() {
         children[i].setAttribute("data-ll-block", String(i));
 }
 
-// The blocks the user layered get a badge: the recognition carries a
-// different text, and the badge click releases the layer.
-function refreshBadges() {
-    const content = contentElement();
-    if (!content)
-        return;
-    const children = Array.from(content.children);
-    for (let i = 0; i < children.length; ++i) {
-        let badge = children[i].querySelector(":scope > .ll-ai-badge");
-        if (blockFlags[i]) {
-            if (!badge) {
-                badge = document.createElement("button");
-                badge.className = "ll-ai-badge";
-                badge.textContent = "AI";
-                badge.title = "The recognition carries a different text — click to take it";
-                badge.addEventListener("click", (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (bridge)
-                        bridge.notifyBlockReleased(i, pushToken);
-                });
-                children[i].appendChild(badge);
-            }
-        } else if (badge) {
-            badge.remove();
-        }
-    }
-}
-
 // The editor edits one block at a time: a structural change (a block added
 // or removed by Enter/Backspace across boundaries) is out of scope — the
 // page is pushed back over it. The baseline is the DOM block count of the
@@ -119,7 +89,6 @@ function schedulePull() {
     if (suppressPull)
         return;
     retagBlocks();
-    refreshBadges();
     refreshMath();
 }
 
@@ -134,7 +103,6 @@ function pull() {
         return;
     }
     retagBlocks();
-    refreshBadges();
 
     const selection = window.getSelection();
     const anchor = selection && selection.anchorNode
@@ -186,12 +154,11 @@ function applyTheme(t) {
 function pushPage(markdown, theme) {
     applyTheme(theme);
     retagBlocks();
-    refreshBadges();
     rawLast = markdown;
     if (markdown === lastEditor) {
         // The model's raw join already equals the editor's serialization:
-        // the badges above refresh with the fresh flags, and the DOM — and
-        // with it the caret and the undo stack — stays untouched.
+        // the DOM — and with it the caret and the undo stack — stays
+        // untouched.
         dirty = false;
         stale = false;
         return;
@@ -210,24 +177,20 @@ function pushPage(markdown, theme) {
         // setValue rebuilds the content DOM asynchronously — the tags that
         // retagBlocks() laid before it are gone by now.
         retagBlocks();
-        refreshBadges();
         if (bridge)
             bridge.notifyReferenceChanged(reference, pushToken);
     }, 0);
 }
 
-// The model pushes whenever its text changes (a block landing, a release,
-// a revert). While the user is typing the DOM owns newer text: applying
-// would setValue over the caret and the un-pulled keystrokes — the push
-// parks (only its flags land, the badges refresh at once) and the state it
-// skipped is fetched from QML — which always holds the current join — at
+// The model pushes whenever its text changes (a block landing, a revert).
+// While the user is typing the DOM owns newer text: applying would setValue
+// over the caret and the un-pulled keystrokes — the push parks and the state
+// it skipped is fetched from QML — which always holds the current join — at
 // the next settle.
-function pushDocument(markdown, theme, nextBlockMd, nextBlockFlags) {
-    blockFlags = nextBlockFlags || [];
+function pushDocument(markdown, theme, nextBlockMd) {
     if (dirty) {
         stale = true;
         armSettle();
-        refreshBadges();
         return;
     }
     blockMd = nextBlockMd || [];
@@ -299,7 +262,7 @@ function initVditor() {
             if (content) {
                 content.addEventListener("click", (event) => {
                     const block = event.target.closest("[data-ll-block]");
-                    if (block && bridge && !event.target.classList.contains("ll-ai-badge"))
+                    if (block && bridge)
                         bridge.notifyBlockClicked(parseInt(block.getAttribute("data-ll-block"), 10));
                 });
                 watchMath();

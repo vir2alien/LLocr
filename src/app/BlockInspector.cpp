@@ -203,23 +203,6 @@ QVariantList BlockInspector::blockSegments() const
     return llocr::blockSegments(rebuild.text);
 }
 
-QVariantList BlockInspector::blockSegmentFlags() const
-{
-    const auto rebuild = currentPageRebuild();
-    const QVariantList map = llocr::blockBoxMap(rebuild.text, rebuild.ranges);
-    const DocumentModel &document = m_deps.document;
-    const int page = m_deps.currentPage();
-    QVariantList flags;
-    if (!document.isValidIndex(page) || document.page(page).result.pages.isEmpty())
-        return flags;
-    const QList<BoundingBox> &boxes = document.page(page).result.pages.first().boxes;
-    for (const QVariant &owner : map) {
-        const int boxIndex = owner.toInt();
-        flags.append(boxIndex >= 0 && boxIndex < boxes.size() ? !boxes.at(boxIndex).userText.isEmpty() : false);
-    }
-    return flags;
-}
-
 int BlockInspector::boxIndexForTextPosition(int position) const
 {
     const auto rebuild = currentPageRebuild();

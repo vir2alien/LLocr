@@ -14,7 +14,6 @@ Rectangle {
     property string editorMarkdown: ""
     property var editorBlockMap: []
     property var editorBlockMd: []
-    property var editorBlockFlags: []
     // The segmented switch's state: raw markdown editor or the WYSIWYG one.
     property bool wysiwygActive: false
 
@@ -31,12 +30,11 @@ Rectangle {
 
     Connections {
         target: Controller
-        function onEditorMarkdownReady(markdown, blockMap, blockMd, blockFlags) {
+        function onEditorMarkdownReady(markdown, blockMap, blockMd) {
             // The markdown goes last: its change triggers the push, and the
-            // push must carry the fragments and flags of that same answer.
+            // push must carry the fragments of that same answer.
             root.editorBlockMap = blockMap
             root.editorBlockMd = blockMd
-            root.editorBlockFlags = blockFlags
             root.editorMarkdown = markdown
         }
     }
@@ -249,7 +247,6 @@ Rectangle {
             markdown: root.editorMarkdown
             blockMap: root.editorBlockMap
             blockMd: root.editorBlockMd
-            blockFlags: root.editorBlockFlags
             dark: Theme.dark
             bgColor: Theme.surfaceAlt
             fgColor: Theme.textPrimary
@@ -262,11 +259,6 @@ Rectangle {
                 if (blockOrdinal >= 0 && blockOrdinal < root.editorBlockMap.length
                     && root.editorBlockMap[blockOrdinal] >= 0)
                     Controller.setUserBlockText(blockOrdinal, markdown)
-            }
-            onEditorBlockReleased: (blockOrdinal) => {
-                if (blockOrdinal >= 0 && blockOrdinal < root.editorBlockMap.length
-                    && root.editorBlockMap[blockOrdinal] >= 0)
-                    Controller.releaseBlockUserText(root.editorBlockMap[blockOrdinal])
             }
             onBlockClicked: (blockIndex) => {
                 if (blockIndex >= 0 && blockIndex < root.editorBlockMap.length && root.editorBlockMap[blockIndex] >= 0)
