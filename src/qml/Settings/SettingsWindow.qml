@@ -84,6 +84,25 @@ ApplicationWindow {
         window.dirty = false
     }
 
+    // The reset writes at once — like the old per-window "Restore defaults"
+    // did — and the window stays open on the reset values. The settings are
+    // reset once, globally; every page then brings its own widgets back to
+    // the values the settings now hold. The live pages re-arm their undo
+    // afterwards: a Cancel after the reset must keep the reset.
+    function resetAll() {
+        Settings.resetToDefaults()
+        Verification.resetToDefaults()
+        LaunchProfiles.resetToDefaults()
+        RoleProfiles.resetRequestProfiles()
+        interfaceSection.resetValues()
+        outputSection.resetValues()
+        verificationSection.resetValues()
+        runtimeSection.resetValues()
+        modelsSection.resetValues()
+        window.armSession()
+        window.loadAll()
+    }
+
     // The undo of the live sections is armed once per session: a hide and
     // show inside the session must not re-arm it — otherwise Cancel would
     // have nothing to put back.
@@ -143,6 +162,11 @@ ApplicationWindow {
             subtle: true
             text: qsTr("Setup wizard")
             onClicked: window.requestWizard()
+        }
+        LLOButton {
+            subtle: true
+            text: qsTr("Reset all settings")
+            onClicked: resetDialog.open()
         }
         Item { Layout.fillWidth: true }
         LLOButton {
@@ -235,6 +259,26 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    Dialog {
+        id: resetDialog
+
+        parent: Overlay.overlay
+        modal: true
+        anchors.centerIn: parent
+        width: 420
+        title: qsTr("Reset all settings?")
+        standardButtons: Dialog.Yes | Dialog.No
+
+        LLOLabel {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            color: Theme.textPrimary
+            text: qsTr("Every setting goes back to its default, the custom verification prompts included. The installed runtime, the downloaded models and the keys in the system store stay.")
+        }
+
+        onAccepted: window.resetAll()
     }
 
     Dialog {

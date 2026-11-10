@@ -6,6 +6,7 @@
 #include <QMetaObject>
 #include <QMetaProperty>
 #include <QRegularExpression>
+#include <QSet>
 #include <QSettings>
 #include <QtTest>
 
@@ -297,12 +298,15 @@ private slots:
 
         QCOMPARE(store.connectionMode(), QStringLiteral("external"));
         QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
-        QCOMPARE(store.apiKey(), QString());
+        // The key lives in the system secret store, not in the settings: a
+        // reset of the settings does not throw it away (ADR 297).
+        QCOMPARE(store.apiKey(), QStringLiteral("k"));
         QCOMPARE(store.connectionTimeoutMs(), 5000);
         QCOMPARE(store.responseTimeoutMs(), 300000);
         QCOMPARE(store.modelName(), QStringLiteral("MinerU2.5-Pro-2605-1.2B"));
         QCOMPARE(store.decisionModelName(), QString());
-        QCOMPARE(store.serverPath(), QString());
+        // The installed server is on the user's disk, not a setting.
+        QCOMPARE(store.serverPath(), QStringLiteral("/opt/llama-server"));
         // Outside the group — untouched.
         QCOMPARE(store.themeMode(), 1);
         QCOMPARE(store.language(), QStringLiteral("system"));
@@ -676,16 +680,35 @@ private slots:
 
         // Properties excluded from reset by design:
         //  - windowX/Y/Width/Height/State: UI state, intentionally not reset;
-        //  - runtimeRootDir / runtimeModelsDir: they point at the user's disk,
-        //    not at the product's schema — the reset carries them over;
         //  - connectionMode / lastExternalBaseUrl: covered implicitly through
         //    setConnectionMode()'s restore path (baseUrl is reset, but its
-        //    final value when coming from Managed is the restored endpoint).
+        //    final value when coming from Managed is the restored endpoint);
+        //  - the carried-over ones below: they point at the user's disk, not
+        //    at the product's schema — the reset carries them over (ADR 297);
+        //  - setupVersion / setupDismissed: the wizard's own flags — a reset
+        //    must not bring the first-run wizard back.
         //  The secrets (apiKey, hfToken) are not writable properties at all:
         //  they live in the OS store (ADR 227), which the reset does not touch.
-        auto excluded = [](const QByteArray &name) {
-            return name.startsWith("window") || name == QByteArrayLiteral("connectionMode") || name == QByteArrayLiteral("lastExternalBaseUrl") || name == QByteArrayLiteral("runtimeRootDir") ||
-                   name == QByteArrayLiteral("runtimeModelsDir");
+        const QSet<QByteArray> carriedOver = {QByteArrayLiteral("runtimeRootDir"),
+                                              QByteArrayLiteral("runtimeModelsDir"),
+                                              QByteArrayLiteral("serverPath"),
+                                              QByteArrayLiteral("installedBuild"),
+                                              QByteArrayLiteral("setupVersion"),
+                                              QByteArrayLiteral("setupDismissed"),
+                                              QByteArrayLiteral("checkLaunchModelPath"),
+                                              QByteArrayLiteral("checkLaunchMmprojPath"),
+                                              QByteArrayLiteral("checkLaunchDraftPath"),
+                                              QByteArrayLiteral("decisionLaunchModelPath"),
+                                              QByteArrayLiteral("decisionLaunchMmprojPath"),
+                                              QByteArrayLiteral("decisionLaunchDraftPath"),
+                                              QByteArrayLiteral("layoutLaunchModelPath"),
+                                              QByteArrayLiteral("layoutLaunchMmprojPath"),
+                                              QByteArrayLiteral("layoutLaunchDraftPath"),
+                                              QByteArrayLiteral("fixLaunchModelPath"),
+                                              QByteArrayLiteral("fixLaunchMmprojPath"),
+                                              QByteArrayLiteral("fixLaunchDraftPath")};
+        auto excluded = [&carriedOver](const QByteArray &name) {
+            return name.startsWith("window") || name == QByteArrayLiteral("connectionMode") || name == QByteArrayLiteral("lastExternalBaseUrl") || carriedOver.contains(name);
         };
 
         QHash<QByteArray, QVariant> sentinels;
@@ -753,6 +776,48 @@ private slots:
         const SettingsStore fresh;
         QCOMPARE(fresh.runtimeRootDir(), QStringLiteral("/tmp/llocr-runtime"));
         QCOMPARE(fresh.runtimeModelsDir(), QStringLiteral("/tmp/llocr-models"));
+    }
+
+    // The paths of the models on disk point at the user's disk, not at the
+    // product's schema: wiping them would make the app forget the models it
+    // has installed (ADR 297).
+    void theResetKeepsTheModelPaths()
+    {
+        SettingsStore store;
+        store.setLaunchModelPathForRole(QStringLiteral("blockRecognition"), QStringLiteral("/tmp/llocr-models/m.gguf"));
+        store.setLaunchModelPathForRole(QStringLiteral("decision"), QStringLiteral("/tmp/llocr-models/d.gguf"));
+        store.setServerPath(QStringLiteral("/tmp/llocr-runtime/llama-server"));
+        store.setInstalledBuild(QStringLiteral("b12000"));
+        store.setSetupVersion(1);
+
+        store.resetToDefaults();
+
+        QCOMPARE(store.launchModelPathForRole(QStringLiteral("blockRecognition")), QStringLiteral("/tmp/llocr-models/m.gguf"));
+        QCOMPARE(store.launchModelPathForRole(QStringLiteral("decision")), QStringLiteral("/tmp/llocr-models/d.gguf"));
+        // The installed server and its build are on the user's disk too.
+        QCOMPARE(store.serverPath(), QStringLiteral("/tmp/llocr-runtime/llama-server"));
+        QCOMPARE(store.installedBuild(), QStringLiteral("b12000"));
+        // The wizard must not come back by itself.
+        QCOMPARE(store.setupVersion(), 1);
+    }
+
+    // The window shows the live state after the reset: the connection mode is
+    // the external one again and the task endpoints fall back to the shared
+    // one. The keys stay in the OS store (ADR 297).
+    void theResetBringsTheLiveStateBackToTheDefaults()
+    {
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setBaseUrl(QStringLiteral("http://shared:8080"));
+        store.setBaseUrlForRole(QStringLiteral("decision"), QStringLiteral("http://own:9000"));
+        store.setApiKey(QStringLiteral("k"));
+
+        store.resetToDefaults();
+
+        QCOMPARE(store.connectionMode(), QStringLiteral("external"));
+        QCOMPARE(store.baseUrlForRole(QStringLiteral("decision")), QString());
+        QCOMPARE(store.effectiveBaseUrlForRole(QStringLiteral("decision")), QStringLiteral("http://localhost:8080"));
+        QCOMPARE(store.apiKey(), QStringLiteral("k"));
     }
 };
 

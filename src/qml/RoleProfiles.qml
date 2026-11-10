@@ -79,6 +79,15 @@ QtObject {
         entry(task).setRequestProfileId(profileId)
     }
 
+    // Every task's request profile goes back to the built-in one.
+    function resetRequestProfiles() {
+        for (const task of Object.keys(tasks)) {
+            const store = entry(task).profiles()
+            if (store && store.resetToDefaults)
+                store.resetToDefaults()
+        }
+    }
+
     // Titles of every task riding one missing-model row — applyTaskChoices
     // deduplicates by model+quant and merges the tasks into "tasks".
     function choiceTitles(item) {

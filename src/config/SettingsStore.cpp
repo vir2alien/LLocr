@@ -230,12 +230,37 @@ void SettingsStore::forceSave()
 
 void SettingsStore::resetToDefaults()
 {
-    const QString rootDir = m_settings.value(kRuntimeRootDir).toString();
-    const QString modelsDir = m_settings.value(kRuntimeModelsDir).toString();
+    // The installed runtime and the models on disk are not settings: their
+    // paths survive the reset, or the app forgets what it has installed
+    // (ADR 297). The wizard's own flags survive too — a reset must not
+    // bring the first-run wizard back.
+    const QStringList preserved = {QLatin1String(kRuntimeRootDir),
+                                   QLatin1String(kRuntimeModelsDir),
+                                   QLatin1String(kServerPath),
+                                   QLatin1String(kInstalledBuild),
+                                   QLatin1String(kCheckLaunchModelPath),
+                                   QLatin1String(kCheckLaunchMmprojPath),
+                                   QLatin1String(kCheckLaunchDraftPath),
+                                   QLatin1String(kDecisionLaunchModelPath),
+                                   QLatin1String(kDecisionLaunchMmprojPath),
+                                   QLatin1String(kDecisionLaunchDraftPath),
+                                   QLatin1String(kLayoutLaunchModelPath),
+                                   QLatin1String(kLayoutLaunchMmprojPath),
+                                   QLatin1String(kLayoutLaunchDraftPath),
+                                   QLatin1String(kFixLaunchModelPath),
+                                   QLatin1String(kFixLaunchMmprojPath),
+                                   QLatin1String(kFixLaunchDraftPath),
+                                   QLatin1String(kSetupVersion),
+                                   QLatin1String(kSetupDismissed)};
+    QHash<QString, QVariant> kept;
+    for (const QString &key : preserved) {
+        if (m_settings.contains(key))
+            kept.insert(key, m_settings.value(key));
+    }
 
     m_settings.clear();
-    m_settings.setValue(kRuntimeRootDir, rootDir);
-    m_settings.setValue(kRuntimeModelsDir, modelsDir);
+    for (auto it = kept.constBegin(); it != kept.constEnd(); ++it)
+        m_settings.setValue(it.key(), it.value());
     m_settings.setValue(kSettingsSchemaVersion, kCurrentSettingsSchemaVersion);
     m_settings.sync();
 }
@@ -254,8 +279,9 @@ void SettingsStore::resetGroup(const std::function<bool(const QString &)> &match
     forceSave();
 }
 
-// The per-task endpoints and keys go back to the shared ones.
-void SettingsStore::clearTaskConnections()
+// The per-task endpoints go back to the shared one; the keys stay in the
+// secret store (ADR 297).
+void SettingsStore::clearTaskEndpoints()
 {
     bool endpointsChanged = false;
     for (const ConnectionRole role : connectionRoles) {
@@ -264,11 +290,9 @@ void SettingsStore::clearTaskConnections()
             m_settings.remove(taskBaseUrlKey(name));
             endpointsChanged = true;
         }
-        dropSecret(taskSecretId(name));
     }
     if (endpointsChanged)
         emit baseUrlChanged();
-    emit secretsChanged();
 }
 
 void SettingsStore::resetOutputDefaults()
@@ -281,11 +305,12 @@ void SettingsStore::resetRuntimeDefaults()
     resetGroup([](const QString &key) {
         return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/connectionTimeoutMs") ||
                key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String("tasks/decision/modelName") ||
-               key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/fix/modelName") || key == QLatin1String("runtime/serverPath");
+               key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/fix/modelName");
     });
-    dropSecret(kApiKey);
+    // The keys live in the system secret store, not in the settings: a reset
+    // of the settings does not throw them away (ADR 297).
     m_settings.remove(QString::fromLatin1(kApiKey));
-    clearTaskConnections();
+    clearTaskEndpoints();
     emit secretsChanged();
 }
 
