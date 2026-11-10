@@ -399,6 +399,7 @@ private slots:
     void theWindowHasFiveSections();
     void pickingASectionSwitchesIt();
     void theCancelRestoresTheInterface();
+    void theCancelRestoresTheBlockTypes();
     void theResetWritesAtOnceAndKeepsTheWindowClean();
     void theWizardRequestClosesTheWindowAndAsksForTheWizard();
     void theWizardAsksBeforeItDropsTheChanges();
@@ -602,6 +603,34 @@ void TestSettingsWindowQml::theCancelRestoresTheInterface()
     QCoreApplication::processEvents();
 
     QCOMPARE(int(m_uiController->mode()), int(UiController::System));
+}
+
+void TestSettingsWindowQml::theCancelRestoresTheBlockTypes()
+{
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    // The session starts: the section takes the snapshot of the block types.
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "show"));
+    QCoreApplication::processEvents();
+
+    auto *model = qobject_cast<VerificationBlocksModel *>(m_verification->blockModel());
+    QVERIFY(model);
+    QVERIFY(model->totalCount() > 0);
+    const int row = 0;
+    const bool before = model->enabledAt(row);
+
+    // The user switches the type off in the live model.
+    model->setEnabled(row, !before);
+    QCOMPARE(model->enabledAt(row), !before);
+
+    // Cancel puts the type back where the session found it.
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "cancelAll"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(model->enabledAt(row), before);
 }
 
 void TestSettingsWindowQml::theResetWritesAtOnceAndKeepsTheWindowClean()
