@@ -1712,7 +1712,7 @@ void SettingsStore::clearTaskEndpoints()
         onOpenSettingsRequested: showWindow(settingsLoader)
 ```
 
-удалить `onOpenUiSettingsRequested`, `onOpenOutputSettingsRequested`, `onOpenVerificationSettingsRequested`, `onOpenRuntimeSettingsRequested`, `onOpenTaskModelsSettingsRequested`, а также `onSetupWizardRequested` — мастер открывается из подвала окна настроек (T6), в меню тулбара его больше нет. В `src/qml/MainWindow/Header.qml` удалить `signal setupWizardRequested()`.
+удалить `onOpenUiSettingsRequested`, `onOpenOutputSettingsRequested`, `onOpenVerificationSettingsRequested`, `onOpenRuntimeSettingsRequested`, `onOpenTaskModelsSettingsRequested`, а также `onSetupWizardRequested` — мастер открывается из подвала окна настроек (T4), в меню тулбара его больше нет. В `src/qml/MainWindow/Header.qml` удалить `signal setupWizardRequested()`.
 
 - [ ] **Step 4: Удалить старые окна и их загрузчики.** В `src/qml/Main.qml` удалить блоки `Loader { id: uiSettingsLoader ... }`, `outputSettingsLoader`, `verificationSettingsLoader`, `runtimeSettingsLoader`, `taskModelsSettingsLoader`; удалить файлы `src/qml/Settings/UiSettingsWindow.qml`, `OutputSettingsWindow.qml`, `VerificationSettingsWindow.qml`, `RuntimeSettingsWindow.qml`, `TaskModelsWindow.qml`, `UITab.qml`.
 
