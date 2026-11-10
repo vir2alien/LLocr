@@ -58,10 +58,27 @@ ApplicationWindow {
         return { bringToFront: function() { showWindow(loader) } }
     }
 
+    // The wizard is a modal dialog of the main window: it covers the settings
+    // window, which steps aside and comes back when the wizard closes.
     function openSetupWizard() {
         setupWizardLoader.active = true
         const wizard = setupWizardLoader.item as SetupWizard
         wizard.startWizard()
+        if (settingsLoader.active && settingsLoader.item) {
+            const settingsWindow = settingsLoader.item
+            settingsWindow.hide()
+            const onWizardClosed = function() {
+                wizard.closed.disconnect(onWizardClosed)
+                settingsWindow.show()
+                settingsWindow.raise()
+                settingsWindow.requestActivate()
+                // The wizard writes the connection mode and the backend live:
+                // they are the new baseline, so a Cancel in the settings
+                // window must not undo the wizard's work.
+                settingsWindow.armSession()
+            }
+            wizard.closed.connect(onWizardClosed)
+        }
     }
 
     header: Header {
@@ -206,6 +223,14 @@ ApplicationWindow {
     footer: Footer {
         logWindow: windowProxy(serverLogLoader)
         problemWindow: windowProxy(problemLogLoader)
+    }
+
+    Loader {
+        id: settingsLoader
+        active: false
+        sourceComponent: SettingsWindow {
+            onWizardRequested: mainWindow.openSetupWizard()
+        }
     }
 
     Loader {
