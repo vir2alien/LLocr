@@ -369,7 +369,6 @@ signals:
     void configChanged();
     void pageImageReady(int index);
     void previewRenderingChanged();
-    void previewMarkdownReady(const QString &markdown);
     void editorMarkdownReady(const QString &markdown, const QVariantList &blockMap, const QVariantList &blockMd);
     void layoutStateChanged();
     void layoutProgressChanged();
@@ -427,13 +426,10 @@ public slots:
     // Adds an empty block with the rectangle the user drew on the page (the
     // coordinates are relative to the page, ADR 189).
     Q_INVOKABLE bool addBlockAt(const QString &type, qreal x, qreal y, qreal width, qreal height);
-    // Encodes the page's crop images into the preview markdown off the GUI
-    // thread; the answer comes back through previewMarkdownReady, the latest
+    // Encodes the page's crop images into the WYSIWYG editor's markdown off
+    // the GUI thread, plus the block→box order the editor tags its DOM blocks
+    // with; the answer comes back through editorMarkdownReady, the latest
     // request wins.
-    Q_INVOKABLE void requestPreviewMarkdown(const QString &markdown);
-    // The same encode for the WYSIWYG editor, plus the block→box order the
-    // editor tags its DOM blocks with; the answer comes back through
-    // editorMarkdownReady, the latest request wins.
     Q_INVOKABLE void requestEditorMarkdown(const QString &markdown);
     void migrateLegacyProjectText();
     Q_INVOKABLE void checkSelectedBlock();
@@ -663,7 +659,6 @@ private:
     mutable QList<QPair<QString, QString>> m_previewCacheRefs;
     quint64 m_previewMarkdownGeneration = 0;          ///< the request an in-flight preview encode belongs to; a newer request drops it
     QList<QPair<QString, QString>> m_editorCropRefs;  ///< data: URI → image://ocr/crop for the editor's last push
-    int m_editorMarkdownPage = -1;                    ///< the page the editor's current content was pushed for; pulls for another page are dropped
     PageEditStore m_editStore;
     StatusMessage m_statusMessage;        ///< stored untranslated, rendered on read
     StatusMessage m_autoPipelineMessage;  ///< the run's outcome and its caveats
@@ -721,7 +716,6 @@ private:
     QSet<int> m_markupPassMarkedPages;
 
     void notifyPageListGrown();
-    void markPageEdited(int index);
 };
 
 }  // namespace llocr

@@ -12,11 +12,6 @@ void EditorBridge::notifyPageReady()
     emit pageReady();
 }
 
-void EditorBridge::notifyTextChanged(const QString &markdown, qint64 pushToken)
-{
-    emit editorTextChanged(markdown, pushToken);
-}
-
 void EditorBridge::notifyBlockChanged(int blockOrdinal, const QString &markdown, qint64 pushToken)
 {
     emit editorBlockChanged(blockOrdinal, markdown, pushToken);
@@ -35,11 +30,6 @@ void EditorBridge::notifyBlockStructureAction(int blockOrdinal, const QString &a
 void EditorBridge::notifyReferenceChanged(const QString &markdown, qint64 pushToken)
 {
     emit editorReferenceChanged(markdown, pushToken);
-}
-
-void EditorBridge::notifyEditorFocus(bool focused)
-{
-    emit editorFocusChanged(focused);
 }
 
 void EditorBridge::notifyBlockClicked(int blockIndex)

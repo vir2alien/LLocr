@@ -39,19 +39,6 @@ void collectingHandler(QtMsgType, const QMessageLogContext &, const QString &mes
         g_messages->append(message);
 }
 
-void spinUntil(const std::function<bool()> &done, int timeoutMs = 30000)
-{
-    QElapsedTimer timer;
-    timer.start();
-    bool ok = false;
-    while (!ok && timer.elapsed() < timeoutMs) {
-        ok = done();
-        if (!ok)
-            QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-    }
-    QVERIFY2(ok, "timed out waiting for the editor wiring");
-}
-
 }  // namespace
 
 class TestEditorQml : public QObject

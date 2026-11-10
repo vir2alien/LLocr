@@ -32,7 +32,6 @@ Item {
 
     property bool _pageLoaded: false
     property bool _channelReady: false
-    property string _reference: ""
     property int _referenceToken: -1
     property string _loadError: ""
 
@@ -125,7 +124,6 @@ Item {
             root._pushPage()
         }
         function onEditorReferenceChanged(markdown, pushToken) {
-            root._reference = markdown
             root._referenceToken = pushToken
         }
         function onEditorBlockChanged(blockOrdinal, markdown, pushToken) {

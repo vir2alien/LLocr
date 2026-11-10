@@ -979,7 +979,18 @@ void AppController::setUserBlockText(int segmentIndex, const QString &markdown)
             layer += QStringLiteral("\n\n");
         layer += (i == segmentIndex) ? decodeEditorMarkdown(markdown) : segments.at(i).toString();
     }
-    BoxTransitions::setUserText(boxes[boxIndex], layer);
+    // The layer releases when the markdown equals the canonical render (ADR
+    // 296) — not the raw text: a heading's canonical markdown is its "# "
+    // form, a table's its rendered markdown, so the effective text compares
+    // equal only for plain blocks.
+    const BoundingBox &box = boxes.at(boxIndex);
+    BlockStyleInfo style = blockStyleForLabel(box.label, options.modelId);
+    if (style.style == BlockStyle::ImagePlaceholder)
+        style.imageIndex = boxIndex;
+    if (layer == renderBlockText(BoxTransitions::effectiveText(box), style, options))
+        boxes[boxIndex].userText.clear();
+    else
+        BoxTransitions::setUserText(boxes[boxIndex], layer);
     locker.unlock();
     refreshPageDocument(m_currentPage);
 }
@@ -2161,15 +2172,6 @@ void AppController::retranslate()
     emit autoPipelineMessageChanged();
 }
 
-void AppController::markPageEdited(int index)
-{
-    m_pageModel.setEdited(index, true);
-    // The «Изменено» label and the Revert button read this flag through
-    // properties with different NOTIFY signals; without the broadcast the
-    // label only refreshes when an unrelated availability change fires.
-    emit editStateChanged();
-}
-
 void AppController::notifyPageListGrown()
 {
     emit documentChanged();
@@ -2264,6 +2266,10 @@ bool AppController::turnPage(int index, int degrees, bool byUser)
 
     m_pageModel.setRecognized(index, false);
     m_pageModel.setEdited(index, false);
+    // The edit flag dies with the recognition it described: a stale one here
+    // is what ProjectController::collect saves, and the reloaded page wears
+    // «Изменено» it did not earn.
+    m_editStore.setEdited(index, false);
     m_pageModel.setHasDuplicates(index, false);
     m_pageModel.setRecognitionMode(index, int(PageRecognitionMode::None));
     m_pageModel.setOrientationProblem(index, int(PageOrientationProblem::None));
@@ -2316,6 +2322,7 @@ void AppController::applyPageDeskew(int index, double degrees)
     if (hadResult) {
         m_pageModel.setRecognized(index, false);
         m_pageModel.setEdited(index, false);
+        m_editStore.setEdited(index, false);  // the flag dies with the result, as in turnPage
         m_pageModel.setHasDuplicates(index, false);
         m_pageModel.setRecognitionMode(index, int(PageRecognitionMode::None));
         refreshPageVerification(index);
@@ -2366,46 +2373,6 @@ void AppController::notifyPageChanged()
     emit editStateChanged();
 }
 
-void AppController::requestPreviewMarkdown(const QString &markdown)
-{
-    if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown) {
-        emit previewMarkdownReady(m_previewCacheResult);
-        return;
-    }
-
-    const int page = m_currentPage;
-    const int imageRevision = m_imageRevision;
-    const int cropRevision = m_cropRevision;
-    const quint64 generation = ++m_previewMarkdownGeneration;
-
-    auto *watcher = new QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>(this);
-    connect(watcher, &QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>::finished, this, [this, watcher, markdown, imageRevision, cropRevision, generation]() {
-        const auto result = watcher->result();
-        watcher->deleteLater();
-        if (generation != m_previewMarkdownGeneration)
-            return;
-        // The result was encoded against the revisions the request saw; the
-        // cache must answer for them only, or a document change mid-flight
-        // would serve stale crops as fresh.
-        m_previewCacheRevision = imageRevision;
-        m_previewCacheCropRevision = cropRevision;
-        m_previewCacheText = markdown;
-        m_previewCacheResult = result.first;
-        m_previewCacheRefs = result.second;
-        emit previewMarkdownReady(result.first);
-    });
-    // The worker can outlive the controller (app quit mid-encode), so the
-    // lambda holds a guarded pointer and not the raw one.
-    const QPointer<AppController> self(this);
-    watcher->setFuture(QtConcurrent::run([self, page, markdown]() {
-        if (!self)
-            return QPair<QString, QList<QPair<QString, QString>>>();
-        QList<QPair<QString, QString>> refs;
-        const QString encoded = self->encodePreviewMarkdown(page, markdown, &refs);
-        return qMakePair(encoded, refs);
-    }));
-}
-
 // One-time mapping of a legacy project's hand-written page text into the
 // per-block user layers (ADR 296). New projects already carry both the join
 // and the layers, so the canonical comparison leaves them alone.
@@ -2449,7 +2416,6 @@ void AppController::requestEditorMarkdown(const QString &markdown)
     const quint64 generation = ++m_previewMarkdownGeneration;
     if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown) {
         m_editorCropRefs = m_previewCacheRefs;
-        m_editorMarkdownPage = m_currentPage;
         emit editorMarkdownReady(m_previewCacheResult, m_inspector.blockBoxMap(), encodedBlockSegments());
         return;
     }
@@ -2457,10 +2423,9 @@ void AppController::requestEditorMarkdown(const QString &markdown)
     const int page = m_currentPage;
     const int imageRevision = m_imageRevision;
     const int cropRevision = m_cropRevision;
-    const QVariantList blockMap = m_inspector.blockBoxMap();
 
     auto *watcher = new QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>(this);
-    connect(watcher, &QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>::finished, this, [this, watcher, markdown, imageRevision, cropRevision, generation, page, blockMap]() {
+    connect(watcher, &QFutureWatcher<QPair<QString, QList<QPair<QString, QString>>>>::finished, this, [this, watcher, markdown, imageRevision, cropRevision, generation, page]() {
         const auto result = watcher->result();
         watcher->deleteLater();
         if (generation != m_previewMarkdownGeneration)
@@ -2470,9 +2435,15 @@ void AppController::requestEditorMarkdown(const QString &markdown)
         m_previewCacheText = markdown;
         m_previewCacheResult = result.first;
         m_previewCacheRefs = result.second;
+        // The user went elsewhere while the encode ran: the answer belongs to
+        // a page the editor no longer shows, and the new page's own request
+        // re-answers.
+        if (m_currentPage != page)
+            return;
         m_editorCropRefs = result.second;
-        m_editorMarkdownPage = page;
-        emit editorMarkdownReady(result.first, blockMap, encodedBlockSegments());
+        // Map and segments are read together, after the wait: a block landing
+        // mid-encode must not pair a request-time map with fresh segments.
+        emit editorMarkdownReady(result.first, m_inspector.blockBoxMap(), encodedBlockSegments());
     });
     const QPointer<AppController> self(this);
     watcher->setFuture(QtConcurrent::run([self, page, markdown]() {

@@ -3410,6 +3410,73 @@ private slots:
         QCOMPARE(controller.pageImage(0).size(), upright);
     }
 
+    // The layer releases when the markdown returns to the canonical render
+    // (ADR 296) — the render, not the raw recognition text: a heading's
+    // canonical markdown is its "# " form, so only a plain block compares
+    // equal to its effective text.
+    void returningToTheCanonicalRenderReleasesTheLayer()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        recognizePage(controller);
+        QVERIFY(controller.hasResult());
+        QVERIFY(controller.resultText().startsWith(QStringLiteral("## 1. Introduction")));
+
+        controller.setUserBlockText(0, QStringLiteral("## 1. Introduction, annotated"));
+        QCOMPARE(controller.currentPageEdited(), true);
+        QVERIFY(controller.resultText().contains(QStringLiteral("annotated")));
+
+        controller.setUserBlockText(0, QStringLiteral("## 1. Introduction"));
+        QCOMPARE(controller.currentPageEdited(), false);
+        QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text"));
+    }
+
+    // A page turned after an edit must not come back from the project file
+    // wearing «Изменено»: the turn drops the recognition, and the flag the
+    // save persists has to drop with it.
+    void theTurnedPageSavesWithoutTheEditedFlag()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        recognizePage(controller);
+        QVERIFY(controller.hasResult());
+
+        controller.setUserBlockText(0, QStringLiteral("## 1. Introduction, annotated"));
+        QVERIFY(controller.currentPageEdited());
+        controller.rotatePage(90);
+        QVERIFY(!controller.currentPageEdited());
+
+        const QString projectPath = m_dir.filePath(QStringLiteral("turned.llocr"));
+        controller.saveProject(QUrl::fromLocalFile(projectPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+        controller.openProject(QUrl::fromLocalFile(projectPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+
+        auto *pages = qobject_cast<QAbstractItemModel *>(controller.pageModel());
+        QVERIFY(pages);
+        int editedRole = -1;
+        const auto roles = pages->roleNames();
+        for (auto it = roles.cbegin(); it != roles.cend(); ++it)
+            if (it.value() == QByteArrayLiteral("edited"))
+                editedRole = it.key();
+        QVERIFY(editedRole >= 0);
+        QVERIFY(!pages->data(pages->index(0, 0), editedRole).toBool());
+    }
+
     // The orientation check reads the picture alone: a page that lies on its
     // side is marked and left as it is, and no model is asked about it.
     void theOrientationCheckMarksASidewaysPageAndLeavesIt()

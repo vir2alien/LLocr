@@ -25,14 +25,9 @@ Rectangle {
     property bool verified: false
     // The text as HTML: the panel tints the fragments the correction changed.
     property string html: ""
-    property string plainText: ""
     property bool mono: false
-    // Whether the user may correct the text by hand.
-    property bool editable: false
-    property bool editing: false
 
     signal activated()
-    signal edited(string text)
 
     readonly property color accentColor: verified ? Theme.success : Theme.cardAccent
 
@@ -49,32 +44,6 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
-    }
-
-    // The edit ends the way the operator ends it: the «Сохранить» button or
-    // the same hotkey the panel uses to approve a block. While the edit lasts
-    // the card owns the key and the panel's shortcut yields (ADR 201).
-    Shortcut {
-        sequences: ["Ctrl+Return", "Meta+Return"]
-        enabled: root.editing
-        onActivated: root.commitEditing()
-    }
-
-    function startEditing() {
-        root.editing = true
-        editArea.text = root.plainText
-        editArea.forceActiveFocus()
-        editArea.selectAll()
-    }
-    function commitEditing() {
-        if (!root.editing)
-            return;
-        root.editing = false;
-        root.edited(editArea.text)
-    }
-
-    function cancelEditing() {
-        root.editing = false
     }
 
     ColumnLayout {
@@ -145,21 +114,6 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
-            // The way into the edit and the way out of it: the button says
-            // what the click does.
-            LLOButton {
-                visible: root.editable && !root.editing
-                text: qsTr("Edit")
-                subtle: true
-                onClicked: root.startEditing()
-            }
-
-            LLOButton {
-                visible: root.editable && root.editing
-                text: qsTr("Save")
-                onClicked: root.commitEditing()
-            }
-
             LLOLabel {
                 text: root.active ? qsTr("In the document") : qsTr("Click to select")
                 color: root.active ? root.accentColor : Theme.textMuted
@@ -171,7 +125,7 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(Math.max(textView.contentHeight, editArea.contentHeight, 18) + 2 * Theme.spacingSmall, 120)
+            Layout.preferredHeight: Math.min(Math.max(textView.contentHeight, 18) + 2 * Theme.spacingSmall, 120)
             color: Theme.cardSurface
             border.color: Theme.cardBorder
             border.width: 1
@@ -184,7 +138,6 @@ Rectangle {
             ScrollView {
                 anchors.fill: parent
                 anchors.margins: Theme.spacingSmall
-                visible: !root.editing
                 contentWidth: availableWidth
 
                 TextArea {
@@ -200,29 +153,6 @@ Rectangle {
                     topPadding: 0
                     bottomPadding: 0
                     text: root.html
-                }
-            }
-
-            // The hand-written version of the same text.
-            ScrollView {
-                anchors.fill: parent
-                anchors.margins: Theme.spacingSmall
-                visible: root.editing
-                contentWidth: availableWidth
-
-                TextArea {
-                    id: editArea
-                    width: parent.width
-                    textFormat: TextArea.PlainText
-                    wrapMode: TextArea.Wrap
-                    selectByMouse: true
-                    color: Theme.textPrimary
-                    font: root.mono ? Theme.mono : Theme.caption
-                    background: null
-                    topPadding: 0
-                    bottomPadding: 0
-                    onEditingFinished: root.commitEditing()
-                    Keys.onEscapePressed: root.cancelEditing()
                 }
             }
         }

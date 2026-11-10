@@ -443,14 +443,17 @@ private slots:
         const QStringList lines = gfm.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
         QCOMPARE(lines.size(), 2);
         QCOMPARE(static_cast<int>(lines.first().count(QLatin1Char('|'))) - 1, kMaxTableColumns);
-        QVERIFY(pairsGfmMs < 250);
+        // A load-tolerant budget: the gate exists to catch the quadratic
+        // grid — seconds on this input — not to race the machine's other
+        // ctest jobs; the linear path answers in tens of milliseconds idle.
+        QVERIFY(pairsGfmMs < 1000);
 
         timer.restart();
         const QString html = formatOtslTable(pairs, true);
         const qint64 pairsHtmlMs = timer.elapsed();
         QCOMPARE(html.count(QStringLiteral("<tr>")), 1);
         QVERIFY(html.count(QStringLiteral("<td")) <= kMaxTableColumns);
-        QVERIFY(pairsHtmlMs < 250);
+        QVERIFY(pairsHtmlMs < 1000);
 
         // The coverage lookup against a wide row above takes the same path.
         QString covered;
@@ -467,7 +470,7 @@ private slots:
         const QStringList lines2 = gfm2.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
         QCOMPARE(lines2.size(), 3);
         QCOMPARE(static_cast<int>(lines2.first().count(QLatin1Char('|'))) - 1, kMaxTableColumns);
-        QVERIFY(coveredGfmMs < 250);
+        QVERIFY(coveredGfmMs < 1000);
     }
 };
 

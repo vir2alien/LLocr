@@ -132,6 +132,31 @@ qt_add_resources(test_editor_page "editor_page_res"
     FILES ${TEST_EDITOR_FILES}
 )
 add_test(NAME test_editor_page COMMAND test_editor_page)
+set_tests_properties(test_editor_page PROPERTIES RESOURCE_LOCK webengine
+    ENVIRONMENT "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu")
+
+# ---- Editor pull: the per-block pull's edges and the untrusted-content gate
+# A separate binary from test_editor_page: the offscreen WebEngine renderer
+# is the flakiest part of the suite, and a small fresh process keeps this
+# suite's two heavy page lifecycles away from the long one.
+qt_add_executable(test_editor_pull test_editor_pull.cpp)
+
+target_link_libraries(test_editor_pull PRIVATE
+    Qt6::Test
+    Qt6::WebEngineQuick
+    Qt6::WebEngineCore
+    Qt6::WebChannel
+    llocr_app
+)
+
+qt_add_resources(test_editor_pull "editor_pull_res"
+    PREFIX "/editor"
+    BASE "${CMAKE_SOURCE_DIR}/resources/editor"
+    FILES ${TEST_EDITOR_FILES}
+)
+add_test(NAME test_editor_pull COMMAND test_editor_pull)
+set_tests_properties(test_editor_pull PROPERTIES RESOURCE_LOCK webengine
+    ENVIRONMENT "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu")
 
 # ---- Editor QML wiring: the bridge must reach the page ---------------------
 # MarkdownEditor.qml must hand its WebChannel a live EditorBridge (a null
@@ -153,6 +178,8 @@ qt_add_resources(test_editor_qml "editor_qml_res"
     FILES ${TEST_EDITOR_FILES}
 )
 add_test(NAME test_editor_qml COMMAND test_editor_qml)
+set_tests_properties(test_editor_qml PROPERTIES RESOURCE_LOCK webengine
+    ENVIRONMENT "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu")
 
 qt_add_executable(test_det_parser test_det_parser.cpp)
 

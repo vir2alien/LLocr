@@ -175,7 +175,16 @@ function pull() {
     // editor's serialization — a raw push and getValue() disagree in
     // normalization details, and a delta across them steals a tail.
     const oldMd = blockMd[ordinal];
-    const at = lastEditor.indexOf(oldMd);
+    // The anchor walks the preceding blocks first: a fragment the document
+    // repeats (a running header, a copy of a table) must not pull the search
+    // to an earlier twin and slice its tail into this block's markdown.
+    let cursor = 0;
+    for (let i = 0; i < ordinal && i < blockMd.length; ++i) {
+        const found = lastEditor.indexOf(blockMd[i], cursor);
+        if (found >= 0)
+            cursor = found + blockMd[i].length;
+    }
+    const at = lastEditor.indexOf(oldMd, cursor);
     if (at < 0)
         return;
     const delta = value.length - lastEditor.length;
@@ -351,10 +360,7 @@ function initVditor() {
                 bridge.notifyPageReady();
         },
         input() { schedulePull(); },
-        focus() { if (bridge) bridge.notifyEditorFocus(true); },
         blur() {
-            if (bridge)
-                bridge.notifyEditorFocus(false);
             // Leaving the field settles everything: the un-pulled keystrokes
             // commit (the caret may already be gone — the accepted ≤300 ms
             // loss), and a state the page skipped applies with no caret to

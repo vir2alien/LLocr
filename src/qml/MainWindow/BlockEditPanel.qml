@@ -104,9 +104,6 @@ Rectangle {
         return ""
     }
     readonly property string syntaxProblem: syntaxProblemWord(Controller.selectedBlockSyntaxProblem)
-    // A card being edited holds the Ctrl+Return: the panel must not approve
-    // the block while a text is being typed in (ADR 201).
-    readonly property bool cardEditing: originalCard.editing || correctionCard.editing
     function scoreText(confidence) {
         return confidence >= 0 ? Math.round(confidence * 100) + "%" : ""
     }
@@ -180,13 +177,11 @@ Rectangle {
 
     // Approve and move on: the operator's rhythm. The page text editor keeps
     // the Return — a shortcut that fires while a text is being typed in would
-    // approve a block by accident. A card being edited owns the key while it
-    // lasts, so the two shortcuts never overlap.
+    // approve a block by accident.
     Shortcut {
         sequences: ["Ctrl+Return", "Meta+Return"]
         enabled: Controller.selectedBoxIndex >= 0
                  && !Controller.pageTextEditorFocused
-                 && !root.cardEditing
         onActivated: Controller.approveSelectedBlockAndSelectNext()
     }
 
@@ -296,7 +291,6 @@ Rectangle {
                       || Controller.selectedBlockCheckStatus === 5
                       || Controller.selectedBlockCheckStatus === 6
             html: root.originalHtml
-            plainText: Controller.selectedBlockText
             mono: root.monoBlock
             onActivated: Controller.selectedBlockUsesCorrected = false
         }
@@ -317,7 +311,6 @@ Rectangle {
                       || Controller.selectedBlockCorrectedCheckStatus === 5
                       || Controller.selectedBlockCorrectedCheckStatus === 6
             html: root.correctedHtml
-            plainText: Controller.selectedBlockCorrected
             mono: root.monoBlock
             onActivated: Controller.selectedBlockUsesCorrected = true
         }

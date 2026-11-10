@@ -17,38 +17,25 @@ private slots:
         QCOMPARE(bridge.objectName(), QStringLiteral("editorBridge"));
 
         QSignalSpy ready(&bridge, &EditorBridge::pageReady);
-        QSignalSpy text(&bridge, &EditorBridge::editorTextChanged);
         QSignalSpy ref(&bridge, &EditorBridge::editorReferenceChanged);
-        QSignalSpy focus(&bridge, &EditorBridge::editorFocusChanged);
         QSignalSpy click(&bridge, &EditorBridge::editorBlockClicked);
         QSignalSpy blockChanged(&bridge, &EditorBridge::editorBlockChanged);
         QSignalSpy resync(&bridge, &EditorBridge::editorResyncRequested);
         QSignalSpy structure(&bridge, &EditorBridge::editorBlockStructureRequested);
 
         bridge.notifyPageReady();
-        bridge.notifyTextChanged(QStringLiteral("$$x$$"), 3);
         bridge.notifyBlockChanged(2, QStringLiteral("block md"), 3);
         bridge.notifyResyncRequested();
         bridge.notifyBlockStructureAction(7, QStringLiteral("down"));
         bridge.notifyReferenceChanged(QStringLiteral("# t"), 4);
-        bridge.notifyEditorFocus(true);
         bridge.notifyBlockClicked(3);
 
         QCOMPARE(ready.count(), 1);
-        QCOMPARE(text.count(), 1);
-        QCOMPARE(text.first().first().toString(), QStringLiteral("$$x$$"));
-        QCOMPARE(text.first().at(1).toLongLong(), 3);
         QCOMPARE(ref.count(), 1);
         QCOMPARE(ref.first().first().toString(), QStringLiteral("# t"));
         QCOMPARE(ref.first().at(1).toLongLong(), 4);
-        QCOMPARE(focus.count(), 1);
-        QCOMPARE(focus.first().first().toBool(), true);
         QCOMPARE(click.count(), 1);
         QCOMPARE(click.first().first().toInt(), 3);
-        QCOMPARE(blockChanged.count(), 1);
-        QCOMPARE(blockChanged.first().at(0).toInt(), 2);
-        QCOMPARE(blockChanged.first().at(1).toString(), QStringLiteral("block md"));
-        QCOMPARE(blockChanged.first().at(2).toLongLong(), 3);
         QCOMPARE(blockChanged.count(), 1);
         QCOMPARE(blockChanged.first().at(0).toInt(), 2);
         QCOMPARE(blockChanged.first().at(1).toString(), QStringLiteral("block md"));

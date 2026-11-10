@@ -1697,8 +1697,8 @@ appendix at the end of this file.
   layer is written (or released, when the markdown equals the canonical
   render) — no full-page writes, no merges, no queues, no anchor searches.
   A block nobody layered takes its recognition as it lands; a block with a
-  layer keeps the user's wording and shows the AI-version badge (the panel's
-  notice, or the badge in the editor — both release the layer). «Изменено» =
+  layer keeps the user's wording; the panel's notice offers taking the block
+  text back (the editor itself carries no badge). «Изменено» =
   any layer set; Revert releases all layers of the page. The raw «Текст
   (MD)» pane is the read-only view of the join (copy, tap-to-block over the
   exact ranges, highlight remain); structural edits stay on the canvas.
