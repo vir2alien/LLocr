@@ -263,6 +263,17 @@ void SettingsStore::resetToDefaults()
         m_settings.setValue(it.key(), it.value());
     m_settings.setValue(kSettingsSchemaVersion, kCurrentSettingsSchemaVersion);
     m_settings.sync();
+
+    // The getters answer with the defaults now, so the setters have nothing
+    // to do and stay silent — the UI would keep the old values. Every
+    // property of the table may have changed: tell the world (ADR 297).
+    const QMetaObject *mo = metaObject();
+    for (const SettingDefault &entry : defaultTable()) {
+        const QByteArray signal = QByteArray(entry.property) + "Changed";
+        if (mo->indexOfSignal((signal + "()").constData()) < 0)
+            continue;
+        QMetaObject::invokeMethod(this, signal.constData(), Qt::DirectConnection);
+    }
 }
 
 void SettingsStore::resetGroup(const std::function<bool(const QString &)> &matches)

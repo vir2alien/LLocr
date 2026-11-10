@@ -673,8 +673,9 @@ private slots:
     void resetCoversEveryDeclaredProperty()
     {
         // Drift guard: set every writable property to a sentinel value, reset,
-        // and verify none of the sentinels survive. A property that is added
-        // but forgotten in kDefaults would stay at its sentinel and fail here.
+        // and verify that every sentinel is gone — except the ones the reset
+        // carries over. A property that is added but forgotten in kDefaults
+        // would stay at its sentinel and fail here.
         SettingsStore store;
         const QMetaObject *mo = store.metaObject();
 
@@ -682,13 +683,15 @@ private slots:
         //  - windowX/Y/Width/Height/State: UI state, intentionally not reset;
         //  - connectionMode / lastExternalBaseUrl: covered implicitly through
         //    setConnectionMode()'s restore path (baseUrl is reset, but its
-        //    final value when coming from Managed is the restored endpoint);
-        //  - the carried-over ones below: they point at the user's disk, not
-        //    at the product's schema — the reset carries them over (ADR 297);
-        //  - setupVersion / setupDismissed: the wizard's own flags — a reset
-        //    must not bring the first-run wizard back.
+        //    final value when coming from Managed is the restored endpoint).
         //  The secrets (apiKey, hfToken) are not writable properties at all:
         //  they live in the OS store (ADR 227), which the reset does not touch.
+        //
+        // The carried-over properties are checked the other way round: they
+        // point at the user's disk, not at the product's schema, so the reset
+        // carries their value over (ADR 297). Their names have to be the ones
+        // SettingsStore::resetToDefaults() preserves — a name in one list and
+        // not in the other fails the check below.
         const QSet<QByteArray> carriedOver = {QByteArrayLiteral("runtimeRootDir"),
                                               QByteArrayLiteral("runtimeModelsDir"),
                                               QByteArrayLiteral("serverPath"),
@@ -707,9 +710,7 @@ private slots:
                                               QByteArrayLiteral("fixLaunchModelPath"),
                                               QByteArrayLiteral("fixLaunchMmprojPath"),
                                               QByteArrayLiteral("fixLaunchDraftPath")};
-        auto excluded = [&carriedOver](const QByteArray &name) {
-            return name.startsWith("window") || name == QByteArrayLiteral("connectionMode") || name == QByteArrayLiteral("lastExternalBaseUrl") || carriedOver.contains(name);
-        };
+        auto excluded = [](const QByteArray &name) { return name.startsWith("window") || name == QByteArrayLiteral("connectionMode") || name == QByteArrayLiteral("lastExternalBaseUrl"); };
 
         QHash<QByteArray, QVariant> sentinels;
         for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
@@ -744,7 +745,14 @@ private slots:
         store.resetToDefaults();
 
         for (auto it = sentinels.cbegin(); it != sentinels.cend(); ++it) {
-            QVERIFY2(store.property(it.key()) != it.value(), it.key());
+            // The carried-over properties keep their value — they point at the
+            // user's disk, and the reset carries them over (ADR 297). Every
+            // other property goes back to its default. The two lists have to
+            // agree: a name in one and not in the other fails here.
+            if (carriedOver.contains(it.key()))
+                QVERIFY2(store.property(it.key()) == it.value(), it.key());
+            else
+                QVERIFY2(store.property(it.key()) != it.value(), it.key());
         }
     }
 
@@ -818,6 +826,35 @@ private slots:
         QCOMPARE(store.baseUrlForRole(QStringLiteral("decision")), QString());
         QCOMPARE(store.effectiveBaseUrlForRole(QStringLiteral("decision")), QStringLiteral("http://localhost:8080"));
         QCOMPARE(store.apiKey(), QStringLiteral("k"));
+    }
+
+    // The reset has to tell the UI: the getters answer with the defaults
+    // right away, so the setters have nothing to write and stay silent —
+    // without the signals the widgets would keep the old values (ADR 297).
+    void theResetTellsTheUiAboutTheChangedProperties()
+    {
+        SettingsStore store;
+        store.setThemeMode(2);
+        store.setLanguage(QStringLiteral("ru"));
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setBaseUrl(QStringLiteral("http://custom:1234"));
+
+        QSignalSpy themeSpy(&store, &SettingsStore::themeModeChanged);
+        QSignalSpy languageSpy(&store, &SettingsStore::languageChanged);
+        QSignalSpy modeSpy(&store, &SettingsStore::connectionModeChanged);
+        QSignalSpy urlSpy(&store, &SettingsStore::baseUrlChanged);
+
+        store.resetToDefaults();
+
+        QCOMPARE(themeSpy.count(), 1);
+        QCOMPARE(languageSpy.count(), 1);
+        QCOMPARE(modeSpy.count(), 1);
+        QCOMPARE(urlSpy.count(), 1);
+        // The values behind the signals are the defaults.
+        QCOMPARE(store.themeMode(), 0);
+        QCOMPARE(store.language(), QStringLiteral("system"));
+        QCOMPARE(store.connectionMode(), QStringLiteral("external"));
+        QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
     }
 };
 

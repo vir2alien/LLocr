@@ -886,6 +886,60 @@ private slots:
         QVERIFY(!store.hasUserProfile());
     }
 
+    // The reset of the settings takes the request profile with it: the store
+    // follows the active profile through the settings' signal, so the draft
+    // must land on the profile that is active after the reset — and the user
+    // copy that the reset drops is that profile's copy (ADR 297).
+    void theSettingsResetTakesTheDraftToTheDefaultProfile()
+    {
+        QTemporaryDir dir;
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+
+        // The recipe the settings fall back to after the reset has to be a
+        // profile the store knows — otherwise the default-active profile would
+        // be an accident of the ordering.
+        QList<ModelProfiles::Profile> profiles = twoModels();
+        profiles[1].id = QStringLiteral("mineru");
+        profiles[1].title = QStringLiteral("mineru");
+
+        RequestProfileStore store(settings);
+        store.setModelProfiles(profiles);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
+
+        // A user copy for the profile that is active now…
+        QVERIFY(store.setDraftValue(0, "0.1"));
+        store.saveDraft();
+
+        // …and one for the profile that becomes the default after the reset.
+        settings.setModelRecipeId(QStringLiteral("mineru"));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("mineru"));
+        QVERIFY(store.setDraftValue(0, "3"));
+        store.saveDraft();
+
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
+
+        // The settings are reset: the recipe goes back to the default, and the
+        // store follows it — the signal of the settings is what carries it.
+        settings.resetToDefaults();
+        QCOMPARE(settings.modelRecipeId(), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("mineru"));
+
+        // The reset of the request profiles drops the copy of the profile that
+        // is active now — the default one — and leaves the copy of the profile
+        // that was active before the reset alone.
+        store.resetToDefaults();
+        QCOMPARE(findParameter(store.activeProfile(), "gamma")->value.toDouble(), 1.0);
+
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        QCOMPARE(findParameter(store.activeProfile(), "alpha")->value.toDouble(), 0.1);
+    }
+
     void storeCorruptUserFallsBackToDefaults()
     {
         QTemporaryDir dir;

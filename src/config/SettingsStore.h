@@ -439,6 +439,8 @@ private:
     QString readSecret(const QString &id) const;
     bool persistSecret(const QString &id, const QString &value);
     void dropSecret(const QString &id);
+    // The addresses of the tasks go back to the shared one; the keys stay in
+    // the secret store — a reset of the settings is not a reset of the keys.
     void clearTaskEndpoints();
     // The group of the settings a task's connection row reads and writes. The
     // block recognition task keeps the check name its accessors carry; the

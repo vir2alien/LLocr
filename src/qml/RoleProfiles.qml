@@ -79,7 +79,8 @@ QtObject {
         entry(task).setRequestProfileId(profileId)
     }
 
-    // Every task's request profile goes back to the built-in one.
+    // The user's copies of the request profiles live beside the settings: a
+    // reset that left them behind would keep the old sampling parameters.
     function resetRequestProfiles() {
         for (const task of Object.keys(tasks)) {
             const store = entry(task).profiles()

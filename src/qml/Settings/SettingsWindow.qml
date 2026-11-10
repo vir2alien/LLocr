@@ -84,11 +84,8 @@ ApplicationWindow {
         window.dirty = false
     }
 
-    // The reset writes at once — like the old per-window "Restore defaults"
-    // did — and the window stays open on the reset values. The settings are
-    // reset once, globally; every page then brings its own widgets back to
-    // the values the settings now hold. The live pages re-arm their undo
-    // afterwards: a Cancel after the reset must keep the reset.
+    // The undo of the live pages is re-armed after the reset: a Cancel after
+    // it must keep the reset, not bring the old values back.
     function resetAll() {
         Settings.resetToDefaults()
         Verification.resetToDefaults()
