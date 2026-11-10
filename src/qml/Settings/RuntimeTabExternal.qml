@@ -222,6 +222,7 @@ ColumnLayout {
             revealed: extRoot.revealKeys
             reloadToken: extRoot.reloadToken
             commitToken: extRoot.commitToken
+            onEdited: extRoot.edited()
         }
     }
 

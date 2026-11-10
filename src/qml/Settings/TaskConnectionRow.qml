@@ -13,6 +13,8 @@ import "../Common"
 RowLayout {
     id: root
 
+    signal edited()
+
     property string task: ""
 
     property int titleWidth: 160
@@ -27,6 +29,10 @@ RowLayout {
     property int reloadToken: 0
     property int commitToken: 0
 
+    // The load fills the fields from the settings: that write is not the
+    // user's, so it must not mark the settings window dirty.
+    property bool loading: false
+
     property alias endpointText: endpointField.text
     property alias aliasText: aliasField.text
 
@@ -37,10 +43,12 @@ RowLayout {
     property bool keyPresent: false
 
     function load() {
+        root.loading = true
         endpointField.text = Settings.baseUrlForRole(task)
         aliasField.text = Settings.modelNameForRole(task)
         root.keyPresent = Settings.apiKeySetForRole(task)
         keyCell.load()
+        root.loading = false
     }
 
     function save() {
@@ -83,6 +91,7 @@ RowLayout {
             font.pixelSize: Theme.bodySmallSize
             selectByMouse: true
             placeholderText: Settings.baseUrl
+            onTextChanged: if (!root.loading) root.edited()
         }
 
         LLOLabel {
@@ -112,5 +121,6 @@ RowLayout {
         font.pixelSize: Theme.bodySmallSize
         selectByMouse: true
         placeholderText: qsTr("the model id")
+        onTextChanged: if (!root.loading) root.edited()
     }
 }
