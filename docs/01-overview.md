@@ -87,27 +87,31 @@ The window uses a **toolbar + three-pane** layout.
   page has been recognized, with a **Preview** switch that renders the text as
   Markdown (via Qt WebEngine + marked + KaTeX).
 
-## Settings (windows)
-Separate non-modal windows opened from the header menu (ADR 70):
-**Interface** · **Output** · **Verification** · **Runtime** · **Models**
-(formerly the tabbed dialog's UI / Connection / Model / Output / Runtime /
-Models tabs).
+## Settings (one window)
+One non-modal window opened from the header button (ADR 297): the sections on
+the left, the content of the picked section on the right, one **Save** and one
+**Cancel** for all of them, and «Setup wizard» plus «Reset all settings» in the
+footer. The reset writes at once and keeps the installed runtime, the
+downloaded models and the keys in the system store.
 
-- **UI** — language (System / English / Русский), theme (System / Light / Dark).
-- **Connection** — endpoint base URL, API key (optional), request timeout.
-  The recognition **mode** (`External` / `Managed`) is chosen by the first-run
-  wizard; existing profiles stay `External` by default (ADR 26/31).
-- **Model** — model name, temperature, max tokens, and the **DRY sampling
-  parameters** (multiplier, base, allowed length, penalty last-N). In
-  `Managed` mode the model id / alias is computed by the runtime, not typed.
+- **Interface** — language (System / English / Русский), theme (System / Light / Dark).
 - **Output** — OCR model adapter (`model/recipeId`, default `mineru`) and output
   parser (`Automatic` / `raw` / the layout markup parser `mineru-layout`; default `auto`, ADR 88 and 112).
-- **Runtime** — managed `llama-server` binary path + probe, Start/Stop/Restart,
-  **Show log**, and the **stage-D installer** (release + backend pickers,
-  «Download and install» with progress, «Installed: bXXXX (CUDA)», «Check for
-  updates», «Clean up unused builds»).
-- **Models** — installed-model table (activate/remove), the **preset catalog**,
-  Hugging Face search + download, HF token, catalog import/export, GGUF check.
+- **Verification** — the reasoning budget of the two tasks and the block types
+  to check.
+- **Runtime** — the connection mode and, in `External` mode, the endpoint base
+  URL, the API key (optional) and the request timeout; in `Managed` mode the
+  `llama-server` binary path + probe, Start/Stop/Restart, **Show log**, and the
+  **stage-D installer** (release + backend pickers, «Download and install» with
+  progress, «Check for updates», «Clean up unused builds»).
+- **Models** — the task table with the model and its quantization per task;
+  the row's gear opens the **Launch** (the launch-parameter profile) and
+  **Request** (the request profile — model name, temperature, max tokens, the
+  **DRY sampling parameters**) settings of that task, the download queue
+  and the model files on disk.
+
+The recognition **mode** (`External` / `Managed`) is chosen by the first-run
+wizard; existing profiles stay `External` by default (ADR 26/31).
 
 > The recognition **prompt** is owned by the selected **OCR model adapter**
 > (`OcrModel::promptVariants()`; for MinerU it is the card's trained task

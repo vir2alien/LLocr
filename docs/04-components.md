@@ -167,7 +167,8 @@ window geometry) is persisted under `ui/*`. The resettable keys are registered
 in the table-driven `kDefaults` array (ADR 50); `resetToDefaults()` resets the
 full table and reports every changed property, so the widgets follow
 (ADR 297). The reset keeps the paths of the installed runtime and the
-downloaded models, the wizard's own flags and the secrets in the OS store.
+downloaded models, the backend of the installed build, the wizard's own flags
+and the secrets in the OS store.
 
 The **secrets are not in `QSettings`**: the API key and the Hugging Face
 token live in the OS secret store — the macOS Keychain, the Windows
@@ -500,7 +501,7 @@ complete; the decisions are recorded as ADRs in `docs/07-glossary.md`).
   §7.5) are decisions recorded in `docs/07-glossary.md`. ✅
 
 ## 4.17 Models and catalog (Hugging Face)
-Model management lives in the **Models** settings window
+Model management lives in the **Models** section of the settings window
 (via the role-aware `ModelInstaller` singleton, stage E): the task table with
 the installed models, the preset catalog and the HF search are part of it
 (see 4.2).
@@ -532,8 +533,8 @@ the installed models, the preset catalog and the HF search are part of it
   and the server's overhead. The model profiles ship the architecture
   (`memory` block) and the curated sizes, so a quantization that is not
   downloaded yet carries the number too; the task window's quant dropdown
-  shows it (`VRAM ≥ 11.4 GiB`) and Settings → Launch shows the same breakdown
-  against the card. Everything is measured against llama.cpp's own report:
+  shows it (`VRAM ≥ 11.4 GiB`) and Settings → Models → row ⚙ → Launch shows the
+  same breakdown against the card. Everything is measured against llama.cpp's own report:
   the vision encoder from its clip reservation (a rate per image token, or the
   whole working set for the two projectors whose cost does not follow the
   token count — the gemma-4-E4B, whose encoder runs without flash attention,
@@ -602,7 +603,7 @@ Once the runtime is wired, the main window surfaces its state:
   «Launch settings changed — restart required» with a **Restart** button. ✅
 - **Error surfacing** — `Failed` messages follow the §7.5 matrix. ✅
 - **Settings → Runtime** carries Start/Stop/Restart, probe status, Show log,
-  and the stage-D installer; the **Models** window carries the task table with
+  and the stage-D installer; the **Models** section carries the task table with
   the installed models, the preset catalog and the HF search. ✅
 
 ## 4.20 Project file (`.llocr`)

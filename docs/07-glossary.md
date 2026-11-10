@@ -1710,19 +1710,22 @@ appendix at the end of this file.
   `blockChangeKeepsTheEditedDocumentUntilTakenOver`,
   `aiLandsIntoTheDocumentForUntouchedBlocks`).
 
-- **297.** Единое окно настроек. Пять окон (Интерфейс, Вывод, Проверка,
-  Runtime, Модели) сведены в одно: список разделов слева, содержимое раздела
-  справа, одна «Сохранить»/«Отмена» на всё окно, «Мастер настройки» и
-  «Сбросить все настройки» — в подвале. Интерфейс и Проверка применяют выбор
-  сразу и откатываются снимком при «Отмене»; остальные разделы — черновик до
-  «Сохранить». Значения читаются один раз за сеанс: повторный показ окна не
-  стирает черновики. Мастер **заменяет сеанс правки** — окно закрывается, мастер
-  идёт в своём родном окне, и возвращается окно только если его открыть
-  снова. Сброс пишет сразу и не трогает установленный runtime, скачанные
-  модели и ключи в системном хранилище (ADR 227): пути установленного и флаги
-  мастера переживают сброс, а `SettingsStore::resetToDefaults()` испускает
-  сигналы изменившихся свойств — иначе виджеты остались бы со старыми
-  значениями.
+- **297.** One settings window (superseding ADR 70 and the scoped resets of
+  ADR 75). The five windows (Interface, Output,
+  Verification, Runtime, Models) are merged into one: the section list on the
+  left, the content of the section on the right, one «Save»/«Cancel» for the
+  whole window, «Setup wizard» and «Reset all settings» in the footer.
+  Interface and Verification apply the choice at once and are put back by the
+  snapshot at «Cancel»; the other sections are a draft until «Save». The
+  values are read once per session: showing the window again does not wipe the
+  drafts. The wizard **replaces the editing session** — the window closes, the
+  wizard runs alone in the main window, and the settings window returns only
+  if the user opens it again. The reset writes at once and does not touch the
+  installed runtime, the downloaded models or the keys in the system store
+  (ADR 227): the installed paths and the backend of the installed build
+  survive the reset, and
+  `SettingsStore::resetToDefaults()` emits the signals of the changed
+  properties — otherwise the widgets would keep the old values.
 
 ### Security & secrets
 
