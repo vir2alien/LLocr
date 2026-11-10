@@ -24,12 +24,12 @@
 
 ## Review Focus
 
-- **Секреты при сбросе.** `resetRuntimeDefaults()` сегодня вызывает `dropSecret(kApiKey)` и `clearTaskConnections()` (тот роняет и ключи задач). После T5 сброс не должен трогать OS-хранилище — иначе «Сбросить все настройки» уничтожит ключ API. Пин: T5, шаг 3; ручной пункт T10.
+- **Секреты при сбросе.** `resetRuntimeDefaults()` сегодня вызывает `dropSecret(kApiKey)` и `clearTaskConnections()` (тот роняет и ключи задач). После T5 сброс не должен трогать OS-хранилище — иначе «Сбросить все настройки» уничтожит ключ API. Пин: T5, шаг 3; ручной пункт T9.
 - **Установленное не теряется.** `resetToDefaults()` чистит `QSettings` целиком, а в таблице значений есть `tasks/check/modelPath` и подобные — пути установленных моделей. После T5 эти пути (и `runtime/rootDir`, `runtime/modelsDir`, `runtime/setupVersion`) переживают сброс. Пин: T5, шаг 2.
-- **Живые разделы откатываются.** Смена темы в разделе Интерфейс и переключение типа блока в разделе Проверка применяются сразу; «Отмена» обязана вернуть прежние значения. Пин: T2 (снимки), T10 (тест отката).
+- **Живые разделы откатываются.** Смена темы в разделе Интерфейс и переключение типа блока в разделе Проверка применяются сразу; «Отмена» обязана вернуть прежние значения. Пин: T2 (снимки), T8 (тест отката).
 - **«Сохранить» не закрывает окно, если модель не скачана.** `applyTaskChoices()` возвращает список недостающих моделей — тогда показывается диалог загрузки, а окно остаётся открытым. Пин: T3 (диалог), T4 (шаг с `saveValues()` → bool).
 - **Мастер — модальный диалог главного окна.** Открытый из окна настроек, он перекроет его (оверлей главного окна). Окно настроек на время мастера скрывается и возвращается после его закрытия. Пин: T7.
-- **Пять старых окон удаляются только после того, как новое окно работает.** Порядок задач: T4 (новое окно) → T8 (удаление старых). Пин: порядок задач.
+- **Пять старых окон удаляются только после того, как новое окно работает.** Порядок задач: T4 (новое окно) → T7 (удаление старых). Пин: порядок задач.
 
 ---
 
@@ -710,13 +710,38 @@ Item {
 
 **Files:**
 - Create: `src/qml/Settings/ModelsSection.qml`
-- Modify: `src/qml/Common/TaskModelsTable.qml` (сигнал `edited()`)
+- Modify: `src/qml/Common/TaskModelsTable.qml` (сигнал `edited()`, сигнал `runtimeSectionRequested()` вместо `runtimeSettingsRef`)
+- Modify: `src/qml/Settings/LaunchTab.qml` (кнопка «Configure runtime…» просит раздел Runtime)
 
 **Interfaces:**
 - Consumes: `TaskModelsTable` (`syncDraft()`, `resetDraft()`, `saveTabs()`, `markDraftSaved()`, `buildChoices()`, `applyExternalDraft()`, `resetTabs()`, `fmtBytes()`), `ModelInstaller` (`refreshInstalled()`, `reloadPresets()`, `rescanRegistry()`, `applyTaskChoices()`, `busy`, `statusMessage`, `progress`, `taskQueueActive`, `installedFiles`, `installedCount`, `cancelTaskInstalls()`, `removeInstalledEntry()`, `openInstalledEntryFolder()`), `RoleProfiles` (`choiceTitles()`).
-- Produces: `ModelsSection` с тем же контрактом раздела; `saveValues()` возвращает `true`, когда выборы записаны, и `false`, когда модель не скачана (окно должно остаться открытым).
+- Produces: `ModelsSection` с тем же контрактом раздела; `saveValues()` возвращает `true`, когда выборы записаны, и `false`, когда модель не скачана (окно должно остаться открытым); сигнал `runtimeSectionRequested()` — кнопка «Configure runtime…» в попапе задачи просит окно показать раздел Runtime.
 
 - [ ] **Step 1: Добавить сигнал `edited()` в `src/qml/Common/TaskModelsTable.qml`.** В корень `Item` (уже `id: table`) объявить `signal edited()`; в обработчиках выбора модели (`onActivated` у `modelBox`) и кванта (`onActivated` у `quantBox`) дописать `table.edited()`. То же — в обработчике имени модели в внешнем режиме.
+
+- [ ] **Step 1a: Заменить `runtimeSettingsRef` на сигнал `runtimeSectionRequested()`.** В `src/qml/Common/TaskModelsTable.qml` удалить свойство `property var runtimeSettingsRef: null` и добавить `signal runtimeSectionRequested()`; в `src/qml/Settings/LaunchTab.qml` заменить свойство `runtimeSettingsRef` на `property var hostTable: null` и переписать кнопку «Configure runtime…»:
+
+```qml
+        LLOButton {
+            text: qsTr("Configure runtime…")
+            onClicked: {
+                if (root.hostTable)
+                    root.hostTable.runtimeSectionRequested()
+            }
+        }
+```
+
+а в попапе таблицы (`TaskModelsTable.qml`) связать `LaunchTab` с таблицей:
+
+```qml
+                LaunchTab {
+                    id: launchTab
+                    role: taskSettingsPopup.task
+                    hostTable: table
+                }
+```
+
+`LaunchTab.qml` больше не знает про окно настроек — он просит таблицу, а та — окно.
 
 - [ ] **Step 2: Написать `src/qml/Settings/ModelsSection.qml`** — содержимое переносится из `TaskModelsWindow` (таблица задач, очередь загрузки, файлы на диске, диалог «Models to download»):
 
@@ -737,6 +762,9 @@ Item {
     id: root
 
     signal edited()
+    // The popup of a task offers the runtime settings: in the unified window
+    // that is the "Runtime" section.
+    signal runtimeSectionRequested()
 
     readonly property bool externalMode: Settings.connectionMode === "external"
 
@@ -783,6 +811,7 @@ Item {
             Layout.fillWidth: true
             externalMode: root.externalMode
             onEdited: root.edited()
+            onRuntimeSectionRequested: root.runtimeSectionRequested()
         }
 
         ColumnLayout {
@@ -1060,7 +1089,7 @@ Item {
 
 **Files:**
 - Create: `src/qml/Settings/SettingsWindow.qml`
-- Modify: `src/qml/Main.qml` (загрузчик нового окна вместо пяти старых — старые загрузчики удаляются в T8; здесь добавляется новый)
+- Modify: `src/qml/Main.qml` (загрузчик нового окна вместо пяти старых — старые загрузчики удаляются в T7; здесь добавляется новый)
 
 **Interfaces:**
 - Consumes: `SettingsSectionNav`, `InterfaceSection`, `OutputSection`, `VerificationSection`, `RuntimeSection`, `ModelsSection`, `SettingsFooter`, `SettingsSurface`, `Theme`.
@@ -1283,6 +1312,7 @@ ApplicationWindow {
                         anchors.fill: parent
                         visible: nav.currentIndex === 4
                         onEdited: window.dirty = true
+                        onRuntimeSectionRequested: window.showSection("runtime")
                     }
                 }
             }
@@ -1639,95 +1669,7 @@ void SettingsStore::clearTaskEndpoints()
 
 ---
 
-### Task 8: «Настроить runtime…» ведёт в раздел Runtime
-
-**Files:**
-- Modify: `src/qml/Settings/LaunchTab.qml` (кнопка «Configure runtime…»)
-- Modify: `src/qml/Common/TaskModelsTable.qml` (`runtimeSettingsRef` → сигнал перехода к разделу)
-- Modify: `src/qml/Settings/ModelsSection.qml` (проброс сигнала)
-- Modify: `src/qml/Settings/SettingsWindow.qml` (переключение раздела)
-
-**Interfaces:**
-- Consumes: `TaskModelsTable` (свойство `runtimeSettingsRef`).
-- Produces: `TaskModelsTable` — сигнал `runtimeSectionRequested()`; `ModelsSection` — сигнал `runtimeSectionRequested()`; `SettingsWindow` — `showSection("runtime")`.
-
-- [ ] **Step 1: В `src/qml/Common/TaskModelsTable.qml` заменить `runtimeSettingsRef` на сигнал:**
-
-```qml
-    // The Launch tab of the gear popover offers the runtime settings; in the
-    // unified window that is the "Runtime" section (ADR 297).
-    signal runtimeSectionRequested()
-```
-
-в `src/qml/Settings/LaunchTab.qml` обработчик кнопки:
-
-```qml
-        LLOButton {
-            text: qsTr("Configure runtime…")
-            onClicked: {
-                if (root.hostTable)
-                    root.hostTable.runtimeSectionRequested()
-            }
-        }
-```
-
-(вместо `root.runtimeSettingsRef.bringToFront()`; ссылка на таблицу передаётся новым свойством `hostTable` — см. шаг 2).
-
-- [ ] **Step 2: Связать `LaunchTab` с таблицей.** В `src/qml/Settings/LaunchTab.qml`:
-
-```qml
-    // The host table: the popover's button asks the host to show the
-    // runtime section.
-    property var hostTable: null
-```
-
-и в `TaskModelsTable.qml` (внутри попапа):
-
-```qml
-                LaunchTab {
-                    id: launchTab
-                    role: taskSettingsPopup.task
-                    hostTable: table
-                }
-```
-
-- [ ] **Step 3: В `src/qml/Settings/ModelsSection.qml` пробросить сигнал:**
-
-```qml
-    signal runtimeSectionRequested()
-```
-
-и
-
-```qml
-        TaskModelsTable {
-            id: taskTable
-            Layout.fillWidth: true
-            externalMode: root.externalMode
-            onEdited: root.edited()
-            onRuntimeSectionRequested: root.runtimeSectionRequested()
-        }
-```
-
-- [ ] **Step 4: В `src/qml/Settings/SettingsWindow.qml` переключить раздел:**
-
-```qml
-                    ModelsSection {
-                        id: modelsSection
-                        anchors.fill: parent
-                        visible: nav.currentIndex === 4
-                        onEdited: window.dirty = true
-                        onRuntimeSectionRequested: window.showSection("runtime")
-                    }
-```
-
-- [ ] **Step 5: Найти остальные пользователи `runtimeSettingsRef`** — `grep -rn "runtimeSettingsRef" src/` — в `TaskModelsTable.qml` и `LaunchTab.qml` больше не осталось; в `Main.qml` (свойство загрузчика `TaskModelsWindow`) — удалено в T7.
-
-- [ ] **Step 6: Прогнать** — `cmake --build build -j 8 && scripts/check.sh` — зелёный.
-
----
-
-### Task 9: Тест окна настроек
+### Task 8: Тест окна настроек
 
 **Files:**
 - Create: `tests/test_settings_window_qml.cpp`
@@ -1803,7 +1745,7 @@ add_test(NAME test_settings_window_qml COMMAND test_settings_window_qml)
 
 ---
 
-### Task 10: Документация и переводы
+### Task 9: Документация и переводы
 
 **Files:**
 - Modify: `docs/07-glossary.md` (ADR 297)
@@ -1812,7 +1754,7 @@ add_test(NAME test_settings_window_qml COMMAND test_settings_window_qml)
 - Modify: `resources/i18n/llocr_ru.ts` (новые строки)
 
 **Interfaces:**
-- Consumes: итоговая реализация T1–T9.
+- Consumes: итоговая реализация T1–T8.
 - Produces: ADR 297 и переводы новых строк.
 
 - [ ] **Step 1: Добавить ADR 297** в `docs/07-glossary.md` (в конец лога решений):
@@ -1836,7 +1778,7 @@ add_test(NAME test_settings_window_qml COMMAND test_settings_window_qml)
 
 ---
 
-## Ручная проверка (после T9)
+## Ручная проверка (после T8)
 
 1. «Настройки» в тулбаре открывает одно окно; слева пять разделов с иконками.
 2. Переключение раздела меняет заголовок и содержимое справа.
