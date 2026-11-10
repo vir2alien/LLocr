@@ -24,8 +24,8 @@ ApplicationWindow {
     property bool dirty: false
     property bool forceClose: false
 
-    // The wizard is a modal dialog of the main window: the settings window
-    // steps aside while it is open.
+    // The wizard replaces the editing session: the window closes and the
+    // wizard runs alone in the main window.
     signal wizardRequested()
 
     readonly property var sections: [
@@ -85,8 +85,8 @@ ApplicationWindow {
     }
 
     // The undo of the live sections is armed once per session: a hide and
-    // show inside the session (the wizard round trip) must not re-arm it —
-    // otherwise Cancel would have nothing to put back.
+    // show inside the session must not re-arm it — otherwise Cancel would
+    // have nothing to put back.
     property bool sessionStarted: false
 
     // The live pages take their undo snapshot here: the language and the
@@ -251,7 +251,9 @@ ApplicationWindow {
             width: parent.width
             wrapMode: Text.WordWrap
             color: Theme.textPrimary
-            text: qsTr("There are unsaved changes. Close without saving?")
+            text: window.pendingWizard
+                  ? qsTr("There are unsaved changes. They will be lost, and the setup wizard will start.")
+                  : qsTr("There are unsaved changes. Close without saving?")
         }
 
         onAccepted: {
