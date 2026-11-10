@@ -89,7 +89,9 @@ ColumnLayout {
     }
     LLOComboBox {
         id: parserBox
-        Layout.fillWidth: true
+        // The parser names are short: the dropdown does not need the whole
+        // width of the section.
+        Layout.preferredWidth: 340
         model: root.parserModel
         textRole: "label"
         onActivated: if (!root.loading) root.edited()

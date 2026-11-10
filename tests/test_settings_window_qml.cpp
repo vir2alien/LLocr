@@ -399,6 +399,7 @@ private slots:
     void theWindowHasFiveSections();
     void pickingASectionSwitchesIt();
     void theInterfacePickersKeepTheirSize();
+    void theOutputParserKeepsItsOwnWidth();
     void theCancelRestoresTheInterface();
     void theCancelRestoresTheBlockTypes();
     void theResetWritesAtOnceAndKeepsTheWindowClean();
@@ -628,6 +629,26 @@ void TestSettingsWindowQml::theInterfacePickersKeepTheirSize()
     const double themeWidth = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[4].width")).toDouble();
     QVERIFY(themeWidth > 0.0);
     QCOMPARE(languageWidth, themeWidth);
+}
+
+// The parser names are short: the dropdown keeps its own measure instead of
+// stretching over the whole section.
+void TestSettingsWindowQml::theOutputParserKeepsItsOwnWidth()
+{
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("output"))));
+    QCoreApplication::processEvents();
+
+    // The parser picker is the second child of the output layout (the label,
+    // the picker, the spacer, the checkboxes).
+    const double pickerWidth = evaluate(window.get(), QStringLiteral("outputSection.children[0].children[1].width")).toDouble();
+    const double sectionWidth = evaluate(window.get(), QStringLiteral("outputSection.width")).toDouble();
+    QCOMPARE(pickerWidth, 340.0);
+    QVERIFY2(pickerWidth < sectionWidth, qPrintable(QStringLiteral("the picker is %1 px of %2 px").arg(pickerWidth).arg(sectionWidth)));
 }
 
 void TestSettingsWindowQml::theCancelRestoresTheInterface()
