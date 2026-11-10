@@ -27,6 +27,10 @@ Item {
     property bool externalMode: false
     property bool showGear: true
 
+    // The host can show the runtime settings; the setup wizard cannot, and
+    // the button that asks for them stays hidden there.
+    property bool runtimeSectionAvailable: true
+
     // The tasks of the app: the list comes from the C++, where ConnectionRole
     // is its single source (ADR 215) — the table keeps no copy of it.
     readonly property var taskIds: Settings.taskRoles
@@ -184,9 +188,12 @@ Item {
         table.markDraftSaved()
     }
 
+    // Both tabs are written, and the answer tells the host whether they
+    // were: a tab that asks the user a question first has written nothing.
     function saveTabs() {
-        launchTab.saveValues()
-        requestTab.saveValues()
+        const launchSaved = launchTab.saveValues()
+        const requestSaved = requestTab.saveValues()
+        return launchSaved && requestSaved
     }
 
     function resetTabs() {
@@ -542,11 +549,14 @@ Item {
                     id: launchTab
                     role: taskSettingsPopup.task
                     hostTable: table
+                    runtimeSectionAvailable: table.runtimeSectionAvailable
+                    onEdited: table.edited()
                 }
 
                 RequestTab {
                     id: requestTab
                     role: taskSettingsPopup.task
+                    onEdited: table.edited()
                 }
             }
         }

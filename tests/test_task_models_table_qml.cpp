@@ -144,16 +144,23 @@ public:
         Q_UNUSED(text)
         return true;
     }
-    Q_INVOKABLE void saveDraft() {}
+    Q_INVOKABLE void saveDraft() { ++m_saves; }
     Q_INVOKABLE void loadDefaultDraft() {}
+    Q_INVOKABLE bool draftHasSecretLikeParameter() const { return m_secretLike; }
     Q_INVOKABLE QString modelRuntimeNoteForRole(const QString &task) const
     {
         Q_UNUSED(task)
         return QString();
     }
 
+    void setSecretLike(bool value) { m_secretLike = value; }
+    void resetSaves() { m_saves = 0; }
+    int saves() const { return m_saves; }
+
 private:
     FakeDraftModel *m_model = new FakeDraftModel(this);
+    bool m_secretLike = false;
+    int m_saves = 0;
 };
 
 }  // namespace
@@ -182,6 +189,8 @@ private slots:
     void theTaskTextsKeepTheirTranslationContext();
     void anUnsavedModelNameSurvivesTheSync();
     void theCancelPathThrowsTheEditAway();
+    void theSaveTabsWritesBothTabs();
+    void theSaveTabsAsksBeforeWritingTheLaunchDraft();
 
 private:
     void registerModuleTypes();
@@ -193,6 +202,7 @@ private:
     std::unique_ptr<FakeRuntime> m_runtime;
     std::unique_ptr<FakeUiController> m_uiController;
     std::unique_ptr<FakeProfilesStore> m_profiles;
+    std::unique_ptr<FakeProfilesStore> m_launchProfiles;
     std::unique_ptr<SettingsStore> m_settings;
     std::unique_ptr<QQmlEngine> m_engine;
     QStringList m_warnings;
@@ -219,7 +229,9 @@ void TestTaskModelsTableQml::initTestCase()
     // draft; the stores are not part of this test, so one empty stand-in
     // answers for all of them.
     m_profiles = std::make_unique<FakeProfilesStore>();
-    for (const char *name : {"LaunchProfiles", "RequestProfilesBlock", "RequestProfilesDecision", "RequestProfilesLayout", "RequestProfilesFix"})
+    m_launchProfiles = std::make_unique<FakeProfilesStore>();
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", m_launchProfiles.get());
+    for (const char *name : {"RequestProfilesBlock", "RequestProfilesDecision", "RequestProfilesLayout", "RequestProfilesFix"})
         qmlRegisterSingletonInstance("LLocr", 1, 0, name, m_profiles.get());
 
     // The module's own singletons, read from the source tree.
@@ -408,6 +420,43 @@ void TestTaskModelsTableQml::theCancelPathThrowsTheEditAway()
     QCoreApplication::processEvents();
 
     QCOMPARE(entry->property("modelName").toString(), QStringLiteral("saved-name"));
+}
+
+// The tabs of the gear popup are written together: the launch tab answers
+// whether it wrote anything, and the request tab is written either way.
+void TestTaskModelsTableQml::theSaveTabsWritesBothTabs()
+{
+    m_launchProfiles->resetSaves();
+    m_profiles->resetSaves();
+
+    const std::unique_ptr<QObject> table = loadTable();
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QVariant result;
+    QVERIFY(QMetaObject::invokeMethod(table.get(), "saveTabs", Q_RETURN_ARG(QVariant, result)));
+    QCOMPARE(result.toBool(), true);
+    QCOMPARE(m_launchProfiles->saves(), 1);
+    QCOMPARE(m_profiles->saves(), 1);
+}
+
+void TestTaskModelsTableQml::theSaveTabsAsksBeforeWritingTheLaunchDraft()
+{
+    m_launchProfiles->setSecretLike(true);
+    m_launchProfiles->resetSaves();
+    m_profiles->resetSaves();
+
+    const std::unique_ptr<QObject> table = loadTable();
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QVariant result;
+    QVERIFY(QMetaObject::invokeMethod(table.get(), "saveTabs", Q_RETURN_ARG(QVariant, result)));
+    QCOMPARE(result.toBool(), false);
+    // The launch tab asked the user a question and wrote nothing; the
+    // request tab was written anyway.
+    QCOMPARE(m_launchProfiles->saves(), 0);
+    QCOMPARE(m_profiles->saves(), 1);
 }
 
 int main(int argc, char *argv[])

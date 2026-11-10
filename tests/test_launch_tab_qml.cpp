@@ -64,13 +64,22 @@ public:
         Q_UNUSED(text)
         return true;
     }
-    Q_INVOKABLE void saveDraft() {}
+    Q_INVOKABLE void saveDraft() { ++m_saves; }
     Q_INVOKABLE void loadDefaultDraft() {}
+    Q_INVOKABLE bool draftHasSecretLikeParameter() const { return m_secretLike; }
     Q_INVOKABLE QString modelRuntimeNoteForRole(const QString &task) const
     {
         Q_UNUSED(task)
         return QString();
     }
+
+    void setSecretLike(bool value) { m_secretLike = value; }
+    void resetSaves() { m_saves = 0; }
+    int saves() const { return m_saves; }
+
+private:
+    bool m_secretLike = false;
+    int m_saves = 0;
 };
 
 // A stand-in for UiController: Theme reads the dark flag from it.
@@ -116,10 +125,13 @@ private slots:
     void estimateLabelStaysSilentWithAnEstimate();
     void estimateSentenceCarriesTheVisionTerm();
     void estimateSentenceWithoutTheVisionTerm();
+    void theSaveWritesTheDraft();
+    void theSaveAsksBeforeWritingASecretLikeValue();
 
 private:
     std::unique_ptr<QObject> loadTab();
     QString estimateSentence(const QObject *tab) const;
+    QVariant saveTab(QObject *tab);
 
     std::unique_ptr<FakeRuntime> m_runtime;
     std::unique_ptr<FakeLaunchProfiles> m_launchProfiles;
@@ -199,6 +211,16 @@ QString TestLaunchTabQml::estimateSentence(const QObject *tab) const
     return QString();
 }
 
+// The tab answers whether the draft was written: the window must not go on
+// as if it were.
+QVariant TestLaunchTabQml::saveTab(QObject *tab)
+{
+    QVariant result;
+    if (!QMetaObject::invokeMethod(tab, "saveValues", Q_RETURN_ARG(QVariant, result)))
+        return {};
+    return result;
+}
+
 void TestLaunchTabQml::estimateLabelStaysSilentWithoutAnEstimate()
 {
     m_settings->setConnectionMode(QStringLiteral("managed"));
@@ -258,6 +280,34 @@ void TestLaunchTabQml::estimateSentenceWithoutTheVisionTerm()
     const QString sentence = estimateSentence(tab.get());
     QVERIFY2(!sentence.isEmpty(), "the tab must show the video-memory sentence");
     QVERIFY2(!sentence.contains(QStringLiteral("vision")), qPrintable(sentence));
+}
+
+void TestLaunchTabQml::theSaveWritesTheDraft()
+{
+    m_settings->setConnectionMode(QStringLiteral("managed"));
+    m_launchProfiles->setSecretLike(false);
+    m_launchProfiles->resetSaves();
+
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY(tab);
+
+    QCOMPARE(saveTab(tab.get()).toBool(), true);
+    QCOMPARE(m_launchProfiles->saves(), 1);
+}
+
+void TestLaunchTabQml::theSaveAsksBeforeWritingASecretLikeValue()
+{
+    m_settings->setConnectionMode(QStringLiteral("managed"));
+    m_launchProfiles->setSecretLike(true);
+    m_launchProfiles->resetSaves();
+
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY(tab);
+
+    // The draft holds a value whose name reads like a secret: the tab asks
+    // the user first and writes nothing.
+    QCOMPARE(saveTab(tab.get()).toBool(), false);
+    QCOMPARE(m_launchProfiles->saves(), 0);
 }
 
 QTEST_MAIN(TestLaunchTabQml)

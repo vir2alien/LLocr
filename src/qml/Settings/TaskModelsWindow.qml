@@ -69,7 +69,10 @@ ApplicationWindow {
     }//footer
 
     function save() {
-        taskTable.saveTabs()
+        // A tab that asked the user a question wrote nothing: the window
+        // stays open until the answer is in.
+        if (!taskTable.saveTabs())
+            return
         if (window.externalMode) {
             taskTable.applyExternalDraft()
             window.close()

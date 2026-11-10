@@ -18,6 +18,9 @@ Item {
     readonly property real valueWidth: 0.2
     readonly property var profiles: RoleProfiles.profiles(role)
 
+    // The user changed a request parameter.
+    signal edited()
+
     // The height of the tab's content: the popup that holds the tabs sizes
     // itself by the taller of them.
     readonly property real contentHeight: requestColumn.implicitHeight
@@ -31,6 +34,7 @@ Item {
         root.profiles.saveDraft()
         if (root.decisionRole)
             Settings.decisionMatchThreshold = thresholdSpin.value / 100
+        return true
     }
 
     function resetValues() {
@@ -62,6 +66,13 @@ Item {
                 to: 100
                 stepSize: 5
                 editable: true
+                // The threshold is written on save: while the box differs from
+                // the saved one, the user has changed it. The load and the
+                // reset write the saved value back and stay silent.
+                onValueChanged: {
+                    if (thresholdSpin.value !== Math.round(Settings.decisionMatchThreshold * 100))
+                        root.edited()
+                }
             }
             Item { Layout.fillWidth: true }
         }
@@ -82,7 +93,12 @@ Item {
             model: root.profiles.draftModel
             nameWidth: root.nameWidth
             valueWidth: root.valueWidth
-            setValue: (row, text) => root.profiles.setDraftValue(row, text)
+            setValue: (row, text) => {
+                const written = root.profiles.setDraftValue(row, text)
+                if (written)
+                    root.edited()
+                return written
+            }
         }
 
         LLOLabel {

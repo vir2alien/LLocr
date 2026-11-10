@@ -15,6 +15,13 @@ Item {
     // settings up to the window.
     property var hostTable: null
 
+    // The host can show the runtime settings. Where it cannot (the setup
+    // wizard), the button would lead nowhere and stays hidden.
+    property bool runtimeSectionAvailable: true
+
+    // The user changed a launch parameter.
+    signal edited()
+
     readonly property bool externalMode: Settings.connectionMode === "external"
 
     readonly property var profiles: LaunchProfiles
@@ -32,12 +39,15 @@ Item {
         root.memoryEstimate = root.externalMode ? ({}) : Runtime.estimateModelMemory(Settings.launchModelPathForRole(root.role), root.role)
     }
 
+    // False when the draft was not written: a secret-like parameter asks the
+    // user first, and the caller must not go on as if the values were saved.
     function saveValues() {
         if (root.profiles.draftHasSecretLikeParameter()) {
             secretValueDialog.open()
-            return
+            return false
         }
         root.profiles.saveDraft()
+        return true
     }
 
     function resetValues() {
@@ -66,7 +76,12 @@ Item {
             nameWidth: root.nameWidth
             valueWidth: root.valueWidth
             valuePlaceholder: qsTr("(flag)")
-            setValue: (row, text) => root.profiles.setDraftValue(row, text)
+            setValue: (row, text) => {
+                const written = root.profiles.setDraftValue(row, text)
+                if (written)
+                    root.edited()
+                return written
+            }
         }
 
         LLOLabel {
@@ -137,6 +152,7 @@ Item {
 
         LLOButton {
             text: qsTr("Configure runtime…")
+            visible: root.runtimeSectionAvailable
             onClicked: {
                 if (root.hostTable)
                     root.hostTable.runtimeSectionRequested()

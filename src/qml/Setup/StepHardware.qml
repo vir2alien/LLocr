@@ -158,6 +158,9 @@ Item {
             Layout.fillWidth: true
             externalMode: false
             showGear: true
+            // The wizard has no runtime section to show: the button that
+            // asks for one would lead nowhere.
+            runtimeSectionAvailable: false
         }
 
         Item { Layout.fillHeight: true }
