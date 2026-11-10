@@ -613,8 +613,12 @@ void TestSettingsWindowQml::theInterfacePickersKeepTheirSize()
     QVERIFY(themeImplicit > 0.0);
     QCOMPARE(themeHeight, themeImplicit);
 
-    // The content is packed at the top: the theme switch is not pushed to the
-    // bottom of the section by the free height.
+    // The content is packed at the top: the language picker does not float in
+    // the middle of the section and the theme switch is not pushed to its
+    // bottom by the free height.
+    const double languageTop = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[1].y")).toDouble();
+    QVERIFY2(languageTop < 100.0, qPrintable(QStringLiteral("the language picker is at %1 px").arg(languageTop)));
+
     const double themeTop = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[4].y")).toDouble();
     QVERIFY2(themeTop < 200.0, qPrintable(QStringLiteral("the theme switch is at %1 px").arg(themeTop)));
 }
