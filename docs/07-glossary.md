@@ -508,7 +508,7 @@ appendix at the end of this file.
   rescan branches.
 - **126.** `ctx-size` belongs to the machine, not the weights: it lives in the
   platform profiles of `serverLaunch.json` per os+backend (16384 default, 8192
-  for `cpu`), turned in Settings → Launch, while per-model launch parameters
+  for `cpu`), turned in Settings → Models → row ⚙ → Launch, while per-model launch parameters
   stay what the weights decide (`image-min/max-tokens`, `dry-sequence-breaker`,
   `special`). `compose()` fills gaps by name so no parameter reaches the
   command line twice; `n-predict` was later removed from the launch layer
