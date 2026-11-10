@@ -503,8 +503,8 @@ complete; the decisions are recorded as ADRs in `docs/07-glossary.md`).
 ## 4.17 Models and catalog (Hugging Face)
 Model management lives in the **Models** section of the settings window
 (via the role-aware `ModelInstaller` singleton, stage E): the task table with
-the installed models, the preset catalog and the HF search are part of it
-(see 4.2).
+the model and the quantization of every task, the download queue and the model
+files on disk are part of it (see 4.2).
 
 - **`ModelCatalog`** — Hugging Face tree API with `Link: rel=next` pagination,
   **commit-SHA pinning** (the tree and every download use the pinned `sha`, so
@@ -556,7 +556,7 @@ On a clean profile (`setupVersion == 0 && !setupDismissed`) `Main.qml` triggers
    choosing External finishes the wizard (`setupVersion = 1`), opens Connection.
 2. **Runtime** — download llama.cpp (auto platform/backend + manual backend) or
    point at an existing binary; progress/errors/retry; SmartScreen/AV hint.
-3. **Model** — preset from the catalog / HF search / local GGUF; size, approx
+3. **Model** — a preset from the catalog / a local GGUF; size, approx
    VRAM, license link.
 4. **Launch** — port, ctx-size, n-gpu-layers, `autoStart` (off by default,
    ADR 44), command preview, memory estimate warning (H.2), **Check** →
@@ -604,7 +604,8 @@ Once the runtime is wired, the main window surfaces its state:
 - **Error surfacing** — `Failed` messages follow the §7.5 matrix. ✅
 - **Settings → Runtime** carries Start/Stop/Restart, probe status, Show log,
   and the stage-D installer; the **Models** section carries the task table with
-  the installed models, the preset catalog and the HF search. ✅
+  the model and the quantization of every task, the download queue and the model
+  files on disk. ✅
 
 ## 4.20 Project file (`.llocr`)
 The whole working state can be saved to and reopened from a single
