@@ -1487,6 +1487,7 @@ ApplicationWindow {
         store.setLaunchModelPathForRole(QStringLiteral("decision"), QStringLiteral("/tmp/llocr-models/d.gguf"));
         store.setServerPath(QStringLiteral("/tmp/llocr-runtime/llama-server"));
         store.setInstalledBuild(QStringLiteral("b12000"));
+        store.setRuntimeBackend(QStringLiteral("cpu"));
         store.setSetupVersion(1);
 
         store.resetToDefaults();
@@ -1496,6 +1497,9 @@ ApplicationWindow {
         // The installed server and its build are on the user's disk too.
         QCOMPARE(store.serverPath(), QStringLiteral("/tmp/llocr-runtime/llama-server"));
         QCOMPARE(store.installedBuild(), QStringLiteral("b12000"));
+        // The backend belongs to the installed build: the launch preset
+        // follows it, so a reset must not move the server to another one.
+        QCOMPARE(store.runtimeBackend(), QStringLiteral("cpu"));
         // The wizard must not come back by itself.
         QCOMPARE(store.setupVersion(), 1);
     }
@@ -1518,11 +1522,14 @@ void SettingsStore::resetToDefaults()
 {
     // The installed runtime and the models on disk are not settings: their
     // paths survive the reset, or the app forgets what it has installed
-    // (ADR 297). The wizard's own flags survive too — a reset must not
-    // bring the first-run wizard back.
+    // (ADR 297). The backend of the installed build survives with them: the
+    // launch preset follows it, so wiping it would run the installed server
+    // under another preset. The wizard's own flags survive too — a reset must
+    // not bring the first-run wizard back.
     const QStringList preserved = {
         QLatin1String(kRuntimeRootDir), QLatin1String(kRuntimeModelsDir),
-        QLatin1String(kServerPath), QLatin1String(kInstalledBuild),
+        QLatin1String(kServerPath), QLatin1String(kRuntimeBackend),
+        QLatin1String(kInstalledBuild),
         QLatin1String(kCheckLaunchModelPath), QLatin1String(kCheckLaunchMmprojPath),
         QLatin1String(kCheckLaunchDraftPath),
         QLatin1String(kDecisionLaunchModelPath), QLatin1String(kDecisionLaunchMmprojPath),
@@ -1552,6 +1559,11 @@ void SettingsStore::resetToDefaults()
 `kInstalledBuild` установщик перестаёт видеть обновление, а очистка старых
 сборок отказывается работать («No active runtime build»), а без `kServerPath`
 приложение не знает, где лежит установленный сервер.
+
+`kRuntimeBackend` (бэкенд установленной сборки) переживает сброс по той же
+причине: пресет запуска следует за ним (`LaunchProfileStore::targetBackend()`),
+и без него установленный сервер пошёл бы под другим пресетом — например,
+CPU-сборка под metal-профилем.
 
 - [ ] **Step 5: Исправить `SettingsStore::resetRuntimeDefaults()`** — сброс группы runtime не трогает OS-хранилище и не забывает путь к установленному серверу:
 

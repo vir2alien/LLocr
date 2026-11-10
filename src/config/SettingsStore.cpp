@@ -232,11 +232,14 @@ void SettingsStore::resetToDefaults()
 {
     // The installed runtime and the models on disk are not settings: their
     // paths survive the reset, or the app forgets what it has installed
-    // (ADR 297). The wizard's own flags survive too — a reset must not
-    // bring the first-run wizard back.
+    // (ADR 297). The backend of the installed build survives with them: the
+    // launch preset follows it, so wiping it would run the installed server
+    // under another preset. The wizard's own flags survive too — a reset must
+    // not bring the first-run wizard back.
     const QStringList preserved = {QLatin1String(kRuntimeRootDir),
                                    QLatin1String(kRuntimeModelsDir),
                                    QLatin1String(kServerPath),
+                                   QLatin1String(kRuntimeBackend),
                                    QLatin1String(kInstalledBuild),
                                    QLatin1String(kCheckLaunchModelPath),
                                    QLatin1String(kCheckLaunchMmprojPath),

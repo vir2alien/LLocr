@@ -695,6 +695,7 @@ private slots:
         const QSet<QByteArray> carriedOver = {QByteArrayLiteral("runtimeRootDir"),
                                               QByteArrayLiteral("runtimeModelsDir"),
                                               QByteArrayLiteral("serverPath"),
+                                              QByteArrayLiteral("runtimeBackend"),
                                               QByteArrayLiteral("installedBuild"),
                                               QByteArrayLiteral("setupVersion"),
                                               QByteArrayLiteral("setupDismissed"),
@@ -796,6 +797,7 @@ private slots:
         store.setLaunchModelPathForRole(QStringLiteral("decision"), QStringLiteral("/tmp/llocr-models/d.gguf"));
         store.setServerPath(QStringLiteral("/tmp/llocr-runtime/llama-server"));
         store.setInstalledBuild(QStringLiteral("b12000"));
+        store.setRuntimeBackend(QStringLiteral("cpu"));
         store.setSetupVersion(1);
 
         store.resetToDefaults();
@@ -805,6 +807,9 @@ private slots:
         // The installed server and its build are on the user's disk too.
         QCOMPARE(store.serverPath(), QStringLiteral("/tmp/llocr-runtime/llama-server"));
         QCOMPARE(store.installedBuild(), QStringLiteral("b12000"));
+        // The backend belongs to the installed build: the launch preset
+        // follows it, so a reset must not move the server to another one.
+        QCOMPARE(store.runtimeBackend(), QStringLiteral("cpu"));
         // The wizard must not come back by itself.
         QCOMPARE(store.setupVersion(), 1);
     }
