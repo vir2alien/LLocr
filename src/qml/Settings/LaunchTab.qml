@@ -19,6 +19,10 @@ Item {
     // wizard), the button would lead nowhere and stays hidden.
     property bool runtimeSectionAvailable: true
 
+    // The question about a secret-like value belongs to the draft: the answer
+    // holds until a new value is written into it.
+    property bool secretConfirmed: false
+
     // The user changed a launch parameter.
     signal edited()
 
@@ -41,8 +45,9 @@ Item {
 
     // False when the draft was not written: a secret-like parameter asks the
     // user first, and the caller must not go on as if the values were saved.
+    // A confirmed draft is written without the question again.
     function saveValues() {
-        if (root.profiles.draftHasSecretLikeParameter()) {
+        if (!root.secretConfirmed && root.profiles.draftHasSecretLikeParameter()) {
             secretValueDialog.open()
             return false
         }
@@ -51,6 +56,7 @@ Item {
     }
 
     function resetValues() {
+        root.secretConfirmed = false
         root.profiles.loadDefaultDraft()
     }
 
@@ -78,8 +84,10 @@ Item {
             valuePlaceholder: qsTr("(flag)")
             setValue: (row, text) => {
                 const written = root.profiles.setDraftValue(row, text)
-                if (written)
+                if (written) {
+                    root.secretConfirmed = false
                     root.edited()
+                }
                 return written
             }
         }
@@ -171,6 +179,9 @@ Item {
         title: qsTr("Save the value anyway?")
         prompt: qsTr("The value will be stored as plain text in the launch profile.")
         promptColor: Theme.accentAttention
-        onConfirmed: root.profiles.saveDraft()
+        onConfirmed: {
+            root.profiles.saveDraft()
+            root.secretConfirmed = true
+        }
     }
 }

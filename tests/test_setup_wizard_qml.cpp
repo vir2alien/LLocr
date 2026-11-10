@@ -289,16 +289,23 @@ public:
         Q_UNUSED(text)
         return true;
     }
-    Q_INVOKABLE void saveDraft() {}
+    Q_INVOKABLE void saveDraft() { ++m_saves; }
     Q_INVOKABLE void loadDefaultDraft() {}
+    Q_INVOKABLE bool draftHasSecretLikeParameter() const { return m_secretLike; }
     Q_INVOKABLE QString modelRuntimeNoteForRole(const QString &task) const
     {
         Q_UNUSED(task)
         return QString();
     }
 
+    void setSecretLike(bool value) { m_secretLike = value; }
+    void resetSaves() { m_saves = 0; }
+    int saves() const { return m_saves; }
+
 private:
     QAbstractItemModel *m_model = nullptr;
+    bool m_secretLike = false;
+    int m_saves = 0;
 };
 
 }  // namespace
@@ -316,6 +323,8 @@ private slots:
     void theHardwareStepPicksTheQuantThatFitsTheMemory();
     void aConfiguredTaskKeepsItsOwnPick();
     void theBackButtonStaysOnTheLastStep();
+    void theWizardKeepsTheStepWhenTheDraftWasNotWritten();
+    void theWizardDoesNotLeaveTheHardwareStepWithoutTheDraft();
 
 private:
     void registerModuleTypes();
@@ -330,6 +339,7 @@ private:
     std::unique_ptr<FakeSelfTest> m_selfTest;
     std::unique_ptr<FakeHardwareInfo> m_hardwareInfo;
     std::unique_ptr<FakeProfilesStore> m_profiles;
+    std::unique_ptr<FakeProfilesStore> m_launchProfiles;
     std::unique_ptr<SettingsStore> m_settings;
     std::unique_ptr<UiController> m_uiController;
     std::unique_ptr<I18n> m_i18n;
@@ -367,7 +377,9 @@ void TestSetupWizardQml::initTestCase()
     // The profile stores are not part of this test: one empty stand-in answers
     // for all of them.
     m_profiles = std::make_unique<FakeProfilesStore>();
-    for (const char *name : {"LaunchProfiles", "RequestProfilesBlock", "RequestProfilesDecision", "RequestProfilesLayout", "RequestProfilesFix"})
+    m_launchProfiles = std::make_unique<FakeProfilesStore>();
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", m_launchProfiles.get());
+    for (const char *name : {"RequestProfilesBlock", "RequestProfilesDecision", "RequestProfilesLayout", "RequestProfilesFix"})
         qmlRegisterSingletonInstance("LLocr", 1, 0, name, m_profiles.get());
 
     // The module's own singletons, read from the source tree.
@@ -590,6 +602,55 @@ void TestSetupWizardQml::aConfiguredTaskKeepsItsOwnPick()
     QCOMPARE(entry.value<QObject *>()->property("quantId").toString(), QStringLiteral("q8_0"));
 
     m_settings->setLaunchModelPathForRole(QStringLiteral("blockRecognition"), QString());
+}
+
+// The wizard must not claim a write that did not happen: a launch parameter
+// whose name reads like a secret asks the user first, and the step waits for
+// the answer.
+void TestSetupWizardQml::theWizardKeepsTheStepWhenTheDraftWasNotWritten()
+{
+    m_launchProfiles->setSecretLike(true);
+    m_launchProfiles->resetSaves();
+    m_profiles->resetSaves();
+
+    const std::unique_ptr<QObject> step = loadFile(QStringLiteral("Setup/StepHardware.qml"));
+    QVERIFY2(step, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    const QVariant missing = evaluate(step.get(), QStringLiteral("applyChoices()"));
+    QVERIFY(missing.isValid());
+
+    // The launch tab asked the user a question and wrote nothing; the step
+    // says so instead of moving on.
+    QCOMPARE(step->property("tabsWritten").toBool(), false);
+    QCOMPARE(m_launchProfiles->saves(), 0);
+    QCOMPARE(m_profiles->saves(), 1);
+}
+
+// The wizard itself waits: the hardware step does not let the user leave
+// while the launch draft was not written.
+void TestSetupWizardQml::theWizardDoesNotLeaveTheHardwareStepWithoutTheDraft()
+{
+    m_launchProfiles->setSecretLike(true);
+    m_launchProfiles->resetSaves();
+
+    const std::unique_ptr<QObject> wizard = loadFile(QStringLiteral("SetupWizard.qml"));
+    QVERIFY2(wizard, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    // The managed mode puts the hardware step third.
+    wizard->setProperty("current", 2);
+    QCoreApplication::processEvents();
+
+    QObject *next = nullptr;
+    for (QObject *child : wizard->findChildren<QObject *>()) {
+        if (child->property("text").toString() == QLatin1String("Next") && child->metaObject()->indexOfSignal("clicked()") >= 0)
+            next = child;
+    }
+    QVERIFY2(next, "the wizard has no Next button");
+    QVERIFY(QMetaObject::invokeMethod(next, "clicked"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(wizard->property("current").toInt(), 2);
+    QCOMPARE(m_launchProfiles->saves(), 0);
 }
 
 // A failed check is fixed by going back to the step that holds the cause:

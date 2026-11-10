@@ -180,8 +180,14 @@ Dialog {
                         wizard.rebuildSteps()
                         // Leaving the hardware step applies the task choices;
                         // the check step downloads what is still missing.
-                        if (wizard.currentStep === stepHardware)
-                            wizard.missingChoices = stepHardware.applyChoices()
+                        if (wizard.currentStep === stepHardware) {
+                            const missing = stepHardware.applyChoices()
+                            // A tab that asked the user a question wrote
+                            // nothing: the step waits for the answer.
+                            if (!stepHardware.tabsWritten)
+                                return
+                            wizard.missingChoices = missing
+                        }
                         wizard.current += 1
                     }
                 }

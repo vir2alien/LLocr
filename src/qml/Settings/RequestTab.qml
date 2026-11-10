@@ -21,13 +21,17 @@ Item {
     // The user changed a request parameter.
     signal edited()
 
+    // The load and the reset write the threshold themselves: those are the
+    // app's own writes, not the user's edit.
+    property bool writingThreshold: false
+
     // The height of the tab's content: the popup that holds the tabs sizes
     // itself by the taller of them.
     readonly property real contentHeight: requestColumn.implicitHeight
 
     function loadValues() {
         root.profiles.reloadDraft()
-        thresholdSpin.value = Math.round(Settings.decisionMatchThreshold * 100)
+        root.setThreshold(Math.round(Settings.decisionMatchThreshold * 100))
     }
 
     function saveValues() {
@@ -40,7 +44,13 @@ Item {
     function resetValues() {
         root.profiles.loadDefaultDraft()
         if (root.decisionRole)
-            thresholdSpin.value = Math.round(Settings.defaultDecisionMatchThreshold * 100)
+            root.setThreshold(Math.round(Settings.defaultDecisionMatchThreshold * 100))
+    }
+
+    function setThreshold(value) {
+        root.writingThreshold = true
+        thresholdSpin.value = value
+        root.writingThreshold = false
     }
 
     ColumnLayout {
@@ -66,11 +76,10 @@ Item {
                 to: 100
                 stepSize: 5
                 editable: true
-                // The threshold is written on save: while the box differs from
-                // the saved one, the user has changed it. The load and the
-                // reset write the saved value back and stay silent.
+                // The threshold is written on save: the box reports a change
+                // of the user's, not the app's own write.
                 onValueChanged: {
-                    if (thresholdSpin.value !== Math.round(Settings.decisionMatchThreshold * 100))
+                    if (!root.writingThreshold)
                         root.edited()
                 }
             }

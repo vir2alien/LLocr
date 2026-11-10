@@ -19,8 +19,14 @@ Item {
     // to the check step.
     property var missingChoices: []
 
+    // The tabs of the gear popup: false when one of them asked the user a
+    // question and wrote nothing.
+    property bool tabsWritten: true
+
     function applyChoices() {
-        taskTable.saveTabs()
+        tabsWritten = taskTable.saveTabs()
+        if (!tabsWritten)
+            return missingChoices
         missingChoices = ModelInstaller.applyTaskChoices(taskTable.buildChoices())
         taskTable.markDraftSaved()
         return missingChoices
@@ -161,6 +167,15 @@ Item {
             // The wizard has no runtime section to show: the button that
             // asks for one would lead nowhere.
             runtimeSectionAvailable: false
+        }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            visible: !root.tabsWritten
+            wrapMode: Text.WordWrap
+            font.pixelSize: Theme.footnoteSize
+            color: Theme.error
+            text: qsTr("The launch parameters are written only after you confirm the value that looks like a secret. Answer the question and press Next again.")
         }
 
         Item { Layout.fillHeight: true }

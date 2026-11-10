@@ -17,6 +17,7 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQmlError>
+#include <QQmlExpression>
 #include <QQuickStyle>
 #include <QtTest>
 
@@ -127,6 +128,8 @@ private slots:
     void estimateSentenceWithoutTheVisionTerm();
     void theSaveWritesTheDraft();
     void theSaveAsksBeforeWritingASecretLikeValue();
+    void theConfirmedDraftSavesWithoutAskingAgain();
+    void theNewValueAsksAgain();
 
 private:
     std::unique_ptr<QObject> loadTab();
@@ -308,6 +311,72 @@ void TestLaunchTabQml::theSaveAsksBeforeWritingASecretLikeValue()
     // the user first and writes nothing.
     QCOMPARE(saveTab(tab.get()).toBool(), false);
     QCOMPARE(m_launchProfiles->saves(), 0);
+}
+
+// The question is asked once per draft: the confirmed draft goes through and
+// the next save writes it without asking again — otherwise the save could
+// never finish.
+void TestLaunchTabQml::theConfirmedDraftSavesWithoutAskingAgain()
+{
+    m_settings->setConnectionMode(QStringLiteral("managed"));
+    m_launchProfiles->setSecretLike(true);
+    m_launchProfiles->resetSaves();
+
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY(tab);
+
+    QCOMPARE(saveTab(tab.get()).toBool(), false);
+    QCOMPARE(m_launchProfiles->saves(), 0);
+
+    // The user answers the question.
+    QObject *dialog = nullptr;
+    for (QObject *child : tab->findChildren<QObject *>()) {
+        if (child->property("prompt").isValid())
+            dialog = child;
+    }
+    QVERIFY2(dialog, "the tab has no question to answer");
+    QVERIFY(QMetaObject::invokeMethod(dialog, "accepted"));
+    QCOMPARE(m_launchProfiles->saves(), 1);
+
+    // The next save writes the draft and asks nothing.
+    QCOMPARE(saveTab(tab.get()).toBool(), true);
+    QCOMPARE(m_launchProfiles->saves(), 2);
+}
+
+// A new value in the draft is a new fact: the question comes back for it.
+void TestLaunchTabQml::theNewValueAsksAgain()
+{
+    m_settings->setConnectionMode(QStringLiteral("managed"));
+    m_launchProfiles->setSecretLike(true);
+    m_launchProfiles->resetSaves();
+
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY(tab);
+
+    QCOMPARE(saveTab(tab.get()).toBool(), false);
+
+    QObject *dialog = nullptr;
+    QObject *editor = nullptr;
+    for (QObject *child : tab->findChildren<QObject *>()) {
+        if (child->property("prompt").isValid())
+            dialog = child;
+        if (child->property("setValue").isValid())
+            editor = child;
+    }
+    QVERIFY2(dialog, "the tab has no question to answer");
+    QVERIFY2(editor, "the tab has no parameter table");
+    QVERIFY(QMetaObject::invokeMethod(dialog, "accepted"));
+
+    // The user writes another value into the draft.
+    QQmlContext *context = m_engine->contextForObject(editor);
+    QVERIFY(context);
+    QQmlExpression expression(context, editor, QStringLiteral("setValue(0, \"probe\")"));
+    QVERIFY(!expression.hasError());
+    expression.evaluate();
+
+    // The question comes back: the new value is a new fact.
+    QCOMPARE(saveTab(tab.get()).toBool(), false);
+    QCOMPARE(m_launchProfiles->saves(), 1);
 }
 
 QTEST_MAIN(TestLaunchTabQml)
