@@ -588,6 +588,22 @@ target_link_libraries(test_segmented_control_qml PRIVATE
 llocr_add_ui_icons(test_segmented_control_qml)
 add_test(NAME test_segmented_control_qml COMMAND test_segmented_control_qml)
 
+# The section list of the settings window: the window owns the sections, the
+# nav reports the pick. The file is read from the source tree, so the test
+# covers the shipped QML.
+qt_add_executable(test_settings_nav_qml test_settings_nav_qml.cpp)
+
+target_link_libraries(test_settings_nav_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+# The rows draw icons (the sections' monitor, file-text, circle-check, server
+# and box).
+llocr_add_ui_icons(test_settings_nav_qml)
+add_test(NAME test_settings_nav_qml COMMAND test_settings_nav_qml)
+
 qt_add_executable(test_runtime_installer test_runtime_installer.cpp)
 
 target_link_libraries(test_runtime_installer PRIVATE
