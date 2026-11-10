@@ -392,7 +392,7 @@ ListView {
 
 **Interfaces:**
 - Consumes: `Settings`, `UiController`, `I18n`, `Verification`, `RuntimeInstaller`, `Runtime` (синглтоны `LLocr`); существующие `InterfaceSettings`, `OutputTab`, `VerificationBlocksTab`, `RuntimeTab`.
-- Produces: единый контракт раздела — `signal edited()`, `function loadValues()`, `function saveValues()`, `function cancelValues()`, `function resetValues()`. У двух «живых» страниц (`InterfaceSection`, `RuntimeSection`) — ещё `function beginSession()`: снимок отката берётся один раз за сеанс окна, а не при каждой загрузке значений. `saveValues()` раздела «Модели» (T3) возвращает `bool` (false — модели не скачаны, окно не закрывается); остальные возвращают `undefined`.
+- Produces: единый контракт раздела — `signal edited()`, `function loadValues()`, `function saveValues()`, `function cancelValues()`, `function resetValues()`. У трёх «живых» страниц (`InterfaceSection`, `VerificationSection`, `RuntimeSection`) — ещё `function beginSession()`: снимок отката берётся один раз за сеанс окна, а не при каждой загрузке значений. `saveValues()` раздела «Модели» (T3) возвращает `bool` (false — модели не скачаны, окно не закрывается); остальные возвращают `undefined`.
 
 - [ ] **Step 1: Добавить сигнал `edited()` в `src/qml/Common/InterfaceSettings.qml`.** В корневой `ColumnLayout` объявить `signal edited()`; в обработчике языка (`onActivated` у `languageBox`) добавить строку `root.edited()`, в `onActivated` сегмент-контрола темы — тоже. Корневому элементу нужен `id: root`:
 
@@ -1160,6 +1160,15 @@ ApplicationWindow {
     // otherwise Cancel would have nothing to put back.
     property bool sessionStarted: false
 
+    // The live pages take their undo snapshot here: the language and the
+    // theme, the block types of the verification, the connection mode and
+    // the backend.
+    function armSession() {
+        interfaceSection.beginSession()
+        verificationSection.beginSession()
+        runtimeSection.beginSession()
+    }
+
     background: SettingsSurface {
     }
 
@@ -1167,8 +1176,7 @@ ApplicationWindow {
         if (!visible)
             return
         if (!window.sessionStarted) {
-            interfaceSection.beginSession()
-            runtimeSection.beginSession()
+            window.armSession()
             window.sessionStarted = true
         }
         window.loadAll()
@@ -1475,8 +1483,7 @@ void SettingsStore::clearTaskEndpoints()
         verificationSection.resetValues()
         runtimeSection.resetValues()
         modelsSection.resetValues()
-        interfaceSection.beginSession()
-        runtimeSection.beginSession()
+        window.armSession()
         window.loadAll()
     }
 ```
@@ -1558,6 +1565,10 @@ void SettingsStore::clearTaskEndpoints()
                 settingsWindow.show()
                 settingsWindow.raise()
                 settingsWindow.requestActivate()
+                // The wizard writes the connection mode and the backend live:
+                // they are the new baseline, so a Cancel in the settings
+                // window must not undo the wizard's work.
+                settingsWindow.armSession()
             }
             wizard.closed.connect(onWizardClosed)
         }
