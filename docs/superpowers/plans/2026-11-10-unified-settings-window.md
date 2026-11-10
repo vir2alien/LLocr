@@ -1079,48 +1079,9 @@ Item {
 }
 ```
 
-- [ ] **Step 3: Кнопка «Мастер настройки» в подвале.** В `src/qml/Main.qml` расширить `openSetupWizard()` — мастер модален для главного окна и перекрывает окно настроек, поэтому окно отступает и возвращается:
+- [ ] **Step 3: Собрать** — `cmake --build build -j 8` — без ошибок.
 
-```qml
-    // The wizard is a modal dialog of the main window: it covers the settings
-    // window, which steps aside and comes back when the wizard closes.
-    function openSetupWizard() {
-        setupWizardLoader.active = true
-        const wizard = setupWizardLoader.item as SetupWizard
-        wizard.startWizard()
-        if (settingsLoader.active && settingsLoader.item) {
-            const settingsWindow = settingsLoader.item
-            settingsWindow.hide()
-            const onWizardClosed = function() {
-                wizard.closed.disconnect(onWizardClosed)
-                settingsWindow.show()
-                settingsWindow.raise()
-                settingsWindow.requestActivate()
-                // The wizard writes the connection mode and the backend live:
-                // they are the new baseline, so a Cancel in the settings
-                // window must not undo the wizard's work.
-                settingsWindow.armSession()
-            }
-            wizard.closed.connect(onWizardClosed)
-        }
-    }
-```
-
-и в загрузчике окна направить сигнал наружу:
-
-```qml
-    Loader {
-        id: settingsLoader
-        active: false
-        sourceComponent: SettingsWindow {
-            onWizardRequested: mainWindow.openSetupWizard()
-        }
-    }
-```
-
-- [ ] **Step 4: Собрать** — `cmake --build build -j 8` — без ошибок.
-
-- [ ] **Step 5: Полный прогон** — `scripts/check.sh --configure` — зелёный.
+- [ ] **Step 4: Полный прогон** — `scripts/check.sh --configure` — зелёный.
 
 ---
 
@@ -1243,11 +1204,16 @@ ApplicationWindow {
     onVisibleChanged: {
         if (!visible)
             return
-        if (!window.sessionStarted) {
-            window.armSession()
-            window.sessionStarted = true
-        }
+        // The one-shot pass spent on a confirmed discard must not leak into
+        // the next session with the window.
+        window.forceClose = false
+        // The values are read once per session: a reload on every show would
+        // wipe the unsaved drafts of the output and the runtime sections.
+        if (window.sessionStarted)
+            return
+        window.armSession()
         window.loadAll()
+        window.sessionStarted = true
     }
 
     onClosing: (close) => {
@@ -1257,13 +1223,19 @@ ApplicationWindow {
             return
         }
         window.sessionStarted = false
+        if (window.pendingWizard) {
+            window.pendingWizard = false
+            // The window is still visible while the closing signal runs: the
+            // wizard must not start under it.
+            Qt.callLater(function() { window.wizardRequested() })
+        }
     }
 
     footer: SettingsFooter {
         LLOButton {
             subtle: true
             text: qsTr("Setup wizard")
-            onClicked: window.wizardRequested()
+            onClicked: window.requestWizard()
         }
         Item { Layout.fillWidth: true }
         LLOButton {
@@ -1381,6 +1353,11 @@ ApplicationWindow {
             window.forceClose = true
             window.close()
         }
+
+        onRejected: {
+            // The user kept the window: the wizard must not start later on.
+            window.pendingWizard = false
+        }
     }
 }
 ```
@@ -1395,34 +1372,7 @@ ApplicationWindow {
     }
 ```
 
-- [ ] **Step 3: Кнопка «Мастер настройки» в подвале.** В `src/qml/Main.qml` расширить `openSetupWizard()` — мастер модален для главного окна и перекрывает окно настроек, поэтому окно отступает и возвращается:
-
-```qml
-    // The wizard is a modal dialog of the main window: it covers the settings
-    // window, which steps aside and comes back when the wizard closes.
-    function openSetupWizard() {
-        setupWizardLoader.active = true
-        const wizard = setupWizardLoader.item as SetupWizard
-        wizard.startWizard()
-        if (settingsLoader.active && settingsLoader.item) {
-            const settingsWindow = settingsLoader.item
-            settingsWindow.hide()
-            const onWizardClosed = function() {
-                wizard.closed.disconnect(onWizardClosed)
-                settingsWindow.show()
-                settingsWindow.raise()
-                settingsWindow.requestActivate()
-                // The wizard writes the connection mode and the backend live:
-                // they are the new baseline, so a Cancel in the settings
-                // window must not undo the wizard's work.
-                settingsWindow.armSession()
-            }
-            wizard.closed.connect(onWizardClosed)
-        }
-    }
-```
-
-и в загрузчике окна направить сигнал наружу:
+- [ ] **Step 3: Кнопка «Мастер настройки» в подвале.** Мастер применяет свои настройки — режим подключения, выбор моделей, параметры вывода, — то есть он **заменяет сеанс правки**: окно настроек закрывается, мастер идёт в своём родном окне, и никакие два модальных окна не спорят за передний план. Загрузчик окна направляет сигнал наружу:
 
 ```qml
     Loader {
@@ -1432,6 +1382,77 @@ ApplicationWindow {
             onWizardRequested: mainWindow.openSetupWizard()
         }
     }
+```
+
+`openSetupWizard()` в `src/qml/Main.qml` — если окно настроек открыто, мастер
+заменяет и его: окно закрывается (с обычным вопросом о несохранённых
+изменениях), иначе мастер запускается сразу:
+
+```qml
+    // The wizard applies its own settings, so it replaces the editing
+    // session: the settings window closes and the wizard runs alone in the
+    // main window. The window comes back only if the user opens it again —
+    // with the wizard's values and a fresh undo.
+    function openSetupWizard() {
+        if (settingsLoader.active && settingsLoader.item && settingsLoader.item.visible) {
+            settingsLoader.item.requestWizard()
+            return
+        }
+        setupWizardLoader.active = true
+        const wizard = setupWizardLoader.item as SetupWizard
+        wizard.startWizard()
+    }
+```
+
+В самом окне кнопка подвала просит закрыть сеанс и открыть мастер:
+
+```qml
+        LLOButton {
+            subtle: true
+            text: qsTr("Setup wizard")
+            onClicked: window.requestWizard()
+        }
+```
+
+```qml
+    function requestWizard() {
+        window.pendingWizard = true
+        window.close()
+    }
+```
+
+`property bool pendingWizard: false` рядом с `dirty`, а в `onClosing` — последнее действие принятого закрытия:
+
+```qml
+    onClosing: (close) => {
+        if (window.dirty && !window.forceClose) {
+            close.accepted = false
+            closeConfirmDialog.open()
+            return
+        }
+        window.sessionStarted = false
+        if (window.pendingWizard) {
+            window.pendingWizard = false
+            // The window is still visible while the closing signal runs: the
+            // wizard must not start under it.
+            Qt.callLater(function() { window.wizardRequested() })
+        }
+    }
+```
+
+`Qt.callLater` обязателен: внутри `closing` окно ещё видимо, и прямой вызов
+`wizardRequested()` привёл бы к рекурсии — `openSetupWizard()` увидел бы
+видимое окно и позвал `requestWizard()` снова. Через `callLater` окно уже
+скрыто, и мастер запускается один раз.
+
+Диалог «Discard changes?» уже закрывает окно через `window.close()` — цепочка
+доходит до `pendingWizard` и открывает мастер. Если пользователь ответил «No»
+и оставил окно, мастер запускаться не должен — сбрось флаг в отказе диалога:
+
+```qml
+        onRejected: {
+            window.pendingWizard = false
+        }
 ```
 
 - [ ] **Step 4: Собрать** — `cmake --build build -j 8` — без ошибок.
