@@ -81,12 +81,7 @@ ApplicationWindow {
             exportOptionsDialog.presetScope = presetScope
             exportOptionsDialog.open()
         }
-        onSetupWizardRequested: mainWindow.openSetupWizard()
-        onOpenUiSettingsRequested: showWindow(uiSettingsLoader)
-        onOpenOutputSettingsRequested: showWindow(outputSettingsLoader)
-        onOpenVerificationSettingsRequested: showWindow(verificationSettingsLoader)
-        onOpenRuntimeSettingsRequested: showWindow(runtimeSettingsLoader)
-        onOpenTaskModelsSettingsRequested: showWindow(taskModelsSettingsLoader)
+        onOpenSettingsRequested: showWindow(settingsLoader)
     }
 
     SplitView {
@@ -234,38 +229,6 @@ ApplicationWindow {
         id: problemLogLoader
         active: false
         sourceComponent: ProblemLogWindow {}
-    }
-
-    Loader {
-        id: uiSettingsLoader
-        active: false
-        sourceComponent: UiSettingsWindow {}
-    }
-
-    Loader {
-        id: outputSettingsLoader
-        active: false
-        sourceComponent: OutputSettingsWindow {}
-    }
-
-    Loader {
-        id: verificationSettingsLoader
-        active: false
-        sourceComponent: VerificationSettingsWindow {}
-    }
-
-    Loader {
-        id: runtimeSettingsLoader
-        active: false
-        sourceComponent: RuntimeSettingsWindow {}
-    }
-
-    Loader {
-        id: taskModelsSettingsLoader
-        active: false
-        sourceComponent: TaskModelsWindow {
-            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
-        }
     }
 
     ExportDialog {

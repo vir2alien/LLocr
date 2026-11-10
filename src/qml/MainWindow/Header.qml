@@ -17,12 +17,7 @@ ToolBar {
     signal saveProjectAsRequested()
     // The ExportDialog's preset scope: 0 = whole document, 1 = current page.
     signal exportRequested(int presetScope)
-    signal setupWizardRequested()
-    signal openUiSettingsRequested()
-    signal openOutputSettingsRequested()
-    signal openVerificationSettingsRequested()
-    signal openRuntimeSettingsRequested()
-    signal openTaskModelsSettingsRequested()
+    signal openSettingsRequested()
 
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
@@ -360,7 +355,7 @@ ToolBar {
                     id: settingsButton
                     text: qsTr("Settings")
                     iconName: "settings"
-                    onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
+                    onClicked: headerRoot.openSettingsRequested()
                 }
             }
         }
@@ -557,41 +552,6 @@ ToolBar {
                 color: Theme.textMuted
                 text: headerRoot.shortcutDisplayText(saveAsAction.shortcut)
             }
-        }
-    }
-
-    Menu {
-        id: settingsMenu
-
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Setup wizard")
-            onTriggered: headerRoot.setupWizardRequested()
-        }
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Interface")
-            onTriggered: headerRoot.openUiSettingsRequested()
-        }
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Output")
-            onTriggered: headerRoot.openOutputSettingsRequested()
-        }
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Verification")
-            onTriggered: headerRoot.openVerificationSettingsRequested()
-        }
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Runtime")
-            onTriggered: headerRoot.openRuntimeSettingsRequested()
-        }
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Models")
-            onTriggered: headerRoot.openTaskModelsSettingsRequested()
         }
     }
 
