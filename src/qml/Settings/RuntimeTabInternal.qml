@@ -12,6 +12,8 @@ ScrollView {
     contentWidth: availableWidth
     contentHeight: formLayout.implicitHeight
 
+    signal edited()
+
     property var backendOptions: []
     property var releaseOptions: []
 
@@ -231,8 +233,11 @@ ScrollView {
                 Layout.minimumWidth: 80
                 model: backendOptions
                 enabled: !RuntimeInstaller.busy
-                onActivated: RuntimeInstaller.backend =
-                    RuntimeInstaller.availableBackends[currentIndex]
+                onActivated: {
+                    RuntimeInstaller.backend =
+                        RuntimeInstaller.availableBackends[currentIndex]
+                    root.edited()
+                }
             }
 
             LLOLabel {
@@ -245,7 +250,10 @@ ScrollView {
                 Layout.minimumWidth: 80
                 model: releaseOptions
                 enabled: !RuntimeInstaller.busy
-                onActivated: RuntimeInstaller.selectedRelease = currentIndex
+                onActivated: {
+                    RuntimeInstaller.selectedRelease = currentIndex
+                    root.edited()
+                }
             }
 
             LLOButton {

@@ -68,6 +68,7 @@ ListView {
             anchors.verticalCenter: parent.verticalCenter
             text: row.modelData.title
             elide: Text.ElideRight
+            wrapMode: Text.NoWrap
             font.pixelSize: Theme.bodySize
             color: row.index === root.currentIndex ? Theme.textPrimary : Theme.textSecondary
         }

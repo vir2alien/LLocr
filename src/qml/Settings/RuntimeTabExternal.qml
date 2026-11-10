@@ -15,6 +15,12 @@ ColumnLayout {
 
     spacing: Theme.spacingSmall
 
+    signal edited()
+
+    // The load fills the field from the settings: that write is not the
+    // user's, so it must not mark the settings window dirty.
+    property bool loading: false
+
     // The wizard's external step shows the shared server only: the tasks are
     // configured in the settings.
     property bool compact: false
@@ -44,11 +50,13 @@ ColumnLayout {
     property int commitToken: 0
 
     function loadValues() {
+        extRoot.loading = true
         baseUrlField.text = Settings.baseUrl
         sharedKeyPresent = Settings.apiKeySet
         sharedKey.load()
         Settings.refreshSecretState()
         reloadToken++
+        extRoot.loading = false
     }
 
     function saveValues() {
@@ -90,6 +98,7 @@ ColumnLayout {
         font.pixelSize: Theme.bodySmallSize
         placeholderText: "http://localhost:8080"
         selectByMouse: true
+        onTextChanged: if (!extRoot.loading) extRoot.edited()
     }
 
     LLOLabel {

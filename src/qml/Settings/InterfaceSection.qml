@@ -16,20 +16,28 @@ Item {
     property string snapshotLanguage: ""
     property int snapshotTheme: -1
 
-    function loadValues() {
+    // The snapshot is armed once per session: the window is shown and hidden
+    // again inside one session (the wizard steps aside), and a reload must not
+    // take the undo with it.
+    function beginSession() {
         root.snapshotLanguage = Settings.language
         root.snapshotTheme = UiController.mode
+    }
+
+    // The controls read the language and the theme from the settings
+    // themselves, so there is nothing to load here.
+    function loadValues() {
     }
 
     function saveValues() {
     }
 
     function cancelValues() {
-        if (root.snapshotLanguage !== Settings.language) {
+        if (root.snapshotLanguage !== "" && root.snapshotLanguage !== Settings.language) {
             Settings.language = root.snapshotLanguage
             I18n.setLanguage(Settings.language)
         }
-        if (root.snapshotTheme !== UiController.mode)
+        if (root.snapshotTheme >= 0 && root.snapshotTheme !== UiController.mode)
             UiController.mode = root.snapshotTheme
     }
 

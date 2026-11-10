@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Controls
 
 import LLocr
-import "../Common"
 
 // The runtime section mixes a draft (the timeouts, the endpoint) with live
 // writes (the connection mode, the backend, the release): the live ones are
@@ -32,8 +31,14 @@ Item {
         RuntimeInstaller.selectedRelease = root.applySnapshot.selectedRelease
     }
 
-    function loadValues() {
+    // The snapshot is armed once per session: the window is shown and hidden
+    // again inside one session (the wizard steps aside), and a reload must not
+    // take the undo with it.
+    function beginSession() {
         root.takeApplySnapshot()
+    }
+
+    function loadValues() {
         rtTab.loadValues()
         Runtime.refreshSingleInstanceLock()
     }

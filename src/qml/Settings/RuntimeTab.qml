@@ -124,6 +124,7 @@ ColumnLayout {
         visible: runtimeLayout.externalMode
         Layout.fillWidth: true
         Layout.fillHeight: true
+        onEdited: runtimeLayout.edited()
     }
 
     RuntimeTabInternal {
@@ -131,6 +132,7 @@ ColumnLayout {
         visible: !runtimeLayout.externalMode
         Layout.fillWidth: true
         Layout.fillHeight: true
+        onEdited: runtimeLayout.edited()
     }
 
     Item {
