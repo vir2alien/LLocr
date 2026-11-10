@@ -352,7 +352,6 @@ ToolBar {
                 spacing: Theme.spacingSmall
 
                 IconToolButton {
-                    id: settingsButton
                     text: qsTr("Settings")
                     iconName: "settings"
                     onClicked: headerRoot.openSettingsRequested()
