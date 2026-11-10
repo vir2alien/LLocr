@@ -1202,21 +1202,6 @@
         <translation>Настройки</translation>
     </message>
     <message>
-        <location line="+205"/>
-        <source>Setup wizard</source>
-        <translation>Мастер настройки</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Interface</source>
-        <translation>Интерфейс</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Output</source>
-        <translation>Вывод</translation>
-    </message>
-    <message>
         <location line="-307"/>
         <source>Verification and fixing</source>
         <translation type="vanished">Проверка и исправление</translation>
@@ -1225,11 +1210,6 @@
         <location filename="../../src/qml/MainWindow/Header.qml" line="+262"/>
         <source>Verification and AI correction</source>
         <translation>Проверки и AI-коррекция</translation>
-    </message>
-    <message>
-        <location line="+311"/>
-        <source>Verification</source>
-        <translation>Проверка</translation>
     </message>
     <message>
         <location line="-460"/>
@@ -1341,16 +1321,6 @@
         <location line="+44"/>
         <source>Export the recognized text</source>
         <translation>Экспортировать распознанный текст</translation>
-    </message>
-    <message>
-        <location line="+233"/>
-        <source>Runtime</source>
-        <translation>Рантайм</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Models</source>
-        <translation>Модели</translation>
     </message>
     <message>
         <location line="+19"/>
@@ -1678,29 +1648,6 @@
         <location line="+38"/>
         <source>Failed to encode the page image</source>
         <translation>Не удалось закодировать изображение страницы</translation>
-    </message>
-</context>
-<context>
-    <name>OutputSettingsWindow</name>
-    <message>
-        <location filename="../../src/qml/Settings/OutputSettingsWindow.qml" line="+12"/>
-        <source>Output settings</source>
-        <translation>Настройки вывода</translation>
-    </message>
-    <message>
-        <location line="+19"/>
-        <source>Restore defaults</source>
-        <translation>Вернуть настройки по умолчанию</translation>
-    </message>
-    <message>
-        <location line="+18"/>
-        <source>Save</source>
-        <translation>Сохранить</translation>
-    </message>
-    <message>
-        <location line="-8"/>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
     </message>
 </context>
 <context>
@@ -3067,29 +3014,6 @@
     </message>
 </context>
 <context>
-    <name>RuntimeSettingsWindow</name>
-    <message>
-        <location filename="../../src/qml/Settings/RuntimeSettingsWindow.qml" line="+12"/>
-        <source>Runtime settings</source>
-        <translation>Настройки рантайма</translation>
-    </message>
-    <message>
-        <location line="+39"/>
-        <source>Restore defaults</source>
-        <translation>Вернуть настройки по умолчанию</translation>
-    </message>
-    <message>
-        <location line="+19"/>
-        <source>Save</source>
-        <translation>Сохранить</translation>
-    </message>
-    <message>
-        <location line="-10"/>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
-    </message>
-</context>
-<context>
     <name>RuntimeTab</name>
     <message>
         <location filename="../../src/qml/Settings/RuntimeTab.qml" line="+37"/>
@@ -3671,31 +3595,9 @@
     </message>
 </context>
 <context>
-    <name>TaskModelsWindow</name>
+    <name>ModelsSection</name>
     <message>
-        <location filename="../../src/qml/Settings/TaskModelsWindow.qml" line="+13"/>
-        <source>Models</source>
-        <translation>Модели</translation>
-    </message>
-    <message>
-        <location line="+35"/>
-        <source>Restore defaults</source>
-        <translation>Вернуть настройки по умолчанию</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <location line="+245"/>
-        <location line="+56"/>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
-    </message>
-    <message>
-        <location line="-292"/>
-        <source>Save</source>
-        <translation>Сохранить</translation>
-    </message>
-    <message>
-        <location line="+216"/>
+        <location filename="../../src/qml/Settings/ModelsSection.qml" line="+129"/>
         <source>Models to download</source>
         <translation>Модели для скачивания</translation>
     </message>
@@ -3739,6 +3641,13 @@
         <location line="-1"/>
         <source>%1 is used by %2 task(s). The task rows keep their choice, but the model is gone from disk until you download it again.</source>
         <translation>%1 привязана к задачам (%2). Строки задач сохранят выбор, но модели на диске больше нет, пока вы не скачаете её снова.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <location line="+245"/>
+        <location line="+56"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>
@@ -3870,19 +3779,6 @@
     </message>
 </context>
 <context>
-    <name>UiSettingsWindow</name>
-    <message>
-        <location filename="../../src/qml/Settings/UiSettingsWindow.qml" line="+12"/>
-        <source>Interface settings</source>
-        <translation>Настройки интерфейса</translation>
-    </message>
-    <message>
-        <location line="+19"/>
-        <source>Restore defaults</source>
-        <translation>Вернуть настройки по умолчанию</translation>
-    </message>
-</context>
-<context>
     <name>VerificationBlocksTab</name>
     <message>
         <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="24"/>
@@ -4008,21 +3904,71 @@
     </message>
 </context>
 <context>
-    <name>VerificationSettingsWindow</name>
+    <name>SettingsWindow</name>
     <message>
-        <location filename="../../src/qml/Settings/VerificationSettingsWindow.qml" line="+12"/>
-        <source>Verification settings</source>
-        <translation>Настройки проверки</translation>
+        <location filename="../../src/qml/Settings/SettingsWindow.qml" line="+16"/>
+        <source>Settings</source>
+        <translation>Настройки</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+16"/>
+        <source>Interface</source>
+        <translation>Интерфейс</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Output</source>
+        <translation>Вывод</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Verification</source>
+        <translation>Проверка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime</source>
+        <translation>Рантайм</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Models</source>
+        <translation>Модели</translation>
+    </message>
+    <message>
+        <location line="+127"/>
+        <source>Setup wizard</source>
+        <translation>Мастер настройки</translation>
+    </message>
+    <message>
+        <location line="+5"/>
         <source>Reset all settings</source>
         <translation>Сбросить все настройки</translation>
     </message>
     <message>
-        <location line="+64"/>
+        <location line="+9"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <location line="+95"/>
+        <source>Reset all settings?</source>
+        <translation>Сбросить все настройки?</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Every setting goes back to its default, the custom verification prompts included. The installed runtime, the downloaded models and the keys in the system store stay.</source>
+        <translation>Все настройки возвращаются к значениям по умолчанию, включая пользовательские промпты проверки. Установленный рантайм, скачанные модели и ключи в системном хранилище остаются.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>Discard changes?</source>
-        <translation>Закрыть без сохранения?</translation>
+        <translation>Отменить изменения?</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -4030,14 +3976,9 @@
         <translation>Есть несохранённые изменения. Закрыть без сохранения?</translation>
     </message>
     <message>
-        <location line="-53"/>
-        <source>Save</source>
-        <translation>Сохранить</translation>
-    </message>
-    <message>
-        <location line="-9"/>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
+        <location line="+1"/>
+        <source>There are unsaved changes. They will be lost, and the setup wizard will start.</source>
+        <translation>Есть несохранённые изменения. Они будут потеряны, и запустится мастер настройки.</translation>
     </message>
 </context>
 <context>

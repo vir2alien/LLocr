@@ -26,7 +26,7 @@ inside an MSVC x64 prompt; Qt DLLs must be on `PATH` before `ctest`.
 `--disable-gpu --no-sandbox --single-process`; on some machines its GPU
 initialization aborts (environmental, not a regression).
 
-### The 61 targets, by domain
+### The 70 targets, by domain
 
 | Domain | Targets |
 | --- | --- |
@@ -37,6 +37,7 @@ initialization aborts (environmental, not a regression).
 | Document, pages, layout, orientation | `test_page_status`, `test_layout`, `test_project_store`, `test_document_model`, `test_page_rotation`, `test_page_orientation`, `test_djvu_document`* , `test_app_import` |
 | Import, settings, profiles | `test_settings_store`, `test_request_profile`, `test_request_budget`, `test_launch_profile`, `test_launch_config` |
 | QML (launch tab, task table, wizard, switch) | `test_launch_tab_qml`, `test_task_models_table_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
+| QML (the settings window) | `test_settings_nav_qml`, `test_settings_window_qml` |
 | Runtime installer, lifetime | `test_runtime_installer`, `test_runtime_lifetime` |
 | Export and rendering | `test_exporter`, `test_export_renderer`, `test_candidate_renderer` |
 | Transport and managed server | `test_http_client`, `test_capabilities`, `test_runtime_locator`, `test_server_process`, `test_ensure_connection` |

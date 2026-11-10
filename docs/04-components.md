@@ -94,17 +94,22 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   role-filtered views.
 
 ## 4.2 Settings
-Settings are split into **separate non-modal windows** opened from the Header
-menu (ADR 70): **Interface**, **Output**, **Verification**, **Runtime** and
-**Models**. Interface settings apply immediately; the other windows commit
-on **Save** and discard on **Cancel**. **Interface**, **Output** and **Runtime**
-windows carry a scoped **«Restore defaults»** (ADR 75) that writes the matching
-rows of the table-driven `kDefaults` registry through the property setters; the
-**Models** window has per-task resets instead (profile restore in Launch/Request).
+Settings live in **one non-modal window** opened from the Header button (ADR 297):
+the sections on the left, the content of the picked section on the right, one
+**Save** and one **Cancel** for all of them, and «Setup wizard» plus
+«Reset all settings» in the footer. Interface and Verification apply the choice
+at once and are put back by the snapshot the session took; the other sections
+are a draft until **Save**, and **Cancel** throws the draft away. The values are
+read once per session — showing the window again does not wipe the drafts.
 
-| Window      | Fields                                                              |
+The **reset** writes at once and keeps what the user owns: the installed
+runtime, the downloaded models and the keys in the system store stay (ADR 227).
+The **wizard** replaces the editing session — the window closes and the wizard
+runs alone in the main window.
+
+| Section     | Fields                                                              |
 | ----------- | ------------------------------------------------------------------- |
-| Interface   | language (System / English / Русский), theme (System / Light / Dark); applies immediately, scoped «Restore defaults» |
+| Interface   | language (System / English / Русский), theme (System / Light / Dark); applies immediately |
 | Output      | output parser (`auto` / `raw` / the layout markup parser `mineru-layout`; key `parser/id`, default `auto` — the
 |             | selected model's `defaultParserId()`, ADR 88, 112); **split   |
 |             | pages** (`output/splitPages`, default on — `---` rule in MD, dash     |
@@ -113,8 +118,8 @@ rows of the table-driven `kDefaults` registry through the property setters; the
 |             | tables as HTML** (`output/tablesAsHtml`, default off — on passes the  |
 |             | model's `<table>` block through verbatim instead of a pipe table, ADR |
 |             | 19); PDF export: orientation (`export/pdfLandscape`), margins in mm   |
-|             | (`export/pdfMarginMm`, 0–50, default 15); «Restore defaults»         |
-| Verification | the thinking budget of the two tasks — during the fix and during the read — as four levels (off / low / medium / high = 0 / 512 / 1024 / 1536 tokens, `check/fixReasoningBudgetTokens`, `check/readReasoningBudgetTokens`); **show the model confidence** (`check/showConfidence` — the decision model's probability in percent next to a verified block, in the color of the block's frame; a debugging aid for the decision model); **block types to check** — the three groups (main content, captions/footnotes/references, service) as cards with a per-group counter; the lists are not stretched over the card's height, so the rows keep one spacing in every group; the math types are one item, «Formulas» (`type = "formula"` — it covers `equation`, `formula` and `equation_block`, all of them one style, `BlockStyle::Equation`); the user's choice kept in `profiles/verifyPrompts.json` (a legacy `equation` key follows the merged item); «Reset all settings» |
+|             | (`export/pdfMarginMm`, 0–50, default 15)                             |
+| Verification | the thinking budget of the two tasks — during the fix and during the read — as four levels (off / low / medium / high = 0 / 512 / 1024 / 1536 tokens, `check/fixReasoningBudgetTokens`, `check/readReasoningBudgetTokens`); **show the model confidence** (`check/showConfidence` — the decision model's probability in percent next to a verified block, in the color of the block's frame; a debugging aid for the decision model); **block types to check** — the three groups (main content, captions/footnotes/references, service) as cards with a per-group counter; the lists are not stretched over the card's height, so the rows keep one spacing in every group; the math types are one item, «Formulas» (`type = "formula"` — it covers `equation`, `formula` and `equation_block`, all of them one style, `BlockStyle::Equation`); the user's choice kept in `profiles/verifyPrompts.json` (a legacy `equation` key follows the merged item) |
 | Runtime     | connection mode (`External` / `Managed`) as a segmented toggle —      |
 |             | applies immediately;                                                  |
 |             | External: the **shared server** (endpoint base URL + API key) and,    |
@@ -128,8 +133,7 @@ rows of the table-driven `kDefaults` registry through the property setters; the
 |             | header, the installed-builds list below shows what is installed       |
 |             | (the «Installed: …» caption was dropped as redundant), and the        |
 |             | release/backend pickers, «Check for updates» and «Download and        |
-|             | install» share one bottom row; «Launch setup wizard…»;                |
-|             | «Restore defaults»                                                    |
+|             | install» share one bottom row                                         |
 | Models      | the **task table** — one row per task (layout, block recognition,     |
 |             | decision, fix) with the model and its quantization; the gear of the    |
 |             | row opens that task's **Launch** (launch-parameter profile, ADR 57)    |
@@ -138,8 +142,7 @@ rows of the table-driven `kDefaults` registry through the property setters; the
 |             | is edited in Settings → Runtime (ADR 226) — instead of the       |
 |             | quantization; under the table — the **downloaded model files on disk** |
 |             | with their size, the tasks that use them and a guarded delete. The    |
-|             | window follows its content, the files list scrolls (ADR 284);          |
-|             | «Restore defaults» (the task's profiles), Cancel, Save                |
+|             | section follows its content, the files list scrolls (ADR 284)         |
 
 The **segmented control** (`Common/SegmentedControl.qml`) is one component for
 the whole app: the main window's «Text (MD) / Preview» switch and every
@@ -162,7 +165,9 @@ Persistence is handled by `SettingsStore` (`QSettings`, grouped keys
 `launch/*`, `check/*`, `hf/*`, `tasks/<role>/*`). UI state (theme, language,
 window geometry) is persisted under `ui/*`. The resettable keys are registered
 in the table-driven `kDefaults` array (ADR 50); `resetToDefaults()` resets the
-full table, the per-window scoped resets use the same rows (ADR 75).
+full table and reports every changed property, so the widgets follow
+(ADR 297). The reset keeps the paths of the installed runtime and the
+downloaded models, the wizard's own flags and the secrets in the OS store.
 
 The **secrets are not in `QSettings`**: the API key and the Hugging Face
 token live in the OS secret store — the macOS Keychain, the Windows
