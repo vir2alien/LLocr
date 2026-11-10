@@ -1463,7 +1463,8 @@ void SettingsStore::clearTaskEndpoints()
     // The reset writes at once — like the old per-window "Restore defaults"
     // did — and the window stays open on the reset values. The settings are
     // reset once, globally; every page then brings its own widgets back to
-    // the values the settings now hold.
+    // the values the settings now hold. The live pages re-arm their undo
+    // afterwards: a Cancel after the reset must keep the reset.
     function resetAll() {
         Settings.resetToDefaults()
         Verification.resetToDefaults()
@@ -1474,6 +1475,8 @@ void SettingsStore::clearTaskEndpoints()
         verificationSection.resetValues()
         runtimeSection.resetValues()
         modelsSection.resetValues()
+        interfaceSection.beginSession()
+        runtimeSection.beginSession()
         window.loadAll()
     }
 ```
