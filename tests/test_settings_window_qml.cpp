@@ -398,6 +398,7 @@ private slots:
     void initTestCase();
     void theWindowHasFiveSections();
     void pickingASectionSwitchesIt();
+    void theInterfacePickersKeepTheirSize();
     void theCancelRestoresTheInterface();
     void theCancelRestoresTheBlockTypes();
     void theResetWritesAtOnceAndKeepsTheWindowClean();
@@ -584,6 +585,38 @@ void TestSettingsWindowQml::pickingASectionSwitchesIt()
     QCOMPARE(evaluate(window.get(), QStringLiteral("nav.currentSectionTitle")).toString(), window->property("sections").toList().at(3).toMap().value(QStringLiteral("title")).toString());
     // Switching the section is not an edit.
     QCOMPARE(window->property("dirty").toBool(), false);
+}
+
+// The section gets the whole height of the window; the pickers must keep
+// their natural size and sit at the top of it, not be spread over it.
+void TestSettingsWindowQml::theInterfacePickersKeepTheirSize()
+{
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    // The section is taller than its content — that is the whole point.
+    const double sectionHeight = evaluate(window.get(), QStringLiteral("interfaceSection.height")).toDouble();
+    QVERIFY(sectionHeight > 300.0);
+
+    // The language picker (the second child of the layout: the label, the
+    // picker, the spacer, the label, the theme switch) and the theme switch
+    // keep their own height and sit right under their labels.
+    const double languageHeight = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[1].height")).toDouble();
+    const double languageImplicit = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[1].implicitHeight")).toDouble();
+    QVERIFY(languageImplicit > 0.0);
+    QCOMPARE(languageHeight, languageImplicit);
+
+    const double themeHeight = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[4].height")).toDouble();
+    const double themeImplicit = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[4].implicitHeight")).toDouble();
+    QVERIFY(themeImplicit > 0.0);
+    QCOMPARE(themeHeight, themeImplicit);
+
+    // The content is packed at the top: the theme switch is not pushed to the
+    // bottom of the section by the free height.
+    const double themeTop = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[4].y")).toDouble();
+    QVERIFY2(themeTop < 200.0, qPrintable(QStringLiteral("the theme switch is at %1 px").arg(themeTop)));
 }
 
 void TestSettingsWindowQml::theCancelRestoresTheInterface()

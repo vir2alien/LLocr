@@ -66,4 +66,9 @@ ColumnLayout {
             root.edited()
         }
     }
+
+    // The window gives the section the whole height; the spacer takes the
+    // extra space, so the pickers keep their natural size instead of being
+    // spread over the section.
+    Item { Layout.fillHeight: true }
 }
