@@ -107,11 +107,20 @@ ApplicationWindow {
         // The one-shot pass spent on a confirmed discard must not leak into
         // the next session with the window.
         window.forceClose = false
-        if (!window.sessionStarted) {
-            window.armSession()
-            window.sessionStarted = true
-        }
+        if (window.sessionStarted)
+            return
+        window.armSession()
         window.loadAll()
+        window.sessionStarted = true
+    }
+
+    // The wizard replaces the editing session: the flag carries the request
+    // through the close, and the wizard starts once the window is gone.
+    property bool pendingWizard: false
+
+    function requestWizard() {
+        window.pendingWizard = true
+        window.close()
     }
 
     onClosing: (close) => {
@@ -121,13 +130,19 @@ ApplicationWindow {
             return
         }
         window.sessionStarted = false
+        if (window.pendingWizard) {
+            window.pendingWizard = false
+            // The window is still visible while the closing signal runs: the
+            // wizard must not start under it.
+            Qt.callLater(function() { window.wizardRequested() })
+        }
     }
 
     footer: SettingsFooter {
         LLOButton {
             subtle: true
             text: qsTr("Setup wizard")
-            onClicked: window.wizardRequested()
+            onClicked: window.requestWizard()
         }
         Item { Layout.fillWidth: true }
         LLOButton {
@@ -244,6 +259,10 @@ ApplicationWindow {
             window.dirty = false
             window.forceClose = true
             window.close()
+        }
+
+        onRejected: {
+            window.pendingWizard = false
         }
     }
 }
