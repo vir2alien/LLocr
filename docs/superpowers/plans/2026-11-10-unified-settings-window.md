@@ -392,7 +392,7 @@ ListView {
 
 **Interfaces:**
 - Consumes: `Settings`, `UiController`, `I18n`, `Verification`, `RuntimeInstaller`, `Runtime` (синглтоны `LLocr`); существующие `InterfaceSettings`, `OutputTab`, `VerificationBlocksTab`, `RuntimeTab`.
-- Produces: единый контракт раздела — `signal edited()`, `function loadValues()`, `function saveValues()`, `function cancelValues()`, `function resetValues()`. `saveValues()` раздела «Модели» (T3) возвращает `bool` (false — модели не скачаны, окно не закрывается); остальные возвращают `undefined`.
+- Produces: единый контракт раздела — `signal edited()`, `function loadValues()`, `function saveValues()`, `function cancelValues()`, `function resetValues()`. У двух «живых» страниц (`InterfaceSection`, `RuntimeSection`) — ещё `function beginSession()`: снимок отката берётся один раз за сеанс окна, а не при каждой загрузке значений. `saveValues()` раздела «Модели» (T3) возвращает `bool` (false — модели не скачаны, окно не закрывается); остальные возвращают `undefined`.
 
 - [ ] **Step 1: Добавить сигнал `edited()` в `src/qml/Common/InterfaceSettings.qml`.** В корневой `ColumnLayout` объявить `signal edited()`; в обработчике языка (`onActivated` у `languageBox`) добавить строку `root.edited()`, в `onActivated` сегмент-контрола темы — тоже. Корневому элементу нужен `id: root`:
 
@@ -1155,19 +1155,32 @@ ApplicationWindow {
         window.dirty = false
     }
 
+    // The undo of the live sections is armed once per session: a hide and
+    // show inside the session (the wizard round trip) must not re-arm it —
+    // otherwise Cancel would have nothing to put back.
+    property bool sessionStarted: false
+
     background: SettingsSurface {
     }
 
     onVisibleChanged: {
-        if (visible)
-            window.loadAll()
+        if (!visible)
+            return
+        if (!window.sessionStarted) {
+            interfaceSection.beginSession()
+            runtimeSection.beginSession()
+            window.sessionStarted = true
+        }
+        window.loadAll()
     }
 
     onClosing: (close) => {
         if (window.dirty && !window.forceClose) {
             close.accepted = false
             closeConfirmDialog.open()
+            return
         }
+        window.sessionStarted = false
     }
 
     footer: SettingsFooter {
@@ -1448,12 +1461,19 @@ void SettingsStore::clearTaskEndpoints()
 
 ```qml
     // The reset writes at once — like the old per-window "Restore defaults"
-    // did — and the window stays open on the reset values.
+    // did — and the window stays open on the reset values. The settings are
+    // reset once, globally; every page then brings its own widgets back to
+    // the values the settings now hold.
     function resetAll() {
         Settings.resetToDefaults()
         Verification.resetToDefaults()
         LaunchProfiles.resetToDefaults()
         RoleProfiles.resetRequestProfiles()
+        interfaceSection.resetValues()
+        outputSection.resetValues()
+        verificationSection.resetValues()
+        runtimeSection.resetValues()
+        modelsSection.resetValues()
         window.loadAll()
     }
 ```
