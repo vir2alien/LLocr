@@ -120,8 +120,10 @@ Item {
                 // addresses the proxy; resolve the source-model row by the
                 // unique block type instead.
                 const sourceRow = Verification.blockModel.rowOfType(typeRow.type)
-                if (sourceRow >= 0)
+                if (sourceRow >= 0) {
                     Verification.blockModel.setEnabled(sourceRow, !typeRow.checkEnabled)
+                    root.edited()
+                }
             }
         }
 
@@ -205,7 +207,10 @@ Item {
                 font.pixelSize: Theme.footnoteSize
                 color: selAllHover.hovered ? Theme.textPrimary : Theme.linkColor
                 TapHandler {
-                    onTapped: Verification.blockModel.setAllEnabled(true)
+                    onTapped: {
+                        Verification.blockModel.setAllEnabled(true)
+                        root.edited()
+                    }
                 }
                 HoverHandler {
                     id: selAllHover
@@ -222,7 +227,10 @@ Item {
                 font.pixelSize: Theme.footnoteSize
                 color: selNoneHover.hovered ? Theme.textPrimary : Theme.linkColor
                 TapHandler {
-                    onTapped: Verification.blockModel.setAllEnabled(false)
+                    onTapped: {
+                        Verification.blockModel.setAllEnabled(false)
+                        root.edited()
+                    }
                 }
                 HoverHandler {
                     id: selNoneHover
@@ -245,11 +253,11 @@ Item {
             Layout.fillHeight: true
             Layout.topMargin: Theme.spacing
             contentWidth: availableWidth
-            // The content is at least the tallest card, and at least the
-            // viewport: a language with taller lines must not clip the last
-            // row of the tallest group, and a shorter content must not leave
-            // a gap under the cards.
-            contentHeight: Math.max(columnsRow.implicitHeight, typesScroll.availableHeight)
+            // The content is the natural height of the tallest card: a
+            // language with taller lines must not clip the last row of the
+            // tallest group. The row itself is stretched to the viewport,
+            // so a shorter content leaves no gap under the cards.
+            contentHeight: columnsRow.implicitHeight
 
             RowLayout {
                 id: columnsRow

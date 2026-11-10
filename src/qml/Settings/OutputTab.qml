@@ -12,6 +12,12 @@ ColumnLayout {
 
     spacing: Theme.spacingSmall
 
+    signal edited()
+
+    // The load fills the controls from the settings: the changes it makes are
+    // not the user's, so they must not mark the settings window dirty.
+    property bool loading: false
+
     // {id, label} pairs so the combo shows translated names while
     // Settings.parserId keeps storing the stable id.
     property var parserModel: {
@@ -39,6 +45,7 @@ ColumnLayout {
     }
 
     function loadValues() {
+        root.loading = true
         syncParser()
         splitPagesCheck.checked = Settings.splitPages
         pageNumbersCheck.checked = Settings.keepHeadersAndPageNumbers
@@ -47,6 +54,7 @@ ColumnLayout {
         orientationAutoTurnCheck.checked = Settings.orientationAutoTurnEnabled
         root.orientationIndex = Settings.pdfLandscape ? 1 : 0
         marginSpin.value = Settings.pdfMarginMm
+        root.loading = false
     }
 
     function saveValues() {
@@ -84,6 +92,7 @@ ColumnLayout {
         Layout.fillWidth: true
         model: root.parserModel
         textRole: "label"
+        onActivated: if (!root.loading) root.edited()
     }
 
     Item { implicitHeight: 6 }
@@ -91,27 +100,32 @@ ColumnLayout {
     OptionCheck {
         id: splitPagesCheck
         label: qsTr("Split pages")
+        onToggled: if (!root.loading) root.edited()
     }
 
     OptionCheck {
         id: pageNumbersCheck
         label: qsTr("Keep headers and page numbers")
+        onToggled: if (!root.loading) root.edited()
     }
 
     OptionCheck {
         id: tablesAsHtmlCheck
         label: qsTr("Keep tables as HTML")
+        onToggled: if (!root.loading) root.edited()
     }
 
     OptionCheck {
         id: orientationCheckBox
         label: qsTr("Check the page orientation")
+        onToggled: if (!root.loading) root.edited()
     }
 
     OptionCheck {
         id: orientationAutoTurnCheck
         visible: orientationCheckBox.checked
         label: qsTr("Turn a sideways page after markup automatically")
+        onToggled: if (!root.loading) root.edited()
     }
 
     Item { implicitHeight: 6 }
@@ -137,7 +151,10 @@ ColumnLayout {
                 { label: qsTr("Landscape") }
             ]
             currentIndex: root.orientationIndex
-            onActivated: (idx) => root.orientationIndex = idx
+            onActivated: (idx) => {
+                root.orientationIndex = idx
+                if (!root.loading) root.edited()
+            }
         }
         Item { Layout.fillWidth: true }
 
@@ -153,6 +170,7 @@ ColumnLayout {
             from: 0
             to: 50
             editable: true
+            onValueChanged: if (!root.loading) root.edited()
         }
         Item { Layout.fillWidth: true }
     }

@@ -12,15 +12,23 @@ ColumnLayout {
     clip: true
     spacing: Theme.spacingSmall
 
+    signal edited()
+
+    // The load fills the fields from the settings: the changes it makes are
+    // not the user's, so they must not mark the settings window dirty.
+    property bool loading: false
+
     Layout.maximumHeight: Number.POSITIVE_INFINITY
 
     readonly property bool externalMode: Settings.connectionMode === "external"
 
     function loadValues() {
+        runtimeLayout.loading = true
         connectionTimeoutField.text = Settings.connectionTimeoutMs
         responseTimeoutField.text = Settings.responseTimeoutMs
         rtExternal.loadValues();
         rtInternal.loadValues();
+        runtimeLayout.loading = false
     }
 
     function saveValues() {
@@ -45,6 +53,7 @@ ColumnLayout {
             ]
             onActivated: (idx) => {
                 Settings.connectionMode = (idx === 1) ? "managed" : "external"
+                runtimeLayout.edited()
             }
         }
         Item { Layout.fillWidth: true }
@@ -70,6 +79,7 @@ ColumnLayout {
                 selectByMouse: true
                 inputMethodHints: Qt.ImhDigitsOnly
                 validator: IntValidator { bottom: 1000; top: 3600000 }
+                onTextChanged: if (!runtimeLayout.loading) runtimeLayout.edited()
             }
         }
 
@@ -89,6 +99,7 @@ ColumnLayout {
                 selectByMouse: true
                 inputMethodHints: Qt.ImhDigitsOnly
                 validator: IntValidator { bottom: 1000; top: 3600000 }
+                onTextChanged: if (!runtimeLayout.loading) runtimeLayout.edited()
             }
         }
     }

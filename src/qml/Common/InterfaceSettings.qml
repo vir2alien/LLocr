@@ -10,7 +10,11 @@ import LLocr
 // first step show exactly these, and both apply the pick immediately — there
 // is no Save step for interface settings.
 ColumnLayout {
+    id: root
+
     spacing: Theme.spacingSmall
+
+    signal edited()
 
     LLOLabel {
         text: qsTr("Language")
@@ -30,6 +34,7 @@ ColumnLayout {
         onActivated: (idx) => {
             Settings.language = ["system", "en", "ru"][idx]
             I18n.setLanguage(Settings.language)
+            root.edited()
         }
         Connections {
             target: Settings
@@ -58,6 +63,7 @@ ColumnLayout {
         onActivated: (idx) => {
             UiController.mode = [UiController.System, UiController.Light,
                                  UiController.Dark][idx]
+            root.edited()
         }
     }
 }
