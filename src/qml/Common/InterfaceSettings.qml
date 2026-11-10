@@ -23,7 +23,10 @@ ColumnLayout {
     }
     LLOComboBox {
         id: languageBox
-        Layout.fillWidth: true
+        // The picker is as wide as the theme switch below it: the two controls
+        // of the section share one measure. The layout rounds the switch's
+        // width to whole pixels, so the picker takes the rounded measure too.
+        Layout.preferredWidth: Math.round(themeSwitch.implicitWidth)
         model: [qsTr("System"), "English", "Русский"]
         function syncFromSettings() {
             var langIdx = ["system", "en", "ru"].indexOf(Settings.language)
@@ -50,6 +53,7 @@ ColumnLayout {
         color: Theme.textPrimary
     }
     SegmentedControl {
+        id: themeSwitch
         options: [
             { label: qsTr("System"), icon: "monitor" },
             { label: qsTr("Light"), icon: "sun" },

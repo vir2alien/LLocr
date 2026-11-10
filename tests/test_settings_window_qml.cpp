@@ -621,6 +621,13 @@ void TestSettingsWindowQml::theInterfacePickersKeepTheirSize()
 
     const double themeTop = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[4].y")).toDouble();
     QVERIFY2(themeTop < 200.0, qPrintable(QStringLiteral("the theme switch is at %1 px").arg(themeTop)));
+
+    // The two pickers share one measure: the language dropdown is as wide as
+    // the theme switch.
+    const double languageWidth = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[1].width")).toDouble();
+    const double themeWidth = evaluate(window.get(), QStringLiteral("interfaceSection.children[0].children[4].width")).toDouble();
+    QVERIFY(themeWidth > 0.0);
+    QCOMPARE(languageWidth, themeWidth);
 }
 
 void TestSettingsWindowQml::theCancelRestoresTheInterface()
