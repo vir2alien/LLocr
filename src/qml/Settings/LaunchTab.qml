@@ -11,7 +11,9 @@ Item {
     id: root
 
     property string role: "blockRecognition"
-    property var runtimeSettingsRef: null
+    // The table that hosts this tab: it relays the request for the runtime
+    // settings up to the window.
+    property var hostTable: null
 
     readonly property bool externalMode: Settings.connectionMode === "external"
 
@@ -136,8 +138,8 @@ Item {
         LLOButton {
             text: qsTr("Configure runtime…")
             onClicked: {
-                if (root.runtimeSettingsRef)
-                    root.runtimeSettingsRef.bringToFront()
+                if (root.hostTable)
+                    root.hostTable.runtimeSectionRequested()
             }
         }
 

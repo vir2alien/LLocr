@@ -17,9 +17,13 @@ Item {
 
     implicitHeight: rowsLayout.implicitHeight
 
-    // The Launch tab of the gear popover opens the runtime settings window;
-    // null when the host does not provide it (the wizard).
-    property var runtimeSettingsRef: null
+    // The user changed a pick in a row.
+    signal edited()
+
+    // The Launch tab of the gear popover asks for the runtime settings; the
+    // host shows them (ADR 297).
+    signal runtimeSectionRequested()
+
     property bool externalMode: false
     property bool showGear: true
 
@@ -292,6 +296,7 @@ Item {
                         taskRow.entry.quantId = ""
                         taskRow.entry.quantEdited = false
                         quantBox.sync()
+                        table.edited()
                     }
                     Connections {
                         target: taskRow.entry
@@ -376,6 +381,7 @@ Item {
                             taskRow.entry.quantId = model[index].id
                             taskRow.entry.quantEdited = true
                         }
+                        table.edited()
                     }
 
                     function sync() {
@@ -416,6 +422,7 @@ Item {
                     onTextEdited: {
                         taskRow.entry.modelName = nameField.text
                         taskRow.entry.nameEdited = true
+                        table.edited()
                     }
                 }
 
@@ -534,7 +541,7 @@ Item {
                 LaunchTab {
                     id: launchTab
                     role: taskSettingsPopup.task
-                    runtimeSettingsRef: table.runtimeSettingsRef
+                    hostTable: table
                 }
 
                 RequestTab {

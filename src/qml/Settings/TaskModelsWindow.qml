@@ -99,8 +99,11 @@ ApplicationWindow {
         TaskModelsTable {
             id: taskTable
             Layout.fillWidth: true
-            runtimeSettingsRef: window.runtimeSettingsRef
             externalMode: window.externalMode
+            onRuntimeSectionRequested: {
+                if (window.runtimeSettingsRef)
+                    window.runtimeSettingsRef.bringToFront()
+            }
         }
 
         // The queue's progress (the rework plan's stage 6): one install at a
