@@ -117,7 +117,7 @@ runs alone in the main window.
 |             | headings, ADR 64); **keep headers and page numbers** (`output/keepPageNumbers`, default on — off drops the page furniture at parse time: the running heads, the running feet and the page numbers, ADR 280); **keep    |
 |             | tables as HTML** (`output/tablesAsHtml`, default off — on passes the  |
 |             | model's `<table>` block through verbatim instead of a pipe table, ADR |
-|             | 19); PDF export: orientation (`export/pdfLandscape`), margins in mm   |
+|             | 19); **check the page orientation** (`recognition/orientationCheck`, default on — the two-stage pixel check of the page, ADR 242) and **turn a sideways page after markup automatically** (`recognition/orientationAutoTurn`, default on — the markup pass turns the page when the rotation tokens vote one way, ADR 246; off leaves the one-click suggestion); PDF export: orientation (`export/pdfLandscape`), margins in mm   |
 |             | (`export/pdfMarginMm`, 0–50, default 15)                             |
 | Verification | the thinking budget of the two tasks — during the fix and during the read — as four levels (off / low / medium / high = 0 / 512 / 1024 / 1536 tokens, `check/fixReasoningBudgetTokens`, `check/readReasoningBudgetTokens`); **show the model confidence** (`check/showConfidence` — the decision model's probability in percent next to a verified block, in the color of the block's frame; a debugging aid for the decision model); **block types to check** — the three groups (main content, captions/footnotes/references, service) as cards with a per-group counter; the lists are not stretched over the card's height, so the rows keep one spacing in every group; the math types are one item, «Formulas» (`type = "formula"` — it covers `equation`, `formula` and `equation_block`, all of them one style, `BlockStyle::Equation`); the user's choice kept in `profiles/verifyPrompts.json` (a legacy `equation` key follows the merged item) |
 | Runtime     | connection mode (`External` / `Managed`) as a segmented toggle —      |
@@ -509,12 +509,11 @@ files on disk are part of it (see 4.2).
 - **`ModelCatalog`** — Hugging Face tree API with `Link: rel=next` pagination,
   **commit-SHA pinning** (the tree and every download use the pinned `sha`, so
   files can't change between browse and download), `mmproj`/multi-part GGUF
-  detection, search (`/api/models?search=…&filter=gguf`); gated repos →
-  `401/403` handling with a license link (ADR 29). ✅
+  detection; gated repos → `401/403` handling with a license link (ADR 29).
+  The free-form search is gone from the UI (ADR 78). ✅
 - **`ModelPreset` / `ModelPresetCatalog`** — pre-verified `model+mmproj+parser+
-  prompt+ctx` pairs. Built-in `:/models/default-presets.json` (read-only) +
-  user `models/catalog.json` (read/write), merged by `id` (user wins),
-  import/export/reset (ADR 42/43). ✅
+  prompt+ctx` pairs. Built-in `:/models/default-presets.json` + the user's
+  `models/catalog.json`, merged by `id` (the user wins) (ADR 42/43). ✅
 - **`ModelRegistry`** — persists installed models to `<modelsDir>/index.json`
   (`QSaveFile`), recovers by rescanning on corruption, distinguishes
   **managed** (inside `modelsDir`, removable) vs **external** (user-provided,
@@ -552,16 +551,21 @@ files on disk are part of it (see 4.2).
 On a clean profile (`setupVersion == 0 && !setupDismissed`) `Main.qml` triggers
 `SetupWizard.qml` — **no network probes** (ADR 31). Steps:
 
-1. **Welcome** — “Local server (recommended)” vs “I already have a server/api”;
-   choosing External finishes the wizard (`setupVersion = 1`), opens Connection.
-2. **Runtime** — download llama.cpp (auto platform/backend + manual backend) or
-   point at an existing binary; progress/errors/retry; SmartScreen/AV hint.
-3. **Model** — a preset from the catalog / a local GGUF; size, approx
-   VRAM, license link.
-4. **Launch** — port, ctx-size, n-gpu-layers, `autoStart` (off by default,
-   ADR 44), command preview, memory estimate warning (H.2), **Check** →
-   `runSelfTestQml()` (start → health → `/v1/models` → one OCR request).
-5. **Done** — summary; `setupVersion = 1`.
+1. **Intro** — what the app does; Next.
+2. **Welcome** — “Local server (recommended)” vs “I already have a server/api”;
+   the choice picks the steps: the external mode has no hardware and no check
+   step.
+3. **Hardware** (managed only) — the detected hardware, the runtime backend and
+   the task table with the model and the quantization of every task; what is
+   still missing is downloaded by the check step.
+4. **External** (external mode only) — the endpoint, the API key (optional) and
+   the timeout of the user's own server.
+5. **Output** — how the recognized text is structured: the page split, the page
+   furniture, the tables as HTML and the PDF options.
+6. **Check** (managed only) — downloads what is missing (the runtime and the
+   models) and runs an end-to-end check: the server starts, the model loads, one
+   OCR request is performed. A failed check is fixed by going back to the step
+   that holds the cause.
 
 Navigation: Back / Next / Skip; a step can't be left forward until its
 condition holds; the ✕ sets `setupDismissed = true`. All strings are `qsTr`

@@ -23,7 +23,7 @@
   `requestFix.json`; legacy `request.json` / `requestValidate.json` are
   renamed on load; QML singletons `RequestProfilesBlock` …
   `RequestProfilesFix`). Model ↔ task assignment, downloads and management
-  live in the «Модели» window. The legacy vocabulary survives where renaming
+  live in the «Модели» section (ADR 297). The legacy vocabulary survives where renaming
   would cost user data or churn: `CheckController`/`CheckRequest`/
   `CheckResult`, the queue's `Phase::Recheck`; the registry index renames
   the legacy `"check"` tag on load and drops every tag that is not a

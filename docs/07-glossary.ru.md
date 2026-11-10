@@ -26,7 +26,8 @@
   `requestDecision.json`, `requestLayout.json`, `requestFix.json`; прежние
   `request.json` / `requestValidate.json` переименовываются при загрузке;
   QML-синглтоны `RequestProfilesBlock` … `RequestProfilesFix`). Привязка
-  моделей к задачам, скачивание и управление живут в окне «Модели». Прежняя
+  моделей к задачам, скачивание и управление живут в разделе «Модели»
+  (ADR 297). Прежняя
   лексика выживает там, где переименование стоило бы пользовательских данных
   или лишней перетасовки: `CheckController`/`CheckRequest`/`CheckResult`,
   `Phase::Recheck` очереди; индекс реестра переименовывает прежний тег
