@@ -401,6 +401,7 @@ private slots:
     void theCancelRestoresTheInterface();
     void theResetWritesAtOnceAndKeepsTheWindowClean();
     void theWizardRequestClosesTheWindowAndAsksForTheWizard();
+    void theWizardAsksBeforeItDropsTheChanges();
     void theValuesAreReadOncePerSession();
 
 private:
@@ -556,6 +557,7 @@ void TestSettingsWindowQml::theWindowHasFiveSections()
     const std::unique_ptr<QObject> window = loadWindow();
     QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 
     const QVariantList sections = window->property("sections").toList();
     QCOMPARE(sections.size(), 5);
@@ -571,12 +573,14 @@ void TestSettingsWindowQml::pickingASectionSwitchesIt()
     const std::unique_ptr<QObject> window = loadWindow();
     QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 
     QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("runtime"))));
     QCoreApplication::processEvents();
 
     QCOMPARE(evaluate(window.get(), QStringLiteral("nav.currentIndex")).toInt(), 3);
-    QCOMPARE(evaluate(window.get(), QStringLiteral("nav.currentSectionTitle")).toString(), QStringLiteral("Runtime"));
+    // The title is the section's own: the catalog may translate it.
+    QCOMPARE(evaluate(window.get(), QStringLiteral("nav.currentSectionTitle")).toString(), window->property("sections").toList().at(3).toMap().value(QStringLiteral("title")).toString());
     // Switching the section is not an edit.
     QCOMPARE(window->property("dirty").toBool(), false);
 }
@@ -586,6 +590,7 @@ void TestSettingsWindowQml::theCancelRestoresTheInterface()
     const std::unique_ptr<QObject> window = loadWindow();
     QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 
     // The theme is applied at once, and the section keeps a snapshot of the
     // state it found.
@@ -610,6 +615,7 @@ void TestSettingsWindowQml::theResetWritesAtOnceAndKeepsTheWindowClean()
     const std::unique_ptr<QObject> window = loadWindow();
     QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 
     QVERIFY(QMetaObject::invokeMethod(window.get(), "resetAll"));
     QCoreApplication::processEvents();
@@ -637,6 +643,7 @@ void TestSettingsWindowQml::theWizardRequestClosesTheWindowAndAsksForTheWizard()
     const std::unique_ptr<QObject> window = loadWindow();
     QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 
     // The window has to be on screen: a window that was never shown does not
     // close.
@@ -653,11 +660,46 @@ void TestSettingsWindowQml::theWizardRequestClosesTheWindowAndAsksForTheWizard()
     QCOMPARE(window->property("visible").toBool(), false);
 }
 
+void TestSettingsWindowQml::theWizardAsksBeforeItDropsTheChanges()
+{
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "show"));
+    QCoreApplication::processEvents();
+
+    // The user has unsaved changes: the wizard may not start over them.
+    window->setProperty("dirty", true);
+    QSignalSpy wizardSpy(window.get(), SIGNAL(wizardRequested()));
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "requestWizard"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(window->property("visible").toBool(), true);
+    QCOMPARE(wizardSpy.count(), 0);
+    QCOMPARE(window->property("pendingWizard").toBool(), true);
+
+    // The user refuses to drop the changes: the wizard request dies with them.
+    QObject *dialog = evaluate(window.get(), QStringLiteral("closeConfirmDialog")).value<QObject *>();
+    QVERIFY2(dialog, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QVERIFY(QMetaObject::invokeMethod(dialog, "reject"));
+    QCoreApplication::processEvents();
+    QCOMPARE(window->property("pendingWizard").toBool(), false);
+
+    // A later close does not start the wizard either.
+    window->setProperty("dirty", false);
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "close"));
+    QCoreApplication::processEvents();
+    QCOMPARE(wizardSpy.count(), 0);
+}
+
 void TestSettingsWindowQml::theValuesAreReadOncePerSession()
 {
     const std::unique_ptr<QObject> window = loadWindow();
     QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 
     // The window comes up: the session starts and the values are read.
     QVERIFY(QMetaObject::invokeMethod(window.get(), "show"));
