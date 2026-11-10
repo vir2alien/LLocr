@@ -95,8 +95,9 @@ footer. The reset writes at once and keeps the installed runtime, the
 downloaded models and the keys in the system store.
 
 - **Interface** — language (System / English / Русский), theme (System / Light / Dark).
-- **Output** — OCR model adapter (`model/recipeId`, default `mineru`) and output
-  parser (`Automatic` / `raw` / the layout markup parser `mineru-layout`; default `auto`, ADR 88 and 112).
+- **Output** — the output parser (`Automatic` / `raw` / the layout markup parser
+  `mineru-layout`; default `auto`, ADR 88 and 112), the page split, the page
+  furniture, the tables as HTML and the PDF options.
 - **Verification** — the reasoning budget of the two tasks and the block types
   to check.
 - **Runtime** — the connection mode and, in `External` mode, the endpoint base
