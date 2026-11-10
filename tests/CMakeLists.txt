@@ -554,6 +554,24 @@ target_link_libraries(test_task_models_table_qml PRIVATE
 llocr_add_ui_icons(test_task_models_table_qml)
 add_test(NAME test_task_models_table_qml COMMAND test_task_models_table_qml)
 
+# The one settings window: the five sections, the switch between them, the
+# undo the Cancel owes the user, the reset that writes at once and the wizard
+# request that closes the window (ADR 297). The files are read from the source
+# tree, so the test covers the shipped QML rather than a copy.
+qt_add_executable(test_settings_window_qml test_settings_window_qml.cpp)
+
+target_link_libraries(test_settings_window_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+llocr_add_profile_resources(test_settings_window_qml)
+# The window's icons come from the app's icon set; without them every Icon
+# would warn about a missing file.
+llocr_add_ui_icons(test_settings_window_qml)
+add_test(NAME test_settings_window_qml COMMAND test_settings_window_qml)
+
 # The setup wizard's steps: the check step must not report a failure where
 # the setup is fine, and the hardware step must pick the quantization that
 # fits the memory. The files are read from the source tree, so the test
