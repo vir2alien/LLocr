@@ -26,10 +26,10 @@
 
 - **Секреты при сбросе.** `resetRuntimeDefaults()` сегодня вызывает `dropSecret(kApiKey)` и `clearTaskConnections()` (тот роняет и ключи задач). После T5 сброс не должен трогать OS-хранилище — иначе «Сбросить все настройки» уничтожит ключ API. Пин: T5, шаг 3; ручной пункт T9.
 - **Установленное не теряется.** `resetToDefaults()` чистит `QSettings` целиком, а в таблице значений есть `tasks/check/modelPath` и подобные — пути установленных моделей. После T5 эти пути (и `runtime/rootDir`, `runtime/modelsDir`, `runtime/setupVersion`) переживают сброс. Пин: T5, шаг 2.
-- **Живые разделы откатываются.** Смена темы в разделе Интерфейс и переключение типа блока в разделе Проверка применяются сразу; «Отмена» обязана вернуть прежние значения. Пин: T2 (снимки), T8 (тест отката).
+- **Живые разделы откатываются.** Смена темы в разделе Интерфейс и переключение типа блока в разделе Проверка применяются сразу; «Отмена» обязана вернуть прежние значения. Пин: T2 (снимки), T7 (тест отката).
 - **«Сохранить» не закрывает окно, если модель не скачана.** `applyTaskChoices()` возвращает список недостающих моделей — тогда показывается диалог загрузки, а окно остаётся открытым. Пин: T3 (диалог), T4 (шаг с `saveValues()` → bool).
 - **Мастер — модальный диалог главного окна.** Открытый из окна настроек, он перекроет его (оверлей главного окна). Окно настроек на время мастера скрывается и возвращается после его закрытия. Пин: T7.
-- **Пять старых окон удаляются только после того, как новое окно работает.** Порядок задач: T4 (новое окно) → T7 (удаление старых). Пин: порядок задач.
+- **Пять старых окон удаляются только после того, как новое окно работает.** Порядок задач: T4 (новое окно) → T6 (удаление старых). Пин: порядок задач.
 
 ---
 
@@ -1079,9 +1079,48 @@ Item {
 }
 ```
 
-- [ ] **Step 3: Собрать** — `cmake --build build -j 8` — без ошибок.
+- [ ] **Step 3: Кнопка «Мастер настройки» в подвале.** В `src/qml/Main.qml` расширить `openSetupWizard()` — мастер модален для главного окна и перекрывает окно настроек, поэтому окно отступает и возвращается:
 
-- [ ] **Step 4: Полный прогон** — `scripts/check.sh --configure` — зелёный.
+```qml
+    // The wizard is a modal dialog of the main window: it covers the settings
+    // window, which steps aside and comes back when the wizard closes.
+    function openSetupWizard() {
+        setupWizardLoader.active = true
+        const wizard = setupWizardLoader.item as SetupWizard
+        wizard.startWizard()
+        if (settingsLoader.active && settingsLoader.item) {
+            const settingsWindow = settingsLoader.item
+            settingsWindow.hide()
+            const onWizardClosed = function() {
+                wizard.closed.disconnect(onWizardClosed)
+                settingsWindow.show()
+                settingsWindow.raise()
+                settingsWindow.requestActivate()
+                // The wizard writes the connection mode and the backend live:
+                // they are the new baseline, so a Cancel in the settings
+                // window must not undo the wizard's work.
+                settingsWindow.armSession()
+            }
+            wizard.closed.connect(onWizardClosed)
+        }
+    }
+```
+
+и в загрузчике окна направить сигнал наружу:
+
+```qml
+    Loader {
+        id: settingsLoader
+        active: false
+        sourceComponent: SettingsWindow {
+            onWizardRequested: mainWindow.openSetupWizard()
+        }
+    }
+```
+
+- [ ] **Step 4: Собрать** — `cmake --build build -j 8` — без ошибок.
+
+- [ ] **Step 5: Полный прогон** — `scripts/check.sh --configure` — зелёный.
 
 ---
 
@@ -1089,7 +1128,7 @@ Item {
 
 **Files:**
 - Create: `src/qml/Settings/SettingsWindow.qml`
-- Modify: `src/qml/Main.qml` (загрузчик нового окна вместо пяти старых — старые загрузчики удаляются в T7; здесь добавляется новый)
+- Modify: `src/qml/Main.qml` (загрузчик нового окна вместо пяти старых — старые загрузчики удаляются в T6; здесь добавляется новый)
 
 **Interfaces:**
 - Consumes: `SettingsSectionNav`, `InterfaceSection`, `OutputSection`, `VerificationSection`, `RuntimeSection`, `ModelsSection`, `SettingsFooter`, `SettingsSurface`, `Theme`.
@@ -1356,9 +1395,48 @@ ApplicationWindow {
     }
 ```
 
-- [ ] **Step 3: Собрать** — `cmake --build build -j 8` — без ошибок.
+- [ ] **Step 3: Кнопка «Мастер настройки» в подвале.** В `src/qml/Main.qml` расширить `openSetupWizard()` — мастер модален для главного окна и перекрывает окно настроек, поэтому окно отступает и возвращается:
 
-- [ ] **Step 4: Полный прогон** — `scripts/check.sh --configure` — зелёный.
+```qml
+    // The wizard is a modal dialog of the main window: it covers the settings
+    // window, which steps aside and comes back when the wizard closes.
+    function openSetupWizard() {
+        setupWizardLoader.active = true
+        const wizard = setupWizardLoader.item as SetupWizard
+        wizard.startWizard()
+        if (settingsLoader.active && settingsLoader.item) {
+            const settingsWindow = settingsLoader.item
+            settingsWindow.hide()
+            const onWizardClosed = function() {
+                wizard.closed.disconnect(onWizardClosed)
+                settingsWindow.show()
+                settingsWindow.raise()
+                settingsWindow.requestActivate()
+                // The wizard writes the connection mode and the backend live:
+                // they are the new baseline, so a Cancel in the settings
+                // window must not undo the wizard's work.
+                settingsWindow.armSession()
+            }
+            wizard.closed.connect(onWizardClosed)
+        }
+    }
+```
+
+и в загрузчике окна направить сигнал наружу:
+
+```qml
+    Loader {
+        id: settingsLoader
+        active: false
+        sourceComponent: SettingsWindow {
+            onWizardRequested: mainWindow.openSetupWizard()
+        }
+    }
+```
+
+- [ ] **Step 4: Собрать** — `cmake --build build -j 8` — без ошибок.
+
+- [ ] **Step 5: Полный прогон** — `scripts/check.sh --configure` — зелёный.
 
 ---
 
@@ -1558,70 +1636,7 @@ void SettingsStore::clearTaskEndpoints()
 
 ---
 
-### Task 6: Кнопка «Мастер настройки» в подвале
-
-**Files:**
-- Modify: `src/qml/Main.qml` (`openSetupWizard()` — возвращаться к окну настроек)
-- Modify: `src/qml/Settings/SettingsWindow.qml` (обработка сигнала `wizardRequested()`)
-
-**Interfaces:**
-- Consumes: `SetupWizard.startWizard()`, `SetupWizard` (сигнал закрытия — `closed` у `Dialog`).
-- Produces: `Main.qml` — функция `openSetupWizard()` возвращает окно настроек на место, когда мастер закрылся.
-
-- [ ] **Step 1: В `src/qml/Main.qml` расширить `openSetupWizard()`**:
-
-```qml
-    function openSetupWizard() {
-        setupWizardLoader.active = true
-        const wizard = setupWizardLoader.item as SetupWizard
-        wizard.startWizard()
-    }
-```
-
-Заменить на:
-
-```qml
-    // The wizard is a modal dialog of the main window: it covers the settings
-    // window, which steps aside and comes back when the wizard closes.
-    function openSetupWizard() {
-        setupWizardLoader.active = true
-        const wizard = setupWizardLoader.item as SetupWizard
-        wizard.startWizard()
-        if (settingsLoader.active && settingsLoader.item) {
-            const settingsWindow = settingsLoader.item
-            settingsWindow.hide()
-            const onWizardClosed = function() {
-                wizard.closed.disconnect(onWizardClosed)
-                settingsWindow.show()
-                settingsWindow.raise()
-                settingsWindow.requestActivate()
-                // The wizard writes the connection mode and the backend live:
-                // they are the new baseline, so a Cancel in the settings
-                // window must not undo the wizard's work.
-                settingsWindow.armSession()
-            }
-            wizard.closed.connect(onWizardClosed)
-        }
-    }
-```
-
-- [ ] **Step 2: В `src/qml/Settings/SettingsWindow.qml` направить сигнал наружу.** Сигнал `wizardRequested()` уже объявлен; в `Main.qml` в загрузчике окна:
-
-```qml
-    Loader {
-        id: settingsLoader
-        active: false
-        sourceComponent: SettingsWindow {
-            onWizardRequested: mainWindow.openSetupWizard()
-        }
-    }
-```
-
-- [ ] **Step 3: Прогнать** — `cmake --build build -j 8 && scripts/check.sh` — зелёный.
-
----
-
-### Task 7: Меню тулбара и удаление старых окон
+### Task 6: Меню тулбара и удаление старых окон
 
 **Files:**
 - Modify: `src/qml/MainWindow/Header.qml` (кнопка «Настройки» открывает окно; меню удаляется)
@@ -1669,7 +1684,7 @@ void SettingsStore::clearTaskEndpoints()
 
 ---
 
-### Task 8: Тест окна настроек
+### Task 7: Тест окна настроек
 
 **Files:**
 - Create: `tests/test_settings_window_qml.cpp`
@@ -1745,7 +1760,7 @@ add_test(NAME test_settings_window_qml COMMAND test_settings_window_qml)
 
 ---
 
-### Task 9: Документация и переводы
+### Task 8: Документация и переводы
 
 **Files:**
 - Modify: `docs/07-glossary.md` (ADR 297)
@@ -1754,7 +1769,7 @@ add_test(NAME test_settings_window_qml COMMAND test_settings_window_qml)
 - Modify: `resources/i18n/llocr_ru.ts` (новые строки)
 
 **Interfaces:**
-- Consumes: итоговая реализация T1–T8.
+- Consumes: итоговая реализация T1–T7.
 - Produces: ADR 297 и переводы новых строк.
 
 - [ ] **Step 1: Добавить ADR 297** в `docs/07-glossary.md` (в конец лога решений):
@@ -1778,7 +1793,7 @@ add_test(NAME test_settings_window_qml COMMAND test_settings_window_qml)
 
 ---
 
-## Ручная проверка (после T8)
+## Ручная проверка (после T7)
 
 1. «Настройки» в тулбаре открывает одно окно; слева пять разделов с иконками.
 2. Переключение раздела меняет заголовок и содержимое справа.
