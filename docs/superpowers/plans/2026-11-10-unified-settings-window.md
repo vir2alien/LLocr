@@ -1485,12 +1485,17 @@ ApplicationWindow {
         SettingsStore store;
         store.setLaunchModelPathForRole(QStringLiteral("blockRecognition"), QStringLiteral("/tmp/llocr-models/m.gguf"));
         store.setLaunchModelPathForRole(QStringLiteral("decision"), QStringLiteral("/tmp/llocr-models/d.gguf"));
+        store.setServerPath(QStringLiteral("/tmp/llocr-runtime/llama-server"));
+        store.setInstalledBuild(QStringLiteral("b12000"));
         store.setSetupVersion(1);
 
         store.resetToDefaults();
 
         QCOMPARE(store.launchModelPathForRole(QStringLiteral("blockRecognition")), QStringLiteral("/tmp/llocr-models/m.gguf"));
         QCOMPARE(store.launchModelPathForRole(QStringLiteral("decision")), QStringLiteral("/tmp/llocr-models/d.gguf"));
+        // The installed server and its build are on the user's disk too.
+        QCOMPARE(store.serverPath(), QStringLiteral("/tmp/llocr-runtime/llama-server"));
+        QCOMPARE(store.installedBuild(), QStringLiteral("b12000"));
         // The wizard must not come back by itself.
         QCOMPARE(store.setupVersion(), 1);
     }
@@ -1517,6 +1522,7 @@ void SettingsStore::resetToDefaults()
     // bring the first-run wizard back.
     const QStringList preserved = {
         QLatin1String(kRuntimeRootDir), QLatin1String(kRuntimeModelsDir),
+        QLatin1String(kServerPath), QLatin1String(kInstalledBuild),
         QLatin1String(kCheckLaunchModelPath), QLatin1String(kCheckLaunchMmprojPath),
         QLatin1String(kCheckLaunchDraftPath),
         QLatin1String(kDecisionLaunchModelPath), QLatin1String(kDecisionLaunchMmprojPath),
@@ -1541,7 +1547,13 @@ void SettingsStore::resetToDefaults()
 }
 ```
 
-- [ ] **Step 5: Исправить `SettingsStore::resetRuntimeDefaults()`** — сброс группы runtime не трогает OS-хранилище:
+`kServerPath` (путь к установленному серверу) и `kInstalledBuild` (сборка,
+которую считают активной) — тоже пути установленного, а не настройки: без
+`kInstalledBuild` установщик перестаёт видеть обновление, а очистка старых
+сборок отказывается работать («No active runtime build»), а без `kServerPath`
+приложение не знает, где лежит установленный сервер.
+
+- [ ] **Step 5: Исправить `SettingsStore::resetRuntimeDefaults()`** — сброс группы runtime не трогает OS-хранилище и не забывает путь к установленному серверу:
 
 ```cpp
 void SettingsStore::resetRuntimeDefaults()
@@ -1549,7 +1561,7 @@ void SettingsStore::resetRuntimeDefaults()
     resetGroup([](const QString &key) {
         return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/connectionTimeoutMs") ||
                key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String("tasks/decision/modelName") ||
-               key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/fix/modelName") || key == QLatin1String("runtime/serverPath");
+               key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/fix/modelName");
     });
     // The keys live in the system secret store, not in the settings: a reset
     // of the settings does not throw them away (ADR 297).
@@ -1558,6 +1570,9 @@ void SettingsStore::resetRuntimeDefaults()
     emit secretsChanged();
 }
 ```
+
+Ключ `runtime/serverPath` из группы убран: это путь к установленному серверу,
+а не настройка (то же правило, что и для путей моделей).
 
 и `clearTaskConnections()` разделить на две части — в `src/config/SettingsStore.cpp`:
 
@@ -1579,7 +1594,9 @@ void SettingsStore::clearTaskEndpoints()
 }
 ```
 
-`clearTaskConnections()` (с удалением секретов) остаётся для мест, где ключи снимают явно; если после правки она нигде не используется — удалить её из `.h` и `.cpp`.
+`clearTaskConnections()` (с удалением секретов) больше не нужен: он звался только
+из `resetRuntimeDefaults()`, а удалять ключи из OS-хранилища сброс настроек не
+должен. Поэтому функция заменяется на `clearTaskEndpoints()` — из `.h` и `.cpp`:
 
 - [ ] **Step 6: Добавить `RoleProfiles::resetRequestProfiles()`** в `src/qml/RoleProfiles.qml`:
 
@@ -1644,7 +1661,7 @@ void SettingsStore::clearTaskEndpoints()
             width: parent.width
             wrapMode: Text.WordWrap
             color: Theme.textPrimary
-            text: qsTr("Every setting goes back to its default. The installed runtime, the downloaded models and the keys in the system store stay.")
+            text: qsTr("Every setting goes back to its default, the custom verification prompts included. The installed runtime, the downloaded models and the keys in the system store stay.")
         }
 
         onAccepted: window.resetAll()
