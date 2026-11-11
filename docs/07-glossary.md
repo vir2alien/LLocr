@@ -1743,6 +1743,13 @@ appendix at the end of this file.
   every shipped glyph must be light, and the component must hand the requested
   color to the effect.
 
+- **299.** The thumbnail caption is a single line: the page number stands on the
+  left («Стр. 3»), the status on the right edge of the card («Есть ошибки»),
+  and the status words are short — «Размечено», «Есть ошибки», «Нет ошибок».
+  The marker dot and its color still carry the state; the words name it. The
+  row is the caption of the card, so the space the second line used goes to
+  the thumbnail itself.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

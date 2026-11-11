@@ -1723,17 +1723,17 @@
     <message>
         <location line="+4"/>
         <source>Verified (no errors)</source>
-        <translation>Проверено (без ошибок)</translation>
+        <translation>Нет ошибок</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Verified (with errors)</source>
-        <translation>Проверено (есть ошибки)</translation>
+        <translation>Есть ошибки</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Markup only</source>
-        <translation>Только разметка</translation>
+        <translation>Размечено</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -3742,7 +3742,7 @@
     <message>
         <location line="+3"/>
         <source>Page %1</source>
-        <translation>Страница %1</translation>
+        <translation>Стр. %1</translation>
     </message>
     <message>
         <location line="+62"/>

@@ -106,18 +106,17 @@ Item {
                             : Theme.textMuted)
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
+                }
+                LLOLabel {
+                    visible: statusText.length > 0
+                    text: statusText
+                    font.pixelSize: Theme.captionSize
+                    color: orientationProblemFound || (aggregateDone && pageVerification === 1) ? Theme.error : Theme.textMuted
+                    horizontalAlignment: Text.AlignRight
+                    elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
                     Layout.fillWidth: true
                 }
-            }
-
-            LLOLabel {
-                Layout.fillWidth: true
-                visible: statusText.length > 0
-                text: statusText
-                font.pixelSize: Theme.captionSize
-                color: orientationProblemFound || (aggregateDone && pageVerification === 1) ? Theme.error : Theme.textMuted
-                elide: Text.ElideRight
-                wrapMode: Text.NoWrap
             }
         }
 
