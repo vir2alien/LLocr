@@ -1396,7 +1396,7 @@ appendix at the end of this file.
   curated quants (`sizeBytes` in `resources/profiles/models/*.json`, status +
   family hint via `ModelQuantModel`, installed quants override with measured
   `entry.byteSize`), the Launch/Request tabs live behind the row's ⚙, and a
-  «Загруженные файлы моделей на диске» block (`InstalledFilesModel`,
+  «Загруженные модели» block (`InstalledFilesModel`,
   `core/ByteSize::formatBytes`, removal through `removeInstalledEntry` with
   the shared-mmproj/in-use guards) replaces the separate manager window.
 - **170.** The setup wizard is five steps with real hardware detection:
@@ -1576,7 +1576,7 @@ appendix at the end of this file.
   `SegmentedToggle` (stored key `provider/mode` unchanged), one «Показать»
   checkbox reveals every key field of the External section
   (`Common/SecretKeyField.qml` only displays `revealed`), «Очистить
-  неиспользуемые сборки» sits in the «Установить llama.cpp» section header
+  неиспользуемые сборки» sits in the «Управление llama.cpp» section header
   (the «Установлено: …» caption is gone), the install row is one line
   (Backend/Release/check/download), fonts follow the other windows, window
   700×640. (The reveal switch's placement is amended by ADR 283.)

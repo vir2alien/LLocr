@@ -81,208 +81,229 @@ ScrollView {
         width: parent.width
         spacing: Theme.spacingSmall
 
-        // The cleanup belongs to the section, not to the action row: it acts
-        // on the installed builds, and the list right below shows them.
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacing
-
-            LLOLabel {
-                Layout.fillWidth: true
-                text: qsTr("Install llama.cpp")
-                font.pixelSize: Theme.bodySize
-                color: Theme.textPrimary
-            }
-            LLOButton {
-                text: qsTr("Clean up unused builds")
-                enabled: !RuntimeInstaller.busy
-                onClicked: RuntimeInstaller.cleanupUnusedBuilds()
-            }
-        }
-
-        LLOLabel {
-            Layout.fillWidth: true
-            visible: RuntimeInstaller.installedBuildCount === 0
-            font.pixelSize: Theme.footnoteSize
-            color: Theme.textMuted
-            text: qsTr("No runtime installed yet")
-        }
-
-        LLOLabel {
-            visible: RuntimeInstaller.installedBuildCount > 0
-            text: qsTr("Installed builds")
-            font: Theme.bodySmall
-        }
-
-        RuntimeBuildsList {
-            id: buildsList
-            visible: RuntimeInstaller.installedBuildCount > 0
-            Layout.fillWidth: true
-            // Not capped and not interactive: the surrounding ScrollView
-            // scrolls the whole tab, so a long list just grows (a nested
-            // interactive Flickable would trap the wheel).
-            Layout.preferredHeight: buildsList.implicitHeight
-            maxVisibleRows: -1
-            scrollable: false
-            onActionError: (msg) => buildsError.text = msg
-        }
-
-        LLOLabel {
-            id: buildsError
-            Layout.fillWidth: true
-            visible: text.length > 0
-            wrapMode: Text.WordWrap
-            font.pixelSize: Theme.footnoteSize
-            color: Theme.error
-        }
-
+        // The install block is a card of its own: the runtime management is
+        // one thing, the settings above it are another.
         Rectangle {
             Layout.fillWidth: true
-            visible: RuntimeInstaller.hasUpdate
-            implicitHeight: updatePlaque.implicitHeight + 2 * 8
-            color: Theme.warningBg
-            border.color: Theme.warning
+            implicitHeight: installCard.implicitHeight + Theme.spacing * 2
+            color: Theme.surfaceAlt
+            border.color: Theme.border
             border.width: 1
-            radius: Theme.controlRadius
+            radius: Theme.controlRadius + 2
 
             ColumnLayout {
-                id: updatePlaque
-                anchors.fill: parent
-                anchors.margins: 8
+                id: installCard
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: Theme.spacing
                 spacing: Theme.spacingSmall
 
-                LLOLabel {
-                    Layout.fillWidth: true
-                    font.pixelSize: Theme.footnoteSize
-                    font.bold: true
-                    color: Theme.textPrimary
-                    text: qsTr("A newer build %1 is available%2")
-                        .arg(RuntimeInstaller.updateBuild)
-                        .arg(RuntimeInstaller.updateTimestampLabel.length
-                             ? qsTr(" (checked %1)").arg(RuntimeInstaller.updateTimestampLabel)
-                             : "")
-                }
-                LLOLabel {
-                    Layout.fillWidth: true
-                    font.pixelSize: Theme.footnoteSize
-                    color: Theme.textSecondary
-                    text: Runtime.state === Runtime.Ready
-                          ? qsTr("Updating will install it after the running server is stopped.")
-                          : qsTr("You can keep working — updating installs in the background.")
-                }
+                // The cleanup belongs to the section, not to the action row: it
+                // acts on the installed builds, and the list right below shows them.
                 RowLayout {
-                    spacing: Theme.spacingSmall
+                    Layout.fillWidth: true
+                    spacing: Theme.spacing
+
+                    LLOLabel {
+                        Layout.fillWidth: true
+                        text: qsTr("Manage llama.cpp")
+                        font.pixelSize: Theme.bodySize
+                        font.bold: true
+                        color: Theme.textPrimary
+                    }
                     LLOButton {
-                        text: Runtime.state === Runtime.Ready ? qsTr("Stop server and update")
-                                                              : qsTr("Update")
+                        text: qsTr("Clean up unused builds")
                         enabled: !RuntimeInstaller.busy
-                        onClicked: {
-                            if (Runtime.state === Runtime.Ready)
-                                Runtime.stopServer()
-                            RuntimeInstaller.installUpdate()
+                        onClicked: RuntimeInstaller.cleanupUnusedBuilds()
+                    }
+                }
+
+                LLOLabel {
+                    Layout.fillWidth: true
+                    visible: RuntimeInstaller.installedBuildCount === 0
+                    font.pixelSize: Theme.footnoteSize
+                    color: Theme.textMuted
+                    text: qsTr("No runtime installed yet")
+                }
+
+                LLOLabel {
+                    visible: RuntimeInstaller.installedBuildCount > 0
+                    text: qsTr("Installed builds")
+                    font: Theme.bodySmall
+                }
+
+                RuntimeBuildsList {
+                    id: buildsList
+                    visible: RuntimeInstaller.installedBuildCount > 0
+                    Layout.fillWidth: true
+                    // Not capped and not interactive: the surrounding ScrollView
+                    // scrolls the whole tab, so a long list just grows (a nested
+                    // interactive Flickable would trap the wheel).
+                    Layout.preferredHeight: buildsList.implicitHeight
+                    maxVisibleRows: -1
+                    scrollable: false
+                    onActionError: (msg) => buildsError.text = msg
+                }
+
+                LLOLabel {
+                    id: buildsError
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: Theme.footnoteSize
+                    color: Theme.error
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    visible: RuntimeInstaller.hasUpdate
+                    implicitHeight: updatePlaque.implicitHeight + 2 * 8
+                    color: Theme.warningBg
+                    border.color: Theme.warning
+                    border.width: 1
+                    radius: Theme.controlRadius
+
+                    ColumnLayout {
+                        id: updatePlaque
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: Theme.spacingSmall
+
+                        LLOLabel {
+                            Layout.fillWidth: true
+                            font.pixelSize: Theme.footnoteSize
+                            font.bold: true
+                            color: Theme.textPrimary
+                            text: qsTr("A newer build %1 is available%2")
+                                .arg(RuntimeInstaller.updateBuild)
+                                .arg(RuntimeInstaller.updateTimestampLabel.length
+                                     ? qsTr(" (checked %1)").arg(RuntimeInstaller.updateTimestampLabel)
+                                     : "")
+                        }
+                        LLOLabel {
+                            Layout.fillWidth: true
+                            font.pixelSize: Theme.footnoteSize
+                            color: Theme.textSecondary
+                            text: Runtime.state === Runtime.Ready
+                                  ? qsTr("Updating will install it after the running server is stopped.")
+                                  : qsTr("You can keep working — updating installs in the background.")
+                        }
+                        RowLayout {
+                            spacing: Theme.spacingSmall
+                            LLOButton {
+                                text: Runtime.state === Runtime.Ready ? qsTr("Stop server and update")
+                                                                      : qsTr("Update")
+                                enabled: !RuntimeInstaller.busy
+                                onClicked: {
+                                    if (Runtime.state === Runtime.Ready)
+                                        Runtime.stopServer()
+                                    RuntimeInstaller.installUpdate()
+                                }
+                            }
+                            LLOButton {
+                                text: qsTr("View changes")
+                                onClicked: RuntimeInstaller.openReleasePage()
+                            }
+                            Item { Layout.fillWidth: true }
                         }
                     }
-                    LLOButton {
-                        text: qsTr("View changes")
-                        onClicked: RuntimeInstaller.openReleasePage()
+                }
+
+                LLOLabel {
+                    Layout.fillWidth: true
+                    font.pixelSize: Theme.footnoteSize
+                    color: Theme.textMuted
+                    text: qsTr("Platform: %1 · recommended backend: %2")
+                        .arg(RuntimeInstaller.platformLabel)
+                        .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.recommendedBackend))
+                }
+
+                InstallerStatusLabel {
+                    isError: RuntimeInstaller.state === RuntimeInstaller.Error
+                    busy: RuntimeInstaller.busy
+                    statusText: RuntimeInstaller.state === RuntimeInstaller.Idle
+                          ? qsTr("Open this tab or press “Check for updates” to load releases.")
+                          : RuntimeInstaller.statusMessage
+                }
+
+                ProgressBar {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 12
+                    visible: RuntimeInstaller.busy
+                    from: 0
+                    to: 1
+                    value: RuntimeInstaller.progress
+                }
+
+                // One row for the whole install: what to install, which release, and
+                // the two actions.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.spacing
+
+                    LLOLabel {
+                        text: qsTr("Backend")
+                        font: Theme.bodySmall
                     }
-                    Item { Layout.fillWidth: true }
+                    LLOComboBox {
+                        id: backendBox
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 80
+                        model: backendOptions
+                        enabled: !RuntimeInstaller.busy
+                        onActivated: {
+                            RuntimeInstaller.backend =
+                                RuntimeInstaller.availableBackends[currentIndex]
+                            root.edited()
+                        }
+                    }
+
+                    LLOLabel {
+                        text: qsTr("Release")
+                        font: Theme.bodySmall
+                    }
+                    LLOComboBox {
+                        id: releaseBox
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 80
+                        model: releaseOptions
+                        enabled: !RuntimeInstaller.busy
+                        onActivated: {
+                            RuntimeInstaller.selectedRelease = currentIndex
+                            root.edited()
+                        }
+                    }
+
+                    LLOButton {
+                        text: qsTr("Check for updates")
+                        enabled: !RuntimeInstaller.busy
+                        onClicked: RuntimeInstaller.checkForUpdates()
+                    }
+                    LLOButton {
+                        text: RuntimeInstaller.state === RuntimeInstaller.Downloading ? qsTr("Cancel")
+                                                                                      : qsTr("Download and install")
+                        enabled: !(RuntimeInstaller.state === RuntimeInstaller.Fetching || RuntimeInstaller.state === RuntimeInstaller.Installing)
+                        onClicked: {
+                            if (RuntimeInstaller.state === RuntimeInstaller.Downloading)
+                                RuntimeInstaller.cancelInstall()
+                            else
+                                RuntimeInstaller.startDownloadAndInstall()
+                        }
+                    }
                 }
-            }
-        }
 
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pixelSize: Theme.footnoteSize
-            color: Theme.textMuted
-            text: qsTr("Platform: %1 · recommended backend: %2")
-                .arg(RuntimeInstaller.platformLabel)
-                .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.recommendedBackend))
-        }
-
-        InstallerStatusLabel {
-            isError: RuntimeInstaller.state === RuntimeInstaller.Error
-            busy: RuntimeInstaller.busy
-            statusText: RuntimeInstaller.state === RuntimeInstaller.Idle
-                  ? qsTr("Open this tab or press “Check for updates” to load releases.")
-                  : RuntimeInstaller.statusMessage
-        }
-
-        ProgressBar {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 12
-            visible: RuntimeInstaller.busy
-            from: 0
-            to: 1
-            value: RuntimeInstaller.progress
-        }
-
-        // One row for the whole install: what to install, which release, and
-        // the two actions.
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacing
-
-            LLOLabel {
-                text: qsTr("Backend")
-                font: Theme.bodySmall
-            }
-            LLOComboBox {
-                id: backendBox
-                Layout.fillWidth: true
-                Layout.minimumWidth: 80
-                model: backendOptions
-                enabled: !RuntimeInstaller.busy
-                onActivated: {
-                    RuntimeInstaller.backend =
-                        RuntimeInstaller.availableBackends[currentIndex]
-                    root.edited()
+                LLOLabel {
+                    Layout.fillWidth: true
+                    font.pixelSize: Theme.footnoteSize
+                    color: Theme.textMuted
+                    text: RuntimeInstaller.state === RuntimeInstaller.Idle
+                          ? qsTr("Press “Check for updates” to see if a newer release is available.")
+                          : (RuntimeInstaller.hasUpdate
+                             ? qsTr("A newer release is available.")
+                             : qsTr("Your runtime build is up to date."))
                 }
-            }
-
-            LLOLabel {
-                text: qsTr("Release")
-                font: Theme.bodySmall
-            }
-            LLOComboBox {
-                id: releaseBox
-                Layout.fillWidth: true
-                Layout.minimumWidth: 80
-                model: releaseOptions
-                enabled: !RuntimeInstaller.busy
-                onActivated: {
-                    RuntimeInstaller.selectedRelease = currentIndex
-                    root.edited()
-                }
-            }
-
-            LLOButton {
-                text: qsTr("Check for updates")
-                enabled: !RuntimeInstaller.busy
-                onClicked: RuntimeInstaller.checkForUpdates()
-            }
-            LLOButton {
-                text: RuntimeInstaller.state === RuntimeInstaller.Downloading ? qsTr("Cancel")
-                                                                              : qsTr("Download and install")
-                enabled: !(RuntimeInstaller.state === RuntimeInstaller.Fetching || RuntimeInstaller.state === RuntimeInstaller.Installing)
-                onClicked: {
-                    if (RuntimeInstaller.state === RuntimeInstaller.Downloading)
-                        RuntimeInstaller.cancelInstall()
-                    else
-                        RuntimeInstaller.startDownloadAndInstall()
-                }
-            }
-        }
-
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pixelSize: Theme.footnoteSize
-            color: Theme.textMuted
-            text: RuntimeInstaller.state === RuntimeInstaller.Idle
-                  ? qsTr("Press “Check for updates” to see if a newer release is available.")
-                  : (RuntimeInstaller.hasUpdate
-                     ? qsTr("A newer release is available.")
-                     : qsTr("Your runtime build is up to date."))
+            }//ColumnLayout
         }
     }//ColumnLayout
 }

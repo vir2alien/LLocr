@@ -98,142 +98,158 @@ Item {
                 }
             }
 
-            ColumnLayout {
+            // The downloaded models are a card of their own: the task rows
+            // above are one thing, the files on disk are another.
+            Rectangle {
                 Layout.fillWidth: true
-                spacing: Theme.spacingSmall
+                implicitHeight: filesCard.implicitHeight + Theme.spacing * 2
+                color: Theme.surfaceAlt
+                border.color: Theme.border
+                border.width: 1
+                radius: Theme.controlRadius + 2
 
-                LLOLabel {
-                    Layout.fillWidth: true
-                    font.pixelSize: Theme.bodySize
-                    color: Theme.textPrimary
-                    text: qsTr("Downloaded model files on disk")
-                }
+                ColumnLayout {
+                    id: filesCard
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: Theme.spacing
+                    spacing: Theme.spacingSmall
 
-                LLOLabel {
-                    id: filesErrorLabel
+                    LLOLabel {
+                        Layout.fillWidth: true
+                        font.pixelSize: Theme.bodySize
+                        font.bold: true
+                        color: Theme.textPrimary
+                        text: qsTr("Downloaded models")
+                    }
 
-                    Layout.fillWidth: true
-                    visible: text.length > 0
-                    wrapMode: Text.WordWrap
-                    font.pixelSize: Theme.footnoteSize
-                    color: Theme.error
-                }
+                    LLOLabel {
+                        id: filesErrorLabel
 
-                ListView {
-                    id: filesList
+                        Layout.fillWidth: true
+                        visible: text.length > 0
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Theme.footnoteSize
+                        color: Theme.error
+                    }
 
-                    Layout.fillWidth: true
-                    implicitHeight: Math.min(contentHeight, 300)
-                    clip: true
-                    spacing: Theme.spacingTiny
-                    visible: ModelInstaller.installedCount > 0
-                    model: ModelInstaller.installedFiles
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    ListView {
+                        id: filesList
 
-                    delegate: RowLayout {
-                        id: fileRow
+                        Layout.fillWidth: true
+                        implicitHeight: Math.min(contentHeight, 300)
+                        clip: true
+                        spacing: Theme.spacingTiny
+                        visible: ModelInstaller.installedCount > 0
+                        model: ModelInstaller.installedFiles
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                        required property string entryId
-                        required property string title
-                        required property string quant
-                        required property string sizeLabel
-                        required property int usageCount
-                        required property string usageText
-                        required property bool removable
-                        required property string note
+                        delegate: RowLayout {
+                            id: fileRow
 
-                        width: filesList.width
-                        implicitHeight: Theme.controlHeight
-                        spacing: Theme.spacingSmall
+                            required property string entryId
+                            required property string title
+                            required property string quant
+                            required property string sizeLabel
+                            required property int usageCount
+                            required property string usageText
+                            required property bool removable
+                            required property string note
 
-                        LLOLabel {
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            wrapMode: Text.NoWrap
-                            font.pixelSize: Theme.bodySmallSize
-                            text: fileRow.title
-                            color: Theme.textPrimary
-                        }
-                        LLOLabel {
-                            Layout.preferredWidth: 64
-                            font.pixelSize: Theme.bodySmallSize
-                            text: fileRow.quant
-                            color: Theme.textSecondary
-                        }
-                        LLOLabel {
-                            Layout.preferredWidth: 76
-                            horizontalAlignment: Text.AlignRight
-                            font.pixelSize: Theme.bodySmallSize
-                            text: fileRow.sizeLabel
-                            color: Theme.textSecondary
-                        }
-                        LLOLabel {
-                            Layout.preferredWidth: 165
-                            elide: Text.ElideRight
-                            wrapMode: Text.NoWrap
-                            font.pixelSize: Theme.bodySmallSize
-                            text: fileRow.usageText
-                            color: fileRow.usageCount > 0 ? Theme.textPrimary : Theme.textMuted
-                        }
-                        ToolButton {
-                            implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
-                            implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
-                            onClicked: filesErrorLabel.text = ModelInstaller.openInstalledEntryFolder(fileRow.entryId)
-                            ToolTip.visible: hovered
-                            ToolTip.text: qsTr("Open folder")
+                            width: filesList.width
+                            implicitHeight: Theme.controlHeight
+                            spacing: Theme.spacingSmall
 
-                            contentItem: Item {
-                                implicitWidth: folderIcon.size
-                                implicitHeight: folderIcon.size
+                            LLOLabel {
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                                wrapMode: Text.NoWrap
+                                font.pixelSize: Theme.bodySmallSize
+                                text: fileRow.title
+                                color: Theme.textPrimary
+                            }
+                            LLOLabel {
+                                Layout.preferredWidth: 64
+                                font.pixelSize: Theme.bodySmallSize
+                                text: fileRow.quant
+                                color: Theme.textSecondary
+                            }
+                            LLOLabel {
+                                Layout.preferredWidth: 76
+                                horizontalAlignment: Text.AlignRight
+                                font.pixelSize: Theme.bodySmallSize
+                                text: fileRow.sizeLabel
+                                color: Theme.textSecondary
+                            }
+                            LLOLabel {
+                                Layout.preferredWidth: 165
+                                elide: Text.ElideRight
+                                wrapMode: Text.NoWrap
+                                font.pixelSize: Theme.bodySmallSize
+                                text: fileRow.usageText
+                                color: fileRow.usageCount > 0 ? Theme.textPrimary : Theme.textMuted
+                            }
+                            ToolButton {
+                                implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
+                                implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
+                                onClicked: filesErrorLabel.text = ModelInstaller.openInstalledEntryFolder(fileRow.entryId)
+                                ToolTip.visible: hovered
+                                ToolTip.text: qsTr("Open folder")
 
-                                Icon {
-                                    id: folderIcon
-                                    anchors.centerIn: parent
-                                    name: "folder"
-                                    size: Theme.iconSizeMedium
-                                    color: Theme.textSecondary
+                                contentItem: Item {
+                                    implicitWidth: folderIcon.size
+                                    implicitHeight: folderIcon.size
+
+                                    Icon {
+                                        id: folderIcon
+                                        anchors.centerIn: parent
+                                        name: "folder"
+                                        size: Theme.iconSizeMedium
+                                        color: Theme.textSecondary
+                                    }
                                 }
                             }
-                        }
-                        ToolButton {
-                            implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
-                            implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
-                            onClicked: {
-                                if (!fileRow.removable) {
-                                    filesErrorLabel.text = fileRow.note
-                                    return
+                            ToolButton {
+                                implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
+                                implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
+                                onClicked: {
+                                    if (!fileRow.removable) {
+                                        filesErrorLabel.text = fileRow.note
+                                        return
+                                    }
+                                    deleteFileDialog.entryId = fileRow.entryId
+                                    deleteFileDialog.subject = fileRow.title + " · " + fileRow.quant
+                                    deleteFileDialog.usageCount = fileRow.usageCount
+                                    deleteFileDialog.open()
                                 }
-                                deleteFileDialog.entryId = fileRow.entryId
-                                deleteFileDialog.subject = fileRow.title + " · " + fileRow.quant
-                                deleteFileDialog.usageCount = fileRow.usageCount
-                                deleteFileDialog.open()
-                            }
-                            ToolTip.visible: hovered
-                            ToolTip.text: fileRow.removable ? qsTr("Delete") : fileRow.note
+                                ToolTip.visible: hovered
+                                ToolTip.text: fileRow.removable ? qsTr("Delete") : fileRow.note
 
-                            contentItem: Item {
-                                implicitWidth: trashIcon.size
-                                implicitHeight: trashIcon.size
+                                contentItem: Item {
+                                    implicitWidth: trashIcon.size
+                                    implicitHeight: trashIcon.size
 
-                                Icon {
-                                    id: trashIcon
-                                    anchors.centerIn: parent
-                                    name: "trash-2"
-                                    size: Theme.iconSizeMedium
-                                    color: parent.enabled ? Theme.textSecondary : Theme.textMuted
+                                    Icon {
+                                        id: trashIcon
+                                        anchors.centerIn: parent
+                                        name: "trash-2"
+                                        size: Theme.iconSizeMedium
+                                        color: parent.enabled ? Theme.textSecondary : Theme.textMuted
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                LLOLabel {
-                    Layout.fillWidth: true
-                    visible: ModelInstaller.installedCount === 0
-                    wrapMode: Text.WordWrap
-                    font.pixelSize: Theme.footnoteSize
-                    color: Theme.helpColor
-                    text: qsTr("Downloaded models will appear here — pick a quantization in the rows above and save.")
+                    LLOLabel {
+                        Layout.fillWidth: true
+                        visible: ModelInstaller.installedCount === 0
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Theme.footnoteSize
+                        color: Theme.helpColor
+                        text: qsTr("Downloaded models will appear here — pick a quantization in the rows above and save.")
+                    }
                 }
             }
         }

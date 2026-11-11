@@ -3120,8 +3120,8 @@
     <name>RuntimeTabInternal</name>
     <message>
         <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+90"/>
-        <source>Install llama.cpp</source>
-        <translation>Установить llama.cpp</translation>
+        <source>Manage llama.cpp</source>
+        <translation>Управление llama.cpp</translation>
     </message>
     <message>
         <location line="+16"/>
@@ -3608,8 +3608,8 @@
     </message>
     <message>
         <location line="-170"/>
-        <source>Downloaded model files on disk</source>
-        <translation>Загруженные файлы моделей на диске</translation>
+        <source>Downloaded models</source>
+        <translation>Загруженные модели</translation>
     </message>
     <message>
         <location line="+129"/>

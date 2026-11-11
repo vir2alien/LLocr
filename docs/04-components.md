@@ -129,7 +129,7 @@ runs alone in the main window.
 |             | a mask in the field itself and is removed by clearing that field —    |
 |             | there is no «Delete» button;                                          |
 |             | Managed: `llama-server` path + probe, Start/Stop/Restart, Show log,   |
-|             | installer — «Clean up unused builds» sits in the «Install llama.cpp»  |
+|             | installer — «Clean up unused builds» sits in the «Manage llama.cpp»  |
 |             | header, the installed-builds list below shows what is installed       |
 |             | (the «Installed: …» caption was dropped as redundant), and the        |
 |             | release/backend pickers, «Check for updates» and «Download and        |

@@ -20,6 +20,7 @@
 #include <QQmlEngine>
 #include <QQmlError>
 #include <QQmlExpression>
+#include <QQuickItem>
 #include <QQuickStyle>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -33,6 +34,27 @@
 using namespace llocr;
 
 namespace {
+
+// A label with this text somewhere under the object.
+bool hasLabelWithText(QObject *root, const QString &text)
+{
+    if (!root)
+        return false;
+    if (root->property("text").toString() == text)
+        return true;
+    if (auto *item = qobject_cast<QQuickItem *>(root)) {
+        const QList<QQuickItem *> children = item->childItems();
+        for (QQuickItem *child : children) {
+            if (hasLabelWithText(child, text))
+                return true;
+        }
+    }
+    // A scroll view keeps its content in the content item, not in the children.
+    QObject *content = root->property("contentItem").value<QObject *>();
+    if (content && content != root)
+        return hasLabelWithText(content, text);
+    return false;
+}
 
 // The list of models the table shows: no rows, so every row falls back to
 // "no model chosen".
@@ -400,6 +422,7 @@ private slots:
     void pickingASectionSwitchesIt();
     void theInterfacePickersKeepTheirSize();
     void theOutputParserKeepsItsOwnWidth();
+    void theRuntimeAndModelsBlocksAreCards();
     void theCancelRestoresTheInterface();
     void theCancelRestoresTheBlockTypes();
     void theResetWritesAtOnceAndKeepsTheWindowClean();
@@ -649,6 +672,30 @@ void TestSettingsWindowQml::theOutputParserKeepsItsOwnWidth()
     const double sectionWidth = evaluate(window.get(), QStringLiteral("outputSection.width")).toDouble();
     QCOMPARE(pickerWidth, 340.0);
     QVERIFY2(pickerWidth < sectionWidth, qPrintable(QStringLiteral("the picker is %1 px of %2 px").arg(pickerWidth).arg(sectionWidth)));
+}
+
+// The runtime management and the downloaded models are cards of their own,
+// with the headers the block titles of the verification section carry.
+void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
+{
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("runtime"))));
+    QCoreApplication::processEvents();
+    QObject *runtime = evaluate(window.get(), QStringLiteral("runtimeSection")).value<QObject *>();
+    QVERIFY(runtime);
+    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Manage llama.cpp")), "the runtime card has no «Manage llama.cpp» header");
+    QVERIFY2(!hasLabelWithText(runtime, QStringLiteral("Install llama.cpp")), "the old runtime header is still there");
+
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("models"))));
+    QCoreApplication::processEvents();
+    QObject *models = evaluate(window.get(), QStringLiteral("modelsSection")).value<QObject *>();
+    QVERIFY(models);
+    QVERIFY2(hasLabelWithText(models, QStringLiteral("Downloaded models")), "the models card has no «Downloaded models» header");
+    QVERIFY2(!hasLabelWithText(models, QStringLiteral("Downloaded model files on disk")), "the old models header is still there");
 }
 
 void TestSettingsWindowQml::theCancelRestoresTheInterface()
