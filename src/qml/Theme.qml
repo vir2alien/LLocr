@@ -85,6 +85,10 @@ QtObject {
     readonly property int dialogRadius: 6
     readonly property int controlHeight: 28
     readonly property int controlRadius: 3
+    // The height of the three panel menus — the thumbnails, the page and the
+    // preview. They stand side by side, so they share one height and their
+    // bottom edges line up (ADR 301).
+    readonly property int panelMenuHeight: 36
 
     // --- Text and icon sizes (px, ADR 293) ----------------------------------
     // Every size is a px value at scale 1 multiplied by the per-OS factor —

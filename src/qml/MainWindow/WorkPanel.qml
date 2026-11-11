@@ -55,9 +55,12 @@ Rectangle {
         spacing: 0
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: viewSwitch.implicitHeight + 2*Theme.spacingSmall
+            // The panel menus share one height (ADR 301) — this one is the
+            // preview's, and its hairline below ends where the other two end.
+            Layout.preferredHeight: Theme.panelMenuHeight
             spacing: Theme.spacing
-            Layout.margins: Theme.spacingSmall
+            Layout.leftMargin: Theme.spacingSmall
+            Layout.rightMargin: Theme.spacingSmall
 
             LLOLabel {
                 visible: Controller.currentPageEditable

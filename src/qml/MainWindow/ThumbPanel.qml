@@ -30,32 +30,37 @@ Rectangle {
             visible: Controller.hasImage
             Layout.leftMargin: Theme.spacing
             Layout.rightMargin: Theme.spacing
-            Layout.preferredHeight: 24
+            Layout.preferredHeight: Theme.panelMenuHeight
             Layout.minimumWidth: implicitWidth
 
             LLOLabel {
                 visible: !panelRoot.compactHeader
                 text: qsTr("Pages")
                 color: Theme.textMuted
+                Layout.alignment: Qt.AlignVCenter
             }
 
             Item { Layout.fillWidth: true }
 
-            ToolButton {
+            IconToolButton {
                 id: selectAllButton
-                flat: true
-                font: Theme.caption
-                leftPadding: 4
-                rightPadding: 4
-                Layout.minimumWidth: implicitWidth
-                visible: Controller.pageCount > 1
                 text: allSelected ? qsTr("Select none")
                                   : qsTr("Select all (%1)").arg(Controller.pageCount)
+                iconName: allSelected ? "x" : "check"
+                Layout.alignment: Qt.AlignVCenter
+                Layout.minimumWidth: implicitWidth
+                visible: Controller.pageCount > 1
                 readonly property bool allSelected: Controller.pageCount > 0
                                                     && Controller.selectedPageCount === Controller.pageCount
                 onClicked: allSelected ? Controller.pageModel.clearSelection()
                                        : Controller.pageModel.selectAll()
             }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.divider
         }
 
         ListView {

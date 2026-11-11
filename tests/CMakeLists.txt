@@ -622,6 +622,22 @@ target_link_libraries(test_settings_nav_qml PRIVATE
 llocr_add_ui_icons(test_settings_nav_qml)
 add_test(NAME test_settings_nav_qml COMMAND test_settings_nav_qml)
 
+# The three panel menus — the thumbnails, the page and the preview — stand side
+# by side, so they share one height (ADR 301), and the «Select all» button of
+# the thumbnail menu is the app's icon-and-caption button. The files are read
+# from the source tree, so the test covers the shipped QML.
+qt_add_executable(test_panel_menus_qml test_panel_menus_qml.cpp)
+
+target_link_libraries(test_panel_menus_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+# The menus draw icons (the «Select all» glyph).
+llocr_add_ui_icons(test_panel_menus_qml)
+add_test(NAME test_panel_menus_qml COMMAND test_panel_menus_qml)
+
 # The icon set: the glyphs must be light (the colorization mixes the source by
 # its luminance, so a dark stroke keeps its own color in every theme — ADR 298),
 # and the component must hand the requested color to the effect. The files are

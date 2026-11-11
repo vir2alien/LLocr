@@ -1762,6 +1762,20 @@ appendix at the end of this file.
   opens: a binding over the button's mapped position is evaluated once and
   does not follow the card.
 
+- **301.** The three panel menus share one height. The window's row of panels —
+  the thumbnails, the page with the blocks and the preview — each carries a menu
+  on top, and the three stood at 24, 36 and 40 px: their bottom edges did not
+  line up, and the eye read three different rows of tools.
+  `Theme.panelMenuHeight` (36) is the one height — the page menu keeps its
+  28-high buttons with the padding above and below, the thumbnails and the
+  preview menus center what they hold in the same band. The «Select all» button
+  of the thumbnail menu is the app's own icon-and-caption button
+  (`Common/IconToolButton.qml`, the one the header's buttons use — it moved out
+  of the header into the common folder): it carries a glyph (a check while the
+  selection grows, a cross while it is cleared) and stands centered in the
+  band. The thumbnail menu got the hairline under it that the other two carry,
+  so the three read as one row.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

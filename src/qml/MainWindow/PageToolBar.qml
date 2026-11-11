@@ -54,6 +54,9 @@ ToolBar {
     rightPadding: Theme.spacing
     topPadding: Theme.spacingSmall
     bottomPadding: Theme.spacingSmall
+    // The panel menus share one height (ADR 301): the toolbar's own height is
+    // its 28-high buttons plus the padding above and below.
+    implicitHeight: Theme.panelMenuHeight
 
     background: Rectangle {
         color: Theme.surface
