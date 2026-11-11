@@ -9,9 +9,9 @@
 
 namespace llocr {
 
-namespace {
+I18n::I18n(const SettingsStore &settings, QObject *parent) : QObject(parent), m_settings(settings) {}
 
-QString resolveLanguage(const QString &requested)
+QString I18n::resolve(const QString &requested)
 {
     if (requested == QLatin1String("system")) {
         const QLocale::Language lang = QLocale::system().language();
@@ -20,19 +20,15 @@ QString resolveLanguage(const QString &requested)
     return requested;
 }
 
-}  // namespace
-
-I18n::I18n(const SettingsStore &settings, QObject *parent) : QObject(parent), m_settings(settings) {}
-
 void I18n::applyInitial()
 {
-    install(resolveLanguage(m_settings.language()));
+    install(resolve(m_settings.language()));
     emit languageApplied();
 }
 
 void I18n::setLanguage(const QString &language)
 {
-    install(resolveLanguage(language));
+    install(resolve(language));
     emit languageApplied();
 }
 
@@ -56,8 +52,12 @@ void I18n::install(const QString &language)
     if (m_appTranslator->load(QStringLiteral(":/i18n/llocr_ru.qm"))) {
         QCoreApplication::installTranslator(m_appTranslator);
     } else {
+        // The catalog did not reach the app: the whole interface would stay
+        // in English, and nothing else would say so.
+        qWarning("The Russian catalog is missing from the app (%s)", qPrintable(QStringLiteral(":/i18n/llocr_ru.qm")));
         delete m_appTranslator;
         m_appTranslator = nullptr;
+        emit catalogMissing();
     }
 
     m_qtTranslator = new QTranslator(this);

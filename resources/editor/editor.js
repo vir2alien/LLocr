@@ -25,6 +25,47 @@ const ZOOM_MAX = 3;
 const ZOOM_STEP = 1.25;
 let editorZoom = 1;
 
+// The page speaks the app's language: it travels in the url (ADR 303).
+// Vditor has its own locale files; the zoom buttons are ours and their words
+// come from the app's translation catalog (setZoomLabels).
+const DEFAULT_ZOOM_LABELS = { in: "Zoom in", out: "Zoom out", reset: "Reset the zoom" };
+
+// The locales Vditor ships. A language it does not know falls back to
+// English — the editor stays usable in every language of the app.
+const VDITOR_LOCALES = {
+    de: "de_DE",
+    en: "en_US",
+    es: "es_ES",
+    fr: "fr_FR",
+    ja: "ja_JP",
+    ko: "ko_KR",
+    pt: "pt_BR",
+    ru: "ru_RU",
+    sv: "sv_SE",
+    vi: "vi_VN",
+    zh: "zh_CN",
+    "zh-hant": "zh_TW",
+    "zh-tw": "zh_TW",
+};
+
+let zoomLabels = DEFAULT_ZOOM_LABELS;
+
+// The app's own words for the zoom (its translation catalog is the single
+// source): a new app language brings its words with it.
+function setZoomLabels(labels) {
+    zoomLabels = Object.assign({}, DEFAULT_ZOOM_LABELS, labels || {});
+    applyZoomLabels();
+}
+
+function pageLanguage() {
+    const match = /[?&]lang=([a-zA-Z-]+)/.exec(window.location.search);
+    return match ? match[1].toLowerCase() : "en";
+}
+
+function vditorLocale() {
+    return VDITOR_LOCALES[pageLanguage()] || "en_US";
+}
+
 function contentElement() {
     return document.querySelector(".vditor-wysiwyg [contenteditable]");
 }
@@ -365,6 +406,45 @@ function zoomButton(action, label, paths) {
            '" aria-label="' + label + '"><svg viewBox="0 0 24 24">' + paths + "</svg></button>";
 }
 
+// The words of the zoom buttons: the app's own (ADR 303).
+function applyZoomLabels() {
+    const group = document.querySelector(".ll-zoom");
+    if (!group)
+        return;
+    const labels = { in: zoomLabels.in, out: zoomLabels.out, reset: zoomLabels.reset };
+    Object.keys(labels).forEach((action) => {
+        const button = group.querySelector('[data-ll-zoom="' + action + '"]');
+        if (button)
+            button.setAttribute("aria-label", labels[action]);
+    });
+    alignTooltips(group.closest(".vditor-toolbar"));
+}
+
+// A tooltip must stay inside the pane: a long word in a narrow menu would
+// hang over the edge and be cut. The width of a tip is the width of its own
+// label, so it is measured and pinned to the edge it would cross.
+function alignTooltips(toolbar) {
+    if (!toolbar)
+        return;
+    const bounds = toolbar.getBoundingClientRect();
+    toolbar.querySelectorAll(".vditor-tooltipped").forEach((button) => {
+        button.classList.remove("ll-edge-left", "ll-edge-right");
+        if (!button.getAttribute("aria-label"))
+            return;
+        button.classList.add("ll-measure");
+        const style = getComputedStyle(button, "::after");
+        const width = parseFloat(style.width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+        button.classList.remove("ll-measure");
+        if (!width || isNaN(width))
+            return;
+        const rect = button.getBoundingClientRect();
+        if (rect.left - bounds.left < width / 2)
+            button.classList.add("ll-edge-left");
+        else if (bounds.right - rect.right < width / 2)
+            button.classList.add("ll-edge-right");
+    });
+}
+
 // The zoom buttons at the right end of the menu: the text grows and shrinks,
 // the percentage returns it to 100 %. The menu stands at the top of the page,
 // so its tooltips open below it — Vditor points them up, where the page cuts
@@ -380,9 +460,9 @@ function buildZoomControls() {
     const group = document.createElement("div");
     group.className = "vditor-toolbar__item ll-zoom";
     group.innerHTML =
-        zoomButton("out", "Zoom out", '<path d="M5 12h14"></path>') +
-        '<button type="button" class="vditor-tooltipped vditor-tooltipped__s ll-zoom__label" data-ll-zoom="reset" aria-label="Reset the zoom"><span>100%</span></button>' +
-        zoomButton("in", "Zoom in", '<path d="M5 12h14"></path><path d="M12 5v14"></path>');
+        zoomButton("out", zoomLabels.out, '<path d="M5 12h14"></path>') +
+        '<button type="button" class="vditor-tooltipped vditor-tooltipped__s ll-zoom__label" data-ll-zoom="reset" aria-label="' + zoomLabels.reset + '"><span>100%</span></button>' +
+        zoomButton("in", zoomLabels.in, '<path d="M5 12h14"></path><path d="M12 5v14"></path>');
     toolbar.insertBefore(group, toolbar.firstChild);
     group.addEventListener("click", (event) => {
         const button = event.target.closest("[data-ll-zoom]");
@@ -401,7 +481,7 @@ function buildZoomControls() {
 function initVditor() {
     vditor = new Vditor("editor", {
         cdn: "qrc:/editor/vditor",
-        lang: "en_US",
+        lang: vditorLocale(),
         mode: "wysiwyg",
         height: "100%",
         placeholder: "",
@@ -420,6 +500,10 @@ function initVditor() {
                 watchMath();
             }
             buildZoomControls();
+            alignTooltips(document.querySelector(".vditor-toolbar"));
+            // A narrower pane moves the buttons against the edges: the tips
+            // are pinned again.
+            window.addEventListener("resize", () => alignTooltips(document.querySelector(".vditor-toolbar")));
             interceptToolbarActions();
             if (bridge)
                 bridge.notifyPageReady();

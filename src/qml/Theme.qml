@@ -6,6 +6,9 @@ import LLocr
 
 QtObject {
     readonly property bool dark: UiController.dark
+    // The language the app speaks now ("en" or "ru"): the editor's page
+    // follows it, so its tooltips speak the app's language (ADR 303).
+    readonly property string language: UiController.language
 
     // --- Surfaces (back to front) ---
     readonly property color background: dark ? "#1c1c1c" : "#f2f2f2"

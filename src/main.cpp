@@ -193,6 +193,12 @@ int main(int argc, char *argv[])
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &problemLog, &llocr::ProblemLog::retranslate);
 
     setupQmlEngine(engine, appController, uiController);
+    // A missing catalog leaves the whole interface in English: the app says
+    // so in its log rather than failing quietly.
+    QObject::connect(&i18n, &llocr::I18n::catalogMissing, &problemLog, [&problemLog]() {
+        problemLog.report(llocr::StatusMessage::literal(QStringLiteral("The Russian translation catalog is missing from the app: the interface stays in English.")), llocr::ProblemLog::Warning);
+    });
+
     i18n.applyInitial();
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);

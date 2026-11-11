@@ -19,8 +19,16 @@ public:
 
     void applyInitial();
 
+    // The language the app speaks now: the setting, with "system" resolved
+    // by the system language. One rule for the translator and for everything
+    // that follows the app's language (the editor's page).
+    static QString resolve(const QString &requested);
+
 signals:
     void languageApplied();
+    // The catalog did not reach the app: the interface stays in English and
+    // says so instead of failing quietly.
+    void catalogMissing();
 
 private:
     void install(const QString &language);

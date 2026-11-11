@@ -602,10 +602,17 @@ qt_add_qml_module(llocr
     QML_FILES
 )
 
+# The .qm goes into the app's resources as it stands — the app loads it from
+# ":/i18n/llocr_ru.qm". QM_FILES_OUTPUT_VARIABLE must not be used here: it
+# redirects the .qm files away from the target's resources, and the app would
+# silently fall back to English (the resource is then nowhere to be found).
 qt_add_translations(llocr
     TS_FILES
         "${CMAKE_SOURCE_DIR}/resources/i18n/llocr_ru.ts"
 )
+# The tests read the built catalog: the words of the app are checked against
+# it, not against a copy of the strings.
+set_property(GLOBAL PROPERTY LLOCR_QM_FILE "${CMAKE_CURRENT_BINARY_DIR}/llocr_ru.qm")
 
 # --- macOS dev-build launcher -------------------------------------------------
 # Qt Creator's run step translates its internal _QTC_DYLD_FRAMEWORK_PATH into

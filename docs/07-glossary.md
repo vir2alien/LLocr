@@ -1789,7 +1789,32 @@ appendix at the end of this file.
   the menu: the text grows and shrinks (a quarter step per click, 50–300 %),
   the percentage returns it to 100 %, and the menu keeps the app's size at any
   zoom — the zoom scales the content, not the page. The colour scheme stays
-  Vditor's.
+  Vditor's. No tooltip hangs over the edge of the page: the page measures the
+  tips and pins the ones that would cross an edge to it — the first one opens
+  to the right, the last one to the left, and a long word in between (the
+  Russian «Полужирный текст») opens to the right as well.
+
+- **303.** The editor's page speaks the app's language. The language travels in
+  the page's url (`?lang=`), and the app's effective language — the setting,
+  with "system" resolved by the system language — comes from
+  `UiController.language` (the one rule the translator follows, `I18n::resolve`).
+  The page hands it to Vditor, which ships its own locale files (twelve of
+  them); the editor's own words — the menu's tooltips, the headings panel —
+  follow the app. A language Vditor does not know leaves the editor in
+  English, and the editor stays usable. The zoom buttons are ours, so their
+  words come from the app's translation catalog and not from the page: a new
+  app language brings its own words with it. A change of the language reloads
+  the page: Vditor's locale is bound to the page's beginning.
+
+- **304.** The catalog must reach the app. The Russian strings live in a `.qm`
+  inside the app's resources (`:/i18n/llocr_ru.qm`), and `qt_add_translations()`
+  puts it there — unless the caller redirects the `.qm` files elsewhere
+  (`QM_FILES_OUTPUT_VARIABLE` does exactly that). Then the app loads nothing,
+  the whole interface stays in English, and nothing says so: the language
+  switch still works, it simply has no words to switch to. A missing catalog is
+  now reported — in the app's log and on the console. The test suite reads the
+  built catalog from the build tree; the app reads it from its resources, and
+  the two must stay the same file.
 
 ### Security & secrets
 

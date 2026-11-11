@@ -13,6 +13,7 @@ class UiController : public QObject
 
     Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged)
     Q_PROPERTY(bool dark READ dark NOTIFY darkChanged)
+    Q_PROPERTY(QString language READ language NOTIFY languageChanged)
 
 public:
     enum Mode : int {
@@ -29,9 +30,14 @@ public:
 
     bool dark() const;
 
+    // The language the app speaks now — the setting, with "system" resolved
+    // by the system language.
+    QString language() const;
+
 signals:
     void modeChanged();
     void darkChanged();
+    void languageChanged();
 
 private:
     void apply() const;

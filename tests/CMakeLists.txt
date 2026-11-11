@@ -177,6 +177,11 @@ qt_add_resources(test_editor_qml "editor_qml_res"
     BASE "${CMAKE_SOURCE_DIR}/resources/editor"
     FILES ${TEST_EDITOR_FILES}
 )
+get_property(LLOCR_QM_FILE GLOBAL PROPERTY LLOCR_QM_FILE)
+target_compile_definitions(test_editor_qml PRIVATE LLOCR_QM_FILE="${LLOCR_QM_FILE}")
+if(TARGET llocr_llocr_translations)
+    add_dependencies(test_editor_qml llocr_llocr_translations)
+endif()
 add_test(NAME test_editor_qml COMMAND test_editor_qml)
 set_tests_properties(test_editor_qml PROPERTIES RESOURCE_LOCK webengine
     ENVIRONMENT "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu")

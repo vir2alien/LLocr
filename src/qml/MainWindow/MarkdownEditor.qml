@@ -21,6 +21,15 @@ Item {
     property color bgColor: "white"
     property color fgColor: "black"
     property string hl: "#308cc6"
+    // The language of the editor's page: the app's language (ADR 303).
+    property string language: Theme.language
+    // The words of the zoom buttons: the app's translation catalog is the
+    // single source, so a new app language brings its own words with it.
+    readonly property string zoomLabels: JSON.stringify({
+        in: qsTr("Zoom in"),
+        out: qsTr("Zoom out"),
+        reset: qsTr("Reset the zoom"),
+    })
 
     // The per-block pull (ADR 296): the editor reports the ordinal and the
     // markdown of the block the user typed in.
@@ -54,11 +63,19 @@ Item {
         web.runJavaScript("highlightBlocks(" + JSON.stringify(indices) + ");")
     }
 
+    // The page's own words for the zoom come from here (ADR 303).
+    function _pushZoomLabels() {
+        if (!_pageLoaded)
+            return
+        web.runJavaScript("setZoomLabels(" + root.zoomLabels + ");")
+    }
+
     onMarkdownChanged: _pushPage()
     onDarkChanged: _pushPage()
     onBgColorChanged: _pushPage()
     onFgColorChanged: _pushPage()
     onHlChanged: _pushPage()
+    onZoomLabelsChanged: _pushZoomLabels()
 
     // A failed editor.html load used to leave a permanently blank pane; the
     // banner is cleared by the next successful load.
@@ -92,7 +109,10 @@ Item {
         id: web
         anchors.fill: parent
         backgroundColor: root.bgColor
-        url: "qrc:/editor/editor.html"
+        // The page speaks the app's language: its tooltips and its menus come
+        // in the language the user reads the app in (ADR 303). The language is
+        // a part of the url — a change of it reloads the page.
+        url: "qrc:/editor/editor.html?lang=" + encodeURIComponent(root.language)
         webChannel: channel
 
         settings.localContentCanAccessFileUrls: false
@@ -108,6 +128,7 @@ Item {
             if (info.status === WebEngineView.LoadSucceededStatus) {
                 root._pageLoaded = true
                 root._loadError = ""
+                root._pushZoomLabels()
             } else if (info.status === WebEngineView.LoadFailedStatus) {
                 root._pageLoaded = false
                 root._channelReady = false

@@ -1,5 +1,6 @@
 #include <QElapsedTimer>
 #include <QGuiApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QtTest>
@@ -29,6 +30,7 @@ private slots:
     void toolbarActionAsksTheModelInsteadOfMutating();
     void htmlTableMathRendersInThePreviewOnly();
     void theMenuWearsTheAppsToolSizes();
+    void theTooltipsSpeakTheAppsLanguage();
 
 private:
     void spinUntil(const std::function<bool()> &done, int timeoutMs = 60000);
@@ -594,6 +596,98 @@ void TestEditorPage::theMenuWearsTheAppsToolSizes()
     const QJsonObject kept = QJsonDocument::fromJson(afterPush.toUtf8()).object();
     QCOMPARE(kept.value(QStringLiteral("zoom")).toString(), QStringLiteral("1.25"));
     QCOMPARE(kept.value(QStringLiteral("label")).toString(), QStringLiteral("125%"));
+}
+
+// The page speaks the app's language: Vditor's own tooltips follow the
+// language in the url, the zoom's words come from the app's catalog, and
+// every tooltip that would cross the edge of the pane is pinned inside it
+// (ADR 303).
+void TestEditorPage::theTooltipsSpeakTheAppsLanguage()
+{
+    EditorBridge bridge;
+    QWebChannel channel;
+    channel.registerObject(QStringLiteral("editorBridge"), &bridge);
+    QWebEnginePage page;
+    page.setWebChannel(&channel);
+    bool loaded = false;
+    bool ready = false;
+    QObject::connect(&page, &QWebEnginePage::loadFinished, [&](bool ok) { loaded = ok; });
+    QObject::connect(&bridge, &EditorBridge::pageReady, [&ready]() { ready = true; });
+
+    page.load(QUrl(QStringLiteral("qrc:/editor/editor.html?lang=ru")));
+    spinUntil([&]() { return loaded; });
+    QVERIFY(loaded);
+    spinUntil([&]() { return ready; });
+
+    // The app's words for the zoom reach the page the same way.
+    bool labelsSet = false;
+    page.runJavaScript(QStringLiteral(R"js(
+        setZoomLabels({ "in": "Увеличить", "out": "Уменьшить", "reset": "Сбросить масштаб" });
+    )js"),
+                       [&labelsSet](const QVariant &) { labelsSet = true; });
+    spinUntil([&]() { return labelsSet; });
+
+    QString info;
+    spinUntil([&]() {
+        info.clear();
+        page.runJavaScript(QStringLiteral(R"js(
+            (function () {
+                // A page without a view has no viewport: the menu is laid out
+                // for the width of the preview pane and the tips are pinned
+                // against its edges.
+                document.documentElement.style.width = "760px";
+                document.body.style.width = "760px";
+                const toolbar = document.querySelector(".vditor-toolbar");
+                alignTooltips(toolbar);
+                const flow = Array.from(document.querySelectorAll(".vditor-toolbar__item:not(.ll-zoom) .vditor-tooltipped"));
+                const zoom = Array.from(document.querySelectorAll(".ll-zoom [data-ll-zoom]"));
+                const bounds = toolbar.getBoundingClientRect();
+                // The tip of every button must start and end inside the menu.
+                const inside = flow.concat(zoom).every((button) => {
+                    button.classList.add("ll-measure");
+                    const style = getComputedStyle(button, "::after");
+                    const width = parseFloat(style.width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+                    button.classList.remove("ll-measure");
+                    if (!width || isNaN(width))
+                        return true;
+                    const rect = button.getBoundingClientRect();
+                    const fits = rect.left - bounds.left >= width / 2 && bounds.right - rect.right >= width / 2;
+                    return fits || button.classList.contains("ll-edge-left") || button.classList.contains("ll-edge-right");
+                });
+                return JSON.stringify({
+                    flowLabels: flow.slice(0, 2).map((b) => b.getAttribute("aria-label")),
+                    flowEdges: flow.slice(0, 2).map((b) => b.classList.contains("ll-edge-left")),
+                    zoomLabels: zoom.map((b) => b.getAttribute("aria-label")),
+                    lastEdge: zoom.length ? zoom[zoom.length - 1].classList.contains("ll-edge-right") : false,
+                    inside: inside,
+                });
+            })()
+        )js"),
+                           [&info](const QVariant &v) { info = v.toString(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return !info.isEmpty();
+    });
+
+    const QJsonObject menu = QJsonDocument::fromJson(info.toUtf8()).object();
+    const QJsonArray flowLabels = menu.value(QStringLiteral("flowLabels")).toArray();
+    QCOMPARE(flowLabels.size(), 2);
+    QVERIFY2(flowLabels.at(0).toString().contains(QStringLiteral("Заголовки")), qPrintable(info));
+    QVERIFY2(flowLabels.at(1).toString().contains(QStringLiteral("Полужирный")), qPrintable(info));
+
+    // Both the first button and the second one (whose Russian word is long)
+    // keep their tip inside the menu.
+    const QJsonArray flowEdges = menu.value(QStringLiteral("flowEdges")).toArray();
+    QCOMPARE(flowEdges.size(), 2);
+    QVERIFY(flowEdges.at(0).toBool());
+    QVERIFY(flowEdges.at(1).toBool());
+
+    const QJsonArray zoomLabels = menu.value(QStringLiteral("zoomLabels")).toArray();
+    QCOMPARE(zoomLabels.size(), 3);
+    QCOMPARE(zoomLabels.at(0).toString(), QStringLiteral("Уменьшить"));
+    QCOMPARE(zoomLabels.at(1).toString(), QStringLiteral("Сбросить масштаб"));
+    QCOMPARE(zoomLabels.at(2).toString(), QStringLiteral("Увеличить"));
+    QVERIFY2(menu.value(QStringLiteral("lastEdge")).toBool(), qPrintable(info));
+    QVERIFY(menu.value(QStringLiteral("inside")).toBool());
 }
 
 int main(int argc, char *argv[])

@@ -1627,7 +1627,22 @@
 <context>
     <name>MarkdownEditor</name>
     <message>
-        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+64"/>
+        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+26"/>
+        <source>Zoom in</source>
+        <translation>Увеличить</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+27"/>
+        <source>Zoom out</source>
+        <translation>Уменьшить</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+28"/>
+        <source>Reset the zoom</source>
+        <translation>Сбросить масштаб</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+71"/>
         <source>Failed to load the editor page (%1).</source>
         <translation>Не удалось загрузить страницу редактора (%1).</translation>
     </message>

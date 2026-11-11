@@ -7,6 +7,7 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QTranslator>
 #include <QtTest>
 #include <QtWebEngineQuick/qtwebenginequickglobal.h>
 
@@ -26,9 +27,24 @@ class FakeUiController : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(bool dark READ dark CONSTANT)
+    Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
 
 public:
     bool dark() const { return false; }
+    QString language() const { return m_language; }
+    void setLanguage(const QString &language)
+    {
+        if (m_language == language)
+            return;
+        m_language = language;
+        emit languageChanged();
+    }
+
+signals:
+    void languageChanged();
+
+private:
+    QString m_language = QStringLiteral("ru");
 };
 
 QStringList *g_messages = nullptr;
@@ -48,10 +64,15 @@ class TestEditorQml : public QObject
 private slots:
     void initTestCase();
     void theEditorWiringRegistersABridgeAndReachesPageReady();
+    void theZoomWordsComeFromTheAppsCatalog();
+    void theEditorPageFollowsTheAppsLanguage();
 
 private:
     QStringList m_messages;
     FakeUiController m_uiController;
+    // One engine for the whole binary: a singleton instance belongs to the
+    // engine that was alive when it was registered.
+    QQmlEngine m_engine;
 };
 
 void TestEditorQml::initTestCase()
@@ -72,8 +93,7 @@ void TestEditorQml::initTestCase()
 
 void TestEditorQml::theEditorWiringRegistersABridgeAndReachesPageReady()
 {
-    QQmlEngine engine;
-    QQmlComponent component(&engine, QUrl::fromLocalFile(QDir(QFINDTESTDATA(QStringLiteral("../src/qml"))).filePath(QStringLiteral("MainWindow/MarkdownEditor.qml"))));
+    QQmlComponent component(&m_engine, QUrl::fromLocalFile(QDir(QFINDTESTDATA(QStringLiteral("../src/qml"))).filePath(QStringLiteral("MainWindow/MarkdownEditor.qml"))));
     QVERIFY2(component.isReady(), qPrintable(component.errorString()));
 
     std::unique_ptr<QObject> object(component.create());
@@ -101,6 +121,56 @@ void TestEditorQml::theEditorWiringRegistersABridgeAndReachesPageReady()
     QVERIFY(object->property("_channelReady").toBool());
     for (const QString &message : m_messages)
         QVERIFY2(!message.contains(QLatin1String("Cannot register null object to WebChannel")), qPrintable(message));
+}
+
+// The words of the zoom buttons are the app's own: the page takes them from
+// the translation catalog, so a new app language brings its words with it
+// (ADR 303).
+void TestEditorQml::theZoomWordsComeFromTheAppsCatalog()
+{
+    QTranslator translator;
+    QVERIFY2(translator.load(QStringLiteral(LLOCR_QM_FILE)), LLOCR_QM_FILE);
+    QVERIFY(QCoreApplication::installTranslator(&translator));
+
+    QQmlComponent component(&m_engine, QUrl::fromLocalFile(QDir(QFINDTESTDATA(QStringLiteral("../src/qml"))).filePath(QStringLiteral("MainWindow/MarkdownEditor.qml"))));
+    QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+
+    std::unique_ptr<QObject> object(component.create());
+    QVERIFY2(object, qPrintable(component.errorString()));
+
+    const QString labels = object->property("zoomLabels").toString();
+    QVERIFY2(labels.contains(QString::fromUtf8("Увеличить")), qPrintable(labels));
+    QVERIFY2(labels.contains(QString::fromUtf8("Сбросить масштаб")), qPrintable(labels));
+
+    QCoreApplication::removeTranslator(&translator);
+}
+
+// The page of the editor speaks the language of the app: the language travels
+// in the url of the page (ADR 303).
+void TestEditorQml::theEditorPageFollowsTheAppsLanguage()
+{
+    QQmlComponent component(&m_engine, QUrl::fromLocalFile(QDir(QFINDTESTDATA(QStringLiteral("../src/qml"))).filePath(QStringLiteral("MainWindow/MarkdownEditor.qml"))));
+    QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+
+    std::unique_ptr<QObject> object(component.create());
+    QVERIFY2(object, qPrintable(component.errorString()));
+    QCOMPARE(object->property("language").toString(), QStringLiteral("ru"));
+
+    const auto pageUrl = [object = object.get()]() {
+        QString url;
+        const auto items = object->findChildren<QQuickItem *>();
+        for (QQuickItem *item : items) {
+            const QString candidate = item->property("url").toUrl().toString();
+            if (candidate.startsWith(QStringLiteral("qrc:/editor/")))
+                url = candidate;
+        }
+        return url;
+    };
+
+    QVERIFY2(pageUrl().contains(QStringLiteral("lang=ru")), qPrintable(pageUrl()));
+
+    m_uiController.setLanguage(QStringLiteral("en"));
+    QVERIFY2(pageUrl().contains(QStringLiteral("lang=en")), qPrintable(pageUrl()));
 }
 
 int main(int argc, char *argv[])

@@ -1,5 +1,7 @@
 #include "app/UiController.h"
 
+#include "app/I18n.h"
+
 #include <QGuiApplication>
 #include <QStyleHints>
 
@@ -10,6 +12,8 @@ UiController::UiController(SettingsStore &settings, QObject *parent) : QObject(p
     m_mode = static_cast<Mode>(m_settings.themeMode());
 
     connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this, &UiController::darkChanged);
+    // The language follows the setting: the editor's page reads it from here.
+    connect(&m_settings, &SettingsStore::languageChanged, this, &UiController::languageChanged);
 
     apply();
 }
@@ -45,6 +49,11 @@ void UiController::apply() const
 {
     const auto scheme = m_mode == Light ? Qt::ColorScheme::Light : m_mode == Dark ? Qt::ColorScheme::Dark : Qt::ColorScheme::Unknown;
     QGuiApplication::styleHints()->setColorScheme(scheme);
+}
+
+QString UiController::language() const
+{
+    return I18n::resolve(m_settings.language());
 }
 
 }  // namespace llocr

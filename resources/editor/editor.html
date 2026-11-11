@@ -54,6 +54,13 @@
        buttons say what they do. */
     .vditor-toolbar__item .vditor-tooltipped::after { content: attr(aria-label); }
 
+    /* The outermost buttons would hang their tooltips over the edge of the
+       page: the first one opens to the right, the last one to the left. The
+       page measures the tips and pins the ones that would cross an edge. */
+    .vditor-toolbar__item .ll-edge-left::after { left: 0; right: auto; transform: none; }
+    .vditor-toolbar__item .ll-edge-right::after { right: 0; left: auto; transform: none; }
+    .vditor-toolbar__item .ll-measure::after { display: inline-block !important; }
+
     /* The zoom: the text grows and shrinks, the menu keeps the app's size. */
     .vditor-toolbar__item.ll-zoom { float: right; display: flex; }
     .vditor-toolbar__item.ll-zoom .ll-zoom__label {
