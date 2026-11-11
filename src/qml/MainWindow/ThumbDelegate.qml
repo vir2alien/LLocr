@@ -138,33 +138,168 @@ Item {
         }
     }// Rectangle card
 
-    ToolButton {
-        id: deletePageButton
+    // The page's own actions. The move buttons and the delete are separated by
+    // a gap of one icon, so a stray click lands on the gap rather than on the
+    // trash.
+    Row {
+        id: pageActions
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 2
-        implicitWidth: 20
-        implicitHeight: 20
-        padding: 0
+        spacing: 0
+        z: 2
         visible: thumbHover.hovered && !Controller.busy && !Controller.importing && !Controller.checkBusy && listView.draggedIndex === -1
-        enabled: !Controller.busy && !Controller.importing && !Controller.checkBusy
         opacity: visible ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 100 } }
-        text: "\u2715"
+
+        // The button lives in a wrapper that stays enabled: a disabled control
+        // gets no hover events, so the tip of a button that cannot act has to
+        // come from the wrapper (the header does the same).
+        component PageAction: Item {
+            id: action
+            property string iconName: ""
+            property string tip: ""
+            property bool actionEnabled: true
+            signal triggered()
+
+            implicitWidth: 22
+            implicitHeight: 22
+
+            HoverHandler { id: actionHover }
+
+            ToolTip.visible: actionHover.hovered
+            ToolTip.text: action.tip
+
+            ToolButton {
+                id: actionButton
+                anchors.fill: parent
+                padding: 0
+                enabled: action.actionEnabled
+
+                background: Rectangle {
+                    radius: Theme.controlRadius
+                    color: actionButton.hovered ? Theme.border : Theme.surfaceAlt
+                    border.color: Theme.divider
+                    border.width: 1
+                }
+
+                contentItem: Icon {
+                    name: action.iconName
+                    size: Theme.iconSizeMedium
+                    color: action.actionEnabled ? Theme.textPrimary : Theme.textMuted
+                }
+
+                Accessible.name: action.tip
+
+                onClicked: action.triggered()
+            }
+        }
+
+        PageAction {
+            iconName: "chevron-up"
+            tip: qsTr("Move page up")
+            actionEnabled: pageIndex > 0
+            onTriggered: Controller.movePage(pageIndex, pageIndex - 1)
+        }
+        PageAction {
+            iconName: "chevron-down"
+            tip: qsTr("Move page down")
+            actionEnabled: pageIndex < Controller.pageCount - 1
+            onTriggered: Controller.movePage(pageIndex, pageIndex + 1)
+        }
+        PageAction {
+            id: positionButton
+            iconName: "hash"
+            tip: qsTr("Move page to position")
+            onTriggered: positionPopup.open()
+        }
+        Item {
+            width: Theme.iconSizeMedium
+            height: 1
+        }
+        PageAction {
+            iconName: "trash-2"
+            tip: qsTr("Delete page")
+            onTriggered: Controller.removePage(pageIndex)
+        }
+    }// Row pageActions
+
+    // The target position: a number the page is put at.
+    Popup {
+        id: positionPopup
+        parent: Overlay.overlay
+        modal: false
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: Theme.spacing
+        width: 230
+
+        x: Theme.spacing
+        y: Theme.spacing
+
+        onOpened: {
+            // The position is taken when the popup opens: a binding over
+            // mapToItem would be evaluated once and would not follow the card.
+            const anchor = positionButton.mapToItem(Overlay.overlay, 0, 0)
+            x = Math.max(Theme.spacing,
+                         Math.min(Overlay.overlay.width - width - Theme.spacing,
+                                  anchor.x - width + positionButton.width))
+            y = anchor.y + positionButton.height + Theme.spacingSmall
+
+            positionField.text = pageIndex + 1
+            positionField.selectAll()
+            positionField.forceActiveFocus()
+        }
 
         background: Rectangle {
-            radius: width / 2
-            color: deletePageButton.hovered ? Theme.border : Theme.surfaceAlt
-            border.color: Theme.divider
+            radius: Theme.controlRadius
+            color: Theme.surface
+            border.color: Theme.border
             border.width: 1
         }
 
-        ToolTip.visible: hovered
-        ToolTip.text: qsTr("Delete page")
-        Accessible.name: qsTr("Delete page %1").arg(pageIndex + 1)
+        contentItem: ColumnLayout {
+            spacing: Theme.spacingSmall
 
-        onClicked: Controller.removePage(pageIndex)
-    }// ToolButton
+            LLOLabel {
+                Layout.fillWidth: true
+                text: qsTr("Move page to position")
+                font.pixelSize: Theme.bodySmallSize
+                color: Theme.textPrimary
+            }
+
+            RowLayout {
+                spacing: Theme.spacingSmall
+
+                TextField {
+                    id: positionField
+                    Layout.fillWidth: true
+                    implicitHeight: 24
+                    font: Theme.bodySmall
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    validator: IntValidator { bottom: 1; top: Controller.pageCount }
+                    selectByMouse: true
+                    onAccepted: positionPopup.applyPosition()
+                }
+
+                LLOButton {
+                    text: qsTr("Move")
+                    onClicked: positionPopup.applyPosition()
+                }
+            }
+        }
+
+        function applyPosition() {
+            const target = parseInt(positionField.text)
+            if (isNaN(target) || target < 1 || target > Controller.pageCount) {
+                positionField.text = ""
+                positionField.forceActiveFocus()
+                return
+            }
+            Controller.movePage(pageIndex, target - 1)
+            positionPopup.close()
+        }
+    }// Popup positionPopup
 
     Rectangle {
         width: 24

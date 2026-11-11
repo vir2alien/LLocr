@@ -151,15 +151,15 @@ the licenses that govern it. Each component's full license text is kept in the
 - **Project:** Lucide (https://lucide.dev/), via the `lucide-static` package
   v0.553.0.
 - **License:** ISC, with portions derived from Feather under the MIT license.
-- **Usage:** 35 monochrome 24×24 stroke SVG icons (`box`, `check`,
-  `chevron-down`, `circle-check`, `clipboard-copy`, `code`, `file-search`,
-  `file-text`, `folder`, `image`, `info`, `layout-grid`, `layout-template`,
-  `loader-circle`, `monitor`, `moon`, `move`, `newspaper`, `play`,
-  `rotate-ccw`, `rotate-cw`, `scan-text`, `server`, `settings`, `sigma`,
-  `square`, `sun`, `table`, `trash-2`, `type`, `upload`, `wand-sparkles`,
-  `wrench`, `x`, `zap`) shipped in `resources/icons/ui/` and embedded through
-  the `ui_icons` qrc resource; they are colorized at runtime by
-  `src/qml/Common/Icon.qml` (ADR 151).
+- **Usage:** 37 monochrome 24×24 stroke SVG icons (`box`, `check`,
+  `chevron-down`, `chevron-up`, `circle-check`, `clipboard-copy`, `code`,
+  `file-search`, `file-text`, `folder`, `hash`, `image`, `info`, `layout-grid`,
+  `layout-template`, `loader-circle`, `monitor`, `moon`, `move`, `newspaper`,
+  `play`, `rotate-ccw`, `rotate-cw`, `scan-text`, `server`, `settings`,
+  `sigma`, `square`, `sun`, `table`, `trash-2`, `type`, `upload`,
+  `wand-sparkles`, `wrench`, `x`, `zap`) shipped in `resources/icons/ui/` and
+  embedded through the `ui_icons` qrc resource; they are colorized at runtime
+  by `src/qml/Common/Icon.qml` (ADR 151).
 - **Modification:** the upstream `stroke="currentColor"` is replaced with
   `stroke="#ffffff"` in every shipped file, because the runtime colorization
   mixes the glyph by its luminance — a black glyph would keep its own color in

@@ -3755,6 +3755,26 @@
         <translation>Удалить страницу %1</translation>
     </message>
     <message>
+        <location line="+1"/>
+        <source>Move page up</source>
+        <translation>Переместить вверх</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Move page down</source>
+        <translation>Переместить вниз</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Move page to position</source>
+        <translation>Перенести на позицию</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Move</source>
+        <translation>Перенести</translation>
+    </message>
+    <message>
         <location line="-93"/>
         <source>Load error</source>
         <translation>Ошибка загрузки</translation>

@@ -1750,6 +1750,18 @@ appendix at the end of this file.
   row is the caption of the card, so the space the second line used goes to
   the thumbnail itself.
 
+- **300.** The page card carries its own reorder actions: move up, move down,
+  move to a position, delete. They are the Lucide glyphs of the block toolbar
+  («chevron-up», «chevron-down», «hash», «trash-2»), and a gap of one icon
+  stands between the move group and the trash, so a stray click lands on the
+  gap. The up button is off on the first page, the down button on the last
+  one, and the tip of a button that cannot act stays readable (the button
+  lives in a wrapper that keeps the hover). «Move to a position» opens a small
+  popup with the target number — the page is put at that position, not
+  swapped with the page that is there. The target is read when the popup
+  opens: a binding over the button's mapped position is evaluated once and
+  does not follow the card.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured
