@@ -3021,6 +3021,11 @@
         <translation>Режим подключения</translation>
     </message>
     <message>
+        <location line="+18"/>
+        <source>External runtime settings</source>
+        <translation>Настройки внешнего рантайма</translation>
+    </message>
+    <message>
         <location line="+6"/>
         <source>External</source>
         <translation>Внешний</translation>

@@ -113,18 +113,42 @@ ColumnLayout {
                    + "Request timeout — how long to wait for the model's response; raise it if long recognitions are cut off.")
     }
 
+    // The external server is a card of its own: the connection above it is
+    // another thing.
     Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 1
-        color: Theme.divider
-    }
+        id: externalCard
 
-    RuntimeTabExternal {
-        id: rtExternal
         visible: runtimeLayout.externalMode
         Layout.fillWidth: true
         Layout.fillHeight: true
-        onEdited: runtimeLayout.edited()
+        implicitHeight: externalCardColumn.implicitHeight + Theme.spacing * 2
+        color: Theme.surfaceAlt
+        border.color: Theme.border
+        border.width: 1
+        radius: Theme.controlRadius + 2
+
+        ColumnLayout {
+            id: externalCardColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Theme.spacing
+            spacing: Theme.spacingSmall
+
+            LLOLabel {
+                Layout.fillWidth: true
+                text: qsTr("External runtime settings")
+                font.pixelSize: Theme.bodySize
+                font.bold: true
+                color: Theme.textPrimary
+            }
+
+            RuntimeTabExternal {
+                id: rtExternal
+                Layout.fillWidth: true
+                onEdited: runtimeLayout.edited()
+            }
+        }
     }
 
     RuntimeTabInternal {
@@ -136,7 +160,7 @@ ColumnLayout {
     }
 
     Item {
-        visible: rtExternal.visible
+        visible: externalCard.visible
         Layout.fillHeight: true
     }
 }

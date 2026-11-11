@@ -133,7 +133,9 @@ runs alone in the main window.
 |             | header, the installed-builds list below shows what is installed       |
 |             | (the «Installed: …» caption was dropped as redundant), and the        |
 |             | release/backend pickers, «Check for updates» and «Download and        |
-|             | install» share one bottom row                                         |
+|             | install» share one bottom row. Both blocks are cards of their own:     |
+|             | «External runtime settings» and «Manage llama.cpp», with the header    |
+|             | of a card title like the block types of the verification section       |
 | Models      | the **task table** — one row per task (layout, block recognition,     |
 |             | decision, fix) with the model and its quantization; the gear of the    |
 |             | row opens that task's **Launch** (launch-parameter profile, ADR 57)    |

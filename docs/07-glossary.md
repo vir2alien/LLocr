@@ -1725,7 +1725,10 @@ appendix at the end of this file.
   (ADR 227): the installed paths and the backend of the installed build
   survive the reset, and
   `SettingsStore::resetToDefaults()` emits the signals of the changed
-  properties — otherwise the widgets would keep the old values.
+  properties — otherwise the widgets would keep the old values. The runtime
+  management, the external server and the downloaded models are cards of their
+  own, with the header of a card title — like the block types of the
+  verification section.
 
 ### Security & secrets
 

@@ -56,6 +56,33 @@ bool hasLabelWithText(QObject *root, const QString &text)
     return false;
 }
 
+// The runtime tab itself: the QML type carries the suffix the module gives it.
+QQuickItem *findRuntimeTab(QQuickItem *root)
+{
+    for (QQuickItem *child : root->childItems()) {
+        if (QString::fromLatin1(child->metaObject()->className()).startsWith(QLatin1String("RuntimeTab_QMLTYPE")))
+            return child;
+        if (QQuickItem *found = findRuntimeTab(child))
+            return found;
+    }
+    return nullptr;
+}
+
+// A visible hairline directly under the object — the divider between the
+// connection settings and the blocks is gone. The underline of a text field is
+// deeper in the tree and does not count.
+bool hasHairlineChild(QObject *parent)
+{
+    auto *item = qobject_cast<QQuickItem *>(parent);
+    if (!item)
+        return false;
+    for (QQuickItem *child : item->childItems()) {
+        if (child->isVisible() && child->height() > 0 && child->height() < 2 && child->width() > 100)
+            return true;
+    }
+    return false;
+}
+
 // The list of models the table shows: no rows, so every row falls back to
 // "no model chosen".
 class FakeQuantModel : public QAbstractListModel
@@ -689,6 +716,14 @@ void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
     QVERIFY(runtime);
     QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Manage llama.cpp")), "the runtime card has no «Manage llama.cpp» header");
     QVERIFY2(!hasLabelWithText(runtime, QStringLiteral("Install llama.cpp")), "the old runtime header is still there");
+    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("External runtime settings")), "the external runtime card has no header");
+    // The divider between the connection settings and the blocks is gone: the
+    // card carries the separation now.
+    QObject *runtimeRoot = evaluate(window.get(), QStringLiteral("runtimeSection")).value<QObject *>();
+    QVERIFY(runtimeRoot);
+    QQuickItem *runtimeTab = findRuntimeTab(qobject_cast<QQuickItem *>(runtimeRoot));
+    QVERIFY(runtimeTab);
+    QVERIFY2(!hasHairlineChild(runtimeTab), "the runtime section still has a hairline divider");
 
     QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("models"))));
     QCoreApplication::processEvents();
