@@ -18,6 +18,13 @@ let pullTimer = null;
 let highlighted = [];
 let suppressPull = false;
 
+// The zoom of the editor's text: the content scales, the menu keeps the app's
+// size — so the band still matches the central panel at any zoom.
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 3;
+const ZOOM_STEP = 1.25;
+let editorZoom = 1;
+
 function contentElement() {
     return document.querySelector(".vditor-wysiwyg [contenteditable]");
 }
@@ -238,6 +245,8 @@ function pushPage(markdown, theme) {
         // retagBlocks() laid before it are gone by now.
         retagBlocks();
         refreshHtmlTableMath();
+        // setValue rebuilt the content — the zoom lived on the old element.
+        renderZoom();
         if (bridge)
             bridge.notifyReferenceChanged(reference, pushToken);
     }, 0);
@@ -334,6 +343,61 @@ function interceptToolbarActions() {
     }, true);
 }
 
+// The zoom of the editor's text: the content scales, the menu keeps the app's
+// size, so the band still matches the central panel at any zoom.
+function renderZoom() {
+    const content = contentElement();
+    if (content)
+        content.style.zoom = String(editorZoom);
+    const label = document.querySelector(".ll-zoom__label span");
+    if (label)
+        label.textContent = Math.round(editorZoom * 100) + "%";
+}
+
+function applyZoom(factor) {
+    editorZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, editorZoom * factor));
+    renderZoom();
+    return editorZoom;
+}
+
+function zoomButton(action, label, paths) {
+    return '<button type="button" class="vditor-tooltipped vditor-tooltipped__s" data-ll-zoom="' + action +
+           '" aria-label="' + label + '"><svg viewBox="0 0 24 24">' + paths + "</svg></button>";
+}
+
+// The zoom buttons at the right end of the menu: the text grows and shrinks,
+// the percentage returns it to 100 %. The menu stands at the top of the page,
+// so its tooltips open below it — Vditor points them up, where the page cuts
+// them off.
+function buildZoomControls() {
+    const toolbar = document.querySelector(".vditor-toolbar");
+    if (!toolbar || toolbar.querySelector(".ll-zoom"))
+        return;
+    toolbar.querySelectorAll(".vditor-tooltipped__n, .vditor-tooltipped__ne").forEach((button) => {
+        button.classList.remove("vditor-tooltipped__n", "vditor-tooltipped__ne");
+        button.classList.add("vditor-tooltipped__s");
+    });
+    const group = document.createElement("div");
+    group.className = "vditor-toolbar__item ll-zoom";
+    group.innerHTML =
+        zoomButton("out", "Zoom out", '<path d="M5 12h14"></path>') +
+        '<button type="button" class="vditor-tooltipped vditor-tooltipped__s ll-zoom__label" data-ll-zoom="reset" aria-label="Reset the zoom"><span>100%</span></button>' +
+        zoomButton("in", "Zoom in", '<path d="M5 12h14"></path><path d="M12 5v14"></path>');
+    toolbar.insertBefore(group, toolbar.firstChild);
+    group.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-ll-zoom]");
+        if (!button)
+            return;
+        const action = button.getAttribute("data-ll-zoom");
+        if (action === "in")
+            applyZoom(ZOOM_STEP);
+        else if (action === "out")
+            applyZoom(1 / ZOOM_STEP);
+        else
+            applyZoom(1 / editorZoom);
+    });
+}
+
 function initVditor() {
     vditor = new Vditor("editor", {
         cdn: "qrc:/editor/vditor",
@@ -355,6 +419,7 @@ function initVditor() {
                 });
                 watchMath();
             }
+            buildZoomControls();
             interceptToolbarActions();
             if (bridge)
                 bridge.notifyPageReady();

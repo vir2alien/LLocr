@@ -1,5 +1,7 @@
 #include <QElapsedTimer>
 #include <QGuiApplication>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QtTest>
 #include <QtWebEngineQuick/qtwebenginequickglobal.h>
 #include <QWebChannel>
@@ -26,6 +28,7 @@ private slots:
     void blockWithInnerBlankLineKeepsThePullAlive();
     void toolbarActionAsksTheModelInsteadOfMutating();
     void htmlTableMathRendersInThePreviewOnly();
+    void theMenuWearsTheAppsToolSizes();
 
 private:
     void spinUntil(const std::function<bool()> &done, int timeoutMs = 60000);
@@ -467,6 +470,130 @@ void TestEditorPage::htmlTableMathRendersInThePreviewOnly()
     });
     QVERIFY2(!value.contains(QLatin1String("katex")), qPrintable(value));
     QVERIFY2(!value.contains(QLatin1String("ll-math")), qPrintable(value));
+}
+
+// The editor's menu is the app's menu: the buttons are 32×28 with an 18 px
+// glyph, the first button stands 8 px from the edge, every button says what
+// it does, and the zoom at the right end scales the text (ADR 302).
+void TestEditorPage::theMenuWearsTheAppsToolSizes()
+{
+    EditorBridge bridge;
+    QWebChannel channel;
+    channel.registerObject(QStringLiteral("editorBridge"), &bridge);
+    QWebEnginePage page;
+    page.setWebChannel(&channel);
+
+    bool loaded = false;
+    bool ready = false;
+    QObject::connect(&page, &QWebEnginePage::loadFinished, [&](bool ok) { loaded = ok; });
+    QObject::connect(&bridge, &EditorBridge::pageReady, [&ready]() { ready = true; });
+
+    page.load(QUrl(QStringLiteral("qrc:/editor/editor.html")));
+    spinUntil([&]() { return loaded; });
+    QVERIFY(loaded);
+    spinUntil([&]() { return ready; });
+
+    QString info;
+    spinUntil([&]() {
+        info.clear();
+        page.runJavaScript(QStringLiteral(R"js(
+            (function () {
+                const toolbar = document.querySelector(".vditor-toolbar");
+                const button = document.querySelector(".vditor-toolbar__item .vditor-tooltipped");
+                const rect = button.getBoundingClientRect();
+                return JSON.stringify({
+                    buttonWidth: rect.width,
+                    buttonHeight: rect.height,
+                    iconSize: getComputedStyle(document.querySelector(".vditor-toolbar__item svg")).width,
+                    leftPadding: getComputedStyle(toolbar).paddingLeft,
+                    tipContent: getComputedStyle(button, "::after").content,
+                    tipLabel: button.getAttribute("aria-label"),
+                    zoomButtons: document.querySelectorAll(".ll-zoom [data-ll-zoom]").length,
+                });
+            })()
+        )js"),
+                           [&info](const QVariant &v) { info = v.toString(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return !info.isEmpty();
+    });
+
+    const QJsonObject menu = QJsonDocument::fromJson(info.toUtf8()).object();
+    QCOMPARE(menu.value(QStringLiteral("buttonWidth")).toDouble(), 32.0);
+    QCOMPARE(menu.value(QStringLiteral("buttonHeight")).toDouble(), 28.0);
+    QCOMPARE(menu.value(QStringLiteral("iconSize")).toString(), QStringLiteral("18px"));
+    QCOMPARE(menu.value(QStringLiteral("leftPadding")).toString(), QStringLiteral("8px"));
+    // The tooltip says what the button does — Vditor switches its tooltips off
+    // in a narrow pane, and the preview pane is narrow.
+    const QString tipLabel = menu.value(QStringLiteral("tipLabel")).toString();
+    QVERIFY2(!tipLabel.isEmpty(), qPrintable(info));
+    QVERIFY2(menu.value(QStringLiteral("tipContent")).toString().contains(tipLabel), qPrintable(info));
+    QCOMPARE(menu.value(QStringLiteral("zoomButtons")).toInt(), 3);
+
+    // The zoom scales the text and the label follows: the menu itself keeps
+    // its size. The click stands outside the poll — a click inside it would
+    // land again on every attempt.
+    page.runJavaScript(QStringLiteral(R"js(
+        (function () {
+            const content = document.querySelector(".vditor-wysiwyg [contenteditable]");
+            if (content)
+                content.style.zoom = "";
+            document.querySelectorAll(".ll-zoom [data-ll-zoom]")[2].click();
+            return "clicked";
+        })()
+    )js"),
+                       [](const QVariant &) {});
+
+    QString zoom;
+    spinUntil([&]() {
+        zoom.clear();
+        page.runJavaScript(QStringLiteral(R"js(
+            (function () {
+                const content = document.querySelector(".vditor-wysiwyg [contenteditable]");
+                const label = document.querySelector(".ll-zoom__label span");
+                return JSON.stringify({zoom: content ? content.style.zoom : "",
+                                       label: label ? label.textContent : ""});
+            })()
+        )js"),
+                           [&zoom](const QVariant &v) { zoom = v.toString(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return !zoom.isEmpty();
+    });
+
+    const QJsonObject state = QJsonDocument::fromJson(zoom.toUtf8()).object();
+    QCOMPARE(state.value(QStringLiteral("zoom")).toString(), QStringLiteral("1.25"));
+    QCOMPARE(state.value(QStringLiteral("label")).toString(), QStringLiteral("125%"));
+
+    // A model push rebuilds the content — the zoom must survive it.
+    bool pushed = false;
+    page.runJavaScript(QStringLiteral(R"js(pushPage("Body\n\nMore text", {dark: false, bg: "#ffffff", fg: "#1a1a1a", hl: "rgba(48,140,198,0.2)"});)js"),
+                       [&pushed](const QVariant &) { pushed = true; });
+    spinUntil([&]() { return pushed; });
+    QString pushedText;
+    spinUntil([&]() {
+        pushedText.clear();
+        page.runJavaScript(QStringLiteral("document.querySelector('.vditor-wysiwyg [contenteditable]').innerText"), [&pushedText](const QVariant &v) { pushedText = v.toString(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return pushedText.contains(QLatin1String("More text"));
+    });
+
+    QString afterPush;
+    spinUntil([&]() {
+        afterPush.clear();
+        page.runJavaScript(QStringLiteral(R"js(
+            (function () {
+                const content = document.querySelector(".vditor-wysiwyg [contenteditable]");
+                const label = document.querySelector(".ll-zoom__label span");
+                return JSON.stringify({zoom: content ? content.style.zoom : "",
+                                       label: label ? label.textContent : ""});
+            })()
+        )js"),
+                           [&afterPush](const QVariant &v) { afterPush = v.toString(); });
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+        return !afterPush.isEmpty();
+    });
+    const QJsonObject kept = QJsonDocument::fromJson(afterPush.toUtf8()).object();
+    QCOMPARE(kept.value(QStringLiteral("zoom")).toString(), QStringLiteral("1.25"));
+    QCOMPARE(kept.value(QStringLiteral("label")).toString(), QStringLiteral("125%"));
 }
 
 int main(int argc, char *argv[])

@@ -1776,6 +1776,21 @@ appendix at the end of this file.
   band. The thumbnail menu got the hairline under it that the other two carry,
   so the three read as one row.
 
+- **302.** The editor's menu is the app's menu. Vditor brought its own
+  toolbar: 25×35 buttons, 15 px glyphs and a 35 px left padding — a foreign row
+  in the middle of the window, next to the central panel's 32×28 buttons with
+  18 px glyphs. The page's stylesheet now gives the menu the app's sizes: the
+  button 32×28, the glyph 18 px, the band 36 px (the hairline moves inside it,
+  so the two bands are the same height) and the first button 8 px from the edge.
+  The tooltips are back: Vditor switches them off in a pane narrower than
+  520 px, and the preview pane is exactly that narrow — the rule that restores
+  them outranks the media query. They open below the buttons (Vditor points
+  them up, where the page cuts them off). The zoom stands at the right end of
+  the menu: the text grows and shrinks (a quarter step per click, 50–300 %),
+  the percentage returns it to 100 %, and the menu keeps the app's size at any
+  zoom — the zoom scales the content, not the page. The colour scheme stays
+  Vditor's.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

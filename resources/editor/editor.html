@@ -22,6 +22,55 @@
     }
     #editor { height: 100%; }
     .ll-hl { background: var(--hl, rgba(255, 200, 0, 0.25)) !important; }
+
+    /* The editor's menu wears the app's tool sizes (ADR 302): the buttons are
+       32×28 with an 18 px glyph — the size of the central panel's tools — the
+       band is 36 px tall (the height of that panel's menu) and the first
+       button stands 8 px from the edge. Vditor writes the toolbar's left
+       padding itself (it compensates for the outline panel), so the rule has
+       to outrank the inline style. */
+    .vditor-toolbar {
+      padding: 4px 8px !important;
+      /* The hairline moves inside the band: the menu is then 36 px tall —
+         the height of the central panel's menu. */
+      border-bottom: none;
+      box-shadow: inset 0 -1px 0 var(--border-color);
+      --toolbar-height: 28px;
+      --toolbar-divider-margin-top: 4px;
+    }
+    .vditor-toolbar__item { padding: 0; }
+    .vditor-toolbar__item .vditor-tooltipped {
+      width: 32px;
+      height: 28px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .vditor-toolbar__item svg { width: 18px; height: 18px; }
+
+    /* Vditor switches its tooltips off in a pane narrower than 520 px — and
+       the preview pane is exactly that narrow. The menu is the app's: its
+       buttons say what they do. */
+    .vditor-toolbar__item .vditor-tooltipped::after { content: attr(aria-label); }
+
+    /* The zoom: the text grows and shrinks, the menu keeps the app's size. */
+    .vditor-toolbar__item.ll-zoom { float: right; display: flex; }
+    .vditor-toolbar__item.ll-zoom .ll-zoom__label {
+      width: auto;
+      padding: 0 8px;
+    }
+    .vditor-toolbar__item.ll-zoom .ll-zoom__label span {
+      font-size: 13px;
+      color: var(--toolbar-icon-color);
+    }
+    .vditor-toolbar__item.ll-zoom svg {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
   </style>
 </head>
 <body>
