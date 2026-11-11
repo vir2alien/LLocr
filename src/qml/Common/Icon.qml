@@ -6,7 +6,9 @@ import QtQuick.Effects
 import LLocr
 
 // Monochrome SVG glyph from qrc:/icons/ui/<name>.svg, colorized at runtime so
-// one asset set serves both themes (the SVGs ship with stroke=currentColor).
+// one asset set serves both themes. The assets ship with a white stroke: the
+// colorization mixes the source by its luminance, so a black glyph would stay
+// black on the dark background (ADR 298).
 Item {
     id: root
 

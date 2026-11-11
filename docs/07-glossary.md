@@ -1730,6 +1730,19 @@ appendix at the end of this file.
   own, with the header of a card title — like the block types of the
   verification section.
 
+- **298.** The icon set ships light: `resources/icons/ui/*.svg` carry a white
+  stroke (`#ffffff`), and `Common/Icon.qml` colorizes them with `MultiEffect`.
+  The colorization mixes the source by its luminance
+  (`color.rgb = gray * colorizationColor.rgb * colorizationColor.a + …`, Qt's
+  `multieffect.frag`), so a black glyph — luminance 0 — keeps its own color in
+  every theme: the icons were black on the dark background and unreadable.
+  `stroke="currentColor"` is no escape either — Qt resolves it to black when it
+  renders an SVG through a plain `Image`. The white stroke turns the glyph into
+  the theme color in both themes (`Theme.textPrimary`), and the antialiased
+  edges keep their coverage. `test_ui_icons` guards both ends of the chain:
+  every shipped glyph must be light, and the component must hand the requested
+  color to the effect.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

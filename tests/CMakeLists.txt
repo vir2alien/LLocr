@@ -622,6 +622,22 @@ target_link_libraries(test_settings_nav_qml PRIVATE
 llocr_add_ui_icons(test_settings_nav_qml)
 add_test(NAME test_settings_nav_qml COMMAND test_settings_nav_qml)
 
+# The icon set: the glyphs must be light (the colorization mixes the source by
+# its luminance, so a dark stroke keeps its own color in every theme — ADR 298),
+# and the component must hand the requested color to the effect. The files are
+# read from the source tree, so the test covers the shipped assets and QML.
+qt_add_executable(test_ui_icons test_ui_icons.cpp)
+
+target_link_libraries(test_ui_icons PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+llocr_add_ui_icons(test_ui_icons)
+llocr_add_profile_resources(test_ui_icons)
+add_test(NAME test_ui_icons COMMAND test_ui_icons)
+
 qt_add_executable(test_runtime_installer test_runtime_installer.cpp)
 
 target_link_libraries(test_runtime_installer PRIVATE
