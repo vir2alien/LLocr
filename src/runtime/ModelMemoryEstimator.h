@@ -99,6 +99,11 @@ ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMem
 
 MemorySplit splitForVramBudget(const ModelMemoryEstimate &estimate, qint64 vramBudgetBytes);
 
+// The RAM floor displays rounded up to the whole GiB: a "16 GiB" machine has
+// ~15.8 usable and must read the requirement as borderline, not as comfortably
+// above a 15.3.
+qint64 ramFloorLabelBytes(qint64 requiredRamBytes);
+
 // The shape a model file declares: the architecture the GGUF header carries.
 ModelMemoryShape shapeFromFile(const QString &modelPath, bool *ok = nullptr, QString *error = nullptr);
 

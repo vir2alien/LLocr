@@ -518,6 +518,12 @@ MemorySplit splitForVramBudget(const ModelMemoryEstimate &estimate, qint64 vramB
     return s;
 }
 
+qint64 ramFloorLabelBytes(qint64 requiredRamBytes)
+{
+    constexpr qint64 kGiB = 1024LL * 1024 * 1024;
+    return ((requiredRamBytes + kGiB - 1) / kGiB) * kGiB;
+}
+
 ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMemoryBudget &budget)
 {
     ModelMemoryEstimate e;

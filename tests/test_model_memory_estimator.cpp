@@ -215,6 +215,7 @@ private slots:
     void cpuOffloadAddsFloorAndRamFloor();
     void cpuOffloadSplitsWeightsByCardBudget();
     void cpuOffloadFalseLeavesEstimateUnchanged();
+    void ramFloorLabelRoundsUpToWholeGib();
 };
 
 void TestModelMemoryEstimator::parsesHparamsAndComputesKvCache()
@@ -626,6 +627,13 @@ void TestModelMemoryEstimator::cpuOffloadFalseLeavesEstimateUnchanged()
     QCOMPARE(s.weightsInVramBytes, 0LL);
     QCOMPARE(s.weightsInRamBytes, 0LL);
     QCOMPARE(s.ramRequiredBytes, 0LL);
+}
+
+void TestModelMemoryEstimator::ramFloorLabelRoundsUpToWholeGib()
+{
+    QCOMPARE(ramFloorLabelBytes(16396530752LL), 16LL * 1024 * 1024 * 1024);
+    QCOMPARE(ramFloorLabelBytes(15LL * 1024 * 1024 * 1024), 15LL * 1024 * 1024 * 1024);
+    QCOMPARE(ramFloorLabelBytes(1LL), 1LL * 1024 * 1024 * 1024);
 }
 
 QTEST_MAIN(TestModelMemoryEstimator)

@@ -1156,7 +1156,7 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, con
     out.insert(QStringLiteral("splitInVramLabel"), cpuOffload ? formatBytes(s.weightsInVramBytes) : QString());
     out.insert(QStringLiteral("splitInRamLabel"), cpuOffload ? formatBytes(s.weightsInRamBytes) : QString());
     out.insert(QStringLiteral("vramFloorLabel"), cpuOffload ? formatBytes(e.vramFloorBytes) : QString());
-    out.insert(QStringLiteral("requiredRamLabel"), cpuOffload ? formatBytes(e.requiredRamBytes) : QString());
+    out.insert(QStringLiteral("requiredRamLabel"), cpuOffload ? formatBytes(ramFloorLabelBytes(e.requiredRamBytes)) : QString());
     out.insert(QStringLiteral("ramLabel"), formatBytes(e.systemRamBytes));
     out.insert(QStringLiteral("overRamBudget"), cpuOffload && valid && e.systemRamBytes > 0 && e.requiredRamBytes > e.systemRamBytes);
     return out;

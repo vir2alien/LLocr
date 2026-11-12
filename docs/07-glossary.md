@@ -921,7 +921,7 @@ appendix at the end of this file.
   for such a model, not an error, and the RAM check trips at 1.0×, not at the
   card's 0.9× — 0.9× would flag the owner's working 16-GB machine (the
   design's anti-goal: mmap degrades smoothly). The launch layer pins
-  `n-gpu-layers auto` (llama.cpp `--fit` splits the 14 GiB of weights; the
+  `n-gpu-layers auto` (llama.cpp `--fit` splits the 14 GB of weights; the
   platform's 99 aborts the load on a 6-GB card), `ubatch-size 2048`
   (encoder-free vision aborts the server on the default 512), `ctx-size
   8192` and `fit-target 512`; `minBuild` b12137 — older builds silently

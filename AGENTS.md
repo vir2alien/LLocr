@@ -47,7 +47,7 @@
   | `docs/12-orientation-pipeline.md` | Page-orientation correction: two-stage pixel check, deskew, turn suggestions |
   | `docs/13-model-mineru.md` | Model manual: MinerU2.5-Pro (layout + blockRecognition; launch command, request cookbook) |
   | `docs/14-model-glm-ocr.md` | Model manual: GLM-OCR (blockRecognition) |
-  | `docs/15-model-gemma-4.md` | Model manual: Gemma 4 E4B/12B QAT (fix; MTP drafter) |
+  | `docs/15-model-gemma-4.md` | Model manual: Gemma 4 E4B/12B/26B-A4B QAT (fix; MTP drafter) |
   | `docs/16-model-qwen3.5.md` | Model manual: Qwen3.5-4B/9B (fix default; OK/FIX/REVIEW) |
   | `docs/17-model-minicpm-jev.md` | Model manual: MiniCPM-OCR Jev (decision; visual diff `/v1/systemone`) |
   | `docs/18-memory-estimate.md` | The VRAM requirement (ADR 191): formula, calibration of all nine models, measurement scripts |

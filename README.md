@@ -119,7 +119,7 @@ Everything is documented twice — English primary, `*.ru.md` mirror.
 | --- | --- | --- | --- | --- |
 | 13 | MinerU2.5-Pro-2605-1.2B | layout, blockRecognition | [13-model-mineru.md](docs/13-model-mineru.md) | [ru](docs/13-model-mineru.ru.md) |
 | 14 | GLM-OCR | blockRecognition | [14-model-glm-ocr.md](docs/14-model-glm-ocr.md) | [ru](docs/14-model-glm-ocr.ru.md) |
-| 15 | Gemma 4 E4B / 12B QAT | fix | [15-model-gemma-4.md](docs/15-model-gemma-4.md) | [ru](docs/15-model-gemma-4.ru.md) |
+| 15 | Gemma 4 E4B / 12B / 26B-A4B QAT | fix | [15-model-gemma-4.md](docs/15-model-gemma-4.md) | [ru](docs/15-model-gemma-4.ru.md) |
 | 16 | Qwen3.5-4B / 9B (the fix default) | fix | [16-model-qwen3.5.md](docs/16-model-qwen3.5.md) | [ru](docs/16-model-qwen3.5.ru.md) |
 | 17 | MiniCPM-OCR Jev (visual diff) | decision | [17-model-minicpm-jev.md](docs/17-model-minicpm-jev.md) | [ru](docs/17-model-minicpm-jev.ru.md) |
 | 18 | VRAM estimate: formula and calibration of all shipped models | — | [18-memory-estimate.md](docs/18-memory-estimate.md) | [ru](docs/18-memory-estimate.ru.md) |

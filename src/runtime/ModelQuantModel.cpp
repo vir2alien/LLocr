@@ -114,7 +114,7 @@ QVariantMap quantMap(const ModelQuantModel::Quant &q)
     item.insert(QStringLiteral("vramBytes"), QVariant::fromValue(q.vramBytes));
     item.insert(QStringLiteral("vramLabel"), ::llocr::formatBytes(q.vramBytes));
     item.insert(QStringLiteral("cpuOffload"), q.cpuOffload);
-    item.insert(QStringLiteral("ramLabel"), q.cpuOffload && q.ramBytes > 0 ? ::llocr::formatBytes(q.ramBytes) : QString());
+    item.insert(QStringLiteral("ramLabel"), q.cpuOffload && q.ramBytes > 0 ? ::llocr::formatBytes(::llocr::ramFloorLabelBytes(q.ramBytes)) : QString());
     item.insert(QStringLiteral("vramFloorLabel"), q.cpuOffload && q.vramFloorBytes > 0 ? ::llocr::formatBytes(q.vramFloorBytes) : QString());
     item.insert(QStringLiteral("installed"), q.entryIndex >= 0);
     item.insert(QStringLiteral("active"), q.active);
