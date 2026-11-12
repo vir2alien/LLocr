@@ -14,6 +14,8 @@ Item {
     width: parent ? parent.width : 0
 
     property bool bannerDismissed: false
+    property bool diagnosticsDismissed: false
+    property int seenLogCount: 0
     property var logWindow: null
     property var problemWindow: null
 
@@ -35,6 +37,23 @@ Item {
     readonly property bool hasDiagnostics: currentDiagnostic.length > 0 || Log.count > 0
     readonly property bool hasError:
         currentDiagnosticIsError || (Log.errorCount > 0)
+
+    // The dismissal belongs to the message that was on the screen: a new
+    // message or a new entry in the log brings the banner back. Clearing the
+    // log is not a new problem, so it does not.
+    onCurrentDiagnosticChanged: {
+        if (root.currentDiagnostic.length > 0)
+            root.diagnosticsDismissed = false
+    }
+
+    Connections {
+        target: Log
+        function onLogChanged() {
+            if (Log.count > root.seenLogCount)
+                root.diagnosticsDismissed = false
+            root.seenLogCount = Log.count
+        }
+    }
 
     function requestRestart() {
         if (Controller.busy) {
@@ -162,9 +181,11 @@ Item {
         }//Rectangle
 
         Rectangle {
+            id: diagnosticsBanner
+            objectName: "diagnosticsBanner"
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? diagnosticsRow.implicitHeight + 12 : 0
-            visible: root.hasDiagnostics
+            visible: root.hasDiagnostics && !root.diagnosticsDismissed
             color: Theme.surfaceAlt
             border.color: root.hasError ? Theme.border : "transparent"
             border.width: 1
@@ -209,7 +230,7 @@ Item {
                 }
 
                 LLOLabel {
-                    Layout.alignment: Qt.AlignVCenter
+                    Layout.fillWidth: true
                     visible: root.currentDiagnostic.length === 0 && Log.count > 0
                     text: qsTr("%n problem(s) logged", "", Log.count)
                     font.pixelSize: Theme.captionSize
@@ -217,6 +238,8 @@ Item {
                 }
 
                 LLOButton {
+                    id: diagnosticsDetailsButton
+                    objectName: "diagnosticsDetailsButton"
                     visible: Log.count > 0
                     Layout.minimumWidth: implicitWidth
                     flat: true
@@ -224,6 +247,30 @@ Item {
                     onClicked: {
                         if (root.problemWindow)
                             root.problemWindow.bringToFront()
+                    }
+                }
+
+                ToolButton {
+                    id: diagnosticsCloseButton
+                    objectName: "diagnosticsCloseButton"
+
+                    implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
+                    implicitHeight: topPadding + bottomPadding + contentItem.implicitHeight
+                    onClicked: root.diagnosticsDismissed = true
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Hide the message")
+
+                    contentItem: Item {
+                        implicitWidth: closeIcon.size
+                        implicitHeight: closeIcon.size
+
+                        Icon {
+                            id: closeIcon
+                            anchors.centerIn: parent
+                            name: "x"
+                            size: Theme.iconSizeMedium
+                            color: Theme.textSecondary
+                        }
                     }
                 }
             }
@@ -339,6 +386,49 @@ Item {
                             id: stateLabel
                             color: Runtime.state === Runtime.Failed ? Theme.error : Theme.textSecondary
                             text: root.stateText()
+                            elide: Text.ElideRight
+                            wrapMode: Text.NoWrap
+                        }
+                    }
+                }//MouseArea
+
+                MouseArea {//Problem-log entry, alive while the banner is closed
+                    id: problemLogEntry
+                    objectName: "problemLogEntry"
+                    visible: Log.count > 0 && root.diagnosticsDismissed
+                    Layout.preferredWidth: problemLogRow.implicitWidth
+                    Layout.preferredHeight: Theme.controlHeight
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (root.problemWindow)
+                            root.problemWindow.bringToFront()
+                    }
+
+                    ToolTip {
+                        visible: problemLogEntry.containsMouse
+                        text: qsTr("Problem log — click to open")
+                        delay: 600
+                        font.pixelSize: Theme.captionSize
+                    }
+
+                    RowLayout {
+                        id: problemLogRow
+                        anchors.fill: parent
+                        spacing: Theme.spacingSmall
+
+                        Rectangle {
+                            Layout.preferredWidth: 10
+                            Layout.preferredHeight: 10
+                            radius: 5
+                            color: Log.errorCount > 0 ? Theme.error : Theme.warning
+                            border.color: Theme.border
+                            border.width: 1
+                        }
+
+                        LLOLabel {
+                            color: Theme.textSecondary
+                            text: qsTr("%n problem(s)", "", Log.count)
                             elide: Text.ElideRight
                             wrapMode: Text.NoWrap
                         }

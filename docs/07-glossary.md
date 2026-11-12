@@ -1832,6 +1832,20 @@ appendix at the end of this file.
   sizes are even for the same reason. (ADR 263 put the ring where the
   caption was; its width rule is kept, the arrangement is replaced.)
 
+- **306.** The diagnostic banner is closable, and it keeps its right edge. The
+  footer's one line (ADR 119) carries a close button: it hides the banner, and
+  the dismissal belongs to the message that was on the screen — a new message
+  or a new entry in the `ProblemLog` brings the banner back, clearing the log
+  does not. The message itself lives in the controller and stays there; the
+  footer only stops showing it. The closed banner must not take the problem
+  log with it, so the status row keeps a way into the log window while the
+  banner is away and the log still holds entries. The row's buttons stand
+  against the window's edge in every case: an invisible label takes no place
+  in a layout, so the line without a message lost its filler and the
+  «Details…» button drifted to the left. The visible line keeps the filler
+  (`Layout.fillWidth`) instead, and the close button closes the group at the
+  edge. Test: `test_footer_banner_qml`.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

@@ -1062,6 +1062,25 @@
         <translation>Подробнее…</translation>
     </message>
     <message>
+        <location line="+15"/>
+        <source>Hide the message</source>
+        <translation>Скрыть сообщение</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+170"/>
+        <source>%n problem(s)</source>
+        <translation>
+            <numerusform>%n проблема</numerusform>
+            <numerusform>%n проблемы</numerusform>
+            <numerusform>%n проблем</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="-21"/>
+        <source>Problem log — click to open</source>
+        <translation>Журнал проблем — нажмите, чтобы открыть</translation>
+    </message>
+    <message>
         <location line="+51"/>
         <source>Stop</source>
         <translation>Стоп</translation>

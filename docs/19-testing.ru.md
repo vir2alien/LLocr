@@ -42,6 +42,7 @@ GPU-инициализация прерывается (особенность с
 | QML (вкладка запуска, таблица задач, мастер, переключатель) | `test_launch_tab_qml`, `test_task_models_table_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
 | QML (окно настроек) | `test_settings_nav_qml`, `test_settings_window_qml` |
 | QML (три меню панелей) | `test_panel_menus_qml` |
+| QML (баннер диагностики в футере) | `test_footer_banner_qml` |
 | UI (набор иконок) | `test_ui_icons` |
 | UI (кнопка с иконкой и подписью) | `test_icon_tool_button_qml` |
 | Установщик рантайма, жизненный цикл | `test_runtime_installer`, `test_runtime_lifetime` |

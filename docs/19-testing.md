@@ -40,6 +40,7 @@ initialization aborts (environmental, not a regression).
 | QML (launch tab, task table, wizard, switch) | `test_launch_tab_qml`, `test_task_models_table_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
 | QML (the settings window) | `test_settings_nav_qml`, `test_settings_window_qml` |
 | QML (the three panel menus) | `test_panel_menus_qml` |
+| QML (the footer's diagnostic banner) | `test_footer_banner_qml` |
 | UI (the icon set) | `test_ui_icons` |
 | UI (the icon-and-caption button) | `test_icon_tool_button_qml` |
 | Runtime installer, lifetime | `test_runtime_installer`, `test_runtime_lifetime` |

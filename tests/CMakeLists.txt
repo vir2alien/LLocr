@@ -643,6 +643,21 @@ target_link_libraries(test_panel_menus_qml PRIVATE
 llocr_add_ui_icons(test_panel_menus_qml)
 add_test(NAME test_panel_menus_qml COMMAND test_panel_menus_qml)
 
+# The footer's diagnostic banner: it must be closable, and its buttons must
+# stay against the window's edge (ADR 306). The file is read from the source
+# tree, so the test covers the shipped QML.
+qt_add_executable(test_footer_banner_qml test_footer_banner_qml.cpp)
+
+target_link_libraries(test_footer_banner_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+# The banner draws icons (the close glyph).
+llocr_add_ui_icons(test_footer_banner_qml)
+add_test(NAME test_footer_banner_qml COMMAND test_footer_banner_qml)
+
 # The icon set: the glyphs must be light (the colorization mixes the source by
 # its luminance, so a dark stroke keeps its own color in every theme — ADR 298),
 # and the component must hand the requested color to the effect. The files are
