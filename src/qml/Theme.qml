@@ -122,12 +122,12 @@ QtObject {
     readonly property int headingSize2: px(20)
     readonly property int headingSize1: px(24)
 
-    // The icon ladder: inline arrows/indicators 12 → row buttons and hint
-    // icons 16 → toolbars 18 → the header stop ring 26.
+    // The icon ladder: inline arrows/indicators 12 → row, header and hint
+    // icons 16 → panel toolbars 18 → the run indicator 24.
     readonly property int iconSizeSmall: px(12)
     readonly property int iconSizeMedium: px(16)
     readonly property int iconSizeLarge: px(18)
-    readonly property int iconSizeXlarge: px(26)
+    readonly property int iconSizeIndicator: px(24)
 
     readonly property color linkColor: accent
 

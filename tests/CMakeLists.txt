@@ -659,6 +659,22 @@ llocr_add_ui_icons(test_ui_icons)
 llocr_add_profile_resources(test_ui_icons)
 add_test(NAME test_ui_icons COMMAND test_ui_icons)
 
+# The run indicator takes the icon's place and leaves the caption alone
+# (ADR 305): the button keeps naming the action it started and keeps its
+# width. The file is read from the source tree, so the test covers the
+# shipped QML.
+qt_add_executable(test_icon_tool_button_qml test_icon_tool_button_qml.cpp)
+
+target_link_libraries(test_icon_tool_button_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+llocr_add_ui_icons(test_icon_tool_button_qml)
+llocr_add_profile_resources(test_icon_tool_button_qml)
+add_test(NAME test_icon_tool_button_qml COMMAND test_icon_tool_button_qml)
+
 qt_add_executable(test_runtime_installer test_runtime_installer.cpp)
 
 target_link_libraries(test_runtime_installer PRIVATE

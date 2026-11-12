@@ -1526,7 +1526,8 @@ appendix at the end of this file.
 - **263.** A run button's width is set by its caption: the stop ring occupies
   the caption's place, so the button does not compress and the menu does not
   jump when a run starts. (The button names ADR 263 introduced were replaced
-  by ADR 270's grid.)
+  by ADR 270's grid; ADR 305 moved the ring to the icon's place and kept the
+  caption.)
 - **264.** The scoped read-block count is part of the availability state:
   `AvailabilityPresenter::Flags` compares `scopedReadBlocks`, so the number at
   «Перераспознать» follows the scope even when no other availability flag
@@ -1815,6 +1816,21 @@ appendix at the end of this file.
   now reported — in the app's log and on the console. The test suite reads the
   built catalog from the build tree; the app reads it from its resources, and
   the two must stay the same file.
+
+- **305.** The run indicator takes the icon's place, not the caption's. A
+  button that started a run (`Common/IconToolButton.qml`) keeps its caption:
+  the spinning ring with the stop sign stands where the glyph was, and the
+  caption («Разметить», «Проверить») still names the action the button
+  started — the run's state is read from the icon's place, not from the words.
+  The button keeps its width in both modes (the icon's place has a fixed
+  size), so the header does not jump when a run starts. The ring is bigger
+  than the glyph it replaces (20 pt against 16 pt) and keeps that glyph's
+  center, so the indicator reads at a glance and grows symmetrically into
+  the button's padding. The stop sign is the shipped rounded-square glyph,
+  drawn by the same component as the ring: a filled block would be drawn on
+  whole pixels and would sit half a pixel off the ring's center, and both
+  sizes are even for the same reason. (ADR 263 put the ring where the
+  caption was; its width rule is kept, the arrangement is replaced.)
 
 ### Security & secrets
 
