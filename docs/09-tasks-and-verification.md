@@ -120,7 +120,7 @@ answer.
 
 ## 5. The read protocol (`read_block`, ADR 259–267)
 
-The same fix models serve the read task («Перераспознать») with another
+The same fix models serve the read task («Распознать точно») with another
 contract: the request is exactly the image, the system prompt and the block
 prompt — **the recognized text never travels**. The reply is `FIX` (full
 block) or `REVIEW` (`OK` is outside the schema and lands on Review with the
@@ -132,6 +132,11 @@ Prompt texts live in `resources/profiles/requests/read-requests.json`; a fix
 role may override them (`readSystemPrompt`/`readBlockPrompts`) — the Qwen3-VL
 family does, because it reads the shared wording as correction-verification
 (ADR 267).
+
+Which blocks the read takes is the scope's decision (ADR 311): a page the check
+has not finished gives every text block, a checked page gives only the blocks
+the decision model rejected — the very set the fixer takes. A page is checked
+when every block the decision stage could ask about carries a verdict.
 
 ## 6. The decision task (visual diff, ADR 235/254)
 
@@ -191,7 +196,7 @@ block erases its contents — it is markup again (ADR 241).
 Header (`MainWindow/Header.qml`, ADR 270/171): «Документ» (project menu,
 import, export), «Целевые страницы» (page-range field + «Авто-проход»),
 «Разметка и OCR» (Разметить / Распознать блоки), «Проверки и AI-коррекция»
-(Проверить / Исправить / Перераспознать), «Настройки». Everything acts on
+(Проверить / Исправить / Распознать точно), «Настройки». Everything acts on
 the thumbnail selection (empty selection = whole document).
 
 - «Проверить» runs the decision pass over the scoped blocks
@@ -199,9 +204,11 @@ the thumbnail selection (empty selection = whole document).
   automatic check/fix switches are gone (ADR 178).
 - «Исправить» carries the `scopedPendingFixCount` badge (ADR 188) and runs
   the fix task over the problem blocks of the whole scope.
-- «Перераспознать» runs the read task over the text blocks of the selected
-  pages except user-owned ones — the not-yet-read blocks first, every block
-  on redo (ADR 260/266); the count rides the button (ADR 264).
+- «Распознать точно» runs the read task over the blocks of the selected pages
+  (ADR 260/266): on a page the check has not finished — every text block; on a
+  checked page — only the blocks the decision model rejected, the set the fixer
+  takes (ADR 311). User-owned blocks never enter the queue; the count rides
+  the button (ADR 264) and is the number of requests the run makes.
 - While a run is active, the started action's button becomes the stop
   control; the mapping is by flags/phases (ADR 171).
 

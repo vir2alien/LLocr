@@ -1093,10 +1093,11 @@ appendix at the end of this file.
   (`OCRtest/fix_models/READ_PROTOCOL.md`).
 - **260.** Re-reading is an action, not a model property: the protocol rides
   the request (`CheckRequest::fixProtocol`), so any fix model can read — no
-  role switch or model reload. «Перераспознать» (magnifier over the page) sits
-  next to «Проверить» and in the block toolbar; the header button takes all
-  text blocks of the selected pages except user-owned ones (manual edit or
-  approval), the toolbar button takes the selected block. Outcomes are its own
+  role switch or model reload. «Распознать точно» (magnifier over the page) sits
+  next to «Проверить» and in the block toolbar; the header button takes the text
+  blocks of the selected pages except user-owned ones (manual edit or approval)
+  — and, since ADR 311, only the blocks the check rejected on a checked page;
+  the toolbar button takes the selected block. Outcomes are its own
   statuses: `Read` / `ReadFixed` / `ReadDamaged`; the auto pipeline (ADR 257)
   still fixes — re-reading is manual. The `\tag{n}` ≡ `(n)` gate rule actually
   matches now (the old regex read `\t` as a tab).
@@ -1530,7 +1531,7 @@ appendix at the end of this file.
   caption.)
 - **264.** The scoped read-block count is part of the availability state:
   `AvailabilityPresenter::Flags` compares `scopedReadBlocks`, so the number at
-  «Перераспознать» follows the scope even when no other availability flag
+  «Распознать точно» follows the scope even when no other availability flag
   changes.
 - **269.** The setup wizard's verification stage stays quiet while things are
   fine: `selftestFinished` is ignored while `SelfTest.selftestRunning`,
@@ -1542,7 +1543,7 @@ appendix at the end of this file.
 - **270.** The main menu is one row of titled blocks (`MainWindow/Header.qml`):
   «Документ», «Целевые страницы» (range field with «Стр:» inside,
   «Авто-проход»), «Разметка и OCR», «Проверки и AI-коррекция», «Настройки».
-  Button names are «Распознать блоки» and «Перераспознать» — ADR 263's names
+  Button names are «Распознать блоки» and «Распознать точно» — ADR 263's names
   are cancelled; block captions are `Theme.captionUpper`, minimum window width
   1490, default 1540.
 - **279.** Every dropdown is drawn by one component, `Common/LLOComboBox.qml`
@@ -1903,6 +1904,24 @@ appendix at the end of this file.
   right. The columns are read from the geometry, not detected: a block drawn
   exactly in the gutter between two columns takes the general rule, and the
   operator's up/down buttons remain the last word.
+- **311.** The reader takes what the check has left. The read action
+  («Распознать точно» — the tooltip says «Распознать текст большой
+  ИИ-моделью») runs over the scope, and the scope decides which blocks those
+  are: on a page the check has not finished — every text block, as before; on a
+  checked page — only the blocks the decision model rejected, the very set the
+  fixer takes (ADR 188). A page is checked when the decision stage answered
+  every block it could ask about: a block the user owns is not its business,
+  and a formula with broken LaTeX is never asked about (ADR 194). The reader
+  is a large model and a slow one — re-reading the blocks the check confirmed
+  spends the money for nothing. The count on the button follows the same rule,
+  so the number is the number of requests the run makes; the button stays alive
+  when the scope carries read results, so the redo remains reachable. The redo
+  («Переделать всё») takes the blocks the reader has answered too — the shape
+  of the fix's redo. A block the user owns never enters the queue: the user
+  wrote it or confirmed it by hand, on **either** layer — the layer in view
+  says what the user reads, not what the user owns (`core/BoxTransitions.h`:
+  `userOwned`). The block button of the mini-panel is the operator's own
+  decision and works as before.
 
 ### Security & secrets
 

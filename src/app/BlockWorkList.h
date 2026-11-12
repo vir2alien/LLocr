@@ -53,9 +53,16 @@ public:
     // text (Mismatch), the block could not be transcribed (Review) or the
     // formula's syntax was rejected (ADR 194).
     QList<Task> problemBlocks(const QList<int> &pages) const;
-    // The blocks the reader takes (ADR 260): every text block — with a text
-    // or without one; the reader writes the block from the image.
-    QList<Task> readableBlocks(const QList<int> &pages) const;
+    // The blocks the reader takes over the scope (ADR 311): on a page the
+    // check has not finished — every text block, as before; on a checked page
+    // — only the blocks the decision model rejected, the same set the fixer
+    // takes. With includeAnswered the blocks the reader has already answered
+    // come back too — the shape of the fix's redo.
+    QList<Task> readBlocks(const QList<int> &pages, bool includeAnswered = false) const;
+    // The page is checked when the decision stage answered every block it
+    // could ask about (ADR 311): a block the user owns is not its business,
+    // and a formula with broken LaTeX is never asked about.
+    bool pageChecked(int pageIndex) const;
 
     // The re-run collectors: the same scans with the already-answered blocks
     // included, for a pass that overwrites (a re-run). A block the user
@@ -63,9 +70,6 @@ public:
     QList<Task> reRecognizableBlocks(const QList<int> &pages, const TypeFilter &filter = {}) const;
     QList<Task> recheckableBlocks(const QList<int> &pages, const TypeFilter &filter = {}) const;
     QList<Task> refixableBlocks(const QList<int> &pages, const TypeFilter &filter = {}) const;
-    // The read re-run continues where the reader stopped: the readable blocks
-    // minus the ones the reader has answered.
-    QList<Task> notReadBlocks(const QList<int> &pages) const;
 
     // The early-exit forms behind the re-run confirmations: there is finished
     // work on the pages a new pass would rewrite.

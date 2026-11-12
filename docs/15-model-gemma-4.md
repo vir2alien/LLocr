@@ -24,7 +24,7 @@ Russian mirror: [`15-model-gemma-4.ru.md`](15-model-gemma-4.ru.md).
   candidate in, **OK / FIX / REVIEW** out over the `full_block` protocol
   (ADR 192) — `OK` keeps the candidate, `FIX` carries the **complete
   corrected block**, `REVIEW` hands the block to human eyes. The same model
-  serves the **read** task («Перераспознать», ADR 259) with the read
+  serves the **read** task («Распознать точно», ADR 259) with the read
   protocol's own prompts and a FIX/REVIEW contract (ADR 260/266).
   Transcription and the decision task are other models' jobs (ADR 252/254).
 
@@ -169,7 +169,7 @@ top-level JSON field, plus two injected ones:
 | `reasoning_budget_tokens` | `0` / 512 / 1024 / 1536 | injected by `applyReasoningBudget` from the global settings (`check/fixReasoningBudgetTokens` fix, `check/readReasoningBudgetTokens` read; default off) |
 | `chat_template_kwargs.enable_thinking` | `true` iff `reasoning_budget_tokens` > 0 | `buildRoot` — the budget is also the switch (ADR 193) |
 
-**Read protocol** («Перераспознать», `FixProtocol::ReadBlock`) — same body
+**Read protocol** («Распознать точно», `FixProtocol::ReadBlock`) — same body
 except: prompts come from `resources/profiles/requests/read-requests.json`
 (a fix role may override with its own `readSystemPrompt`/`readBlockPrompts`;
 the gemma profiles do not), `max_tokens` from the read profile's

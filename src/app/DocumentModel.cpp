@@ -60,8 +60,9 @@ QList<int> PageStatus::readableBoxes(const OcrPage &page)
             continue;
         // A block the user owns — hand-written or confirmed by hand — is not
         // the model's to rewrite (the fix and the recognition skip it too).
-        const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(box);
-        if (status == BoxCheckStatus::Edited || status == BoxCheckStatus::Approved)
+        // Both layers count: the layer in view says what the user reads, not
+        // what the user owns (ADR 311).
+        if (BoxTransitions::userOwned(box))
             continue;
         out.append(i);
     }

@@ -65,8 +65,9 @@ public:
     int currentPageVerification() const;
     int selectedPageCount() const;
     int scopedPendingFixCount() const;
-    // The blocks the reader would take (ADR 260): every text block of the
-    // selected pages, with a text or without one.
+    // The blocks the reader would take (ADR 311): the text blocks of the
+    // selected pages, with a text or without one — and, on a checked page,
+    // only the blocks the decision model rejected.
     int scopedReadBlockCount() const;
     bool scopeHasResults() const;
     // What the scope already carries for each task (the re-run

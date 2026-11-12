@@ -23,7 +23,7 @@ Russian mirror: [`16-model-qwen3.5.ru.md`](16-model-qwen3.5.ru.md).
   span contract the small models could not carry): `OK` keeps the candidate,
   `FIX` carries the **complete corrected block**, `REVIEW` hands the block to
   human eyes. The same model also serves the **read** task
-  («Перераспознать», ADR 259) — same transport, the read protocol's own
+  («Распознать точно», ADR 259) — same transport, the read protocol's own
   prompts and a FIX/REVIEW contract (ADR 260); the protocol is the action's
   choice, not the model's (ADR 266); the 4B ships its own measured read
   wording (§4). Not declared for **blockRecognition**,
@@ -211,7 +211,7 @@ serialization but brings the echo along. Table wording needs its own
 iteration together with the gate echo strip.
 | `chat_template_kwargs.enable_thinking` | `true` iff `reasoning_budget_tokens` > 0 | `buildRoot` — the budget is also the switch (ADR 193) |
 
-**Read protocol** («Перераспознать», `FixProtocol::ReadBlock`) — same body
+**Read protocol** («Распознать точно», `FixProtocol::ReadBlock`) — same body
 except: the system prompt and block prompt come from the fix role's own
 `readSystemPrompt` / `readBlockPrompts` when it ships them, else from
 `resources/profiles/requests/read-requests.json` — the 4B ships its measured

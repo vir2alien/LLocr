@@ -52,6 +52,21 @@ private slots:
         QCOMPARE(readable, QList<int>({0, 1}));
     }
 
+    // The user's block is the user's on either layer: the layer in view says
+    // what the user reads, not what the user owns (ADR 311).
+    void theUsersBlockIsTheirsOnEitherLayer()
+    {
+        BoundingBox text = box(QStringLiteral("text"));
+        BoundingBox approvedOnText = box(QStringLiteral("text"));
+        approvedOnText.checkStatus = BoxCheckStatus::Approved;
+        BoundingBox editedOnCorrection = box(QStringLiteral("text"));
+        editedOnCorrection.correctedText = QStringLiteral("user text");
+        editedOnCorrection.correctedCheckStatus = BoxCheckStatus::Edited;
+
+        const QList<int> readable = PageStatus::readableBoxes(singlePage({text, approvedOnText, editedOnCorrection}));
+        QCOMPARE(readable, QList<int>({0}));
+    }
+
     void everySubjectAnsweredMeansClean()
     {
         const auto always = [](const QString &) { return true; };

@@ -52,8 +52,7 @@ Placement placementFor(const QList<BoundingBox> &boxes, const QRectF &rect, cons
         const qreal share = overlapShare(freed.at(i).rect, rect);
         if (share < 0.5)
             continue;
-        if (placement.slot < 0 || share > bestShare + kEpsilon
-            || (qFuzzyCompare(share, bestShare) && freed.at(i).index < freed.at(placement.slot).index)) {
+        if (placement.slot < 0 || share > bestShare + kEpsilon || (qFuzzyCompare(share, bestShare) && freed.at(i).index < freed.at(placement.slot).index)) {
             placement.slot = i;
             bestShare = share;
         }

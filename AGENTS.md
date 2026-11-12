@@ -242,9 +242,10 @@
     the decision model judges every queued block with the visual diff
     (`systemone_visual_diff_v1`, ADR 254); the fix task (OK/FIX/REVIEW over
     the `full_block` protocol, ADR 192) runs as a separate action over the
-    problem blocks; the read task («Перераспознать», `read_block`, ADR 259–267)
+    problem blocks; the read task («Распознать точно», `read_block`, ADR 259–267)
     re-transcribes a block from the image alone — the recognized text never
-    travels. Every block carries two text layers (`box.text` /
+    travels — and takes only the blocks the check rejected on a checked page
+    (ADR 311). Every block carries two text layers (`box.text` /
     `box.correctedText`, ADR 164); formulas carry their canonical form and a
     syntax verdict (`core/LatexText`, ADR 194–196); the frame carries the
     block state (ADR 238). Thresholds are measured, per model and block type

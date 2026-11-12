@@ -28,7 +28,7 @@
   одного блока плюс OCR-кандидат, на выходе **OK / FIX / REVIEW** по
   протоколу `full_block` (ADR 192) — `OK` оставляет кандидата, `FIX` несёт
   **полный исправленный блок**, `REVIEW` отдаёт блок человеческим глазам.
-  Та же модель обслуживает задачу **чтения** («Перераспознать», ADR 259) с
+  Та же модель обслуживает задачу **чтения** («Распознать точно», ADR 259) с
   собственными промптами протокола чтения и контрактом FIX/REVIEW
   (ADR 260/266). Транскрипция и задача decision — работа других моделей
   (ADR 252/254).
@@ -177,7 +177,7 @@ JSON-поле верхнего уровня, плюс два подставле�
 | `reasoning_budget_tokens` | `0` / 512 / 1024 / 1536 | подставляется `applyReasoningBudget` из глобальных настроек (`check/fixReasoningBudgetTokens` — исправление, `check/readReasoningBudgetTokens` — чтение; дефолт off) |
 | `chat_template_kwargs.enable_thinking` | `true` тогда и только тогда, когда `reasoning_budget_tokens` > 0 | `buildRoot` — бюджет заодно и переключатель (ADR 193) |
 
-**Протокол чтения** («Перераспознать», `FixProtocol::ReadBlock`) — то же
+**Протокол чтения** («Распознать точно», `FixProtocol::ReadBlock`) — то же
 тело, кроме: промпты берутся из
 `resources/profiles/requests/read-requests.json` (роль исправления может
 перекрыть своими `readSystemPrompt`/`readBlockPrompts`; gemma-профили этого

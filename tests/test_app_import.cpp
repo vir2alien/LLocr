@@ -2655,8 +2655,9 @@ private slots:
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
 
-        // The re-read takes every text block of the selected pages (ADR 260) —
-        // not only the blocks that wait for a remedy.
+        // The check rejected both blocks: the page is a checked one, and the
+        // reader takes the erroneous blocks — the set the fixer takes
+        // (ADR 311).
         QCOMPARE(m_controller->scopedReadBlockCount(), 2);
         m_controller->readScopeBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
@@ -2838,12 +2839,32 @@ private slots:
     }
 
     // The read re-run continues where the reader stopped: the readable set
-    // minus the three reader outcomes (9, 10, 11).
+    // minus the three reader outcomes (9, 10, 11); the redo takes them back.
     void theReadRerunContinuesWhereTheReaderStopped()
     {
         CollectorPage page(m_raster, *m_verification, *m_checkRequestProfiles, rerunCast());
-        QCOMPARE(boxIndices(page.workList->readableBlocks({0})), QList<int>({0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14, 15}));
-        QCOMPARE(boxIndices(page.workList->notReadBlocks({0})), QList<int>({0, 1, 2, 3, 6, 7, 8, 13, 14, 15}));
+        QCOMPARE(boxIndices(page.workList->readBlocks({0})), QList<int>({0, 1, 2, 3, 6, 7, 8, 13, 14, 15}));
+        QCOMPARE(boxIndices(page.workList->readBlocks({0}, true)), QList<int>({0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14, 15}));
+    }
+
+    // A page the check has finished: the reader takes only the blocks the
+    // decision model rejected — the set the fixer takes. The user's own
+    // blocks never enter the queue, on either layer (ADR 311).
+    void theReadOnACheckedPageTakesOnlyTheRejectedBlocks()
+    {
+        BoundingBox mismatch = textBox(QStringLiteral("text"), QStringLiteral("wrong"));
+        mismatch.checkStatus = BoxCheckStatus::Mismatch;
+        BoundingBox ok = textBox(QStringLiteral("text"), QStringLiteral("right"));
+        ok.checkStatus = BoxCheckStatus::Ok;
+        BoundingBox approved = textBox(QStringLiteral("text"), QStringLiteral("model text"));
+        approved.checkStatus = BoxCheckStatus::Approved;
+        BoundingBox handWritten = textBox(QStringLiteral("text"), QStringLiteral("user wrote"));
+        handWritten.correctedCheckStatus = BoxCheckStatus::Edited;
+        handWritten.correctedText = QStringLiteral("user wrote");
+
+        CollectorPage page(m_raster, *m_verification, *m_checkRequestProfiles, {mismatch, ok, approved, handWritten});
+        QVERIFY(page.workList->pageChecked(0));
+        QCOMPARE(boxIndices(page.workList->readBlocks({0})), QList<int>({0}));
     }
 
     // The recognition confirmation asks whether results would be rewritten: a

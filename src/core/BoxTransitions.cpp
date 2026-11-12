@@ -84,6 +84,12 @@ bool remedyAnswered(BoxFixStatus status)
     return status == BoxFixStatus::NotNeeded || status == BoxFixStatus::Damaged || status == BoxFixStatus::Read || status == BoxFixStatus::ReadFixed || status == BoxFixStatus::ReadDamaged;
 }
 
+bool userOwned(const BoundingBox &box)
+{
+    const auto owned = [](BoxCheckStatus status) { return status == BoxCheckStatus::Edited || status == BoxCheckStatus::Approved; };
+    return owned(box.checkStatus) || owned(box.correctedCheckStatus);
+}
+
 bool needsFix(const BoundingBox &box)
 {
     const BoxCheckStatus status = effectiveCheckStatus(box);

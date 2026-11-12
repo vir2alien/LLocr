@@ -13,14 +13,21 @@ namespace {
 // never rewrites or re-judges it.
 bool userOwned(const BoundingBox &box)
 {
-    return box.checkStatus == BoxCheckStatus::Edited || box.checkStatus == BoxCheckStatus::Approved || box.correctedCheckStatus == BoxCheckStatus::Edited ||
-           box.correctedCheckStatus == BoxCheckStatus::Approved;
+    return BoxTransitions::userOwned(box);
 }
-
 // The reader's three outcomes (ADR 260).
 bool readAnswered(BoxFixStatus status)
 {
     return status == BoxFixStatus::Read || status == BoxFixStatus::ReadFixed || status == BoxFixStatus::ReadDamaged;
+}
+
+// The decision model's verdict on the block: on either layer. A stored
+// correction does not take the text layer's verdict away — the check has
+// answered the block either way (ADR 311).
+bool verdictGiven(const BoundingBox &box)
+{
+    const auto verdict = [](BoxCheckStatus status) { return status == BoxCheckStatus::Ok || status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review; };
+    return verdict(box.checkStatus) || verdict(box.correctedCheckStatus);
 }
 
 }  // namespace
@@ -102,7 +109,7 @@ QList<BlockWorkList::Task> BlockWorkList::problemBlocks(const QList<int> &pages)
     return tasks;
 }
 
-QList<BlockWorkList::Task> BlockWorkList::readableBlocks(const QList<int> &pages) const
+QList<BlockWorkList::Task> BlockWorkList::readBlocks(const QList<int> &pages, bool includeAnswered) const
 {
     QList<Task> tasks;
     for (const int page : pages) {
@@ -111,10 +118,68 @@ QList<BlockWorkList::Task> BlockWorkList::readableBlocks(const QList<int> &pages
         const DocumentPage &docPage = m_deps.document.page(page);
         if (!docPage.recognized || docPage.result.pages.isEmpty())
             continue;
-        for (const int box : PageStatus::readableBoxes(docPage.result.pages.first()))
-            tasks.append({page, box});
+        const OcrPage &ocrPage = docPage.result.pages.first();
+        // A checked page: only the blocks the decision model rejected — the
+        // set the fixer takes. An unchecked page: every text block, as before
+        // (ADR 311).
+        QList<int> candidates;
+        if (pageChecked(page)) {
+            for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+                if (BoxTransitions::needsFix(ocrPage.boxes.at(i)))
+                    candidates.append(i);
+            }
+        } else {
+            candidates = PageStatus::readableBoxes(ocrPage);
+        }
+        for (const int i : candidates) {
+            const BoundingBox &box = ocrPage.boxes.at(i);
+            if (userOwned(box))
+                continue;
+            if (includeAnswered || !readAnswered(box.fixStatus))
+                tasks.append({page, i});
+        }
+        if (!includeAnswered)
+            continue;
+        // The redo covers the blocks the reader has already answered too —
+        // the shape of the fix's redo (ADR 311).
+        for (int i = 0; i < ocrPage.boxes.size(); ++i) {
+            const BoundingBox &box = ocrPage.boxes.at(i);
+            if (!readAnswered(box.fixStatus) || userOwned(box))
+                continue;
+            if (blockStyleForLabel(box.label).style == BlockStyle::ImagePlaceholder)
+                continue;
+            if (candidates.contains(i))
+                continue;
+            tasks.append({page, i});
+        }
     }
     return tasks;
+}
+
+bool BlockWorkList::pageChecked(int pageIndex) const
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return false;
+    const DocumentPage &docPage = m_deps.document.page(pageIndex);
+    if (!docPage.recognized || docPage.result.pages.isEmpty())
+        return false;
+    bool asked = false;
+    for (const BoundingBox &box : std::as_const(docPage.result.pages.first().boxes)) {
+        if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
+            continue;
+        // The block the user owns is not the checker's business, and a
+        // formula with broken LaTeX is never asked about (ADR 194).
+        if (userOwned(box))
+            continue;
+        if (BoxTransitions::effectiveCheckStatus(box) == BoxCheckStatus::InvalidSyntax)
+            continue;
+        if (BoxTransitions::effectiveText(box).isEmpty())
+            continue;
+        asked = true;
+        if (!verdictGiven(box))
+            return false;
+    }
+    return asked;
 }
 
 QList<BlockWorkList::Task> BlockWorkList::reRecognizableBlocks(const QList<int> &pages, const TypeFilter &filter) const
@@ -191,25 +256,6 @@ QList<BlockWorkList::Task> BlockWorkList::refixableBlocks(const QList<int> &page
             if (!BoxTransitions::needsFix(box) && box.fixStatus == BoxFixStatus::None)
                 continue;
             tasks.append({page, i});
-        }
-    }
-    return tasks;
-}
-
-QList<BlockWorkList::Task> BlockWorkList::notReadBlocks(const QList<int> &pages) const
-{
-    QList<Task> tasks;
-    for (const int page : pages) {
-        if (!m_deps.document.isValidIndex(page))
-            continue;
-        const DocumentPage &docPage = m_deps.document.page(page);
-        if (!docPage.recognized || docPage.result.pages.isEmpty())
-            continue;
-        const OcrPage &ocrPage = docPage.result.pages.first();
-        for (const int box : PageStatus::readableBoxes(ocrPage)) {
-            if (readAnswered(ocrPage.boxes.at(box).fixStatus))
-                continue;
-            tasks.append({page, box});
         }
     }
     return tasks;

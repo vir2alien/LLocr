@@ -156,16 +156,10 @@ int AvailabilityPresenter::scopedPendingFixCount() const
 
 int AvailabilityPresenter::scopedReadBlockCount() const
 {
-    int total = 0;
-    for (const int pageIndex : scopePages()) {
-        if (!m_deps.document.isValidIndex(pageIndex))
-            continue;
-        const DocumentPage &page = m_deps.document.page(pageIndex);
-        if (!page.recognized || page.result.pages.isEmpty())
-            continue;
-        total += PageStatus::readableBoxes(page.result.pages.first()).size();
-    }
-    return total;
+    // The blocks the read would take right now (ADR 311): the same work list
+    // the queue picks up, so the number on the button is the number of
+    // requests the run makes.
+    return m_deps.workList.readBlocks(scopePages()).size();
 }
 
 bool AvailabilityPresenter::scopeHasResults() const

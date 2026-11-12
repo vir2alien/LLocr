@@ -20,8 +20,8 @@
         <translation>Исправлять нечего: блоки в области уже обработаны</translation>
     </message>
     <message>
-        <source>Nothing to re-read: the blocks in scope already carry the reader's answer</source>
-        <translation>Перераспознавать нечего: блоки в области уже перераспознаны</translation>
+        <source>Nothing to read: the blocks in scope do not wait for a reading</source>
+        <translation>Перечитывать нечего: блоки в области не ждут чтения</translation>
     </message>
     <message>
         <source>Nothing to check: the blocks in scope already carry a verdict</source>
@@ -1202,13 +1202,13 @@
     <message>
         <location line="-32"/>
         <location line="+1"/>
-        <source>Re-recognize</source>
-        <translation>Перераспознать</translation>
+        <source>Recognize exactly</source>
+        <translation>Распознать точно</translation>
     </message>
     <message>
         <location line="+8"/>
-        <source>Read the blocks of the selected pages from the image</source>
-        <translation>Прочитать с картинки блоки выбранных страниц</translation>
+        <source>Recognize the text with a large AI model</source>
+        <translation>Распознать текст большой ИИ-моделью</translation>
     </message>
     <message>
         <location line="+38"/>
@@ -1333,8 +1333,8 @@
     </message>
     <message>
         <location line="-23"/>
-        <source>Stop the re-reading</source>
-        <translation>Остановить перечитывание</translation>
+        <source>Stop the exact recognition</source>
+        <translation>Остановить распознавание точно</translation>
     </message>
     <message>
         <location line="+44"/>
@@ -1418,16 +1418,16 @@
         <translation>Часть блоков на выбранных страницах уже исправлена. Переделать исправление (стирает исправления и повторяет их по распознанному тексту) или исправить только блоки, которые ещё ждут исправления?</translation>
     </message>
     <message>
-        <source>Re-recognize?</source>
-        <translation>Перераспознать?</translation>
+        <source>Recognize exactly?</source>
+        <translation>Распознать точно?</translation>
     </message>
     <message>
-        <source>Some of the blocks on every page have already been re-recognized. Redo the re-reading (it erases its results) or re-recognize only the blocks that have not been re-recognized yet?</source>
-        <translation>Часть блоков на всех страницах уже перераспознана. Переделать перераспознавание (стирает его результаты) или перераспознать только блоки, которые ещё не перераспознавались?</translation>
+        <source>Some of the blocks on every page have already been recognized exactly. Redo the recognition (it erases its results) or recognize exactly only the blocks that have not been recognized yet?</source>
+        <translation>Часть блоков на каждой странице уже распознана точно. Переделать распознавание (стирает его результаты) или распознать точно только блоки, которые ещё не распознаны точно?</translation>
     </message>
     <message>
-        <source>Some of the blocks on the selected pages have already been re-recognized. Redo the re-reading (it erases its results) or re-recognize only the blocks that have not been re-recognized yet?</source>
-        <translation>Часть блоков на выбранных страницах уже перераспознана. Переделать перераспознавание (стирает его результаты) или перераспознать только блоки, которые ещё не перераспознавались?</translation>
+        <source>Some of the blocks on the selected pages have already been recognized exactly. Redo the recognition (it erases its results) or recognize exactly only the blocks that have not been recognized yet?</source>
+        <translation>Часть блоков на выбранных страницах уже распознана точно. Переделать распознавание (стирает его результаты) или распознать точно только блоки, которые ещё не распознаны точно?</translation>
     </message>
 </context>
 <context>

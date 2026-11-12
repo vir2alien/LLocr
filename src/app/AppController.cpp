@@ -1429,26 +1429,22 @@ void AppController::readScopeBlocks(RerunMode mode)
 {
     if (m_layout.busy() || checkBusy())
         return;
-    if (mode == RerunMode::RedoAll) {
-        const QList<BlockWorkList::Task> tasks = m_workList.readableBlocks(scopePages());
-        if (tasks.isEmpty()) {
-            setStatus(StatusMessage::translate("AppController", "Nothing to re-read: the blocks in scope already carry the reader's answer"));
-            return;
-        }
-        m_remedyQueue.runRead(tasks, [this](const BlockWorkList::Task &task) {
-            applyBoxTransition(task.page, task.box, [](BoundingBox &box) {
-                if (box.fixStatus != BoxFixStatus::None)
-                    BoxTransitions::correctionReverted(box);
-            });
-        });
-        return;
-    }
-    const QList<BlockWorkList::Task> tasks = m_workList.notReadBlocks(scopePages());
+    const bool redo = mode == RerunMode::RedoAll;
+    const QList<BlockWorkList::Task> tasks = m_workList.readBlocks(scopePages(), redo);
     if (tasks.isEmpty()) {
-        setStatus(StatusMessage::translate("AppController", "Nothing to re-read: the blocks in scope already carry the reader's answer"));
+        setStatus(StatusMessage::translate("AppController", "Nothing to read: the blocks in scope do not wait for a reading"));
         return;
     }
-    m_remedyQueue.runRead(tasks);
+    if (!redo) {
+        m_remedyQueue.runRead(tasks);
+        return;
+    }
+    m_remedyQueue.runRead(tasks, [this](const BlockWorkList::Task &task) {
+        applyBoxTransition(task.page, task.box, [](BoundingBox &box) {
+            if (box.fixStatus != BoxFixStatus::None)
+                BoxTransitions::correctionReverted(box);
+        });
+    });
 }
 
 void AppController::stopCheck()

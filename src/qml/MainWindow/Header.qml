@@ -317,15 +317,19 @@ ToolBar {
 
                 IconToolButton {
                     text: Controller.scopedReadBlockCount > 0
-                          ? qsTr("Re-recognize") + " (" + Controller.scopedReadBlockCount + ")"
-                          : qsTr("Re-recognize")
+                          ? qsTr("Recognize exactly") + " (" + Controller.scopedReadBlockCount + ")"
+                          : qsTr("Recognize exactly")
                     iconName: "file-search"
                     stopMode: Controller.checkBusy && Controller.checkReadPhase
+                    // The scope keeps the button alive when the read has
+                    // nothing left to do but its results are there: the redo
+                    // is the way back to those blocks (ADR 311).
                     enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                             && Controller.fixModelAvailable && Controller.scopedReadBlockCount > 0)
+                             && Controller.fixModelAvailable
+                             && (Controller.scopedReadBlockCount > 0 || Controller.scopeReadHasResults))
                     ToolTip.visible: hovered
-                    ToolTip.text: stopMode ? qsTr("Stop the re-reading")
-                                           : qsTr("Read the blocks of the selected pages from the image")
+                    ToolTip.text: stopMode ? qsTr("Stop the exact recognition")
+                                           : qsTr("Recognize the text with a large AI model")
                     onClicked: {
                         if (stopMode) {
                             Controller.stopCheck()
@@ -566,9 +570,9 @@ ToolBar {
         function requestRead() {
             const n = Controller.selectedPageCount
             const all = n === 0 || n === Controller.pageCount
-            title = qsTr("Re-recognize?")
-            prompt = all ? qsTr("Some of the blocks on every page have already been re-recognized. Redo the re-reading (it erases its results) or re-recognize only the blocks that have not been re-recognized yet?")
-                         : qsTr("Some of the blocks on the selected pages have already been re-recognized. Redo the re-reading (it erases its results) or re-recognize only the blocks that have not been re-recognized yet?")
+            title = qsTr("Recognize exactly?")
+            prompt = all ? qsTr("Some of the blocks on every page have already been recognized exactly. Redo the recognition (it erases its results) or recognize exactly only the blocks that have not been recognized yet?")
+                         : qsTr("Some of the blocks on the selected pages have already been recognized exactly. Redo the recognition (it erases its results) or recognize exactly only the blocks that have not been recognized yet?")
             open()
         }
 

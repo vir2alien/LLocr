@@ -32,6 +32,12 @@ bool needsFix(const BoundingBox &box);
 // operator, not for another run.
 bool remedyAnswered(BoxFixStatus status);
 
+// The block belongs to the user: the text was written by hand or confirmed by
+// hand on either layer. A re-run never rewrites or re-judges such a block —
+// and it never enters the reader's queue either (ADR 311). Both layers count:
+// the layer in view says what the user reads, not what the user owns.
+bool userOwned(const BoundingBox &box);
+
 // What the user reads, verifies and exports: the correction when the layer is
 // selected, else the OCR text.
 QString effectiveText(const BoundingBox &box);

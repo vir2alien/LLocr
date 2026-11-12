@@ -160,9 +160,9 @@ private slots:
         QCOMPARE(tasks.at(1).box, 1);
     }
 
-    // The reader takes every text block of the page — recognized or not —
-    // but not the image placeholders nobody transcribes.
-    void theReadableWorkIsEveryTextBoxOfThePage()
+    // The reader takes every text block of an unchecked page — recognized or
+    // not — but not the image placeholders nobody transcribes.
+    void theReadTakesEveryTextBoxOfAnUncheckedPage()
     {
         QueueFixture fixture(m_dir);
         BoundingBox withText = textBox(QStringLiteral("text"), QStringLiteral("read me"));
@@ -171,10 +171,82 @@ private slots:
 
         makeDocument(fixture.document(), {withText, withoutText, image});
 
-        const auto tasks = fixture.workList().readableBlocks({0});
+        QVERIFY(!fixture.workList().pageChecked(0));
+        const auto tasks = fixture.workList().readBlocks({0});
         QCOMPARE(tasks.size(), 2);
         QCOMPARE(tasks.at(0).box, 0);
         QCOMPARE(tasks.at(1).box, 1);
+    }
+
+    // A page the check has finished: the reader takes only the blocks the
+    // decision model rejected — the set the fixer takes (ADR 311).
+    void theReadOnACheckedPageTakesOnlyTheRejectedBlocks()
+    {
+        QueueFixture fixture(m_dir);
+        BoundingBox mismatch = textBox(QStringLiteral("text"), QStringLiteral("wrong"));
+        mismatch.checkStatus = BoxCheckStatus::Mismatch;
+        BoundingBox ok = textBox(QStringLiteral("text"), QStringLiteral("right"));
+        ok.checkStatus = BoxCheckStatus::Ok;
+
+        makeDocument(fixture.document(), {mismatch, ok});
+
+        QVERIFY(fixture.workList().pageChecked(0));
+        const auto tasks = fixture.workList().readBlocks({0});
+        QCOMPARE(tasks.size(), 1);
+        QCOMPARE(tasks.first().box, 0);
+    }
+
+    // The check has not finished: the page is not a checked one, and the
+    // reader takes every text block, as before (ADR 311).
+    void aPartlyCheckedPageIsNotChecked()
+    {
+        QueueFixture fixture(m_dir);
+        BoundingBox mismatch = textBox(QStringLiteral("text"), QStringLiteral("wrong"));
+        mismatch.checkStatus = BoxCheckStatus::Mismatch;
+        BoundingBox plain = textBox(QStringLiteral("text"), QStringLiteral("unchecked"));
+
+        makeDocument(fixture.document(), {mismatch, plain});
+
+        QVERIFY(!fixture.workList().pageChecked(0));
+        const auto tasks = fixture.workList().readBlocks({0});
+        QCOMPARE(tasks.size(), 2);
+    }
+
+    // A block the user owns never enters the reader's queue — on either
+    // layer, whatever the layer in view is (ADR 311).
+    void theUserOwnedBlocksNeverEnterTheRead()
+    {
+        QueueFixture fixture(m_dir);
+        BoundingBox plain = textBox(QStringLiteral("text"), QStringLiteral("plain"));
+        BoundingBox approved = textBox(QStringLiteral("text"), QStringLiteral("model text"));
+        approved.checkStatus = BoxCheckStatus::Approved;
+        BoundingBox edited = textBox(QStringLiteral("text"), QStringLiteral("ocr text"));
+        edited.correctedText = QStringLiteral("user text");
+        edited.correctedCheckStatus = BoxCheckStatus::Edited;
+
+        makeDocument(fixture.document(), {plain, approved, edited});
+
+        const auto tasks = fixture.workList().readBlocks({0});
+        QCOMPARE(tasks.size(), 1);
+        QCOMPARE(tasks.first().box, 0);
+    }
+
+    // The redo takes the blocks the reader has already answered too — the
+    // shape of the fix's redo (ADR 311).
+    void theRedoTakesTheBlocksTheReaderAlreadyAnswered()
+    {
+        QueueFixture fixture(m_dir);
+        BoundingBox plain = textBox(QStringLiteral("text"), QStringLiteral("plain"));
+        BoundingBox read = textBox(QStringLiteral("text"), QStringLiteral("read text"));
+        read.fixStatus = BoxFixStatus::Read;
+
+        makeDocument(fixture.document(), {plain, read});
+
+        const auto tasks = fixture.workList().readBlocks({0});
+        QCOMPARE(tasks.size(), 1);
+        QCOMPARE(tasks.first().box, 0);
+        const auto redo = fixture.workList().readBlocks({0}, true);
+        QCOMPARE(redo.size(), 2);
     }
 
     void theCorrectedLayerWithoutAVerdictIsTheSecondCheck()

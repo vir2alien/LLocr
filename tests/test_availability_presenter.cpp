@@ -134,6 +134,28 @@ private slots:
         QCOMPARE(fixture.presenter().scopedReadBlockCount(), 3);
         QCOMPARE(spy.count(), 1);
     }
+
+    // The count is the work the read would do: on a checked page the reader
+    // takes only the blocks the decision model rejected (ADR 311).
+    void theCountOnACheckedPageIsTheRejectedBlocks()
+    {
+        AvailabilityFixture fixture(m_dir);
+        QVERIFY(fixture.document().appendImage(m_dir.filePath(QStringLiteral("page.png"))));
+        fixture.document().page(0).recognized = true;
+        OcrPage page;
+        for (int i = 0; i < 3; ++i) {
+            BoundingBox box = markupBox(QStringLiteral("text"));
+            box.text = QStringLiteral("text %1").arg(i);
+            box.checkStatus = i == 0 ? BoxCheckStatus::Mismatch : BoxCheckStatus::Ok;
+            page.boxes.push_back(box);
+        }
+        fixture.document().page(0).result.pages = {page};
+        fixture.pageModel().appendPages(1);
+        fixture.pageModel().selectSingle(0);
+        fixture.presenter().refresh({1, 0, 1, 0});
+
+        QCOMPARE(fixture.presenter().scopedReadBlockCount(), 1);
+    }
 };
 
 QTEST_MAIN(TestAvailabilityPresenter)
