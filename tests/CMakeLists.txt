@@ -658,6 +658,19 @@ target_link_libraries(test_footer_banner_qml PRIVATE
 llocr_add_ui_icons(test_footer_banner_qml)
 add_test(NAME test_footer_banner_qml COMMAND test_footer_banner_qml)
 
+# The block panel's header: the divergence notice and the action that settles
+# it stand in the header row, next to «Approve block» (ADR 307). The file is
+# read from the source tree, so the test covers the shipped QML.
+qt_add_executable(test_block_panel_qml test_block_panel_qml.cpp)
+
+target_link_libraries(test_block_panel_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+add_test(NAME test_block_panel_qml COMMAND test_block_panel_qml)
+
 # The icon set: the glyphs must be light (the colorization mixes the source by
 # its luminance, so a dark stroke keeps its own color in every theme — ADR 298),
 # and the component must hand the requested color to the effect. The files are

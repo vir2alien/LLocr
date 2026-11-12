@@ -1846,6 +1846,20 @@ appendix at the end of this file.
   (`Layout.fillWidth`) instead, and the close button closes the group at the
   edge. Test: `test_footer_banner_qml`.
 
+- **307.** The divergence notice stands in the header of the block panel. The
+  panel used to carry a row of its own under the version cards — a warning and
+  a button, below the thing they talked about. The notice now sits in the
+  header row, next to the action that settles it and right before «Утвердить
+  блок»: one row of actions, and the block's name gives way to them. The words
+  name what the action does — the notice says «Текст в документе отличается от
+  блока», the button says «Вернуть текст блока» (it drops the user's layer,
+  ADR 296). The button is not an approval: «Утвердить блок» confirms the text,
+  «Вернуть текст блока» returns the document to the recognition, and each
+  action keeps its own words. The notice and the button stand only while the
+  document diverges from the block; the header's width budget is computed from
+  the actions that are visible, so the notice shrinks (and elides) before the
+  buttons do.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

@@ -1012,7 +1012,7 @@ void AppController::releaseBlockUserText(int boxIndex)
         boxes[boxIndex].userText.clear();
     }
     refreshPageDocument(m_currentPage);
-    setStatus(StatusMessage::translate("AppController", "The block text was taken into the document."));
+    setStatus(StatusMessage::translate("AppController", "The block text was returned to the document."));
 }
 
 bool AppController::selectedBlockDocumentDiverged() const

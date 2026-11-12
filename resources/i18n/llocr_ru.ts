@@ -57,8 +57,8 @@
     </message>
     <message>
         <location line="+0"/>
-        <source>The block text was taken into the document.</source>
-        <translation>Текст блока взят в документ.</translation>
+        <source>The block text was returned to the document.</source>
+        <translation>Текст блока возвращён в документ.</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -216,13 +216,13 @@
     <name>BlockEditPanel</name>
     <message>
         <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+0"/>
-        <source>The document keeps a different version of this text.</source>
-        <translation>В документе — другая версия этого текста.</translation>
+        <source>The document text differs from the block</source>
+        <translation>Текст в документе отличается от блока</translation>
     </message>
     <message>
         <location line="+0"/>
-        <source>Take the block text</source>
-        <translation>Взять текст из блока</translation>
+        <source>Restore the block text</source>
+        <translation>Вернуть текст блока</translation>
     </message>
     <message>
         <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+63"/>

@@ -260,7 +260,7 @@
   - **Memory estimate** (ADR 191): every quantization carries its minimum
     VRAM (`docs/18-memory-estimate.md`); the wizard auto-selects role-default
     models that fit 0.9 × (VRAM ‖ RAM).
-  - **Tests:** 73 registered targets + 2 helpers (`mock_llama_server`,
+  - **Tests:** 74 registered targets + 2 helpers (`mock_llama_server`,
     `candidate_render_dump`); the map and the evaluation stands are
     `docs/19-testing.md`. The stands in `OCRtest/` keep scripts, configs and
     result summaries; their bulk data (crops, renders, ground truth, verdict

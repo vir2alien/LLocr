@@ -47,6 +47,12 @@ Rectangle {
                                        && Controller.selectedBlockText.length === 0
                                        && Controller.selectedBlockCorrected.length === 0
 
+    // The document keeps the user's own wording for this block (ADR 296): the
+    // panel says so and offers to restore the block's text.
+    readonly property bool documentDiverged: root.isTextBlock
+                                             && Controller.currentPageEdited
+                                             && Controller.selectedBlockDocumentDiverged
+
     // A formula, a table or a snippet is read in a monospace face: the
     // brackets, the subscripts and the spaces must not drift apart.
     readonly property bool monoBlock: {
@@ -55,6 +61,24 @@ Rectangle {
                 || label.indexOf("code") >= 0 || label.indexOf("latex") >= 0
                 || label.indexOf("math") >= 0 || label.indexOf("table") >= 0
     }
+
+    // The header row's width budget: the actions on the right take their
+    // share, the block label and the notice give way to them.
+    readonly property real rowWidth: root.width - 2 * Theme.spacingSmall
+    readonly property real actionReserve:
+          (differencesButton.visible ? differencesButton.implicitWidth : 0)
+        + (resetButton.visible ? resetButton.implicitWidth : 0)
+        + (restoreButton.visible ? restoreButton.implicitWidth : 0)
+        + (approveButton.visible ? approveButton.implicitWidth : 0)
+        + closeButton.implicitWidth
+        + Theme.spacingSmall * 7
+    // The room the notice has: what the row leaves after the actions and the
+    // block's name.
+    readonly property real noticeRoom: Math.max(0, root.rowWidth - root.actionReserve - 60)
+    readonly property real noticeWidth: divergenceMessage.visible
+                                          ? Math.min(divergenceMessage.implicitWidth,
+                                                     root.noticeRoom)
+                                          : 0
 
     // The word next to each dot: what the layer's pipeline state is. A layer
     // nobody judged yet carries no word — its title says what it is.
@@ -206,7 +230,9 @@ Rectangle {
                 wrapMode: Text.NoWrap
                 // The row keeps room for the status, the buttons and the close
                 // button; the label gives way.
-                Layout.maximumWidth: Math.max(0, root.width - 380)
+                Layout.minimumWidth: 0
+                Layout.maximumWidth: Math.max(0, root.rowWidth - root.actionReserve
+                                                   - root.noticeWidth - Theme.spacingSmall)
             }
             LLOLabel {
                 // The verdict of the layer in view is in the card header
@@ -241,6 +267,7 @@ Rectangle {
             LLOButton {
                 // The switch compares the two versions: without a correction
                 // there is nothing to compare (ADR 188).
+                id: differencesButton
                 visible: root.isTextBlock && root.correctionStored
                 text: qsTr("Differences")
                 checkable: true
@@ -250,13 +277,40 @@ Rectangle {
                 ToolTip.text: qsTr("Highlight what the correction changed")
             }
             LLOButton {
+                id: resetButton
                 visible: root.correctionStored || root.fixDamaged || root.readDamaged
                 text: qsTr("Reset correction")
                 subtle: true
                 enabled: !Controller.checkBusy && !Controller.busy
                 onClicked: Controller.revertBlockCorrection()
             }
+            LLOLabel {
+                // The document keeps the user's own wording for this block
+                // (ADR 296): the notice stands next to the action that resolves
+                // it, in the row of the header.
+                id: divergenceMessage
+                visible: root.documentDiverged
+                text: qsTr("The document text differs from the block")
+                color: Theme.textMuted
+                elide: Text.ElideRight
+                wrapMode: Text.NoWrap
+                Layout.minimumWidth: 0
+                Layout.maximumWidth: root.noticeRoom
+
+                HoverHandler { id: divergenceHover }
+                ToolTip.visible: divergenceHover.hovered
+                ToolTip.text: divergenceMessage.text
+            }
             LLOButton {
+                // Restoring the block's text drops the user's layer (ADR 296):
+                // the document follows the recognition again.
+                id: restoreButton
+                visible: root.documentDiverged
+                text: qsTr("Restore the block text")
+                onClicked: Controller.releaseSelectedBlockUserText()
+            }
+            LLOButton {
+                id: approveButton
                 visible: root.isTextBlock && Controller.selectedBlockText.length > 0
                 // The one button of the block: it confirms it, and while the
                 // confirmation stands it undoes it (ADR 187). No colour of its
@@ -313,27 +367,6 @@ Rectangle {
             html: root.correctedHtml
             mono: root.monoBlock
             onActivated: Controller.selectedBlockUsesCorrected = true
-        }
-
-        // The edited document is the user's (ADR 295): a pipeline change that
-        // landed in this block waits in a queue until it is taken over. The
-        // text itself is edited in the work panel's editor, not here.
-        ColumnLayout {
-            Layout.fillWidth: true
-            visible: root.isTextBlock && Controller.currentPageEdited
-                     && Controller.selectedBlockDocumentDiverged
-            spacing: Theme.spacingSmall
-
-            LLOLabel {
-                Layout.fillWidth: true
-                text: qsTr("The document keeps a different version of this text.")
-                color: Theme.textMuted
-                wrapMode: Text.WordWrap
-            }
-            LLOButton {
-                text: qsTr("Take the block text")
-                onClicked: Controller.releaseSelectedBlockUserText()
-            }
         }
     }
 }
