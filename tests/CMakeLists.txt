@@ -24,6 +24,7 @@ set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3-vl-8b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/gemma-4-e4b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/gemma-4-12b.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/gemma-4-26b-a4b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/glm-ocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/mineru.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/minicpm-jev.json"

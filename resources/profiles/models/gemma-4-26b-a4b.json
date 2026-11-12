@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "id": "gemma-4-26b-a4b",
+  "title": "Gemma 4 26B-A4B QAT",
+  "license": "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-qat-GGUF",
+  "minBuild": "b12137",
+  "files": {
+    "repo": "unsloth/gemma-4-26B-A4B-it-qat-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q4_k_xl",
+        "file": "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf",
+        "sha256": "",
+        "sizeBytes": 14249047104
+      }
+    ],
+    "mmproj": {
+      "sizeBytes": 1193058784,
+      "id": "f16",
+      "file": "mmproj-F16.gguf",
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
+    },
+    "mtp": {
+      "id": "q4_0",
+      "file": "mtp-gemma-4-26B-A4B-it.gguf",
+      "sha256": ""
+    }
+  },
+  "memory": {
+    "nLayer": 30,
+    "nKvLayers": 5,
+    "nHead": 16,
+    "nKvHead": 8,
+    "headDim": 128,
+    "nEmbd": 2816,
+    "nFf": 2112,
+    "nMoeLayers": 30,
+    "nExpertUsed": 8,
+    "nExpertFf": 704,
+    "visionTokens": 1120,
+    "visionBytesPerToken": 616980,
+    "draftBytes": 251939328,
+    "draftKvBytesPerToken": 4096,
+    "draftContextBytes": 346051051,
+    "workingSetBytesPerToken": 220216,
+    "workingSetContextBytes": 2,
+    "kvBytesPerToken": 20480,
+    "kvBytesFixed": 629145600,
+    "cpuOffload": true
+  },
+  "roles": {
+    "fix": {
+      "alias": "llocr-fix",
+      "protocol": "full_block",
+      "promptProfile": "fix-requests",
+      "reasoning": true,
+      "maxOutput": 8192,
+      "launch": [
+        {
+          "order": 1,
+          "name": "spec-type",
+          "value": "draft-mtp",
+          "description": "Speculative decoding with the MTP drafter shipped in the same repository (mtp-gemma-4-26B-A4B-it.gguf); the install downloads it and the app wires --model-draft."
+        },
+        {
+          "order": 2,
+          "name": "spec-draft-n-max",
+          "value": 2,
+          "description": "Draft tokens per step; 2 is the card's server setting (the packager suggests trying 1-6 and keeping the fastest per machine)."
+        },
+        {
+          "order": 3,
+          "name": "temp",
+          "value": 0,
+          "description": "Server-side default sampling temperature; greedy decoding for transcription."
+        },
+        {
+          "order": 4,
+          "name": "parallel",
+          "value": 1,
+          "description": "A single decoding slot; MTP drafting is single-stream."
+        },
+        {
+          "order": 5,
+          "name": "no-warmup",
+          "description": "Skip the warmup run at model load (faster start, slower first request)."
+        },
+        {
+          "order": 6,
+          "name": "jinja",
+          "description": "Use the chat template from the GGUF metadata: it parses Gemma 4's thought channel, so the request's thinking mode decides whether the model reasons first."
+        },
+        {
+          "order": 7,
+          "name": "reasoning-budget",
+          "value": 0,
+          "description": "Server default for the thinking budget; the fix request carries the reasoning mode and overrides it."
+        },
+        {
+          "order": 8,
+          "name": "image-min-tokens",
+          "value": 1120,
+          "description": "Visual token budget floor; Gemma 4 supports 70/140/280/560/1120 and the card recommends the top budgets for OCR and small text."
+        },
+        {
+          "order": 9,
+          "name": "ubatch-size",
+          "value": 2048,
+          "description": "Encoder-free vision: the whole image must fit one ubatch; the patches decode into the main model with non-causal attention, and the default 512 aborts the server on the first image decode."
+        },
+        {
+          "order": 10,
+          "name": "ctx-size",
+          "value": 8192,
+          "description": "The split layout is tuned for this window: 16384 spends ~600 MiB more VRAM for nothing (measured b12137). Overrides the platform's 16384."
+        },
+        {
+          "order": 11,
+          "name": "n-gpu-layers",
+          "value": "auto",
+          "description": "Let llama.cpp's --fit split the 14 GB of weights between VRAM and RAM; the platform's 99 aborts the load with an out-of-memory on a 6 GB card. Requires build b12100+ ('auto' parsed as 0 by older atoi)."
+        },
+        {
+          "order": 12,
+          "name": "fit-target",
+          "value": 512,
+          "description": "The fit margin llama.cpp keeps free on the card; 512 is the measured layout for a 6 GB card (bigger margins leave fewer expert layers in VRAM and slow the prefill)."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 3,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 6,
+          "name": "cache_prompt",
+          "value": false,
+          "description": "Reuse the prompt cache; off keeps every block request independent of the draft's shared KV cache."
+        },
+        {
+          "order": 7,
+          "name": "stop",
+          "value": [
+"</CANDIDATE>"
+          ],
+          "description": "Stop sequences; the reply ends with the verdict even when the model would keep generating. Only the protocol marker belongs here: an end-of-text token listed as a stop word is matched against the reply itself and cuts the answer to nothing."
+        }
+      ]
+    }
+  }
+}

@@ -498,6 +498,7 @@ private slots:
         QCOMPARE(fixKeys,
                  QStringList({QStringLiteral("qwen3.5-4b"),
                               QStringLiteral("gemma-4-12b"),
+                              QStringLiteral("gemma-4-26b-a4b"),
                               QStringLiteral("gemma-4-e4b"),
                               QStringLiteral("qwen3-vl-4b"),
                               QStringLiteral("qwen3-vl-8b"),
@@ -933,7 +934,7 @@ private slots:
         // user brought themselves — a legacy entry with an mmproj stays out of
         // the role lists (the page task it read as is gone), the management
         // list is where it lives.
-        QCOMPARE(models->rowCount(), 10);
+        QCOMPARE(models->rowCount(), 11);
 
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(ModelQuantModel::KeyRole), QByteArray("key"));
@@ -958,7 +959,7 @@ private slots:
         QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
         installer.refreshInstalled();
         QCOMPARE(resetSpy.count(), 0);
-        QCOMPARE(models->rowCount(), 10);
+        QCOMPARE(models->rowCount(), 11);
 
         // Activating the model re-reads the highlight from the settings: the
         // management list marks nothing active — the role list is where the

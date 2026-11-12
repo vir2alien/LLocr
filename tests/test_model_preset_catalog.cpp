@@ -87,7 +87,10 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     // symptom is a worse vision budget; the 12B losing ubatch-size still starts
     // and aborts on the first image decode. ctx-size and n-predict are not listed on
     // purpose — they follow the machine's memory and live in the platform
-    // profiles of serverLaunch.json (ADR 126).
+    // profiles of serverLaunch.json (ADR 126). The exceptions are deliberate:
+    // the 26B lists ctx-size because its memory profile pins the window
+    // (precedent minicpm-jev), and n-gpu-layers/fit-target are pinned by the
+    // model's split VRAM/RAM layout.
     const QList<Expected> expected = {
         {"qwen3.5-4b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"qwen3.5-9b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
@@ -95,6 +98,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"qwen3-vl-8b", "fix", "b9263", "q8_0,q4_k_m", "temp,jinja,flash-attn,image-min-tokens"},
         {"gemma-4-e4b", "fix", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,image-min-tokens,ubatch-size"},
+        {"gemma-4-26b-a4b", "fix", "b12137", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,image-min-tokens,ubatch-size,ctx-size,n-gpu-layers,fit-target"},
         {"glm-ocr", "blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"mineru", "layout,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "special"},
         {"minicpm-jev", "decision", "b11928", "q8_0,q6_k,q5_k_m,q4_k_m,iq4_xs", "ctx-size,batch-size,ubatch-size,flash-attn"},
@@ -276,7 +280,7 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     QCOMPARE(
         fixModels,
         QStringList(
-            {QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3-vl-4b"), QStringLiteral("qwen3-vl-8b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
+            {QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-26b-a4b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3-vl-4b"), QStringLiteral("qwen3-vl-8b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
 
     const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
     QVERIFY(fixRequests);
