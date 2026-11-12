@@ -102,7 +102,7 @@ use larger corpora in the same layout (see `OCRtest/tools/README.md`).
   (so auto-turn is off by default), and 180° stays unread — projections are
   half-turn invariant.
 - **Memory calibration** (`docs/18-memory-estimate.md`): the estimator's
-  formula was calibrated against measured servers for all nine shipped
+  formula was calibrated against measured servers for all ten shipped
   models (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`).
 
 ### Running a stand

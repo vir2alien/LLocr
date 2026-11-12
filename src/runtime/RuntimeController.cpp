@@ -1153,7 +1153,7 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, con
     out.insert(QStringLiteral("cpuOffload"), cpuOffload);
     const qint64 vramBudget = hardware.primaryGpuMemoryBytes() > 0 ? hardware.memoryBudgetBytes() : 0;
     const llocr::MemorySplit s = splitForVramBudget(e, vramBudget);
-    out.insert(QStringLiteral("splitInVramLabel"), cpuOffload ? formatBytes(s.weightsInVramBytes) : QString());
+    out.insert(QStringLiteral("splitInVramLabel"), cpuOffload ? (s.weightsInVramBytes > 0 ? formatBytes(s.weightsInVramBytes) : QStringLiteral("0 B")) : QString());
     out.insert(QStringLiteral("splitInRamLabel"), cpuOffload ? formatBytes(s.weightsInRamBytes) : QString());
     out.insert(QStringLiteral("vramFloorLabel"), cpuOffload ? formatBytes(e.vramFloorBytes) : QString());
     out.insert(QStringLiteral("requiredRamLabel"), cpuOffload ? formatBytes(ramFloorLabelBytes(e.requiredRamBytes)) : QString());

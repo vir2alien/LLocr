@@ -50,7 +50,7 @@
   | `docs/15-model-gemma-4.md` | Model manual: Gemma 4 E4B/12B/26B-A4B QAT (fix; MTP drafter) |
   | `docs/16-model-qwen3.5.md` | Model manual: Qwen3.5-4B/9B (fix default; OK/FIX/REVIEW) |
   | `docs/17-model-minicpm-jev.md` | Model manual: MiniCPM-OCR Jev (decision; visual diff `/v1/systemone`) |
-  | `docs/18-memory-estimate.md` | The VRAM requirement (ADR 191): formula, calibration of all nine models, measurement scripts |
+  | `docs/18-memory-estimate.md` | The VRAM requirement (ADR 191): formula, calibration of all ten models, measurement scripts |
   | `docs/19-testing.md` | The unit-test suite map and the evaluation stands |
   | `archive/README.md` | The release archive (ADR 251): the cut models' profiles (`archive/models/profiles/`), parsers, manuals (`archive/models/docs/`), the single-pass controller and the text-decision harness; the tag `archive/pre-cleanup` reaches every file the cut touched |
 
@@ -233,10 +233,10 @@
     single-pass `pageOcr`/`rawPageOcr`) — one vocabulary across
     `ConnectionRole`, the model profiles (`roles.<task>`), the settings
     (`tasks/<task>/…`; blockRecognition keeps the legacy `check` prefix for
-    its launch files) and one `RequestProfileStore` per task. Nine shipped
+    its launch files) and one `RequestProfileStore` per task. Ten shipped
     models: `mineru` (layout + blockRecognition, default for both), `glm-ocr`
     (blockRecognition), `minicpm-jev` (decision, visual diff), `qwen3.5-4b/9b`,
-    `gemma-4-e4b/12b`, `qwen3-vl-4b/8b` (fix). Per-task defaults in
+    `gemma-4-e4b/12b/26b-a4b`, `qwen3-vl-4b/8b` (fix). Per-task defaults in
     `roles.<task>.default` (ADR 169). Ten removed models live in `archive/`.
   - **Verification and fix** (`docs/09-tasks-and-verification.md`):
     the decision model judges every queued block with the visual diff
