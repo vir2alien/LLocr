@@ -27,8 +27,11 @@
 qt_add_library(llocr_core STATIC
     core/OcrResult.h
     core/OcrRequest.h
+    core/PageIndex.h
     core/BoxTransitions.h
     core/BoxTransitions.cpp
+    core/BlockPlacement.h
+    core/BlockPlacement.cpp
     core/TextDiff.h
     core/TextDiff.cpp
     core/LatexText.h

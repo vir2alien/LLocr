@@ -1431,7 +1431,7 @@ private slots:
         // …draws a new one over the table area…
         QVERIFY(controller.addBlockAt(QStringLiteral("table"), 0.5, 0.5, 0.3, 0.2));
         QCOMPARE(boxes->rowCount(), 3);
-        QCOMPARE(controller.selectedBoxIndex(), 2);
+        QCOMPARE(controller.selectedBoxIndex(), 1);
 
         // …and recognizes it.
         const int requests = server.requests();
@@ -1613,6 +1613,151 @@ private slots:
         QCOMPARE(controller.selectedBlockText(), server.transcription);
         // …and the page text follows it.
         QVERIFY2(controller.resultText().contains(server.transcription), qPrintable(controller.resultText()));
+    }
+
+    // A block the operator drew in the middle of the page: it takes the place
+    // between the blocks around it, and its recognized text lands there in the
+    // page text — not at the end of it.
+    void aDrawnBlockTakesItsPlaceInThePageText()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        // Three blocks: a title over two texts.
+        server.layoutContent = QStringLiteral("<|box_start|>80 60 900 160<|box_end|><|ref_start|>title<|ref_end|>\n\n"
+                                              "<|box_start|>80 200 900 400<|box_end|><|ref_start|>text<|ref_end|>\n\n"
+                                              "<|box_start|>80 500 900 800<|box_end|><|ref_start|>text<|ref_end|>");
+        server.transcriptionSequence = {QStringLiteral("First block"), QStringLiteral("Second block"), QStringLiteral("Third block")};
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        recognizePage(controller);
+        QVERIFY(controller.hasResult());
+
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 3);
+
+        // The operator draws a block between the second and the third one.
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 0.1, 0.42, 0.2, 0.05));
+        QCOMPARE(boxes->rowCount(), 4);
+        QCOMPARE(controller.selectedBoxIndex(), 2);
+
+        // The block is recognized…
+        server.transcriptionSequence = {QStringLiteral("Drawn block")};
+        const int requests = server.requests();
+        controller.recognizeSelectedBlock();
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(controller.selectedBlockText(), QStringLiteral("Drawn block"), kImportTimeoutMs);
+
+        // …and its text stands between the texts of the blocks around it.
+        const QString text = controller.resultText();
+        const int first = text.indexOf(QStringLiteral("First block"));
+        const int drawn = text.indexOf(QStringLiteral("Drawn block"));
+        const int third = text.indexOf(QStringLiteral("Third block"));
+        QVERIFY(first >= 0);
+        QVERIFY(drawn >= 0);
+        QVERIFY(third >= 0);
+        QVERIFY2(first < drawn && drawn < third, qPrintable(text));
+    }
+
+    // The operator deletes a block and draws a new one over the place it
+    // left: the new block's text stands where the deleted block's text stood.
+    void aDrawnBlockTakesThePlaceOfARemovedOne()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        // Two columns: the reading order is column by column.
+        server.layoutContent = QStringLiteral("<|box_start|>80 200 480 500<|box_end|><|ref_start|>text<|ref_end|>\n\n"
+                                              "<|box_start|>80 550 480 850<|box_end|><|ref_start|>text<|ref_end|>\n\n"
+                                              "<|box_start|>550 200 950 500<|box_end|><|ref_start|>text<|ref_end|>");
+        server.transcriptionSequence = {QStringLiteral("Left top"), QStringLiteral("Left bottom"), QStringLiteral("Right top")};
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        recognizePage(controller);
+        QVERIFY(controller.hasResult());
+
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 3);
+
+        // The operator deletes the right column's block…
+        QVERIFY(controller.removeBlock(2));
+        QCOMPARE(boxes->rowCount(), 2);
+        QVERIFY(!controller.resultText().contains(QStringLiteral("Right top")));
+
+        // …and draws a new one over the place it left.
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 0.6, 0.25, 0.3, 0.1));
+        QCOMPARE(boxes->rowCount(), 3);
+        QCOMPARE(controller.selectedBoxIndex(), 2);
+
+        server.transcriptionSequence = {QStringLiteral("Drawn block")};
+        const int requests = server.requests();
+        controller.recognizeSelectedBlock();
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(controller.selectedBlockText(), QStringLiteral("Drawn block"), kImportTimeoutMs);
+
+        // The new block's text stands where the removed block's text stood: the
+        // whole left column comes before it.
+        const QString text = controller.resultText();
+        const int leftTop = text.indexOf(QStringLiteral("Left top"));
+        const int leftBottom = text.indexOf(QStringLiteral("Left bottom"));
+        const int drawn = text.indexOf(QStringLiteral("Drawn block"));
+        QVERIFY(leftTop >= 0);
+        QVERIFY(leftBottom >= 0);
+        QVERIFY(drawn >= 0);
+        QVERIFY2(leftTop < leftBottom && leftBottom < drawn, qPrintable(text));
+    }
+
+    // A block inserted before an image block shifts the image's index — and
+    // the crop reference in the page text follows it: the reference carries
+    // the index of the block in the list.
+    void theCropReferenceFollowsTheBlockAfterAnInsertion()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        recognizePage(controller);
+        QVERIFY(controller.hasResult());
+
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+
+        // An image block at the foot of the page.
+        QVERIFY(controller.addBlockAt(QStringLiteral("image"), 0.1, 0.85, 0.3, 0.1));
+        QCOMPARE(controller.selectedBoxIndex(), 2);
+        QVERIFY2(controller.resultText().contains(QStringLiteral("image://ocr/crop/2")), qPrintable(controller.resultText()));
+
+        // A text block goes between the text block and the image.
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 0.1, 0.42, 0.3, 0.05));
+        QCOMPARE(controller.selectedBoxIndex(), 2);
+
+        // The image block moved one place down — and its reference with it.
+        QCOMPARE(boxes->data(boxes->index(3), BoxListModel::LabelRole).toString(), QStringLiteral("image"));
+        QVERIFY2(controller.resultText().contains(QStringLiteral("image://ocr/crop/3")), qPrintable(controller.resultText()));
+        QVERIFY(!controller.resultText().contains(QStringLiteral("image://ocr/crop/2)")));
+
+        // The reference resolves to a crop: the image block's own rectangle.
+        const QImage crop = controller.croppedImage(0, 3);
+        QVERIFY(!crop.isNull());
     }
 
     // A manually added block: an empty block of the given type lands on the

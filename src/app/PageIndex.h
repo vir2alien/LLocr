@@ -4,18 +4,9 @@
 #include <utility>
 #include <vector>
 
-namespace llocr {
+#include "core/PageIndex.h"
 
-inline int remapIndexAfterMove(int key, int from, int to)
-{
-    if (key == from)
-        return to;
-    if (from < to && key > from && key <= to)
-        return key - 1;
-    if (from > to && key >= to && key < from)
-        return key + 1;
-    return key;
-}
+namespace llocr {
 
 // Per-page side data (edit baselines, "edited" markers) follows the document's
 // page indices, so it has to move with removePage()/movePage().

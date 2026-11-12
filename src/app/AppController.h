@@ -37,6 +37,7 @@
 #include "app/RemedyQueue.h"
 #include "app/VerificationPromptStore.h"
 #include "config/SettingsStore.h"
+#include "core/BlockPlacement.h"
 #include "core/CheckRequest.h"
 #include "core/CheckResult.h"
 #include "core/OcrResult.h"
@@ -659,6 +660,9 @@ private:
     mutable QList<QPair<QString, QString>> m_previewCacheRefs;
     quint64 m_previewMarkdownGeneration = 0;          ///< the request an in-flight preview encode belongs to; a newer request drops it
     QList<QPair<QString, QString>> m_editorCropRefs;  ///< data: URI → image://ocr/crop for the editor's last push
+    // The places the removed blocks leave behind (ADR 310): a block drawn over
+    // one of them takes its place in the text.
+    QHash<int, QList<FreeSlot>> m_freeSlots;
     PageEditStore m_editStore;
     StatusMessage m_statusMessage;        ///< stored untranslated, rendered on read
     StatusMessage m_autoPipelineMessage;  ///< the run's outcome and its caveats

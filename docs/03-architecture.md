@@ -292,7 +292,9 @@ in `docs/04-components.md`, the decisions as ADRs in `docs/07-glossary.md`).
   carries **no** boxes.
 - **BoxListModel** — normalized bbox rectangles for the current page's overlay;
   exposes `updateBoxRect` / `isImageBox` for image-block editing. Row removal is
-  driven by `AppController::removeBlock` (ADR 92), not by QML.
+  driven by `AppController::removeBlock` (ADR 92), not by QML. The order of the
+  list is the order of the page text (ADR 296): a block the operator drew takes
+  its place in the list by its place on the page (ADR 310).
 - **PageEditStore** — per-page user edits keyed by page index; computes the
   "effective" text (edit overrides recognition), handles revert and remapping
   after page removal/reordering.

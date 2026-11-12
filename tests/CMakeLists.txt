@@ -100,6 +100,15 @@ target_link_libraries(test_page_document PRIVATE
 
 add_test(NAME test_page_document COMMAND test_page_document)
 
+qt_add_executable(test_block_placement test_block_placement.cpp)
+
+target_link_libraries(test_block_placement PRIVATE
+    Qt6::Test
+    llocr_core
+)
+
+add_test(NAME test_block_placement COMMAND test_block_placement)
+
 qt_add_executable(test_editor_bridge test_editor_bridge.cpp)
 
 target_link_libraries(test_editor_bridge PRIVATE

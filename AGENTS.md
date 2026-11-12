@@ -131,7 +131,7 @@
   * Every test has a `TIMEOUT` and a headless platform by default, applied
     directory-wide at the end of `tests/CMakeLists.txt` (ADR 99) — a hung
     `waitForStarted()` fails the run instead of blocking `ctest` forever.
-    The full map of the 60 test targets by domain is `docs/19-testing.md`.
+    The full map of the 76 test targets by domain is `docs/19-testing.md`.
   * The QML tree is a real module (`qt_add_qml_module`, ADR 101): new `.qml`
     files are globbed, `qmlcachegen` runs, and the files live at
     `qrc:/qt/qml/LLocr/…`. The C++ singletons are still registered by hand in
@@ -260,7 +260,7 @@
   - **Memory estimate** (ADR 191): every quantization carries its minimum
     VRAM (`docs/18-memory-estimate.md`); the wizard auto-selects role-default
     models that fit 0.9 × (VRAM ‖ RAM).
-  - **Tests:** 74 registered targets + 2 helpers (`mock_llama_server`,
+  - **Tests:** 76 registered targets + 2 helpers (`mock_llama_server`,
     `candidate_render_dump`); the map and the evaluation stands are
     `docs/19-testing.md`. The stands in `OCRtest/` keep scripts, configs and
     result summaries; their bulk data (crops, renders, ground truth, verdict

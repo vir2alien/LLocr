@@ -1888,6 +1888,22 @@ appendix at the end of this file.
   wizard as a stable key. The message alone cannot carry it — it mixes the
   cause with the raw output, and it is written in the language of the log.
 
+- **310.** A block the operator drew takes its place in the text by its place on
+  the page. The page text is the join of the blocks in the order of the list
+  (ADR 296), and the list carries the reading order the layout model returned
+  — so a drawn block used to land at the end of it, and its recognized text
+  with it. The list now takes the new block where it belongs: the place a
+  removed block left behind (`core/BlockPlacement.h` — the slot; the drawn
+  block covers half of the smaller of the two rectangles), or the block's
+  geometric position — the column it shares its width with, and inside it the
+  first block that lies below the drawn one or to its right in the same band.
+  The blocks already on the page never move; only the new one's place is
+  decided. The crop references (`image://ocr/crop/N`) carry the index of the
+  block in the list and are rebuilt with the page text, so the export stays
+  right. The columns are read from the geometry, not detected: a block drawn
+  exactly in the gutter between two columns takes the general rule, and the
+  operator's up/down buttons remain the last word.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

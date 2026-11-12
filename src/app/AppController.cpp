@@ -1079,6 +1079,7 @@ bool AppController::removeBlock(int boxIndex)
 {
     if (m_layout.busy() || m_importing || checkBusy())
         return false;
+    BoundingBox removed;
     {
         QWriteLocker locker(&m_documentLock);
         if (!m_document.isValidIndex(m_currentPage))
@@ -1090,9 +1091,11 @@ bool AppController::removeBlock(int boxIndex)
         if (boxIndex < 0 || boxIndex >= boxes.size())
             return false;
 
+        removed = boxes.at(boxIndex);
         boxes.removeAt(boxIndex);
         ++m_cropRevision;
     }
+    m_freeSlots[m_currentPage] = slotsAfterRemoval(m_freeSlots.value(m_currentPage), boxIndex, removed.rect);
     m_boxModel.removeBox(boxIndex);
     // The removed block could have been the one holding the page back: both
     // the aggregate and the markup-only completion are derived from the set.
@@ -1127,6 +1130,7 @@ bool AppController::moveBlock(int from, int to)
             return false;
         boxes.move(from, to);
     }
+    m_freeSlots[m_currentPage] = slotsAfterMove(m_freeSlots.value(m_currentPage), from, to);
     m_boxModel.moveBox(from, to);
     refreshPageDocument(m_currentPage);
 
@@ -1161,30 +1165,38 @@ bool AppController::addBlockAt(const QString &type, qreal x, qreal y, qreal widt
     const qreal w = qBound(minSize, width, qreal(1.0));
     const qreal h = qBound(minSize, height, qreal(1.0));
     box.rect = QRectF(qBound(qreal(0.0), x, qreal(1.0) - w), qBound(qreal(0.0), y, qreal(1.0) - h), w, h);
-    // The text the blocks stand for: the page text follows the blocks only as
-    // long as it is that text (a manual edit or a raw page OCR owns it
-    // otherwise).
-    const QString blockDerivedText = rebuildPageText(m_document.page(m_currentPage).result.pages.value(0));
+    // The block takes the place its position on the page gives it (ADR 310):
+    // the page text follows the order of the blocks.
+    const QList<FreeSlot> freed = m_freeSlots.value(m_currentPage);
+    Placement placement;
+    int boxCount = 0;
     {
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(m_currentPage);
         if (page.result.pages.isEmpty())
             page.result.pages.append(OcrPage());
-        page.result.pages[0].boxes.append(box);
+        QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+        boxCount = boxes.size();
+        placement = placementFor(boxes, box.rect, freed);
+        boxes.insert(placement.index, box);
         page.recognized = true;
         ++m_cropRevision;
     }
+    m_freeSlots[m_currentPage] = slotsAfterPlacement(freed, placement);
 
     m_pageModel.setRecognized(m_currentPage, true);
     if (m_document.page(m_currentPage).recognitionMode == PageRecognitionMode::None)
         setRecognitionMode(m_currentPage, PageRecognitionMode::MarkupOnly);
 
-    updateBoxesForCurrent();
+    if (m_boxModel.rowCount() == boxCount)
+        m_boxModel.insertBox(placement.index, box);
+    else
+        updateBoxesForCurrent();
 
     refreshPageDocument(m_currentPage);
 
     refreshPageVerification(m_currentPage);
-    setSelectedBoxIndex(m_document.page(m_currentPage).result.pages.first().boxes.size() - 1);
+    setSelectedBoxIndex(placement.index);
 
     setStatus(StatusMessage::translate("AppController", "Block added."));
     emit resultChanged();
@@ -1810,6 +1822,9 @@ bool AppController::applyLayout(int pageIndex, const QString &rawText)
         }
         page.suggestedTurn = autoTurn != 0 ? 0 : suggestedTurn;
     }
+    // The layout replaced the page's blocks: the places the old ones left
+    // behind say nothing about the new ones.
+    m_freeSlots.remove(pageIndex);
     if (autoTurn != 0) {
         setStatus(StatusMessage::translate("AppController", "Page %1 lies on its side — turned by %2°, the markup runs again.").arg(pageIndex + 1).arg(autoTurn));
         turnPage(pageIndex, autoTurn, false);

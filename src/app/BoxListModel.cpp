@@ -173,6 +173,15 @@ void BoxListModel::removeBox(int index)
     endRemoveRows();
 }
 
+void BoxListModel::insertBox(int row, const BoundingBox &box)
+{
+    if (row < 0 || row > m_boxes.size())
+        return;
+    beginInsertRows({}, row, row);
+    m_boxes.insert(row, box);
+    endInsertRows();
+}
+
 void BoxListModel::moveBox(int from, int to)
 {
     if (from < 0 || from >= m_boxes.size() || to < 0 || to >= m_boxes.size() || from == to)
