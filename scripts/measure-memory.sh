@@ -71,7 +71,7 @@ while [ $# -gt 0 ]; do
         --mmproj) MMPROJ="$2"; shift 2 ;;
         --draft) DRAFT="$2"; shift 2 ;;
         --ctx) CTX="$2"; shift 2 ;;
-        --ubatch) UBACK="$2"; shift 2 ;;
+        --ubatch) UBATCH="$2"; shift 2 ;;
         --batch) BATCH="$2"; shift 2 ;;
         --flash-attn) FLASH="$2"; shift 2 ;;
         --image-min-tokens) MIN_TOKENS="$2"; shift 2 ;;
