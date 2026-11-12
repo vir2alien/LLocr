@@ -27,15 +27,141 @@ Item {
     // idle → runtime → models → check → done | failed
     property string phase: "idle"
 
+    // Why the last attempt failed — the key of the failure kind. The screen
+    // turns it into a plain-language answer; the raw message stays in the log.
+    property string failureKind: ""
+
     readonly property bool needsRuntime: !Runtime.serverPathValid
     readonly property bool needsModels: missingChoices.length > 0
     readonly property bool chainBusy: RuntimeInstaller.busy || ModelInstaller.busy || SelfTest.selftestRunning
 
     readonly property real totalDownloadBytes: {
-        let total = 0
+        let total = 0;
         for (const choice of root.missingChoices)
-            total += choice.size || 0
-        return total
+            total += choice.size || 0;
+        return total;
+    }
+
+    // The verdict of the step, on a line of its own and larger than the rest
+    // of the text: what the check is doing right now, or how it ended.
+    readonly property string statusText: {
+        switch (root.phase) {
+        case "runtime":
+            return qsTr("Downloading the runtime…");
+        case "models":
+            return qsTr("Downloading the models…");
+        case "check":
+            return qsTr("Checking…");
+        case "done":
+            return qsTr("Check passed");
+        case "failed":
+            return qsTr("Check failed");
+        default:
+            return qsTr("The check has not run yet");
+        }
+    }
+
+    readonly property color statusColor: {
+        if (root.phase === "done")
+            return Theme.success;
+        if (root.phase === "failed")
+            return Theme.error;
+        if (root.chainBusy)
+            return Theme.textSecondary;
+        return Theme.textMuted;
+    }
+
+    // What went wrong and what the user can do about it. The kinds come from
+    // the runtime (the self-test) and from the step itself (the downloads).
+    readonly property var failure: root.failureDescription(root.failureKind)
+
+    function failureDescription(kind) {
+        switch (kind) {
+        case "runtimeMissing":
+            return {
+                reason: qsTr("The llama.cpp runtime is not installed — its file is missing."),
+                action: qsTr("Install it: press the button above to download the runtime, "
+                             + "or pick an installed build in Settings → Runtime.")
+            };
+        case "modelMissing":
+            return {
+                reason: qsTr("The model for the recognition task is not installed — its file is missing."),
+                action: qsTr("Pick another model in Settings → Models, or press the button above "
+                             + "to download the missing one.")
+            };
+        case "runtimeDownloadFailed":
+            return {
+                reason: qsTr("The runtime could not be downloaded."),
+                action: qsTr("Check the connection to the internet and the free disk space, "
+                             + "then press the button above again.")
+            };
+        case "modelDownloadFailed":
+            return {
+                reason: qsTr("The model could not be downloaded."),
+                action: qsTr("Check the connection to the internet and the free disk space, "
+                             + "then press the button above again.")
+            };
+        case "portBusy":
+            return {
+                reason: qsTr("The server could not start: the port it wants is taken by another program."),
+                action: qsTr("Free the port or turn on the automatic port pick in "
+                             + "Settings → Runtime, then press the button above again.")
+            };
+        case "notEnoughMemory":
+            return {
+                reason: qsTr("The model did not fit into the memory of this machine."),
+                action: qsTr("Pick a lighter quantization in Settings → Models, or lower the "
+                             + "context size in the launch parameters, then press the button above again.")
+            };
+        case "backendUnavailable":
+            return {
+                reason: qsTr("The selected backend cannot run on this computer — the graphics "
+                             + "runtime it needs is missing."),
+                action: qsTr("Pick another backend on the Hardware step or in "
+                             + "Settings → Runtime, then press the button above again.")
+            };
+        case "modelRejected":
+            return {
+                reason: qsTr("The server could not read the model file."),
+                action: qsTr("Download the model again or pick a supported one in "
+                             + "Settings → Models, then press the button above again.")
+            };
+        case "instanceRunning":
+            return {
+                reason: qsTr("Another copy of the app is already running and holds the runtime."),
+                action: qsTr("Close the other copy and press the button above again.")
+            };
+        case "autostartOff":
+            return {
+                reason: qsTr("The server is not set to start on its own."),
+                action: qsTr("Turn on the automatic start in Settings → Runtime, then press "
+                             + "the button above again.")
+            };
+        case "serverStartFailed":
+            return {
+                reason: qsTr("The server did not start."),
+                action: qsTr("Check the free memory and the launch parameters in "
+                             + "Settings → Runtime, then press the button above again.")
+            };
+        case "noAnswer":
+            return {
+                reason: qsTr("The server is running but did not answer the test request in time."),
+                action: qsTr("The model may still be loading — press the button above again. "
+                             + "If it keeps failing, look at the server log in the main window.")
+            };
+        case "requestRejected":
+            return {
+                reason: qsTr("The server answered the test request with an error."),
+                action: qsTr("Check the model and its parameters in Settings → Models, then press "
+                             + "the button above again.")
+            };
+        default:
+            return {
+                reason: qsTr("The check could not be completed."),
+                action: qsTr("Press the button above again. If it keeps failing, look at the "
+                             + "server log in the main window.")
+            };
+        }
     }
 
     implicitHeight: contentColumn.implicitHeight + 40
@@ -43,56 +169,61 @@ Item {
     onVisibleChanged: {
         // Entering the step again starts the check afresh — a verdict of the
         // previous visit is not this visit's verdict.
-        if (visible && !chainBusy)
-            phase = "idle"
+        if (visible && !chainBusy) {
+            phase = "idle";
+            failureKind = "";
+        }
     }
 
     function fmtBytes(bytes) {
         if (bytes <= 0)
-            return ""
+            return "";
         if (bytes >= 1073741824)
-            return (bytes / 1073741824).toFixed(1) + " GiB"
+            return (bytes / 1073741824).toFixed(1) + " GiB";
         if (bytes >= 1048576)
-            return (bytes / 1048576).toFixed(1) + " MiB"
-        return (bytes / 1024).toFixed(1) + " KiB"
+            return (bytes / 1048576).toFixed(1) + " MiB";
+        return (bytes / 1024).toFixed(1) + " KiB";
     }
 
     function startChain() {
         if (chainBusy)
-            return
+            return;
+        failureKind = "";
         if (needsRuntime) {
             // An installed runtime is reused as is (ADR 170); only its
             // absence downloads the fresh release.
-            phase = "runtime"
-            RuntimeInstaller.startDownloadAndInstall()
+            phase = "runtime";
+            RuntimeInstaller.startDownloadAndInstall();
         } else {
-            startModelQueue()
+            startModelQueue();
         }
     }
 
     function startModelQueue() {
         if (needsModels) {
-            phase = "models"
-            ModelInstaller.queueTaskInstalls(missingChoices)
+            phase = "models";
+            ModelInstaller.queueTaskInstalls(missingChoices);
         } else {
-            runCheck()
+            runCheck();
         }
     }
 
     function runCheck() {
-        phase = "check"
-        SelfTest.runSelfTestQml()
+        phase = "check";
+        SelfTest.runSelfTestQml();
     }
 
     Connections {
         target: RuntimeInstaller
         function onStateChanged() {
             if (phase !== "runtime")
-                return
+                return;
             if (RuntimeInstaller.state === RuntimeInstaller.Installed)
-                startModelQueue()
-            else if (RuntimeInstaller.state === RuntimeInstaller.Error)
-                phase = "failed"
+                startModelQueue();
+            else if (RuntimeInstaller.state === RuntimeInstaller.Error) {
+                failureKind = "runtimeDownloadFailed";
+                phase = "failed";
+            }
         }
     }
 
@@ -100,11 +231,13 @@ Item {
         target: ModelInstaller
         function onTaskQueueStateChanged() {
             if (phase !== "models" || ModelInstaller.taskQueueActive)
-                return
-            if (ModelInstaller.state === ModelInstaller.Error)
-                phase = "failed"
-            else
-                runCheck()
+                return;
+            if (ModelInstaller.state === ModelInstaller.Error) {
+                failureKind = "modelDownloadFailed";
+                phase = "failed";
+            } else {
+                runCheck();
+            }
         }
     }
 
@@ -114,8 +247,14 @@ Item {
             // The signal is also the notification of "the self-test started":
             // while it runs, there is no verdict yet.
             if (phase !== "check" || SelfTest.selftestRunning)
-                return
-            phase = SelfTest.selftestOk ? "done" : "failed"
+                return;
+            if (SelfTest.selftestOk) {
+                failureKind = "";
+                phase = "done";
+            } else {
+                failureKind = SelfTest.selftestFailure.length ? SelfTest.selftestFailure : "unknown";
+                phase = "failed";
+            }
         }
     }
 
@@ -190,33 +329,51 @@ Item {
             text: qsTr("Everything is already installed — only the check remains.")
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacing
+        LLOButton {
+            emphasis: true
+            text: root.needsRuntime || root.needsModels ? qsTr("Download and check") : qsTr("Check")
+            enabled: !root.chainBusy
+            onClicked: root.startChain()
+        }
 
-            LLOButton {
-                emphasis: true
-                text: root.needsRuntime || root.needsModels ? qsTr("Download and check") : qsTr("Check")
-                enabled: !root.chainBusy
-                onClicked: root.startChain()
+        LLOLabel {
+            Layout.fillWidth: true
+            Layout.topMargin: Theme.spacing
+            wrapMode: Text.WordWrap
+            font.pixelSize: Theme.headingSize3
+            font.bold: true
+            color: root.statusColor
+            text: root.statusText
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.phase === "failed"
+            spacing: Theme.spacingSmall
+
+            LLOLabel {
+                text: qsTr("What went wrong")
+                font.bold: true
+                color: Theme.textSecondary
             }
 
             LLOLabel {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                font.pixelSize: Theme.captionSize
-                color: SelfTest.selftestOk ? Theme.success
-                     : SelfTest.selftestRunning ? Theme.textSecondary
-                     : Theme.textMuted
-                text: SelfTest.selftestRunning
-                      ? qsTr("Running self-test…")
-                      : (SelfTest.selftestMessage.length
-                         ? (SelfTest.selftestOk
-                            ? qsTr("Self-test passed: “%1”").arg(SelfTest.selftestMessage)
-                            : SelfTest.selftestMessage)
-                         : (root.phase === "done"
-                            ? qsTr("All set.")
-                            : qsTr("The check starts the server and performs one OCR request.")))
+                text: root.failure.reason
+            }
+
+            LLOLabel {
+                Layout.topMargin: Theme.spacingSmall
+                text: qsTr("What to do")
+                font.bold: true
+                color: Theme.textSecondary
+            }
+
+            LLOLabel {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: root.failure.action
             }
         }
 
@@ -250,15 +407,6 @@ Item {
             progress: ModelInstaller.progress
             cancelVisible: true
             onCancelClicked: ModelInstaller.cancelTaskInstalls()
-        }
-
-        LLOLabel {
-            Layout.fillWidth: true
-            visible: root.phase === "failed"
-            wrapMode: Text.WordWrap
-            font.pixelSize: Theme.captionSize
-            color: Theme.error
-            text: qsTr("Something failed — see the message above, fix the cause and press the button again.")
         }
 
         Item { Layout.fillHeight: true }

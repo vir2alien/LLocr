@@ -1,3 +1,4 @@
+#include <QElapsedTimer>
 #include <QFutureWatcher>
 #include <QImage>
 #include <QPainter>
@@ -35,6 +36,7 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
         if (conn.baseUrl.isEmpty()) {
             SelfTestResult r;
             r.error = conn.error.isEmpty() ? tr("Server not available") : conn.error;
+            r.failure = conn.failure == CheckFailure::None ? CheckFailure::Unknown : conn.failure;
             promise->reportResult(std::move(r));
             promise->reportFinished();
             return;
@@ -56,8 +58,11 @@ void SelfTestController::runSelfTestRequest(const ResolvedConnection &conn, std:
     request.profileId = m_requestProfiles.activeProfileId();
     request.parameters = m_requestProfiles.activeProfile().parameters;
 
+    QElapsedTimer elapsed;
+    elapsed.start();
+
     QFutureWatcher<OcrResult> *watch = new QFutureWatcher<OcrResult>(this);
-    connect(watch, &QFutureWatcher<OcrResult>::finished, this, [promise, watch]() {
+    connect(watch, &QFutureWatcher<OcrResult>::finished, this, [promise, watch, elapsed, timeoutMs = conn.responseTimeoutMs]() {
         const OcrResult res = watch->future().resultCount() > 0 ? watch->result() : OcrResult::makeError(StatusMessage::translate("SelfTestController", "No response"));
         watch->deleteLater();
         SelfTestResult r;
@@ -66,6 +71,9 @@ void SelfTestController::runSelfTestRequest(const ResolvedConnection &conn, std:
             r.text = res.text;
         } else {
             r.error = res.errorMessage.isEmpty() ? QObject::tr("Recognition failed") : res.errorMessage.text();
+            // A request that ran into the response timeout is a server that
+            // stayed silent; anything else is an answer the run could not use.
+            r.failure = (timeoutMs > 0 && elapsed.elapsed() >= timeoutMs) ? CheckFailure::NoAnswer : CheckFailure::RequestRejected;
         }
         promise->reportResult(std::move(r));
         promise->reportFinished();
@@ -79,6 +87,7 @@ void SelfTestController::resetSelfTest()
         return;
     m_selftestOk = false;
     m_selftestMessage.clear();
+    m_selftestFailure.clear();
     emit selftestFinished();
 }
 
@@ -97,12 +106,14 @@ void SelfTestController::runSelfTestQml()
     if (RuntimeController::modeFromSettings(m_settings) == ConnectionMode::External) {
         m_selftestOk = false;
         m_selftestMessage = tr("Self-test is available only in Managed mode");
+        m_selftestFailure = QString::fromLatin1(checkFailureKey(CheckFailure::Unknown));
         emit selftestFinished();
         return;
     }
     m_selftestRunning = true;
     m_selftestOk = false;
     m_selftestMessage = tr("Running self-test…");
+    m_selftestFailure.clear();
     emit selftestFinished();
 
     auto *watch = new QFutureWatcher<SelfTestResult>(this);
@@ -112,6 +123,9 @@ void SelfTestController::runSelfTestQml()
         m_selftestRunning = false;
         m_selftestOk = r.ok;
         m_selftestMessage = r.ok ? r.text : (r.error.isEmpty() ? tr("Recognition failed") : r.error);
+        m_selftestFailure = r.ok ? QString() : QString::fromLatin1(checkFailureKey(r.failure));
+        if (!r.ok)
+            qWarning().noquote() << "[self-test] failed (" << checkFailureKey(r.failure) << "):" << m_selftestMessage;
         emit selftestFinished();
     });
     watch->setFuture(runSelfTest());

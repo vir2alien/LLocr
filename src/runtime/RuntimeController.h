@@ -142,7 +142,7 @@ private:
     QString roleMmprojPath(ConnectionRole role) const;
     bool taskModelAvailable(ConnectionRole role) const;
     bool serverRunsRole(ConnectionRole role) const;
-    QString roleConfigError(ConnectionRole role) const;
+    QString roleConfigError(ConnectionRole role, CheckFailure *failure = nullptr) const;
     QString modelBuildError(ConnectionRole role) const;
     void beginRoleSwitch();
 
@@ -153,7 +153,7 @@ private:
     void beginManagedResolve();
     void startResolveForRole(ConnectionRole role);
     void completeResolve(ResolvedConnection conn);
-    void failResolve(const QString &message);
+    void failResolve(const QString &message, CheckFailure failure = CheckFailure::Unknown);
     void deliverCallbacks(const std::vector<PendingResolve> &callbacks, const ResolvedConnection &conn);
     void onServerStateForResolve();
     void cancelPendingRestart();
@@ -164,7 +164,9 @@ private:
     QString startServer(ConnectionRole role);
     void finishStartServer(ConnectionRole role, const QString &program, const ProbeResult &probe);
     QString describeServerFailure() const;
+    CheckFailure serverFailureKind() const;
     static QString translateServerLine(const QString &line);
+    static CheckFailure classifyServerLine(const QString &line);
 
 signals:
     void stateChanged();
@@ -224,6 +226,9 @@ private:
     ServerOwnerRecord m_orphan;
     QString m_orphanJsonPath;
     quint64 m_startGeneration = 0;
+    // What the last refused start was about: the message explains it for the
+    // log, the kind for the wizard's check screen.
+    CheckFailure m_startFailure = CheckFailure::Unknown;
 };
 
 }  // namespace llocr

@@ -47,10 +47,10 @@ Dialog {
     function rebuildSteps() {
         const choice = stepWelcome.choice
         if (choice === 1)
-            // External server: configure the endpoint, then output options.
-            steps = [stepIntro, stepWelcome, stepExternal, stepOutput]
+            // External server: configure the endpoint.
+            steps = [stepIntro, stepWelcome, stepExternal]
         else
-            steps = [stepIntro, stepWelcome, stepHardware, stepOutput, stepCheck]
+            steps = [stepIntro, stepWelcome, stepHardware, stepCheck]
     }
 
     function startWizard() {
@@ -109,11 +109,6 @@ Dialog {
             anchors.fill: parent
             visible: wizard.currentStep === stepExternal
         }
-        StepOutput {
-            id: stepOutput
-            anchors.fill: parent
-            visible: wizard.currentStep === stepOutput
-        }
         StepCheck {
             id: stepCheck
             anchors.fill: parent
@@ -152,7 +147,6 @@ Dialog {
             LLOButton {
                 text: qsTr("Skip")
                 subtle: true
-                visible: wizard.current === 0
                 onClicked: wizard.dismissWizard()
             }
             Item { Layout.fillWidth: true }

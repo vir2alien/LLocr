@@ -3334,7 +3334,7 @@
         <translation>Настройка</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+115"/>
         <source>Step %1 of %2</source>
         <translation>Шаг %1 из %2</translation>
     </message>
@@ -3344,7 +3344,7 @@
         <translation>Пропустить</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+6"/>
         <source>Back</source>
         <translation>Назад</translation>
     </message>
@@ -3362,7 +3362,7 @@
 <context>
     <name>StepCheck</name>
     <message>
-        <location filename="../../src/qml/Setup/StepCheck.qml" line="+118"/>
+        <location filename="../../src/qml/Setup/StepCheck.qml" line="+269"/>
         <source>Check and launch</source>
         <translation>Проверка и запуск</translation>
     </message>
@@ -3392,7 +3392,7 @@
         <translation>Всё уже установлено — осталась только проверка.</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+5"/>
         <source>Download and check</source>
         <translation>Скачать и проверить</translation>
     </message>
@@ -3402,29 +3402,179 @@
         <translation>Проверить</translation>
     </message>
     <message>
-        <location line="+13"/>
-        <source>Running self-test…</source>
-        <translation>Выполняется самопроверка…</translation>
+        <location line="-284"/>
+        <source>Downloading the runtime…</source>
+        <translation>Загрузка рантайма…</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <source>Self-test passed: “%1”</source>
-        <translation>Самопроверка пройдена: «%1»</translation>
+        <location line="+2"/>
+        <source>Downloading the models…</source>
+        <translation>Загрузка моделей…</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <source>All set.</source>
-        <translation>Всё готово.</translation>
+        <location line="+2"/>
+        <source>Checking…</source>
+        <translation>Идёт проверка…</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Check passed</source>
+        <translation>Проверка пройдена</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Check failed</source>
+        <translation>Проверка не пройдена</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The check has not run yet</source>
+        <translation>Проверка ещё не выполнялась</translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>The llama.cpp runtime is not installed — its file is missing.</source>
+        <translation>Рантайм llama.cpp не установлен — его файл отсутствует.</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>The check starts the server and performs one OCR request.</source>
-        <translation>Проверка запускает сервер и выполняет один OCR-запрос.</translation>
+        <source>Install it: press the button above to download the runtime, or pick an installed build in Settings → Runtime.</source>
+        <translation>Установите его: нажмите кнопку выше, чтобы скачать рантайм, или выберите установленную сборку в Настройки → Рантайм.</translation>
     </message>
     <message>
-        <location line="+42"/>
-        <source>Something failed — see the message above, fix the cause and press the button again.</source>
-        <translation>Что-то не получилось — см. сообщение выше, устраните причину и нажмите кнопку ещё раз.</translation>
+        <location line="+5"/>
+        <source>The model for the recognition task is not installed — its file is missing.</source>
+        <translation>Модель для задачи распознавания не установлена — её файл отсутствует.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Pick another model in Settings → Models, or press the button above to download the missing one.</source>
+        <translation>Выберите другую модель в Настройки → Модели или нажмите кнопку выше, чтобы скачать недостающую.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The runtime could not be downloaded.</source>
+        <translation>Не удалось скачать рантайм.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The model could not be downloaded.</source>
+        <translation>Не удалось скачать модель.</translation>
+    </message>
+    <message>
+        <location line="-5"/>
+        <source>Check the connection to the internet and the free disk space, then press the button above again.</source>
+        <translation>Проверьте подключение к интернету и свободное место на диске, затем нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>The server could not start: the port it wants is taken by another program.</source>
+        <translation>Сервер не запустился: нужный ему порт занят другой программой.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Free the port or turn on the automatic port pick in Settings → Runtime, then press the button above again.</source>
+        <translation>Освободите порт или включите автоматический подбор порта в Настройки → Рантайм, затем нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The model did not fit into the memory of this machine.</source>
+        <translation>Модель не поместилась в память этого компьютера.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Pick a lighter quantization in Settings → Models, or lower the context size in the launch parameters, then press the button above again.</source>
+        <translation>Выберите более лёгкий квант в Настройки → Модели или уменьшите размер контекста в параметрах запуска, затем нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The selected backend cannot run on this computer — the graphics runtime it needs is missing.</source>
+        <translation>Выбранный бэкенд не может работать на этом компьютере — не хватает нужной ему графической библиотеки.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Pick another backend on the Hardware step or in Settings → Runtime, then press the button above again.</source>
+        <translation>Выберите другой бэкенд на шаге «Оборудование и модели» или в Настройки → Рантайм, затем нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The server could not read the model file.</source>
+        <translation>Сервер не смог прочитать файл модели.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Download the model again or pick a supported one in Settings → Models, then press the button above again.</source>
+        <translation>Скачайте модель заново или выберите поддерживаемую в Настройки → Модели, затем нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Another copy of the app is already running and holds the runtime.</source>
+        <translation>Другая копия приложения уже запущена и удерживает рантайм.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Close the other copy and press the button above again.</source>
+        <translation>Закройте другую копию и нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>The server is not set to start on its own.</source>
+        <translation>Сервер не настроен запускаться автоматически.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Turn on the automatic start in Settings → Runtime, then press the button above again.</source>
+        <translation>Включите автозапуск в Настройки → Рантайм, затем нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The server did not start.</source>
+        <translation>Сервер не запустился.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Check the free memory and the launch parameters in Settings → Runtime, then press the button above again.</source>
+        <translation>Проверьте свободную память и параметры запуска в Настройки → Рантайм, затем нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The server is running but did not answer the test request in time.</source>
+        <translation>Сервер запущен, но не ответил на тестовый запрос вовремя.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The model may still be loading — press the button above again. If it keeps failing, look at the server log in the main window.</source>
+        <translation>Модель, возможно, ещё загружается — нажмите кнопку выше ещё раз. Если сбой повторяется, посмотрите журнал сервера в главном окне.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The server answered the test request with an error.</source>
+        <translation>Сервер ответил на тестовый запрос ошибкой.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Check the model and its parameters in Settings → Models, then press the button above again.</source>
+        <translation>Проверьте модель и её параметры в Настройки → Модели, затем нажмите кнопку выше ещё раз.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The check could not be completed.</source>
+        <translation>Проверку не удалось завершить.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Press the button above again. If it keeps failing, look at the server log in the main window.</source>
+        <translation>Нажмите кнопку выше ещё раз. Если сбой повторяется, посмотрите журнал сервера в главном окне.</translation>
+    </message>
+    <message>
+        <location line="+194"/>
+        <source>What went wrong</source>
+        <translation>Что не так</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>What to do</source>
+        <translation>Что можно сделать</translation>
     </message>
 </context>
 <context>
@@ -3489,74 +3639,6 @@
         <location line="+8"/>
         <source>This assistant recognizes text from images and PDFs using a local LLM. A few steps will configure the app — you can change everything later in Settings.</source>
         <translation>Этот помощник распознаёт текст на изображениях и PDF с помощью локальной LLM. Несколько шагов настроят приложение — всё потом можно изменить в настройках.</translation>
-    </message>
-</context>
-<context>
-    <name>StepOutput</name>
-    <message>
-        <location filename="../../src/qml/Setup/StepOutput.qml" line="+26"/>
-        <source>Output</source>
-        <translation>Вывод</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>How recognized text is structured and exported. Everything can be changed later in Settings → Output.</source>
-        <translation>Как структурируется и экспортируется распознанный текст. Всё можно изменить позже в Настройки → Вывод.</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Split pages</source>
-        <translation>Разбивать на страницы</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>When off, exported pages are joined without the “Page 1”, “Page 2” … headings.</source>
-        <translation>Когда выключено, страницы объединяются без заголовков «Page 1», «Page 2» и т.д.</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>Keep headers and page numbers</source>
-        <translation>Сохранять колонтитулы и номера страниц</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>When off, the running heads, the running feet and the page numbers from the model are ignored during recognition. Applies to newly recognized pages.</source>
-        <translation>Когда выключено, колонтитулы и номера страниц от модели игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>Keep tables as HTML</source>
-        <translation>Сохранять таблицы в HTML формате</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>When on, recognized tables are kept as the model&apos;s &lt;table&gt; HTML instead of being converted to a Markdown pipe table.</source>
-        <translation>Когда включено, распознанные таблицы сохраняются как HTML &lt;table&gt; модели вместо преобразования в Markdown-таблицу.</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>PDF export</source>
-        <translation>Экспорт в PDF</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>Orientation</source>
-        <translation>Ориентация</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Portrait</source>
-        <translation>Книжная</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Landscape</source>
-        <translation>Альбомная</translation>
-    </message>
-    <message>
-        <location line="+17"/>
-        <source>Margins (mm)</source>
-        <translation>Поля (мм)</translation>
     </message>
 </context>
 <context>

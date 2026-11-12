@@ -51,7 +51,7 @@ Besides connecting to an existing OpenAI-compatible server (`External`),
 LLocr can **own the whole runtime** (`Managed` mode):
 
 - **First-run wizard** (`Setup/` steps Intro → mode → Hardware and models →
-  Output → Check, ADR 170) drives a clean profile from scratch to a recognized
+  Check, ADR 170) drives a clean profile from scratch to a recognized
   page — no terminal needed. Existing profiles are treated as already configured and the wizard
   does **not** appear (ADR 31).
 - **Runtime (llama.cpp):** in `Settings → Runtime` the user picks a release +

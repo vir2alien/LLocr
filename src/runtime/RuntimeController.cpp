@@ -344,13 +344,22 @@ bool RuntimeController::serverRunsRole(ConnectionRole role) const
     return forRole == m_startedConfig;
 }
 
-QString RuntimeController::roleConfigError(ConnectionRole role) const
+QString RuntimeController::roleConfigError(ConnectionRole role, CheckFailure *failure) const
 {
+    const auto note = [failure](CheckFailure kind) {
+        if (failure)
+            *failure = kind;
+    };
+
     const QString program = m_settings.serverPath().trimmed();
-    if (program.isEmpty())
+    if (program.isEmpty()) {
+        note(CheckFailure::RuntimeMissing);
         return tr("Managed server is not configured");
-    if (!QFileInfo(program).isFile())
+    }
+    if (!QFileInfo(program).isFile()) {
+        note(CheckFailure::RuntimeMissing);
         return tr("File not found: %1").arg(program);
+    }
     if (modeFromSettings(m_settings) != ConnectionMode::Managed)
         return QString();
 
@@ -359,38 +368,54 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
         return buildError;
     switch (role) {
     case ConnectionRole::Decision:
-        if (model.isEmpty())
+        if (model.isEmpty()) {
+            note(CheckFailure::ModelMissing);
             return tr("Decision model is not selected — pick a model in Settings → Decision model");
-        if (!QFileInfo(model).isFile())
+        }
+        if (!QFileInfo(model).isFile()) {
+            note(CheckFailure::ModelMissing);
             return tr("Decision model file not found: %1 — re-select the model in "
                       "Settings → Decision model")
                 .arg(model);
+        }
         return QString();
     case ConnectionRole::Layout:
-        if (model.isEmpty())
+        if (model.isEmpty()) {
+            note(CheckFailure::ModelMissing);
             return tr("Layout model is not selected — pick a model in Settings → Layout model");
-        if (!QFileInfo(model).isFile())
+        }
+        if (!QFileInfo(model).isFile()) {
+            note(CheckFailure::ModelMissing);
             return tr("Layout model file not found: %1 — re-select the model in "
                       "Settings → Layout model")
                 .arg(model);
+        }
         return QString();
     case ConnectionRole::Fix:
-        if (model.isEmpty())
+        if (model.isEmpty()) {
+            note(CheckFailure::ModelMissing);
             return tr("Fix model is not selected — pick a model in Settings → Models");
-        if (!QFileInfo(model).isFile())
+        }
+        if (!QFileInfo(model).isFile()) {
+            note(CheckFailure::ModelMissing);
             return tr("Fix model file not found: %1 — re-select the model in "
                       "Settings → Models")
                 .arg(model);
+        }
         return QString();
     case ConnectionRole::BlockRecognition:
         break;
     }
-    if (model.isEmpty())
+    if (model.isEmpty()) {
+        note(CheckFailure::ModelMissing);
         return tr("Block OCR model is not selected — pick a model in Settings → Block OCR model");
-    if (!QFileInfo(model).isFile())
+    }
+    if (!QFileInfo(model).isFile()) {
+        note(CheckFailure::ModelMissing);
         return tr("Block OCR model file not found: %1 — re-select the model in "
                   "Settings → Block OCR model")
             .arg(model);
+    }
     return QString();
 }
 
@@ -492,6 +517,7 @@ void RuntimeController::resolveExternalReady(QObject *context, ConnectionRole ro
             // request would go out without it and the server would answer
             // "API key required" — so the reason is named here instead.
             conn.error = tr("The API key is in the system secret store, but the store did not give it: %1").arg(secrets.keyError);
+            conn.failure = CheckFailure::RequestRejected;
         }
         self->m_externalContextSizes.insert(conn.baseUrl, secrets.contextSizes);
         if (conn.error.isEmpty())
@@ -568,7 +594,7 @@ void RuntimeController::startResolveForRole(ConnectionRole role)
     m_resolveRole = role;
 
     if (m_lockedOut) {
-        failResolve(tr("Another LLocr instance is already running"));
+        failResolve(tr("Another LLocr instance is already running"), CheckFailure::InstanceRunning);
         return;
     }
 
@@ -576,14 +602,16 @@ void RuntimeController::startResolveForRole(ConnectionRole role)
     const bool switchNeeded = serverLive && !serverRunsRole(role);
 
     if (!serverLive || switchNeeded) {
-        const QString roleError = roleConfigError(role);
+        CheckFailure configFailure = CheckFailure::Unknown;
+        const QString roleError = roleConfigError(role, &configFailure);
         if (!roleError.isEmpty()) {
-            failResolve(roleError);
+            failResolve(roleError, configFailure);
             return;
         }
         if (!serverLive && m_state != RuntimeState::Stopping && !m_settings.autoStart() && !m_settings.startOnDemand()) {
             failResolve(tr("Server is not set to start automatically. "
-                           "Start it from the main window or Settings → Runtime."));
+                           "Start it from the main window or Settings → Runtime."),
+                        CheckFailure::AutostartOff);
             return;
         }
     }
@@ -605,9 +633,10 @@ void RuntimeController::beginManagedResolve()
     case RuntimeState::Stopping:
         break;
     case RuntimeState::NotConfigured: {
-        const QString roleError = roleConfigError(m_resolveRole);
+        CheckFailure configFailure = CheckFailure::Unknown;
+        const QString roleError = roleConfigError(m_resolveRole, &configFailure);
         if (!roleError.isEmpty()) {
-            failResolve(roleError);
+            failResolve(roleError, configFailure);
             break;
         }
         Q_FALLTHROUGH();
@@ -618,7 +647,7 @@ void RuntimeController::beginManagedResolve()
         const QString err = startServer(m_resolveRole);
         if (!err.isEmpty()) {
             setBusyState(AppBusyState::Idle);
-            failResolve(err);
+            failResolve(err, m_startFailure);
         }
         break;
     }
@@ -659,10 +688,11 @@ void RuntimeController::completeResolve(ResolvedConnection conn)
     startResolveForRole(nextRole);
 }
 
-void RuntimeController::failResolve(const QString &message)
+void RuntimeController::failResolve(const QString &message, CheckFailure failure)
 {
     ResolvedConnection fail;
     fail.error = message;
+    fail.failure = failure;
     completeResolve(std::move(fail));
 }
 
@@ -683,7 +713,7 @@ void RuntimeController::onServerStateForResolve()
             return;
         }
         setBusyState(AppBusyState::Idle);
-        failResolve(describeServerFailure());
+        failResolve(describeServerFailure(), serverFailureKind());
     } else if (m_state == RuntimeState::Stopping || m_state == RuntimeState::Stopped) {
         if (m_switching) {
             if (m_state == RuntimeState::Stopped) {
@@ -693,7 +723,7 @@ void RuntimeController::onServerStateForResolve()
             return;
         }
         setBusyState(AppBusyState::Idle);
-        failResolve(tr("Server stopped"));
+        failResolve(tr("Server stopped"), CheckFailure::ServerStartFailed);
     }
 }
 
@@ -769,7 +799,7 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
     const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (reply->error() != QNetworkReply::NoError || code < 200 || code >= 300) {
         setBusyState(AppBusyState::Idle);
-        failResolve(tr("Failed to query /v1/models: %1").arg(reply->errorString()));
+        failResolve(tr("Failed to query /v1/models: %1").arg(reply->errorString()), CheckFailure::NoAnswer);
         return;
     }
 
@@ -777,13 +807,14 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
     QString parseError;
     if (!LlamaServerProcess::parseModelsResponse(reply->readAll(), data, &parseError)) {
         setBusyState(AppBusyState::Idle);
-        failResolve(tr("Server returned a malformed /v1/models response: %1").arg(parseError));
+        failResolve(tr("Server returned a malformed /v1/models response: %1").arg(parseError), CheckFailure::RequestRejected);
         return;
     }
     if (data.isEmpty()) {
         setBusyState(AppBusyState::Idle);
         failResolve(tr("Server advertised no models via /v1/models. "
-                       "Select a model in Settings → Models"));
+                       "Select a model in Settings → Models"),
+                    CheckFailure::ModelMissing);
         return;
     }
 
@@ -816,6 +847,28 @@ QString RuntimeController::describeServerFailure() const
     return msg;
 }
 
+CheckFailure RuntimeController::serverFailureKind() const
+{
+    if (!m_server)
+        return CheckFailure::ServerStartFailed;
+    return classifyServerLine(m_server->lastError());
+}
+
+CheckFailure RuntimeController::classifyServerLine(const QString &line)
+{
+    if (line.contains(QStringLiteral("address already in use")) || line.contains(QStringLiteral("failed to bind")) || line.contains(QStringLiteral("cannot bind")))
+        return CheckFailure::PortBusy;
+    if (line.contains(QStringLiteral("cudaMalloc failed")) || line.contains(QStringLiteral("buffer_type_alloc_buffer")))
+        return CheckFailure::NotEnoughMemory;
+    if (line.contains(QStringLiteral("cudart64")) || line.contains(QStringLiteral("libvulkan.so.1")))
+        return CheckFailure::BackendUnavailable;
+    if (line.contains(QStringLiteral("failed to load model")) || line.contains(QStringLiteral("no such file")))
+        return CheckFailure::ModelMissing;
+    if (line.contains(QStringLiteral("unknown model architecture")))
+        return CheckFailure::ModelRejected;
+    return CheckFailure::ServerStartFailed;
+}
+
 QString RuntimeController::translateServerLine(const QString &line)
 {
     if (line.isEmpty())
@@ -846,33 +899,39 @@ QString RuntimeController::startServer()
 
 QString RuntimeController::startServer(ConnectionRole role)
 {
-    auto refuse = [this](const QString &message) {
+    auto refuse = [this](const QString &message, CheckFailure failure) {
         setStatusMessage(message);
+        m_startFailure = failure;
         return message;
     };
 
+    m_startFailure = CheckFailure::Unknown;
+
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty())
-        return refuse(tr("No server binary selected"));
+        return refuse(tr("No server binary selected"), CheckFailure::RuntimeMissing);
     const QFileInfo fi(program);
     if (!fi.exists())
-        return refuse(tr("File not found: %1").arg(program));
+        return refuse(tr("File not found: %1").arg(program), CheckFailure::RuntimeMissing);
     if (m_lockedOut)
-        return refuse(tr("Another instance is already running"));
+        return refuse(tr("Another instance is already running"), CheckFailure::InstanceRunning);
 
     if (m_server && (m_server->state() == RuntimeState::Starting || m_server->state() == RuntimeState::Ready || m_server->state() == RuntimeState::Stopping))
-        return refuse(tr("Server is already running"));
+        return refuse(tr("Server is already running"), CheckFailure::ServerStartFailed);
 
     const QString launchHost = m_settings.launchHost();
     if (!isLoopbackHost(launchHost) && !m_settings.allowNonLoopback())
         return refuse(tr("Host %1 is not allowed: the server is available only locally. "
                          "To allow a non-loopback host, enable the allowNonLoopback setting")
-                          .arg(launchHost));
+                          .arg(launchHost),
+                      CheckFailure::Unknown);
 
     if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
-        const QString roleError = roleConfigError(role);
+        CheckFailure configFailure = CheckFailure::Unknown;
+        const QString roleError = roleConfigError(role, &configFailure);
         if (!roleError.isEmpty()) {
             setStatusMessage(roleError);
+            m_startFailure = configFailure;
             return roleError;
         }
     }
@@ -901,7 +960,7 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
         setStatusMessage(probe.error);
         if (m_resolveInProgress) {
             setBusyState(AppBusyState::Idle);
-            failResolve(probe.error);
+            failResolve(probe.error, CheckFailure::ServerStartFailed);
         }
         return;
     }
@@ -949,7 +1008,7 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
         setState(RuntimeState::Failed);
         setStatusMessage(err);
         if (m_resolveInProgress)
-            failResolve(err);
+            failResolve(err, CheckFailure::ServerStartFailed);
         return;
     }
     if (m_server->state() == RuntimeState::Failed) {
@@ -957,7 +1016,7 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
         const QString fail = describeServerFailure();
         setStatusMessage(fail);
         if (m_resolveInProgress)
-            failResolve(fail);
+            failResolve(fail, serverFailureKind());
         return;
     }
     setState(RuntimeState::Starting);

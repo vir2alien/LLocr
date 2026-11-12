@@ -2,6 +2,7 @@
 
 #include <QString>
 
+#include "core/CheckFailure.h"
 #include "core/ConnectionConfig.h"
 #include "core/ConnectionRole.h"
 
@@ -16,6 +17,7 @@ struct ResolvedConnection {
     int contextSize = 0;  // the server's context window; 0 = unknown
 
     QString error;
+    CheckFailure failure = CheckFailure::None;  // what the error means, for the UI
 
     ConnectionConfig toConnectionConfig() const
     {
@@ -31,8 +33,9 @@ struct ResolvedConnection {
 
 struct SelfTestResult {
     bool ok = false;
-    QString text;   // OCR text returned by the server on success
-    QString error;  // human-readable failure from the §7.5 error matrix
+    QString text;                               // OCR text returned by the server on success
+    QString error;                              // human-readable failure from the §7.5 error matrix
+    CheckFailure failure = CheckFailure::None;  // what the error means, for the UI
 };
 
 }  // namespace llocr

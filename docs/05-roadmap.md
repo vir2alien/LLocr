@@ -56,7 +56,7 @@ runtime/model components in `docs/04-components.md` (§4.16, §4.17).
 | D | llama.cpp install (`ReleaseCatalog`, backend, `ArchiveExtractor`, `InstallTransaction`) | ✅ done |
 | E | models from Hugging Face (`ModelCatalog`, presets, `ModelRegistry`) | ✅ done |
 | G-core | `ensureConnectionReady()` for Managed (start→health→alias, dedup, self-test) | ✅ done |
-| F | first-run wizard (`SetupWizard` + 5 steps) | ✅ done |
+| F | first-run wizard (`SetupWizard` + 4 steps) | ✅ done |
 | G-UI | footer indicator, restart banner, loading progress, error surfacing | ✅ done |
 | H | polish + documentation: H.1 UI polish ✅, H.2 memory estimate ✅, H.3 update-check opt-in ✅, H.6 separate locks ✅, H.7 process/perf ✅, H.8 docs ✅; **H.4 closed** without a watchdog (ADR 47), **H.5 done** (the secrets live in the OS secret store, ADR 227) | ✅ done |
 

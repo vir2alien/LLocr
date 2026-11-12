@@ -107,6 +107,7 @@ class FakeModelInstaller : public QObject
     Q_PROPERTY(int state READ state CONSTANT)
     Q_PROPERTY(bool taskQueueActive READ taskQueueActive CONSTANT)
     Q_PROPERTY(QString statusMessage READ statusMessage CONSTANT)
+    Q_PROPERTY(double progress READ progress CONSTANT)
 
 public:
     enum State { Idle = 0, Ready, Installing, Error };
@@ -118,6 +119,7 @@ public:
     int state() const { return Idle; }
     bool taskQueueActive() const { return false; }
     QString statusMessage() const { return {}; }
+    double progress() const { return 0.0; }
 
     Q_INVOKABLE QVariantList defaultTaskChoices() const { return m_defaultChoices; }
     Q_INVOKABLE QVariantList applyTaskChoices(const QVariantList &choices)
@@ -213,17 +215,20 @@ class FakeSelfTest : public QObject
     Q_PROPERTY(bool selftestRunning READ selftestRunning NOTIFY selftestFinished)
     Q_PROPERTY(bool selftestOk READ selftestOk NOTIFY selftestFinished)
     Q_PROPERTY(QString selftestMessage READ selftestMessage NOTIFY selftestFinished)
+    Q_PROPERTY(QString selftestFailure READ selftestFailure NOTIFY selftestFinished)
 
 public:
     bool selftestRunning() const { return m_running; }
     bool selftestOk() const { return m_ok; }
     QString selftestMessage() const { return m_message; }
+    QString selftestFailure() const { return m_failure; }
 
     Q_INVOKABLE void runSelfTestQml()
     {
         m_running = true;
         m_ok = false;
         m_message = QStringLiteral("Running self-test…");
+        m_failure.clear();
         emit selftestFinished();
     }
 
@@ -231,15 +236,17 @@ public:
     {
         m_ok = false;
         m_message.clear();
+        m_failure.clear();
         emit selftestFinished();
     }
 
     // The end of the run.
-    void finish(bool ok, const QString &message)
+    void finish(bool ok, const QString &message, const QString &failure = QString())
     {
         m_running = false;
         m_ok = ok;
         m_message = message;
+        m_failure = failure;
         emit selftestFinished();
     }
 
@@ -257,6 +264,7 @@ private:
     bool m_running = false;
     bool m_ok = false;
     QString m_message;
+    QString m_failure;
 };
 
 // A stand-in for the HardwareInfo singleton: the hardware step shows the GPU
@@ -325,6 +333,10 @@ private slots:
     void theBackButtonStaysOnTheLastStep();
     void theWizardKeepsTheStepWhenTheDraftWasNotWritten();
     void theWizardDoesNotLeaveTheHardwareStepWithoutTheDraft();
+    void theSkipButtonStaysOnEveryStep();
+    void theWizardHasNoOutputStep();
+    void theFailedCheckExplainsWhatWentWrong();
+    void thePassedCheckSaysOnlyThatItPassed();
 
 private:
     void registerModuleTypes();
@@ -671,6 +683,119 @@ void TestSetupWizardQml::theBackButtonStaysOnTheLastStep()
     wizard->setProperty("current", last);
     QCoreApplication::processEvents();
     QCOMPARE(wizard->property("canGoBack").toBool(), true);
+}
+
+// The user must be able to leave the wizard at any moment: the Skip button
+// sits in the footer of every step, and it closes the wizard without
+// completing the setup.
+void TestSetupWizardQml::theSkipButtonStaysOnEveryStep()
+{
+    const std::unique_ptr<QObject> wizard = loadFile(QStringLiteral("SetupWizard.qml"));
+    QVERIFY2(wizard, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *skip = nullptr;
+    for (QObject *child : wizard->findChildren<QObject *>()) {
+        if (child->property("text").toString() == QLatin1String("Skip") && child->metaObject()->indexOfSignal("clicked()") >= 0)
+            skip = child;
+    }
+    QVERIFY2(skip, "the wizard has no Skip button");
+    // The popup hides its whole tree while it is closed: opened, the footer's
+    // buttons show their own visibility.
+    wizard->setProperty("parent", QVariant::fromValue<QObject *>(m_parent));
+    QVERIFY(QMetaObject::invokeMethod(wizard.get(), "open"));
+    QCoreApplication::processEvents();
+
+    const int last = wizard->property("lastStep").toInt();
+    QVERIFY2(last > 0, "the wizard's step list is empty");
+    for (int step = 0; step <= last; ++step) {
+        wizard->setProperty("current", step);
+        QCoreApplication::processEvents();
+        QVERIFY2(skip->property("visible").toBool(), qPrintable(QStringLiteral("the Skip button is hidden on step %1").arg(step + 1)));
+    }
+
+    // Skipping in the middle leaves the wizard: the setup is not complete, so
+    // the wizard comes back on the next start.
+    wizard->setProperty("current", 1);
+    QCoreApplication::processEvents();
+    QVERIFY(QMetaObject::invokeMethod(skip, "clicked"));
+    QCoreApplication::processEvents();
+    QCOMPARE(m_settings->setupDismissed(), true);
+    QCOMPARE(wizard->property("completed").toBool(), false);
+    m_settings->setSetupDismissed(false);
+}
+
+// The output options live in Settings → Output; the wizard does not walk
+// through them again.
+void TestSetupWizardQml::theWizardHasNoOutputStep()
+{
+    const std::unique_ptr<QObject> wizard = loadFile(QStringLiteral("SetupWizard.qml"));
+    QVERIFY2(wizard, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QCOMPARE(evaluate(wizard.get(), QStringLiteral("steps.length")).toInt(), 4);
+    for (QObject *child : wizard->findChildren<QObject *>()) {
+        const QString name = QString::fromLatin1(child->metaObject()->className());
+        QVERIFY2(!name.startsWith("StepOutput"), "the wizard still has the Output step");
+    }
+    QVERIFY2(findByTypeName(wizard.get(), "StepCheck"), "the wizard has no check step");
+
+    // The external mode has no hardware and no check step.
+    wizard->setProperty("current", 1);
+    QCoreApplication::processEvents();
+    QObject *welcome = findByTypeName(wizard.get(), QStringLiteral("StepWelcome"));
+    QVERIFY2(welcome, "the wizard has no welcome step");
+    welcome->setProperty("choice", 1);
+    QVERIFY(QMetaObject::invokeMethod(wizard.get(), "rebuildSteps"));
+    QCoreApplication::processEvents();
+    QCOMPARE(evaluate(wizard.get(), QStringLiteral("steps.length")).toInt(), 3);
+}
+
+// A failed check must say what went wrong and what the user can do about it —
+// and nothing of the service output that produced the failure.
+void TestSetupWizardQml::theFailedCheckExplainsWhatWentWrong()
+{
+    const std::unique_ptr<QObject> step = loadFile(QStringLiteral("Setup/StepCheck.qml"));
+    QVERIFY2(step, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    evaluate(step.get(), QStringLiteral("runCheck()"));
+    QCoreApplication::processEvents();
+
+    m_selfTest->finish(false, QStringLiteral("<|im_end|> the model did not answer"), QStringLiteral("portBusy"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(evaluate(step.get(), QStringLiteral("phase")).toString(), QStringLiteral("failed"));
+    QCOMPARE(evaluate(step.get(), QStringLiteral("statusText")).toString(), QStringLiteral("Check failed"));
+
+    const QVariantMap failure = evaluate(step.get(), QStringLiteral("failure")).toMap();
+    QVERIFY2(!failure.value("reason").toString().isEmpty(), "the failed check does not say what went wrong");
+    QVERIFY2(!failure.value("action").toString().isEmpty(), "the failed check does not say what to do");
+    QVERIFY2(failure.value("reason").toString().contains(QStringLiteral("port")), qPrintable(QStringLiteral("the reason does not name the cause: %1").arg(failure.value("reason").toString())));
+
+    // The raw service output does not reach the screen.
+    for (QObject *child : step->findChildren<QObject *>()) {
+        const QString text = child->property("text").toString();
+        QVERIFY2(!text.contains(QStringLiteral("im_end")), qPrintable(QStringLiteral("the service output is on the screen: %1").arg(text)));
+    }
+}
+
+// A passed check says so — and nothing else.
+void TestSetupWizardQml::thePassedCheckSaysOnlyThatItPassed()
+{
+    const std::unique_ptr<QObject> step = loadFile(QStringLiteral("Setup/StepCheck.qml"));
+    QVERIFY2(step, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    evaluate(step.get(), QStringLiteral("runCheck()"));
+    QCoreApplication::processEvents();
+
+    m_selfTest->finish(true, QStringLiteral("<|im_end|>"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(evaluate(step.get(), QStringLiteral("phase")).toString(), QStringLiteral("done"));
+    QCOMPARE(evaluate(step.get(), QStringLiteral("statusText")).toString(), QStringLiteral("Check passed"));
+
+    for (QObject *child : step->findChildren<QObject *>()) {
+        const QString text = child->property("text").toString();
+        QVERIFY2(!text.contains(QStringLiteral("im_end")), qPrintable(QStringLiteral("the service output is on the screen: %1").arg(text)));
+    }
 }
 
 int main(int argc, char *argv[])

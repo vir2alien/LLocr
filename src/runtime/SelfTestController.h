@@ -27,6 +27,10 @@ class SelfTestController : public QObject
     Q_PROPERTY(bool selftestRunning READ selftestRunning NOTIFY selftestFinished)
     Q_PROPERTY(bool selftestOk READ selftestOk NOTIFY selftestFinished)
     Q_PROPERTY(QString selftestMessage READ selftestMessage NOTIFY selftestFinished)
+    // What the last run's failure means, as a stable key ("portBusy",
+    // "notEnoughMemory", …). The wizard's last step turns it into the
+    // plain-language answer; the message above stays in the log.
+    Q_PROPERTY(QString selftestFailure READ selftestFailure NOTIFY selftestFinished)
 
 public:
     explicit SelfTestController(SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, QObject *parent = nullptr);
@@ -41,6 +45,7 @@ public:
     bool selftestRunning() const { return m_selftestRunning; }
     bool selftestOk() const { return m_selftestOk; }
     QString selftestMessage() const { return m_selftestMessage; }
+    QString selftestFailure() const { return m_selftestFailure; }
 
     void retranslate();
 
@@ -60,6 +65,7 @@ private:
     bool m_selftestRunning = false;
     bool m_selftestOk = false;
     QString m_selftestMessage;
+    QString m_selftestFailure;
 };
 
 }  // namespace llocr

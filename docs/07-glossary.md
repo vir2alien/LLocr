@@ -1860,6 +1860,34 @@ appendix at the end of this file.
   the actions that are visible, so the notice shrinks (and elides) before the
   buttons do.
 
+- **308.** The wizard can be left at every step, and the output options are not
+  one of its steps. «Skip» sits in the footer of **every** step, not only on
+  the first: the setup is a conversation, not a gate, and the user must be
+  able to walk away at any moment. Skipping closes the wizard without
+  completing the setup (`setupDismissed = true`), so the wizard comes back on
+  the next start until it is finished — the same rule the ✕ has always had.
+  The **Output** step is removed: the options it carried (the page split, the
+  page furniture, the tables as HTML, the PDF options) live in **Settings →
+  Output**, and the wizard walked through them a second time. The steps are
+  now Intro → mode → Hardware and models → Check (managed) and Intro → mode →
+  External server (external).
+
+- **309.** The check screen says what happened, in plain words. The verdict
+  stands on a line of its own, larger than the rest of the text: «Check
+  passed» / «Check failed» — and on the passed side nothing else. A failed
+  check names the cause and the way out («What went wrong» / «What to do»),
+  one pair of sentences per failure kind: the runtime or the model is not on
+  disk, the download did not finish, the port is busy, the model did not fit
+  into the memory, the GPU backend cannot start, the server cannot read the
+  model, another instance holds the runtime, the server stayed silent, the
+  server answered with an error. The service output — the raw self-test
+  reply, the server's log tail — stays off the screen: it is written for the
+  log, not for the reader, and it goes to the app log instead. The cause
+  travels as a **kind**: `CheckFailure` (`core/CheckFailure.h`) rides the
+  resolved connection from the runtime to the self-test and reaches the
+  wizard as a stable key. The message alone cannot carry it — it mixes the
+  cause with the raw output, and it is written in the language of the log.
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

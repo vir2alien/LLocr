@@ -39,6 +39,7 @@ qt_add_library(llocr_core STATIC
     core/DecisionResult.h
     core/ConnectionConfig.h
     core/ConnectionRole.h
+    core/CheckFailure.h
     core/LlamaClient.h
     core/LlamaClient.cpp
     core/RequestJournal.h

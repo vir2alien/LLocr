@@ -562,16 +562,20 @@ On a clean profile (`setupVersion == 0 && !setupDismissed`) `Main.qml` triggers
    still missing is downloaded by the check step.
 4. **External** (external mode only) — the endpoint, the API key (optional) and
    the timeout of the user's own server.
-5. **Output** — how the recognized text is structured: the page split, the page
-   furniture, the tables as HTML and the PDF options.
-6. **Check** (managed only) — downloads what is missing (the runtime and the
+5. **Check** (managed only) — downloads what is missing (the runtime and the
    models) and runs an end-to-end check: the server starts, the model loads, one
-   OCR request is performed. A failed check is fixed by going back to the step
-   that holds the cause.
+   OCR request is performed. The verdict stands on a line of its own («Check
+   passed» / «Check failed»), and a failed check names the cause and the way
+   out («What went wrong» / «What to do») — the service output stays out of the
+   screen and goes to the app log (ADR 309). A failed check is fixed by going
+   back to the step that holds the cause.
 
-Navigation: Back / Next / Skip; a step can't be left forward until its
-condition holds; the ✕ sets `setupDismissed = true`. All strings are `qsTr`
-and translated in `llocr_ru.ts`. ✅
+Navigation: Back / Next / Skip; **Skip sits on every step** — the setup can be
+left at any moment, and the wizard comes back on the next start until it is
+finished (ADR 308). A step can't be left forward until its condition holds; the
+✕ sets `setupDismissed = true`. The output options are not a wizard step: they
+live in **Settings → Output** (ADR 308). All strings are `qsTr` and translated
+in `llocr_ru.ts`. ✅
 
 ## 4.19 UI sketch (G-UI)
 Once the runtime is wired, the main window surfaces its state:
