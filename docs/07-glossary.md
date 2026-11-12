@@ -910,6 +910,23 @@ appendix at the end of this file.
   «sideways» label is fixed by alternation depth. The 180° hole is honest —
   no cheap 0/180 detector yet; direction remains a model guess (14/20). With
   the setting off, ADR 245's one-click hint works.
+- **312.** Gemma 4 26B-A4B ships as a non-default fix model
+  (`gemma-4-26b-a4b`; the fix default stays `qwen3.5-4b` per ADR 169) — the
+  family's first MoE (30 blocks, 128 experts × 8 active, encoder-free
+  vision), and the memory estimate learns the split: a profile with
+  `memory.cpuOffload` carries a VRAM floor (all the buffers + the usual
+  margin), a RAM floor (`requiredRamBytes` = weights + 2 GiB) and
+  `splitForVramBudget`, with which the Launch tab draws the actual VRAM/RAM
+  weight layout for the card's budget; over the VRAM budget is information
+  for such a model, not an error, and the RAM check trips at 1.0×, not at the
+  card's 0.9× — 0.9× would flag the owner's working 16-GB machine (the
+  design's anti-goal: mmap degrades smoothly). The launch layer pins
+  `n-gpu-layers auto` (llama.cpp `--fit` splits the 14 GiB of weights; the
+  platform's 99 aborts the load on a 6-GB card), `ubatch-size 2048`
+  (encoder-free vision aborts the server on the default 512), `ctx-size
+  8192` and `fit-target 512`; `minBuild` b12137 — older builds silently
+  parse `auto` as 0 (`atoi`). Manual: `docs/15-model-gemma-4.md`; method and
+  calibration: `docs/18-memory-estimate.md` §6.1.
 
 ### Verification & fix
 

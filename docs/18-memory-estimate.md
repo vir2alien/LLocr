@@ -159,7 +159,7 @@ they change the reservations:
 | --- | --- | --- |
 | `--parallel 1 --cache-reuse 0 --no-context-shift` | the launch policy (`resources/profiles/serverLaunch.json`) | one context, no reuse |
 | `--ctx-size` | the platform profile (16384 on macOS) | the KV cache and the mask scale with it |
-| `--ubatch-size` | the model profile (512 by default, 2048 for the gemma-4 12B, 512 for the minicpm-jev; the archive's decision profiles carried 6144–8192) | the working set scales with it |
+| `--ubatch-size` | the model profile (512 by default, 2048 for the gemma-4 12B / 26B-A4B, 512 for the minicpm-jev; the archive's decision profiles carried 6144–8192) | the working set scales with it |
 | `--flash-attn on\|off` | the platform profile, overridden by the model profile (the gemma-4 E4B turns it **off**) | with flash attention off the encoder keeps an attention matrix over the whole page |
 | `--image-min-tokens` / `--image-max-tokens` | the model profile | the page budget of the model |
 | `--spec-type` / `--model-draft` | the model profile | the draft gets a context of its own |
@@ -223,8 +223,8 @@ context of its own: it has no cache and no compute buffer of its own.
 ## 6. The calibration of the shipped models
 
 The coefficients of every model of the catalog, as they are in the profiles
-(measured against llama.cpp b11799 — the Qwen3-VL pair against b12000 —
-`--parallel 1`, the app's flags):
+(measured against llama.cpp b11799 — the Qwen3-VL pair against b12000, the
+gemma-4-26b-a4b against b12137 — `--parallel 1`, the app's flags):
 
 | Model | KV layers | KV heads × head dim | Vision | Working set | Draft (weights / context) | Sliding cells |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -237,6 +237,7 @@ The coefficients of every model of the catalog, as they are in the profiles
 | `minicpm-jev` | 6 | 2 × 256 | 110 655 B/token (2116) | derived | — | — |
 | `gemma-4-12b` | 8 | 8 × 64 | 55 419 B/token (1120) | 267 320 B/token + 2 B | 253 708 800 / 387 994 092 | 1 006 632 960 |
 | `gemma-4-e4b` | 4 | 2 × 512 | **3 986 933 350 flat** | 176 218 B/token + 36 B | 59 678 016 / 188 743 680 | 62 914 560 |
+| `gemma-4-26b-a4b` | 5 | 8 × 128 | 616 980 B/token (1120) | 220 216 B/token + 2 B | 251 939 328 / 346 051 051 | 629 145 600 |
 
 The requirement that follows from these coefficients, for the quantization each
 model's manual names as the main one (the sizes in GiB, the buffers in MiB):
@@ -245,6 +246,7 @@ model's manual names as the main one (the sizes in GiB, the buffers in MiB):
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `gemma-4-12b` | q4_k_xl | 6.26 | 167 | 1216 | 586 | 59 | 242 | 402 | 8.86 | **9.64 GiB** |
 | `gemma-4-e4b` | q4_k_xl | 3.93 | 944 | 316 | 374 | 3802 | 57 | 244 | 9.53 | **10.35 GiB** |
+| `gemma-4-26b-a4b` | q4_k_xl | 13.27 | 1138 | 760 | 462 | 659 | 240 | 362 | 16.81 | **18.21 GiB** |
 | `glm-ocr` | q8_0 | 0.89 | 462 | 1024 | 65 | 1400 | 0 | 0 | 3.77 | **4.13 GiB** |
 | `mineru` | q8_0 | 0.49 | 677 | 192 | 52 | 173 | 0 | 0 | 1.56 | **1.75 GiB** |
 | `qwen3.5-4b` | q8_0 | 4.29 | 641 | 512 | 103 | 108 | 0 | 0 | 5.63 | **6.14 GiB** |
@@ -257,7 +259,7 @@ for the Qwen tower, 238 848 for the GLM-OCR tower and 132 351 for the MinerU
 one.
 
 The draft's own KV rate (`draftKvBytesPerToken`): 2 048 for the gemma-4-12B's
-MTP drafter, 4 096 for the gemma-4-E4B's.
+MTP drafter, 4 096 for the gemma-4-E4B's and the gemma-4-26B-A4B's.
 
 The ubatch is the working set's lever, and the decision task rides it: the
 archive's decision profiles (`clef-flash`, `d3-flash`, `d3-mini`) asked for a
@@ -269,6 +271,36 @@ out of room for the weights. The page models look cheap because the
 vision encoder is small at their budget, and expensive when the projector
 tiles the page (the Unlimited-OCR did — its flat 2 981 117 952-byte vision
 buffer is in the archive's profile).
+
+### 6.1 Split models
+
+`gemma-4-26b-a4b` ships the first profile with `cpuOffload: true` — a model
+that is not meant to fit the card. llama.cpp's `--fit` (`--n-gpu-layers auto`)
+splits the weights between VRAM and RAM, and the estimator reports two more
+numbers next to the full-in-VRAM requirement
+(`ModelMemoryEstimator::estimateMemory`):
+
+| Number | Value | Formula |
+| --- | --- | --- |
+| `vramFloorBytes` | 3.9 GiB (4 167 972 279 B) | everything but the weights — projector, draft and its context, KV cache, working set, vision — plus the same margin (64 MiB + 8 %): the floor below which partial offload is impossible |
+| `requiredRamBytes` | 15.27 GiB (16 396 530 752 B) | the weights + a 2 GiB headroom (`ramHeadroomBytes` in the profile; 0 = the estimator's constant): the RAM floor — 15.27 GiB required, so the smallest machine that runs the model is the 16-GiB one |
+| Full-in-VRAM requirement | 18.21 GiB | the existing `requiredVramBytes` (§6) |
+
+The quant row carries both floors — `VRAM ≥ 3.9 GiB (split) / 18.2 GiB (full)`
+next to the RAM floor — and the Launch tab draws the card's layout with
+`splitForVramBudget(vramBudget)`:
+`weightsInVram = clamp(vramBudget − vramFloorBytes, 0, weightsBytes)`,
+`weightsInRam = weightsBytes − weightsInVram`; the budget is the card's 0.9×
+share, the same `kMemoryBudgetFactor` as everywhere. Over the VRAM budget is
+information for such a model, not an error; the error is `overRamBudget` —
+and it trips at **1.0×** of the installed RAM, not at the card's 0.9×: a 0.9×
+bar would flag the owner's 16-GB machine, where the model verifiably runs
+(mmap degrades smoothly) — the design's anti-goal. Models without the flag
+behave exactly as before.
+
+Reality check: on the owner's 6 GB card `--fit` put 5.05 GiB on the card
+(the 3.88 GiB floor + ~5 layers of weights) with 15.8 GiB of RAM in use —
+the floors and the layout agree with the machine.
 
 ## 7. The traps
 

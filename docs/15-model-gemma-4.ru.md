@@ -1,11 +1,12 @@
-# 15. Руководство по модели: Gemma 4 E4B / 12B QAT (fix)
+# 15. Руководство по модели: Gemma 4 E4B / 12B / 26B-A4B QAT (fix)
 
 > Английский оригинал: [docs/15-model-gemma-4.md](15-model-gemma-4.md)
 
-Самодостаточное руководство по двум моделям Gemma 4 QAT: какие задачи они
+Самодостаточное руководство по трём моделям Gemma 4 QAT: какие задачи они
 обслуживают, что скачивать, как запустить `llama-server`, как собирается
 запрос. Каждое значение прослеживается до профилей моделей
-(`resources/profiles/models/gemma-4-e4b.json` / `gemma-4-12b.json`),
+(`resources/profiles/models/gemma-4-e4b.json` / `gemma-4-12b.json` /
+`gemma-4-26b-a4b.json`),
 `resources/profiles/serverLaunch.json`,
 `resources/profiles/requests/fix-requests.json` или названного исходного
 файла. Русское зеркало: [`15-model-gemma-4.ru.md`](15-model-gemma-4.ru.md).
@@ -21,9 +22,14 @@
 - **E4B** — 4,5 млрд эффективных параметров (8 млрд с Per-Layer Embeddings),
   отдельный зрительный энкодер (~150 млн). **12B Unified** — 11,95 млрд,
   «без энкодера»: патчи изображения входят в декодер напрямую; llama.cpp всё
-  равно загружает проектор отдельным файлом `mmproj`. Зрительный бенчмарк
-  карточки (OmniDocBench 1.5, среднее расстояние редактирования): E4B
-  **0.181**, 12B **0.164**.
+  равно загружает проектор отдельным файлом `mmproj`. **26B-A4B** —
+  mixture-of-experts в этом семействе: 30 блоков, 128 экспертов по 8 активных
+  на токен, зрение без энкодера, как у 12B, MTP-драфтер в репозитории.
+  Зрительный бенчмарк карточки (OmniDocBench 1.5, среднее расстояние
+  редактирования): E4B **0.181**, 12B **0.164** — карточного бенчмарка у
+  26B-A4B нет: модель добавлена под замеры качества владельца, где она
+  выиграла fix-стенд (см. дизайн-документ
+  `docs/superpowers/specs/2026-11-12-gemma-4-26b-moe-memory-design.md`).
 - Задача: **исправление** (`roles.fix`, алиас `llocr-fix`): на входе кроп
   одного блока плюс OCR-кандидат, на выходе **OK / FIX / REVIEW** по
   протоколу `full_block` (ADR 192) — `OK` оставляет кандидата, `FIX` несёт
@@ -36,7 +42,9 @@
 ## 2. Файлы и скачивание
 
 Репозитории (`files.repo` в профилях; `minBuild` **b9600** — первая линейка
-llama.cpp с поддержкой Gemma4 MTP и её ранними исправлениями):
+llama.cpp с поддержкой Gemma4 MTP и её ранними исправлениями; у 26B-A4B —
+**b12137**: `n-gpu-layers auto` нужен с b12100, более старые сборки парсят
+`auto` как 0 через `atoi`, см. §3):
 
 | Репозиторий | Файл | id кванта | Размер | Назначение |
 | --- | --- | --- | --- | --- |
@@ -47,6 +55,9 @@ llama.cpp с поддержкой Gemma4 MTP и её ранними исправ
 | [`unsloth/gemma-4-12B-it-qat-GGUF`](https://huggingface.co/unsloth/gemma-4-12B-it-qat-GGUF) | `gemma-4-12B-it-qat-UD-Q4_K_XL.gguf` | q4_k_xl | 6.3 GiB | единственный квант репозитория (более высокие точности ухудшают качество, по данным упаковщика) |
 | 〃 | `mmproj-F16.gguf` | f16 | 167 MiB | зрительный проектор — **обязателен** |
 | 〃 | `mtp-gemma-4-12B-it.gguf` | q4_0 | — | MTP-драфтер |
+| [`unsloth/gemma-4-26B-A4B-it-qat-GGUF`](https://huggingface.co/unsloth/gemma-4-26B-A4B-it-qat-GGUF) | `gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf` | q4_k_xl | 13.3 GiB | единственный квант репозитория — на небольшой карте работает в частичной выгрузке (§3, §6) |
+| 〃 | `mmproj-F16.gguf` | f16 | 1.1 GiB | зрительный проектор — **обязателен** |
+| 〃 | `mtp-gemma-4-26B-A4B-it.gguf` | q4_0 | — | MTP-драфтер |
 
 - MTP-драфтер лежит в корне репозитория как «smart Q4_0» почти без потерь
   (в папке `MTP/` репозитория лежат другие точности). LLocr ставит его
@@ -115,6 +126,44 @@ llama-server.exe ^
 округляет вверх до сетки патчей) и убивает сервер по GGML-ассерту. E4B
 кодирует изображения в собственном проекторе на каузальном пути и оставляет
 дефолт.
+
+**Отличия 26B-A4B**: раскладка сплита. 14 ГБ весов не обязаны помещаться на
+карту, поэтому модельный слой забирает сплит-решения у платформы. Одна
+конкретная команда — Gemma 4 **26B-A4B** на **Windows · CUDA**, собранная
+как команда E4B выше:
+
+```bat
+llama-server.exe ^
+  --model C:\LLocr\models\unsloth__gemma-4-26B-A4B-it-qat-GGUF\gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf ^
+  --mmproj C:\LLocr\models\unsloth__gemma-4-26B-A4B-it-qat-GGUF\mmproj-F16.gguf ^
+  --model-draft C:\LLocr\models\unsloth__gemma-4-26B-A4B-it-qat-GGUF\mtp-gemma-4-26B-A4B-it.gguf ^
+  --alias llocr-fix --host 127.0.0.1 --port 8080 ^
+  --parallel 1 --cache-reuse 0 --no-context-shift --no-warmup --verbosity 3 ^
+  --n-gpu-layers auto --flash-attn on --ctx-size 8192 ^
+  --spec-type draft-mtp --spec-draft-n-max 2 --temp 0 ^
+  --jinja --reasoning-budget 0 --image-min-tokens 1120 ^
+  --ubatch-size 2048 --fit-target 512
+```
+
+Собственные записи модельного слоя, поверх унаследованных от 12B
+`--ubatch-size 2048`:
+
+- **`--n-gpu-layers auto`** — заменяет платформенные `99`: llama.cpp `--fit`
+  сам решает, сколько из 30 блоков пойдёт на карту, остальные остаются в
+  памяти (mmap); платформенные 99 убивают загрузку по out-of-memory на карте
+  6 ГБ. `auto` разбирается со сборки b12100 (более старые читают его как 0
+  через `atoi` — отсюда `minBuild` b12137 у профиля, сборка, на которой
+  измерена раскладка).
+- **`--fit-target 512`** — запас в МиБ, который `--fit` держит свободным на
+  карте; 512 — измеренная раскладка для карты 6 ГБ (большие запасы оставляют
+  меньше экспертных слоёв в VRAM и замедляют prefill). Это не пользовательский
+  knob — значение живёт в модельном слое.
+- **`--ctx-size 8192`** — заменяет платформенные 16384: сплит-раскладка
+  настроена под это окно (16384 тратит ~600 МиБ VRAM впустую, измерено
+  b12137).
+- **`--spec-draft-n-max 2`** — драфт-токенов за шаг; 2 — серверная настройка
+  карточки для этого драфтера (E4B/12B работают с 4; упаковщик советует
+  попробовать 1–6 и оставить самый быстрый на машине).
 
 ## 4. Сборка запроса
 
@@ -206,15 +255,24 @@ ADR 183), который кладёт исправление в `box.correctedTe
 с пометкой в футере; сервер запоминается, и последующие запросы пропускают
 рассуждения с самого начала.
 
+**26B-A4B** собирает те же запросы, что и 12B: тот же профиль промптов
+`fix-requests.json` и тот же список параметров `request` (temperature 0,
+нейтральные штрафы, `stream false`, `cache_prompt false`,
+stop `</CANDIDATE>`), `maxOutput` 8192. Ничего в этом разделе не зависит от
+модели — единственные отличия 26B живут в слое запуска (§3, включая
+`--spec-draft-n-max 2`).
+
 ## 5. Бюджеты
 
 | Величина | Значение | Источник |
 | --- | --- | --- |
-| Контекст сервера (`ctx-size`) | 16384 (GPU: Metal/CUDA) / 8192 (CPU) | платформенные профили `serverLaunch.json` |
+| Контекст сервера (`ctx-size`) | 16384 (GPU: Metal/CUDA) / 8192 (CPU); 26B-A4B закрепляет 8192 на всех платформах (§3) | платформенные профили `serverLaunch.json`; модельный слой 26B |
 | дефолт `max_tokens` | 8192 | роль `maxOutput` |
 | `max_tokens` по блоку | page_number 64, header/footer 256, seal/title/key_value 512, caption/footnote/ref_text 1024, text/abstract/list 2048, code/equation 4096, table 16384 | `fix-requests.json → maxOutputByBlock` (алиасы: formula→equation, reference→ref_text, image/table_caption→caption, figure/table_footnote→footnote); тип без записи сохраняет дефолт 8192. Весь блок едет в ответе, поэтому бюджет обязан его вмещать |
 | Бюджет рассуждений | off / 512 / 1024 / 1536 | глобальные настройки `check/fixReasoningBudgetTokens` (исправление) и `check/readReasoningBudgetTokens` (чтение), дефолт off — подставляется в каждый запрос, без перезапуска сервера (ADR 268) |
 | Нижняя граница токенов изображения | 1120 | `--image-min-tokens` (§3) |
+| Рабочий ubatch | 2048 — обязателен у 12B и 26B-A4B | запуск модели (§3): зрение без энкодера убивает сервер на дефолтных 512 |
+| Память (26B-A4B) | RAM ≥ 16 GiB · VRAM ≥ 3.9 GiB split / 18.2 GiB full | минимумы `cpuOffload` профиля (`docs/18-memory-estimate.ru.md` §6.1); раскладка весов по карте рисуется во вкладке запуска |
 
 Как вычисляется бюджет запроса (`src/core/RequestBudget.cpp`,
 `FixController::fixBlock`): промпт оценивается как
@@ -231,6 +289,15 @@ ADR 183), который кладёт исправление в `box.correctedTe
   который профиль 12B не перекрывает. **12B нужен `--ubatch-size 2048`**
   (§3): с дефолтом 512 первый декод изображения убивает сервер (`non-causal
   attention requires n_ubatch >= n_tokens`).
+- **26B-A4B по дизайну работает в частичной выгрузке** на картах до 8 ГиБ:
+  `--n-gpu-layers auto` кладёт на карту то, что помещается, остальным весам
+  остаётся память (mmap). Первый запрос идёт примерно вдвое медленнее, пока
+  веса не осядут в кэше памяти. RAM ≥ 16 GiB — рабочий минимум: проверка RAM
+  оценщика держит 16-гигабайтную машину зелёной
+  (`docs/18-memory-estimate.ru.md` §6.1).
+- **26B-A4B нужна llama.cpp b12137** (`minBuild`): более старые сборки
+  парсят `auto` в `n-gpu-layers` как 0 и оставляют все слои на CPU; с b12100
+  значение доходит до `--fit` сервера (до того `atoi` читал строку как 0).
 - Мысль, обрезанная на середине (маленький бюджет), иногда вливается в сам
   ответ — за исправленным блоком следует хвост объяснения. Режим off
   остаётся дефолтом; берите бюджет достаточно большим, чтобы мысль
@@ -252,7 +319,7 @@ ADR 183), который кладёт исправление в `box.correctedTe
 ## 7. Где что лежит и ссылки
 
 Код: профили моделей `resources/profiles/models/gemma-4-e4b.json` /
-`gemma-4-12b.json`; тексты запросов
+`gemma-4-12b.json` / `gemma-4-26b-a4b.json`; тексты запросов
 `resources/profiles/requests/fix-requests.json` / `read-requests.json`;
 `VisionChatModel::buildRoot`, `FixModel::buildRequestBody` /
 `parseResponse`, `FixDiffGate::fixBlock` (`src/models/`);
@@ -264,6 +331,7 @@ ADR 183), который кладёт исправление в `box.correctedTe
 
 - E4B QAT GGUF: <https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF>
 - 12B QAT GGUF: <https://huggingface.co/unsloth/gemma-4-12B-it-qat-GGUF>
+- 26B-A4B QAT GGUF: <https://huggingface.co/unsloth/gemma-4-26B-A4B-it-qat-GGUF>
 - Unsloth «How to Run Gemma 4 QAT»: <https://unsloth.ai/docs/models/gemma-4/qat>
 - Гайд Unsloth по MTP (точности драфтера, флаги `--spec-*`):
   <https://unsloth.ai/docs/models/mtp>
@@ -273,4 +341,5 @@ ADR 183), который кладёт исправление в `box.correctedTe
 
 Проектные решения: ADR 88 (профили — весь контракт), 126 (слои запуска),
 162–164 (задача исправления, двухслойная верификация), 183 (по-блочная
-эквивалентность), 192 (`full_block`), 259/260/266 (протокол чтения).
+эквивалентность), 192 (`full_block`), 259/260/266 (протокол чтения),
+312 (26B-A4B и сплит-оценка памяти).

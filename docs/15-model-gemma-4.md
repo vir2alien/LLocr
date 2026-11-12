@@ -1,9 +1,10 @@
-# 15. Model manual: Gemma 4 E4B / 12B QAT (fix)
+# 15. Model manual: Gemma 4 E4B / 12B / 26B-A4B QAT (fix)
 
-Self-contained manual for the two Gemma 4 QAT models: what they serve, what
+Self-contained manual for the three Gemma 4 QAT models: what they serve, what
 to download, how to launch `llama-server`, how the request is composed. Every
 value is traceable to the model profiles
-(`resources/profiles/models/gemma-4-e4b.json` / `gemma-4-12b.json`),
+(`resources/profiles/models/gemma-4-e4b.json` / `gemma-4-12b.json` /
+`gemma-4-26b-a4b.json`),
 `resources/profiles/serverLaunch.json`,
 `resources/profiles/requests/fix-requests.json` or the named source file.
 Russian mirror: [`15-model-gemma-4.ru.md`](15-model-gemma-4.ru.md).
@@ -18,8 +19,13 @@ Russian mirror: [`15-model-gemma-4.ru.md`](15-model-gemma-4.ru.md).
 - **E4B** — 4.5B effective parameters (8B with Per-Layer Embeddings),
   dedicated vision encoder (~150M). **12B Unified** — 11.95B, "encoder-free":
   image patches go into the decoder directly; llama.cpp still loads the
-  projector as a separate `mmproj` file. Card vision benchmark (OmniDocBench
-  1.5, avg edit distance): E4B **0.181**, 12B **0.164**.
+  projector as a separate `mmproj` file. **26B-A4B** — the family's
+  mixture-of-experts: 30 blocks, 128 experts with 8 active per token,
+  encoder-free vision like the 12B, the MTP drafter in the repo. Card vision
+  benchmark (OmniDocBench 1.5, avg edit distance): E4B **0.181**, 12B
+  **0.164** — no card benchmark for the 26B-A4B: the model was added for the
+  owner's quality measurements, where it won the fix stand (see the design
+  doc `docs/superpowers/specs/2026-11-12-gemma-4-26b-moe-memory-design.md`).
 - Task: **fix** (`roles.fix`, alias `llocr-fix`): one block crop plus the OCR
   candidate in, **OK / FIX / REVIEW** out over the `full_block` protocol
   (ADR 192) — `OK` keeps the candidate, `FIX` carries the **complete
@@ -31,7 +37,9 @@ Russian mirror: [`15-model-gemma-4.ru.md`](15-model-gemma-4.ru.md).
 ## 2. Files and download
 
 Repositories (`files.repo` in the profiles; `minBuild` **b9600** — the first
-llama.cpp line with Gemma4 MTP support and its early fixes):
+llama.cpp line with Gemma4 MTP support and its early fixes; the 26B-A4B
+carries **b12137** — `n-gpu-layers auto` needs b12100+, older builds parse
+`auto` as 0 by `atoi`, see §3):
 
 | Repo | File | Quant id | Size | Purpose |
 | --- | --- | --- | --- | --- |
@@ -42,6 +50,9 @@ llama.cpp line with Gemma4 MTP support and its early fixes):
 | [`unsloth/gemma-4-12B-it-qat-GGUF`](https://huggingface.co/unsloth/gemma-4-12B-it-qat-GGUF) | `gemma-4-12B-it-qat-UD-Q4_K_XL.gguf` | q4_k_xl | 6.3 GiB | the repo's single quant (higher precisions degrade accuracy, per the packager) |
 | 〃 | `mmproj-F16.gguf` | f16 | 167 MiB | vision projector — **mandatory** |
 | 〃 | `mtp-gemma-4-12B-it.gguf` | q4_0 | — | MTP drafter |
+| [`unsloth/gemma-4-26B-A4B-it-qat-GGUF`](https://huggingface.co/unsloth/gemma-4-26B-A4B-it-qat-GGUF) | `gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf` | q4_k_xl | 13.3 GiB | the repo's single quant — run in partial offload on a small card (§3, §6) |
+| 〃 | `mmproj-F16.gguf` | f16 | 1.1 GiB | vision projector — **mandatory** |
+| 〃 | `mtp-gemma-4-26B-A4B-it.gguf` | q4_0 | — | MTP drafter |
 
 - The MTP drafter sits at the repo root as a near-lossless "smart Q4_0" (the
   repo's `MTP/` folder holds other precisions). LLocr installs explicitly —
@@ -108,6 +119,43 @@ split across ubatches; with the server default 512 a block crop upscaled to
 the 1120-token budget lands just above the cap (the resize rounds up to the
 patch grid) and aborts the server on a GGML assert. The E4B encodes images in
 its own projector on the causal path and keeps the default.
+
+**26B-A4B differences**: the split layout. The 14 GB of weights are not meant
+to fit the card, so the model layer takes the split decisions away from the
+platform. One concrete command — Gemma 4 **26B-A4B** on **Windows · CUDA**,
+composed like the E4B one:
+
+```bat
+llama-server.exe ^
+  --model C:\LLocr\models\unsloth__gemma-4-26B-A4B-it-qat-GGUF\gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf ^
+  --mmproj C:\LLocr\models\unsloth__gemma-4-26B-A4B-it-qat-GGUF\mmproj-F16.gguf ^
+  --model-draft C:\LLocr\models\unsloth__gemma-4-26B-A4B-it-qat-GGUF\mtp-gemma-4-26B-A4B-it.gguf ^
+  --alias llocr-fix --host 127.0.0.1 --port 8080 ^
+  --parallel 1 --cache-reuse 0 --no-context-shift --no-warmup --verbosity 3 ^
+  --n-gpu-layers auto --flash-attn on --ctx-size 8192 ^
+  --spec-type draft-mtp --spec-draft-n-max 2 --temp 0 ^
+  --jinja --reasoning-budget 0 --image-min-tokens 1120 ^
+  --ubatch-size 2048 --fit-target 512
+```
+
+The model layer's own entries, on top of the 12B's `--ubatch-size 2048`:
+
+- **`--n-gpu-layers auto`** — replaces the platform's `99`: llama.cpp's
+  `--fit` decides itself how many of the 30 blocks go onto the card and the
+  rest stay in RAM (mmap); the platform's 99 aborts the load with an
+  out-of-memory on a 6 GB card. `auto` is parsed from build b12100 (older
+  builds read it as 0 by `atoi` — hence the profile's `minBuild` b12137, the
+  build the layout was measured on).
+- **`--fit-target 512`** — the margin in MiB `--fit` keeps free on the card;
+  512 is the measured layout for a 6 GB card (bigger margins leave fewer
+  expert layers in VRAM and slow the prefill). Not a user knob — the value
+  lives in the model layer.
+- **`--ctx-size 8192`** — replaces the platform's 16384: the split layout is
+  tuned for this window (16384 spends ~600 MiB more VRAM for nothing,
+  measured b12137).
+- **`--spec-draft-n-max 2`** — draft tokens per step; 2 is the card's server
+  setting for this drafter (the E4B/12B run 4; the packager suggests trying
+  1–6 and keeping the fastest per machine).
 
 ## 4. Composing the request
 
@@ -198,15 +246,24 @@ the whole budget thinking — is retried **once without the thinking**
 amount), with a footer note; the server is remembered and later requests skip
 the thinking from the start.
 
+**The 26B-A4B** composes the same requests as the 12B: the same
+`fix-requests.json` prompt profile and the same `request` parameter list
+(temperature 0, neutral penalties, `stream false`, `cache_prompt false`,
+stop `</CANDIDATE>`), `maxOutput` 8192. Nothing in this section is
+per-model — the 26B's only differences are in the launch layer (§3,
+`--spec-draft-n-max 2` included).
+
 ## 5. Budgets
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Server context (`ctx-size`) | 16384 (GPU: Metal/CUDA) / 8192 (CPU) | `serverLaunch.json` platform profiles |
+| Server context (`ctx-size`) | 16384 (GPU: Metal/CUDA) / 8192 (CPU); the 26B-A4B pins 8192 on every platform (§3) | `serverLaunch.json` platform profiles; the 26B's model layer |
 | `max_tokens` default | 8192 | role `maxOutput` |
 | `max_tokens` per block | page_number 64, header/footer 256, seal/title/key_value 512, caption/footnote/ref_text 1024, text/abstract/list 2048, code/equation 4096, table 16384 | `fix-requests.json → maxOutputByBlock` (aliases: formula→equation, reference→ref_text, image/table_caption→caption, figure/table_footnote→footnote); a type without an entry keeps the 8192 default. The whole block travels in the reply, so the budget must fit it |
 | Reasoning budget | off / 512 / 1024 / 1536 | global settings `check/fixReasoningBudgetTokens` (fix) and `check/readReasoningBudgetTokens` (read), default off — injected per request, no server restart (ADR 268) |
 | Image token floor | 1120 | `--image-min-tokens` (§3) |
+| Working ubatch | 2048 — mandatory on the 12B and the 26B-A4B | model launch (§3): the encoder-free vision aborts the server on the default 512 |
+| Memory (26B-A4B) | RAM ≥ 16 GiB · VRAM ≥ 3.9 GiB split / 18.2 GiB full | the profile's `cpuOffload` floors (`docs/18-memory-estimate.md` §6.1); the card's weight layout is drawn in the Launch tab |
 
 How the request budget is computed (`src/core/RequestBudget.cpp`,
 `FixController::fixBlock`): the prompt is estimated as
@@ -223,6 +280,16 @@ thinking does not fit, it shrinks and the footer says to what.
   **12B needs `--ubatch-size 2048`** (§3): with the default 512 the first
   image decode aborts the server (`non-causal attention requires
   n_ubatch >= n_tokens`).
+- **The 26B-A4B runs in partial offload by design** on cards of up to 8 GiB:
+  `--n-gpu-layers auto` puts on the card what fits and leaves the rest of the
+  weights to RAM (mmap). The first request runs at about half speed until the
+  weights reach the RAM cache. RAM ≥ 16 GiB is the working minimum — the
+  estimator's RAM check keeps a 16-GB host green (`docs/18-memory-estimate.md`
+  §6.1).
+- **The 26B-A4B needs llama.cpp b12137** (`minBuild`): older builds parse the
+  `auto` of `n-gpu-layers` as 0 and keep every layer on the CPU; from b12100
+  the value reaches the server's `--fit` (`atoi` before that read the string
+  as 0).
 - A thought cut in the middle (a small budget) sometimes runs into the answer
   itself — a tail of explanation follows the corrected block. The off mode
   stays the default; pick the budget large enough for the thought to fit.
@@ -242,7 +309,8 @@ thinking does not fit, it shrinks and the footer says to what.
 ## 7. Where things live and links
 
 Code: model profiles `resources/profiles/models/gemma-4-e4b.json` /
-`gemma-4-12b.json`; request texts `resources/profiles/requests/fix-requests.json`
+`gemma-4-12b.json` / `gemma-4-26b-a4b.json`; request texts
+`resources/profiles/requests/fix-requests.json`
 / `read-requests.json`; `VisionChatModel::buildRoot`, `FixModel::buildRequestBody`
 / `parseResponse`, `FixDiffGate::fixBlock` (`src/models/`);
 `ServerLaunchConfig::toArguments` + `LaunchProfileStore::compose`
@@ -253,6 +321,7 @@ and pipeline), `docs/18-memory-estimate.md` (VRAM), `docs/16-model-qwen3.5.md`
 
 - E4B QAT GGUF: <https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF>
 - 12B QAT GGUF: <https://huggingface.co/unsloth/gemma-4-12B-it-qat-GGUF>
+- 26B-A4B QAT GGUF: <https://huggingface.co/unsloth/gemma-4-26B-A4B-it-qat-GGUF>
 - Unsloth «How to Run Gemma 4 QAT»: <https://unsloth.ai/docs/models/gemma-4/qat>
 - Unsloth MTP guide (drafter precisions, `--spec-*` flags):
   <https://unsloth.ai/docs/models/mtp>
@@ -262,4 +331,5 @@ and pipeline), `docs/18-memory-estimate.md` (VRAM), `docs/16-model-qwen3.5.md`
 
 Design decisions: ADR 88 (the profiles are the whole contract), 126 (launch
 layers), 162–164 (the fix task, two-layer verification), 183 (per-block
-equivalence), 192 (`full_block`), 259/260/266 (the read protocol).
+equivalence), 192 (`full_block`), 259/260/266 (the read protocol), 312 (the
+26B-A4B and the split memory estimate).
