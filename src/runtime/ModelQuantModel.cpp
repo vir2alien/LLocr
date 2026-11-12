@@ -113,6 +113,9 @@ QVariantMap quantMap(const ModelQuantModel::Quant &q)
     item.insert(QStringLiteral("sizeLabel"), ::llocr::formatBytes(q.size));
     item.insert(QStringLiteral("vramBytes"), QVariant::fromValue(q.vramBytes));
     item.insert(QStringLiteral("vramLabel"), ::llocr::formatBytes(q.vramBytes));
+    item.insert(QStringLiteral("cpuOffload"), q.cpuOffload);
+    item.insert(QStringLiteral("ramLabel"), q.cpuOffload && q.ramBytes > 0 ? ::llocr::formatBytes(q.ramBytes) : QString());
+    item.insert(QStringLiteral("vramFloorLabel"), q.cpuOffload && q.vramFloorBytes > 0 ? ::llocr::formatBytes(q.vramFloorBytes) : QString());
     item.insert(QStringLiteral("installed"), q.entryIndex >= 0);
     item.insert(QStringLiteral("active"), q.active);
     item.insert(QStringLiteral("downloadable"), q.presetIndex >= 0);
@@ -221,10 +224,11 @@ void ModelQuantModel::refresh()
         emit countChanged();
 }
 
-qint64 ModelQuantModel::requiredVram(const ModelProfiles::Profile &profile, qint64 weightsBytes, qint64 projectorBytes) const
+ModelMemoryEstimate ModelQuantModel::requirementFor(const ModelProfiles::Profile &profile, qint64 weightsBytes, qint64 projectorBytes) const
 {
+    ModelMemoryEstimate estimate;
     if (!profile.memory.valid)
-        return 0;
+        return estimate;
     const QString role = effectiveRole(profile, m_role);
     const LaunchProfile launch = m_installer.runtime().launchProfiles().activeProfile(profile.id, role);
     const int visionTokens = ModelProfiles::visionTokensFor(profile, role);
@@ -233,7 +237,7 @@ qint64 ModelQuantModel::requiredVram(const ModelProfiles::Profile &profile, qint
     shape.projectorBytes = projectorBytes;
     shape.draftBytes = profile.memory.draftBytes;
     const ModelMemoryBudget budget = budgetFromLaunch(launch, visionTokens);
-    return estimateMemory(shape, budget).requiredVramBytes;
+    return estimateMemory(shape, budget);
 }
 
 QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
@@ -284,8 +288,13 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
             row.quants.append(quantOf(installed, presets, profile.id, profile.files.repo, stem, quantLabelOf(entry), 0, activePath));
             covered.insert(stem);
         }
-        for (Quant &quant : row.quants)
-            quant.vramBytes = requiredVram(profile, quant.size, projectorBytes);
+        for (Quant &quant : row.quants) {
+            const ModelMemoryEstimate req = requirementFor(profile, quant.size, projectorBytes);
+            quant.vramBytes = req.requiredVramBytes;
+            quant.vramFloorBytes = req.vramFloorBytes;
+            quant.ramBytes = req.requiredRamBytes;
+            quant.cpuOffload = profile.memory.valid && profile.memory.cpuOffload;
+        }
         if (!row.quants.isEmpty())
             rows.append(row);
     }
