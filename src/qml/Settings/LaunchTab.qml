@@ -131,9 +131,33 @@ Item {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             font.pixelSize: Theme.footnoteSize
+            color: Theme.helpColor
+            visible: root.memoryEstimate.cpuOffload === true && root.memoryEstimate.overVramBudget === true
+            text: qsTr("Partial offload: the card holds %1 of the weights, %2 stay in RAM — RAM ≥ %3 of %4 on this machine.")
+                  .arg(root.memoryEstimate.splitInVramLabel)
+                  .arg(root.memoryEstimate.splitInRamLabel)
+                  .arg(root.memoryEstimate.requiredRamLabel)
+                  .arg(root.memoryEstimate.ramLabel)
+        }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            font.pixelSize: Theme.footnoteSize
             color: Theme.error
-            visible: root.memoryEstimate.overVramBudget === true
+            visible: root.memoryEstimate.overVramBudget === true && root.memoryEstimate.cpuOffload !== true
             text: qsTr("The model does not fit in this card's video memory. Lower the number of GPU layers or the context window, or pick a smaller quantization.")
+        }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            font.pixelSize: Theme.footnoteSize
+            color: Theme.error
+            visible: root.memoryEstimate.overRamBudget === true
+            text: qsTr("Not enough RAM for partial offload: the model needs %1, this machine has %2.")
+                  .arg(root.memoryEstimate.requiredRamLabel)
+                  .arg(root.memoryEstimate.ramLabel)
         }
 
         LLOLabel {

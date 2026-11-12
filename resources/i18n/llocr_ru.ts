@@ -1519,9 +1519,17 @@
         <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, черновик %5, KV-кэш %6, рабочий буфер %7, накладные %8.</translation>
     </message>
     <message>
+        <source>Partial offload: the card holds %1 of the weights, %2 stay in RAM — RAM ≥ %3 of %4 on this machine.</source>
+        <translation>Частичная выгрузка: карта держит %1 весов, %2 остаются в памяти — нужно RAM ≥ %3 из %4 на этой машине.</translation>
+    </message>
+    <message>
         <location line="+28"/>
         <source>The model does not fit in this card&apos;s video memory. Lower the number of GPU layers or the context window, or pick a smaller quantization.</source>
         <translation>Модель не помещается в видеопамять этой карты. Уменьшите число слоёв на GPU или размер контекста, либо выберите меньший квант.</translation>
+    </message>
+    <message>
+        <source>Not enough RAM for partial offload: the model needs %1, this machine has %2.</source>
+        <translation>Для частичной выгрузки не хватает RAM: модели нужно %1, на этой машине %2.</translation>
     </message>
     <message>
         <location line="+22"/>
@@ -3693,6 +3701,10 @@
         <location line="-22"/>
         <source>VRAM ≥ %1</source>
         <translation>VRAM ≥ %1</translation>
+    </message>
+    <message>
+        <source>RAM ≥ %1 · VRAM ≥ %2 (split) / %3 (full)</source>
+        <translation>RAM ≥ %1 · VRAM ≥ %2 (частично) / %3 (полностью)</translation>
     </message>
     <message>
         <location line="+221"/>

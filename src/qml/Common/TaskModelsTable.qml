@@ -214,7 +214,9 @@ Item {
         let s = table.quantMarker(q) + " " + q.id
         if (q.sizeLabel.length > 0)
             s += " — " + q.sizeLabel
-        if (q.vramLabel.length > 0)
+        if (q.cpuOffload === true && q.ramLabel.length > 0)
+            s += " · " + qsTr("RAM ≥ %1 · VRAM ≥ %2 (split) / %3 (full)").arg(q.ramLabel).arg(q.vramFloorLabel).arg(q.vramLabel)
+        else if (q.vramLabel.length > 0)
             s += " · " + qsTr("VRAM ≥ %1").arg(q.vramLabel)
         return s
     }
