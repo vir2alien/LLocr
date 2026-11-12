@@ -205,6 +205,8 @@ ModelProfiles::Memory readMemory(const QJsonObject &root)
     memory.draftBytes = static_cast<qint64>(object.value(QStringLiteral("draftBytes")).toDouble(0));
     memory.draftKvBytesPerToken = static_cast<qint64>(object.value(QStringLiteral("draftKvBytesPerToken")).toDouble(0));
     memory.draftContextBytes = static_cast<qint64>(object.value(QStringLiteral("draftContextBytes")).toDouble(0));
+    memory.cpuOffload = object.value(QStringLiteral("cpuOffload")).toBool(false);
+    memory.ramHeadroomBytes = static_cast<qint64>(object.value(QStringLiteral("ramHeadroomBytes")).toDouble(0));
     memory.valid = memory.nEmbd > 0;
     return memory;
 }

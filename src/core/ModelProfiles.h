@@ -91,6 +91,9 @@ public:
         qint64 workingSetContextBytes = 0;
         qint64 kvBytesPerToken = 0;  // the KV cache per context token (0 = derive it)
         qint64 kvBytesFixed = 0;     // the sliding layers' cells (they do not follow the context)
+        // The model runs with llama.cpp splitting the weights between VRAM and RAM.
+        bool cpuOffload = false;
+        qint64 ramHeadroomBytes = 0;  // the OS/app reserve on top of the weights (0 = the estimator's constant)
         bool valid = false;
     };
 

@@ -167,6 +167,31 @@ static QString writeFile(QTemporaryDir &dir, const QString &name, qint64 bytes)
     return path;
 }
 
+// The Gemma 4 26B-A4B numbers (spec 2026-11-12): a MoE model that runs with
+// llama.cpp's fit splitting the weights between the card and RAM.
+static ModelMemoryShape moe26Shape()
+{
+    ModelMemoryShape shape;
+    shape.weightsBytes = 14249047104LL;
+    shape.projectorBytes = 1193058784LL;
+    shape.draftBytes = 251939328LL;
+    shape.draftKvBytesPerToken = 4096;
+    shape.draftContextBytes = 346051051LL;
+    shape.kvBytesPerToken = 20480;
+    shape.kvBytesFixed = 629145600LL;
+    shape.workingSetBytesPerToken = 220216;
+    shape.workingSetContextBytes = 2;
+    shape.visionBytesPerToken = 616980;
+    shape.nLayer = 30;
+    shape.nKvLayers = 5;
+    shape.nHead = 16;
+    shape.nKvHead = 8;
+    shape.headDim = 128;
+    shape.nEmbd = 2816;
+    shape.cpuOffload = true;
+    return shape;
+}
+
 class TestModelMemoryEstimator : public QObject
 {
     Q_OBJECT
@@ -187,6 +212,9 @@ private slots:
     void aPageFillsTheImageBudgetAndACropDoesNot();
     void theLaunchProfileSetsTheBudget();
     void systemRamIsPositive();
+    void cpuOffloadAddsFloorAndRamFloor();
+    void cpuOffloadSplitsWeightsByCardBudget();
+    void cpuOffloadFalseLeavesEstimateUnchanged();
 };
 
 void TestModelMemoryEstimator::parsesHparamsAndComputesKvCache()
@@ -532,6 +560,72 @@ void TestModelMemoryEstimator::theLaunchProfileSetsTheBudget()
 void TestModelMemoryEstimator::systemRamIsPositive()
 {
     QVERIFY(systemPhysicalRamBytes() > 0);
+}
+
+void TestModelMemoryEstimator::cpuOffloadAddsFloorAndRamFloor()
+{
+    ModelMemoryBudget budget;
+    budget.ctxSize = 8192;
+    budget.ubatchTokens = 2048;
+    budget.visionTokens = 1120;
+    const ModelMemoryEstimate e = estimateMemory(moe26Shape(), budget);
+
+    // draft context, KV, working set, vision — pinned by the spec
+    QCOMPARE(e.draftContextBytes, 4096LL * 8192 + 346051051LL);
+    QCOMPARE(e.kvCacheBytes, 20480LL * 8192 + 629145600LL);
+    QCOMPARE(e.computeBufferBytes, 220216LL * 2048 + 8192LL * 2048 * 2);
+    QCOMPARE(e.visionBufferBytes, 616980LL * 1120);
+    // the floor: everything but the main weights, with the same margin rule
+    const qint64 base = e.totalBytes - e.modelBytes;
+    QCOMPARE(e.vramFloorBytes, base + 64LL * 1024 * 1024 + base * 8 / 100);
+    QCOMPARE(e.vramFloorBytes, 4167972279LL);
+    // RAM floor: the weights plus the headroom (default constant when 0)
+    QCOMPARE(e.requiredRamBytes, e.modelBytes + 2LL * 1024 * 1024 * 1024);
+    QCOMPARE(e.requiredRamBytes, 16396530752LL);
+    QCOMPARE(e.requiredVramBytes, 19556943151LL);
+}
+
+void TestModelMemoryEstimator::cpuOffloadSplitsWeightsByCardBudget()
+{
+    ModelMemoryBudget budget;
+    budget.ctxSize = 8192;
+    budget.ubatchTokens = 2048;
+    budget.visionTokens = 1120;
+    const ModelMemoryEstimate e = estimateMemory(moe26Shape(), budget);
+
+    // the owner's card: 6 GiB, the app's budget is 0.9 ×
+    const MemorySplit s = splitForVramBudget(e, 5798205849LL);
+    QCOMPARE(s.weightsInVramBytes, 1630233570LL);
+    QCOMPARE(s.weightsInRamBytes, e.modelBytes - s.weightsInVramBytes);
+    QCOMPARE(s.ramRequiredBytes, s.weightsInRamBytes + 2LL * 1024 * 1024 * 1024);
+
+    // a card that holds everything: nothing stays in RAM
+    const MemorySplit big = splitForVramBudget(e, e.vramFloorBytes + e.modelBytes);
+    QCOMPARE(big.weightsInVramBytes, e.modelBytes);
+    QCOMPARE(big.weightsInRamBytes, 0LL);
+
+    // no card at all: everything in RAM, buffers included
+    const MemorySplit none = splitForVramBudget(e, 0);
+    QCOMPARE(none.weightsInVramBytes, 0LL);
+    QCOMPARE(none.ramRequiredBytes, e.totalBytes + 2LL * 1024 * 1024 * 1024);
+}
+
+void TestModelMemoryEstimator::cpuOffloadFalseLeavesEstimateUnchanged()
+{
+    ModelMemoryShape shape = moe26Shape();
+    shape.cpuOffload = false;
+    ModelMemoryBudget budget;
+    budget.ctxSize = 8192;
+    budget.ubatchTokens = 2048;
+    budget.visionTokens = 1120;
+    const ModelMemoryEstimate e = estimateMemory(shape, budget);
+    QCOMPARE(e.vramFloorBytes, 0LL);
+    QCOMPARE(e.requiredRamBytes, 0LL);
+    QCOMPARE(e.requiredVramBytes, e.totalBytes + e.overheadBytes);
+    const MemorySplit s = splitForVramBudget(e, 5798205849LL);
+    QCOMPARE(s.weightsInVramBytes, 0LL);
+    QCOMPARE(s.weightsInRamBytes, 0LL);
+    QCOMPARE(s.ramRequiredBytes, 0LL);
 }
 
 QTEST_MAIN(TestModelMemoryEstimator)

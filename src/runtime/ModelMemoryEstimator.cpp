@@ -71,6 +71,10 @@ constexpr qint64 kServerOverheadBytes = 64 * 1024 * 1024;
 // handed out, and the freed ones do not go back to the card at once.
 constexpr qint64 kOverheadShare = 8;  // per cent
 
+// The RAM a split run needs on top of the weights: the OS and the app live
+// in the same memory the spilled weights land in.
+constexpr qint64 kRamHeadroomBytes = 2LL * 1024 * 1024 * 1024;
+
 class GgufReader
 {
 public:
@@ -497,6 +501,23 @@ QString cacheType(const QString &type)
 
 }  // namespace
 
+MemorySplit splitForVramBudget(const ModelMemoryEstimate &estimate, qint64 vramBudgetBytes)
+{
+    MemorySplit s;
+    if (!estimate.vramFloorBytes || !estimate.requiredRamBytes)
+        return s;
+    const qint64 headroom = estimate.requiredRamBytes - estimate.modelBytes;
+    if (vramBudgetBytes <= 0) {
+        s.weightsInRamBytes = estimate.modelBytes;
+        s.ramRequiredBytes = estimate.totalBytes + headroom;
+        return s;
+    }
+    s.weightsInVramBytes = qBound<qint64>(0, vramBudgetBytes - estimate.vramFloorBytes, estimate.modelBytes);
+    s.weightsInRamBytes = estimate.modelBytes - s.weightsInVramBytes;
+    s.ramRequiredBytes = s.weightsInRamBytes + headroom;
+    return s;
+}
+
 ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMemoryBudget &budget)
 {
     ModelMemoryEstimate e;
@@ -528,6 +549,12 @@ ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMem
     // graph metadata and the allocator's slack.
     e.overheadBytes = kServerOverheadBytes + e.totalBytes * kOverheadShare / 100;
     e.requiredVramBytes = e.totalBytes + e.overheadBytes;
+    if (shape.cpuOffload) {
+        const qint64 base = e.totalBytes - e.modelBytes;
+        e.vramFloorBytes = base + kServerOverheadBytes + base * kOverheadShare / 100;
+        const qint64 headroom = shape.ramHeadroomBytes > 0 ? shape.ramHeadroomBytes : kRamHeadroomBytes;
+        e.requiredRamBytes = e.modelBytes + headroom;
+    }
     return e;
 }
 
@@ -553,6 +580,8 @@ ModelMemoryShape shapeFromProfile(const ModelProfiles::Memory &memory)
     shape.workingSetBytesPerToken = memory.workingSetBytesPerToken;
     shape.workingSetContextBytes = memory.workingSetContextBytes;
     shape.kvBytesPerToken = memory.kvBytesPerToken;
+    shape.cpuOffload = memory.cpuOffload;
+    shape.ramHeadroomBytes = memory.ramHeadroomBytes;
     return shape;
 }
 

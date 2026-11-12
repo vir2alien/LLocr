@@ -45,6 +45,10 @@ struct ModelMemoryShape {
     qint64 workingSetContextBytes = 0;   // per context token of the attention mask
     qint64 kvBytesPerToken = 0;          // 0 = derive it from the shape
     qint64 kvBytesFixed = 0;             // the sliding layers' cells (0 = the cache follows the context)
+
+    // The model runs with llama.cpp splitting the weights between VRAM and RAM.
+    bool cpuOffload = false;
+    qint64 ramHeadroomBytes = 0;  // the OS/app reserve on top of the weights (0 = the estimator's constant)
 };
 
 // What the server is asked to do: the context window, the ubatch and the
@@ -67,6 +71,8 @@ struct ModelMemoryEstimate {
     qint64 overheadBytes = 0;       // the server's own allocations
     qint64 totalBytes = 0;          // the six above
     qint64 requiredVramBytes = 0;   // the card that runs it: the total plus the margin
+    qint64 vramFloorBytes = 0;      // the card floor of a split run: everything but the weights plus the margin (0 = no split)
+    qint64 requiredRamBytes = 0;    // the RAM of a split run: the weights plus the headroom (0 = no split)
     qint64 systemRamBytes = 0;      // total physical RAM of this machine
 
     int nLayer = 0;
@@ -80,7 +86,18 @@ struct ModelMemoryEstimate {
     QString error;       // read/parse problem, detail for debugging
 };
 
+// How a split run lays out (llama.cpp's fit): the weights that stay on the
+// card, the ones that spill into RAM, and the RAM the spilled run needs.
+// Zeroed for a model that does not offload.
+struct MemorySplit {
+    qint64 weightsInVramBytes = 0;
+    qint64 weightsInRamBytes = 0;
+    qint64 ramRequiredBytes = 0;
+};
+
 ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMemoryBudget &budget);
+
+MemorySplit splitForVramBudget(const ModelMemoryEstimate &estimate, qint64 vramBudgetBytes);
 
 // The shape a model file declares: the architecture the GGUF header carries.
 ModelMemoryShape shapeFromFile(const QString &modelPath, bool *ok = nullptr, QString *error = nullptr);
