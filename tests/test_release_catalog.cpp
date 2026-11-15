@@ -121,6 +121,9 @@ private slots:
     void detectPlatformMatchesHost();
     void staleCacheSurvivesFailedFetch();
     void fallbackCacheIsBoundToItsSource();
+    void prereleaseFlagDefaultsToBeta();
+    void buildNumberRecoveredFromAssets();
+    void betaFetchDropsStableReleases();
 
 private:
     // Answers every request with one canned status line, so the fetch paths can
@@ -447,6 +450,74 @@ void TestReleaseCatalog::buildFromTag()
     QCOMPARE(extractBuildNumberFromTag(QStringLiteral("10594")), 10594);
     QCOMPARE(extractBuildNumberFromTag(QStringLiteral("v10594")), 10594);
     QCOMPARE(extractBuildNumberFromTag(QStringLiteral("latest")), -1);
+}
+
+// The fixtures carry no `prerelease` field, as a legacy cache does not: absent
+// means beta, or a cache written before the field existed would lose the whole
+// list to the beta filter.
+void TestReleaseCatalog::prereleaseFlagDefaultsToBeta()
+{
+    QString err;
+    const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(buildReleases(), err);
+    QVERIFY(err.isEmpty());
+    QVERIFY(!releases.isEmpty());
+    for (const ReleaseInfo &r : releases)
+        QVERIFY2(r.prerelease, qPrintable(r.tagName));
+}
+
+void TestReleaseCatalog::buildNumberRecoveredFromAssets()
+{
+    QJsonObject release;
+    release.insert(QStringLiteral("tag_name"), QStringLiteral("v1.0.0"));
+    release.insert(QStringLiteral("prerelease"), false);
+    QJsonArray assets;
+    assets.append(makeAsset(QStringLiteral("llama-b12359-bin-win-cpu-x64.zip"), QStringLiteral("https://example.com/win-cpu.zip"), 900));
+    release.insert(QStringLiteral("assets"), assets);
+    QJsonArray items;
+    items.append(release);
+
+    QString err;
+    const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(items, err);
+    QVERIFY(err.isEmpty());
+    QCOMPARE(releases.size(), 1);
+    QCOMPARE(releases.at(0).build, qint64(12359));
+    QVERIFY(!releases.at(0).prerelease);
+}
+
+void TestReleaseCatalog::betaFetchDropsStableReleases()
+{
+    QJsonObject stable;
+    stable.insert(QStringLiteral("tag_name"), QStringLiteral("v1.0.0"));
+    stable.insert(QStringLiteral("prerelease"), false);
+    QJsonObject beta;
+    beta.insert(QStringLiteral("tag_name"), QStringLiteral("b9999"));
+    beta.insert(QStringLiteral("prerelease"), true);
+    QJsonArray assets;
+    assets.append(makeAsset(QStringLiteral("llama-b9999-bin-win-cpu-x64.zip"), QStringLiteral("https://example.com/win-cpu.zip"), 900));
+    beta.insert(QStringLiteral("assets"), assets);
+    QJsonArray items;
+    items.append(stable);
+    items.append(beta);
+
+    const QByteArray body = QJsonDocument(items).toJson(QJsonDocument::Compact);
+    QByteArray response;
+    response += QByteArrayLiteral("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: ");
+    response += QByteArray::number(body.size());
+    response += QByteArrayLiteral("\r\n\r\n");
+    response += body;
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    StatusServer server;
+    QVERIFY(server.start(response));
+
+    QNetworkAccessManager nam;
+    QString error;
+    const QList<ReleaseInfo> list = ReleaseCatalog::fetchReleasesLocal(&nam, dir.path(), error, 5000, server.url());
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    QCOMPARE(list.size(), 1);
+    QCOMPARE(list.first().tagName, QStringLiteral("b9999"));
+    QCOMPARE(list.first().build, qint64(9999));
 }
 
 QTEST_MAIN(TestReleaseCatalog)

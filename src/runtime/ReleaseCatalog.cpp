@@ -62,6 +62,15 @@ QJsonArray cachedReleasesArray(const QJsonDocument &doc, QString *sourceUrl)
     return doc.array();
 }
 
+// Plain http is accepted only on the loopback hosts a local mock server
+// listens on; the production URLs are always https.
+HttpClient::Response catalogGet(QNetworkAccessManager *nam, const QUrl &url, const HttpClient::Options &options)
+{
+    const QString host = url.host();
+    const bool allowInsecure = host == QLatin1String("127.0.0.1") || host == QLatin1String("::1") || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
+    return HttpClient::get(nam, url, options, 5, allowInsecure);
+}
+
 }  // namespace
 
 int extractBuildNumberFromTag(const QString &tagName)
@@ -141,6 +150,7 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items, QS
         r.name = o.value(QStringLiteral("name")).toString();
         r.publishedAt = o.value(QStringLiteral("published_at")).toString();
         r.build = extractBuildNumberFromTag(r.tagName);
+        r.prerelease = o.contains(QStringLiteral("prerelease")) ? o.value(QStringLiteral("prerelease")).toBool() : true;
 
         const QJsonArray assets = o.value(QStringLiteral("assets")).toArray();
         for (const QJsonValue &av : assets) {
@@ -161,6 +171,17 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items, QS
                 const QString digest = table.value(normalizedLower(asset.fileName));
                 if (!digest.isEmpty())
                     asset.sha256 = digest;
+            }
+        }
+        // A stable tag ("v1.0.0") carries no build number; the asset names do,
+        // and the install tag needs it.
+        if (r.build < 0) {
+            for (const ReleaseAsset &asset : r.assets) {
+                const int fromAsset = extractBuildNumberFromTag(asset.build);
+                if (fromAsset > 0) {
+                    r.build = fromAsset;
+                    break;
+                }
             }
         }
         releases.append(r);
@@ -225,6 +246,16 @@ QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir, const QStr
 QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam, QString cacheDir, QString &error, int timeoutMs, const QString &apiUrl)
 {
     const QString requestUrl = apiUrl.isEmpty() ? QLatin1String(kApiUrl) : apiUrl;
+    // A stable release carries no installable binaries, so it is noise to the
+    // installer — and, topping the answer, it would blind the update check.
+    const auto betaOnly = [](const QList<ReleaseInfo> &list) {
+        QList<ReleaseInfo> out;
+        for (const ReleaseInfo &r : list) {
+            if (r.prerelease)
+                out.append(r);
+        }
+        return out;
+    };
     QList<ReleaseInfo> fromCache;
     QDateTime cachedAt;
     qint64 cachedBuild = -1;
@@ -232,7 +263,7 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     QString cacheErr;
     fromCache = loadCache(cacheDir, requestUrl, cachedAt, cachedBuild, isFresh, cacheErr);
     if (isFresh)
-        return fromCache;
+        return betaOnly(fromCache);
     if (fromCache.isEmpty())
         fromCache = readCacheFile(cacheDir, requestUrl, cacheErr, &cachedBuild);
 
@@ -246,12 +277,12 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     options.headers = {
         {"Accept", "application/vnd.github+json"},
     };
-    const HttpClient::Response response = HttpClient::get(nam, QUrl(requestUrl), options);
+    const HttpClient::Response response = catalogGet(nam, QUrl(requestUrl), options);
     const QByteArray payload = response.body;
     const int status = response.status;
 
     // Callers assign `error` first; the helper only picks cache-vs-empty.
-    const auto failWithCache = [&fromCache]() { return fromCache.isEmpty() ? QList<ReleaseInfo>() : fromCache; };
+    const auto failWithCache = [&fromCache, &betaOnly]() { return betaOnly(fromCache); };
 
     if (response.timedOut) {
         error = QObject::tr("Timed out fetching release list");
@@ -284,7 +315,7 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
         error = QObject::tr("Malformed release list from GitHub");
         return failWithCache();
     }
-    const QList<ReleaseInfo> parsed = parseReleasesJson(doc.array(), error);
+    const QList<ReleaseInfo> parsed = betaOnly(parseReleasesJson(doc.array(), error));
     if (parsed.isEmpty() && error.isEmpty())
         error = QObject::tr("No releases parsed");
 
