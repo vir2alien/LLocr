@@ -277,10 +277,14 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     const QStringList fixModels = ModelProfiles::idsForRole(profiles, QStringLiteral("fix"));
-    QCOMPARE(
-        fixModels,
-        QStringList(
-            {QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-26b-a4b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3-vl-4b"), QStringLiteral("qwen3-vl-8b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
+    QCOMPARE(fixModels,
+             QStringList({QStringLiteral("gemma-4-12b"),
+                          QStringLiteral("gemma-4-26b-a4b"),
+                          QStringLiteral("gemma-4-e4b"),
+                          QStringLiteral("qwen3-vl-4b"),
+                          QStringLiteral("qwen3-vl-8b"),
+                          QStringLiteral("qwen3.5-4b"),
+                          QStringLiteral("qwen3.5-9b")}));
 
     const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
     QVERIFY(fixRequests);

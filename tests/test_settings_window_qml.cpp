@@ -256,6 +256,7 @@ class FakeRuntimeInstaller : public QObject
     Q_OBJECT
     Q_PROPERTY(int state READ state CONSTANT)
     Q_PROPERTY(bool busy READ busy CONSTANT)
+    Q_PROPERTY(QString channel READ channel WRITE setChannel NOTIFY channelChanged)
     Q_PROPERTY(QString platformLabel READ platformLabel CONSTANT)
     Q_PROPERTY(QString recommendedBackend READ recommendedBackend CONSTANT)
     Q_PROPERTY(QString recommendationReason READ recommendationReason CONSTANT)
@@ -280,6 +281,14 @@ public:
 
     int state() const { return Idle; }
     bool busy() const { return false; }
+    QString channel() const { return m_channel; }
+    void setChannel(const QString &channel)
+    {
+        if (m_channel == channel)
+            return;
+        m_channel = channel;
+        emit channelChanged();
+    }
     QString platformLabel() const { return QStringLiteral("test"); }
     QString recommendedBackend() const { return QStringLiteral("cpu"); }
     QString recommendationReason() const { return QString(); }
@@ -348,6 +357,7 @@ public:
 
 signals:
     void backendChanged();
+    void channelChanged();
     void selectedReleaseChanged();
     void catalogChanged();
     void installedChanged();
@@ -357,6 +367,7 @@ signals:
 private:
     FakeQuantModel *m_builds = new FakeQuantModel(this);
     QString m_backend = QStringLiteral("cpu");
+    QString m_channel = QStringLiteral("stable");
     int m_selectedRelease = -1;
 };
 
