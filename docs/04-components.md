@@ -499,6 +499,19 @@ complete; the decisions are recorded as ADRs in `docs/07-glossary.md`).
   `DownloadTask`/`DownloadManager`, hardened `ArchiveExtractor` (ZIP +
   `.tar.gz` via zlib), transactional `InstallTransaction`, «Check for updates»,
   «Clean up unused builds». ✅
+- **Release channel** (ADR 313): the install row carries a **Channel** combo
+  (**Stable** — the default — / **Beta**; switching refetches the catalog).
+  The stable channel resolves the stable release's pointer —
+  `releases/latest` → `nightly-tag.txt` → the beta release carrying the
+  binaries — and shows it resolved everywhere: `v1.0.0 (b12359)` in the
+  release combo and the «Latest release: v1.0.0 (b12359) (2026-11-13)» status
+  line, and on the active row of the installed-builds list (from the stored
+  `runtime/installedTag`); the install itself is still the b-build, so the
+  directories dedupe with a beta install of the same build. The beta list
+  filters non-prerelease entries out, the channels keep separate release
+  caches (`releases-stable/`, `releases-beta/`), and a stable release that
+  does not resolve falls back to the beta list with a visible note in the
+  status line («Stable release unavailable (…) — showing beta builds»). ✅
 - **No-orphan guarantees** and the error→message matrix (the former plan's
   §7.5) are decisions recorded in `docs/07-glossary.md`. ✅
 

@@ -584,6 +584,37 @@ appendix at the end of this file.
   `LlamaServerProcess::appendLine` — the `?`-prefixed samplers are disabled
   server defaults, not app settings, and log level 4 (see ADR 250) is kept for
   the memory breakdown.
+- **313.** The runtime comes through release channels — **stable** (default)
+  and **beta**, the key `runtime/channel`: llama.cpp's stable releases
+  (`v1.0.0`, `prerelease: false`) carry no binaries, only one `nightly-tag.txt`
+  asset pointing at the beta release (`b12359`) that does, and such a release
+  is invisible to the `releases?per_page=10` window the catalog reads (dozens
+  of betas ship between stables), uninstallable (`pickAsset` finds no binary)
+  and incomparable (`extractBuildNumberFromTag("v1.0.0")` is −1). The stable
+  channel therefore composes its release from three API calls —
+  `releases/latest` → the pointer file → `releases/tags/<b-tag>` — keeping the
+  stable tag and date with the resolved build's assets and number; the
+  composed object takes `body` from the resolved beta release while the cached
+  object keeps the latest release's body — latent only, because digests ride
+  the API per-asset `digest` field (ADR 212), not the body table. The install
+  identity stays the b-build (directories dedupe, `installedBuild` is
+  unchanged); `runtime/installedTag` is display-only (set on a stable install,
+  cleared by a beta install and by activating another build). Each channel
+  keeps its own cache dir (`releases-stable/`, `releases-beta/`) — the
+  `sourceUrl`-bound cache (ADR 98) would otherwise read the other channel's
+  file as absent and lose the offline fallback. The beta fetch drops
+  non-prerelease entries before returning and before caching — right after a
+  stable ships it would otherwise head the beta list asset-less with build −1,
+  blinding the update badge. When the stable chain fails with no stable cache,
+  the beta list takes over with a visible note («Stable release unavailable
+  (%1) — showing beta builds»); with a cache, ADR 98/202's offline fallback
+  applies. Both keys survive `resetToDefaults` with the installed runtime
+  (ADR 297): a reset must not silently return a beta user to stable, nor lose
+  the displayed tag. Capability detection assumes a stable `llama-server
+  --version` still prints `build: <N>` — documented, not probed; the path
+  degrades gracefully if the shape drifts (`extractBuildNumber` → −1 →
+  `buildAtLeast` true, an unreadable tag cannot refuse a start, and the
+  `--help` feature checks remain).
 
 ### Models & tasks
 
