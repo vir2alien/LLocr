@@ -26,12 +26,19 @@ struct PlatformInfo {
     QString backendReason;
 };
 
+struct ReleaseFetch {
+    QList<ReleaseInfo> releases;
+    QString error;  // hard failure; releases empty
+    QString note;   // non-empty: releases is the beta fallback; explains why
+};
+
 class ReleaseCatalog
 {
 public:
     static constexpr qint64 kCacheTtlMs = 6LL * 60 * 60 * 1000;  // 6 h
     static constexpr int kRequestTimeoutMs = 20000;
     static constexpr const char *kApiUrl = "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=10";
+    static constexpr const char *kStableApiBase = "https://api.github.com/repos/ggml-org/llama.cpp";
 
     static PlatformInfo detectPlatform();
 
@@ -52,6 +59,17 @@ public:
     static QList<ReleaseInfo> readCacheFile(const QString &cacheDir, const QString &sourceUrl, QString &error, qint64 *cachedBuild = nullptr);
     static QList<ReleaseInfo> loadCache(const QString &cacheDir, const QString &sourceUrl, QDateTime &cachedAt, qint64 &cachedBuild, bool &isFresh, QString &error);
     static QList<ReleaseInfo> fetchReleasesLocal(QNetworkAccessManager *nam, QString cacheDir, QString &error, int timeoutMs = kRequestTimeoutMs, const QString &apiUrl = QString());
+
+    // The stable channel: resolves the stable tag's nightly-build pointer
+    // (`nightly-tag.txt`), composes the installable release from the
+    // pointed-at build and caches it in `stableCacheDir`. When the chain fails
+    // with no stable cache to serve, the beta list takes over and `note`
+    // carries the reason; `error` is set only when nothing could be served.
+    static ReleaseFetch
+    fetchStableReleaseLocal(QNetworkAccessManager *nam, const QString &stableCacheDir, const QString &betaCacheDir, int timeoutMs = kRequestTimeoutMs, const QString &apiBase = QString());
+
+    static QString parseNightlyTag(const QString &content);
+    static ReleaseInfo composeStableRelease(const ReleaseInfo &latest, const QString &pointerTag, const ReleaseInfo &resolved);
 };
 
 int extractBuildNumberFromTag(const QString &tagName);

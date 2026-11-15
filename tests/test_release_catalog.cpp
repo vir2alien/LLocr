@@ -1,6 +1,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -101,6 +102,17 @@ QByteArray releasesCacheJson(const QString &sourceUrl)
     return QJsonDocument(cache).toJson(QJsonDocument::Compact);
 }
 
+QByteArray httpResponse(const QByteArray &body, const QByteArray &status = QByteArrayLiteral("HTTP/1.1 200 OK"))
+{
+    QByteArray response;
+    response += status;
+    response += QByteArrayLiteral("\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: ");
+    response += QByteArray::number(body.size());
+    response += QByteArrayLiteral("\r\n\r\n");
+    response += body;
+    return response;
+}
+
 }  // namespace
 
 class TestReleaseCatalog : public QObject
@@ -124,10 +136,16 @@ private slots:
     void prereleaseFlagDefaultsToBeta();
     void buildNumberRecoveredFromAssets();
     void betaFetchDropsStableReleases();
+    void parseNightlyTagTrimsAndValidates();
+    void composeStableReleaseMergesResolvedBuild();
+    void stableFetchResolvesPointerAndCaches();
+    void stableFetchFallsBackToBetaWithNote();
 
 private:
     // Answers every request with one canned status line, so the fetch paths can
-    // be exercised without touching the real GitHub API.
+    // be exercised without touching the real GitHub API; setRoute() lets one
+    // server play a multi-request chain (latest answer, pointer file, tagged
+    // release), matched by request path before the canned status.
     class StatusServer : public QObject
     {
     public:
@@ -137,9 +155,10 @@ private:
             connect(&m_server, &QTcpServer::newConnection, this, [this]() {
                 while (QTcpSocket *socket = m_server.nextPendingConnection()) {
                     connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
-                        if (!socket->readAll().contains("\r\n\r\n"))
+                        const QByteArray request = socket->readAll();
+                        if (!request.contains("\r\n\r\n"))
                             return;
-                        socket->write(m_status);
+                        socket->write(responseFor(request));
                         socket->flush();
                         socket->disconnectFromHost();
                     });
@@ -149,10 +168,31 @@ private:
             return m_server.listen(QHostAddress::LocalHost, 0);
         }
 
+        void setRoute(const QString &pathSuffix, const QByteArray &response) { m_routes.insert(pathSuffix, response); }
+
+        QString baseUrl() const { return QStringLiteral("http://127.0.0.1:%1").arg(m_server.serverPort()); }
+
+        void stop() { m_server.close(); }
+
         QString url() const { return QStringLiteral("http://127.0.0.1:%1/releases").arg(m_server.serverPort()); }
 
     private:
+        QByteArray responseFor(const QByteArray &request) const
+        {
+            const int lineEnd = request.indexOf("\r\n");
+            QByteArray path = request.left(lineEnd >= 0 ? lineEnd : request.size()).split(' ').value(1);
+            const int query = path.indexOf('?');
+            if (query >= 0)
+                path.truncate(query);
+            for (auto it = m_routes.constBegin(); it != m_routes.constEnd(); ++it) {
+                if (path.endsWith(it.key().toUtf8()))
+                    return it.value();
+            }
+            return m_status;
+        }
+
         QByteArray m_status;
+        QHash<QString, QByteArray> m_routes;
         QTcpServer m_server;
     };
 };
@@ -518,6 +558,175 @@ void TestReleaseCatalog::betaFetchDropsStableReleases()
     QCOMPARE(list.size(), 1);
     QCOMPARE(list.first().tagName, QStringLiteral("b9999"));
     QCOMPARE(list.first().build, qint64(9999));
+}
+
+void TestReleaseCatalog::parseNightlyTagTrimsAndValidates()
+{
+    QCOMPARE(ReleaseCatalog::parseNightlyTag(QStringLiteral("b12359\n")), QStringLiteral("b12359"));
+    QCOMPARE(ReleaseCatalog::parseNightlyTag(QStringLiteral(" b12400 ")), QStringLiteral("b12400"));
+    QVERIFY(ReleaseCatalog::parseNightlyTag(QString()).isEmpty());
+    QVERIFY(ReleaseCatalog::parseNightlyTag(QStringLiteral("v1.0.0")).isEmpty());
+    QVERIFY(ReleaseCatalog::parseNightlyTag(QStringLiteral("b12ab")).isEmpty());
+}
+
+void TestReleaseCatalog::composeStableReleaseMergesResolvedBuild()
+{
+    ReleaseInfo latest;
+    latest.tagName = QStringLiteral("v1.0.0");
+    latest.name = QStringLiteral("llama.cpp 1.0.0");
+    latest.publishedAt = QStringLiteral("2025-11-01T00:00:00Z");
+    ReleaseAsset pointer;
+    pointer.fileName = QStringLiteral("nightly-tag.txt");
+    latest.assets.append(pointer);
+
+    ReleaseInfo resolved;
+    resolved.tagName = QStringLiteral("b12359");
+    resolved.prerelease = true;
+    resolved.body = QStringLiteral("Resolved release body.");
+    ReleaseAsset winCpu;
+    winCpu.fileName = QStringLiteral("llama-b12359-bin-win-cpu-x64.zip");
+    winCpu.os = QStringLiteral("win");
+    winCpu.build = QStringLiteral("b12359");
+    resolved.assets.append(winCpu);
+    ReleaseAsset mystery;
+    mystery.fileName = QStringLiteral("llama-b12359-mystery-file.txt");
+    resolved.assets.append(mystery);
+
+    const ReleaseInfo composed = ReleaseCatalog::composeStableRelease(latest, QStringLiteral("b12359"), resolved);
+    QCOMPARE(composed.tagName, QStringLiteral("v1.0.0"));
+    QCOMPARE(composed.name, QStringLiteral("llama.cpp 1.0.0"));
+    QCOMPARE(composed.publishedAt, QStringLiteral("2025-11-01T00:00:00Z"));
+    QCOMPARE(composed.build, qint64(12359));
+    QVERIFY(!composed.prerelease);
+    QCOMPARE(composed.body, QStringLiteral("Resolved release body."));
+    QCOMPARE(composed.assets.size(), 1);
+    QCOMPARE(composed.assets.at(0).fileName, QStringLiteral("llama-b12359-bin-win-cpu-x64.zip"));
+    QCOMPARE(composed.assets.at(0).build, QStringLiteral("b12359"));
+}
+
+// The stable chain: the latest answer names the pointer file, the pointer
+// names the build, the build's release provides the binaries — and the result
+// is cached under the stable source, so a later offline start still serves it.
+void TestReleaseCatalog::stableFetchResolvesPointerAndCaches()
+{
+    StatusServer server;
+    QVERIFY(server.start(httpResponse(QByteArray(), QByteArrayLiteral("HTTP/1.1 500 Internal Server Error"))));
+    const QString base = server.baseUrl();
+
+    QJsonObject stable;
+    stable.insert(QStringLiteral("tag_name"), QStringLiteral("v1.0.0"));
+    stable.insert(QStringLiteral("name"), QStringLiteral("llama.cpp 1.0.0"));
+    stable.insert(QStringLiteral("published_at"), QStringLiteral("2025-11-01T00:00:00Z"));
+    stable.insert(QStringLiteral("prerelease"), false);
+    stable.insert(QStringLiteral("body"), QStringLiteral("Stable release notes."));
+    QJsonArray stableAssets;
+    stableAssets.append(makeAsset(QStringLiteral("nightly-tag.txt"), base + QStringLiteral("/download/nightly-tag.txt"), 7));
+    stable.insert(QStringLiteral("assets"), stableAssets);
+    server.setRoute(QStringLiteral("/releases/latest"), httpResponse(QJsonDocument(stable).toJson(QJsonDocument::Compact)));
+
+    QJsonObject beta;
+    beta.insert(QStringLiteral("tag_name"), QStringLiteral("b12359"));
+    beta.insert(QStringLiteral("name"), QStringLiteral("llama.cpp b12359"));
+    beta.insert(QStringLiteral("published_at"), QStringLiteral("2025-11-10T00:00:00Z"));
+    beta.insert(QStringLiteral("prerelease"), true);
+    beta.insert(QStringLiteral("body"), QStringLiteral("No sha256 table in this body."));
+    QJsonArray betaAssets;
+    const QStringList platformNames = {
+        QStringLiteral("llama-b12359-bin-win-cpu-x64.zip"),
+        QStringLiteral("llama-b12359-bin-win-cuda-cu12-x64.zip"),
+        QStringLiteral("llama-b12359-bin-macos-arm64.tar.gz"),
+    };
+    char digest = 'a';
+    for (const QString &name : platformNames) {
+        QJsonObject asset = makeAsset(name, QStringLiteral("https://example.com/") + name, 900);
+        asset.insert(QStringLiteral("digest"), QStringLiteral("sha256:") + digestOf(digest++));
+        betaAssets.append(asset);
+    }
+    betaAssets.append(makeAsset(QStringLiteral("llama-b12359-mystery-file.txt"), QStringLiteral("https://example.com/mystery.txt"), 42));
+    beta.insert(QStringLiteral("assets"), betaAssets);
+    server.setRoute(QStringLiteral("/releases/tags/b12359"), httpResponse(QJsonDocument(beta).toJson(QJsonDocument::Compact)));
+    server.setRoute(QStringLiteral("/download/nightly-tag.txt"), httpResponse(QByteArrayLiteral("b12359\n")));
+
+    QTemporaryDir stableDir;
+    QTemporaryDir betaDir;
+    QVERIFY(stableDir.isValid());
+    QVERIFY(betaDir.isValid());
+
+    QNetworkAccessManager nam;
+    const ReleaseFetch fetch = ReleaseCatalog::fetchStableReleaseLocal(&nam, stableDir.path(), betaDir.path(), 5000, base);
+    QVERIFY2(fetch.error.isEmpty(), qPrintable(fetch.error));
+    QVERIFY2(fetch.note.isEmpty(), qPrintable(fetch.note));
+    QCOMPARE(fetch.releases.size(), 1);
+    QCOMPARE(fetch.releases.at(0).tagName, QStringLiteral("v1.0.0"));
+    QCOMPARE(fetch.releases.at(0).build, qint64(12359));
+    QVERIFY(!fetch.releases.at(0).prerelease);
+    QCOMPARE(fetch.releases.at(0).assets.size(), 3);
+    for (const ReleaseAsset &asset : fetch.releases.at(0).assets)
+        QVERIFY2(!asset.sha256.isEmpty(), qPrintable(asset.fileName));
+    QCOMPARE(fetch.releases.at(0).assets.at(0).fileName, QStringLiteral("llama-b12359-bin-win-cpu-x64.zip"));
+    QCOMPARE(fetch.releases.at(0).assets.at(0).sha256, digestOf('a'));
+
+    QFile cache(QDir(stableDir.path()).filePath(QStringLiteral("releases.json")));
+    QVERIFY(cache.open(QIODevice::ReadOnly));
+    const QJsonDocument cached = QJsonDocument::fromJson(cache.readAll());
+    cache.close();
+    QVERIFY(cached.isObject());
+    QCOMPARE(cached.object().value(QStringLiteral("sourceUrl")).toString(), base + QStringLiteral("/releases/latest"));
+    const QJsonArray cachedReleases = cached.object().value(QStringLiteral("releases")).toArray();
+    QCOMPARE(cachedReleases.size(), 1);
+    QCOMPARE(cachedReleases.at(0).toObject().value(QStringLiteral("tag_name")).toString(), QStringLiteral("v1.0.0"));
+    QCOMPARE(cachedReleases.at(0).toObject().value(QStringLiteral("prerelease")).toBool(), false);
+    QCOMPARE(cachedReleases.at(0).toObject().value(QStringLiteral("assets")).toArray().size(), 3);
+
+    server.stop();
+    const ReleaseFetch fromCache = ReleaseCatalog::fetchStableReleaseLocal(&nam, stableDir.path(), betaDir.path(), 5000, base);
+    QVERIFY2(fromCache.error.isEmpty(), qPrintable(fromCache.error));
+    QVERIFY(fromCache.note.isEmpty());
+    QCOMPARE(fromCache.releases.size(), 1);
+    QCOMPARE(fromCache.releases.at(0).tagName, QStringLiteral("v1.0.0"));
+    QCOMPARE(fromCache.releases.at(0).build, qint64(12359));
+    QVERIFY(!fromCache.releases.at(0).prerelease);
+    QCOMPARE(fromCache.releases.at(0).assets.size(), 3);
+    QCOMPARE(fromCache.releases.at(0).assets.at(0).fileName, QStringLiteral("llama-b12359-bin-win-cpu-x64.zip"));
+    QCOMPARE(fromCache.releases.at(0).assets.at(0).sha256, digestOf('a'));
+}
+
+// The stable chain failing outright must not leave the installer empty: the
+// beta list — here from its own fresh cache — takes over, with the reason in
+// the note and the error left empty.
+void TestReleaseCatalog::stableFetchFallsBackToBetaWithNote()
+{
+    StatusServer server;
+    QVERIFY(server.start(httpResponse(QByteArray(), QByteArrayLiteral("HTTP/1.1 500 Internal Server Error"))));
+    const QString base = server.baseUrl();
+
+    QTemporaryDir stableDir;
+    QTemporaryDir betaDir;
+    QVERIFY(stableDir.isValid());
+    QVERIFY(betaDir.isValid());
+    QFile cache(QDir(betaDir.path()).filePath(QStringLiteral("releases.json")));
+    QVERIFY(cache.open(QIODevice::WriteOnly));
+    QJsonObject betaRelease;
+    betaRelease.insert(QStringLiteral("tag_name"), QStringLiteral("b9999"));
+    betaRelease.insert(QStringLiteral("prerelease"), true);
+    QJsonArray assets;
+    assets.append(makeAsset(QStringLiteral("llama-b9999-bin-win-cpu-x64.zip"), QStringLiteral("https://example.com/win-cpu.zip"), 900));
+    betaRelease.insert(QStringLiteral("assets"), assets);
+    QJsonArray releases;
+    releases.append(betaRelease);
+    QJsonObject cacheBody;
+    cacheBody.insert(QStringLiteral("sourceUrl"), base + QStringLiteral("/releases?per_page=10"));
+    cacheBody.insert(QStringLiteral("releases"), releases);
+    cache.write(QJsonDocument(cacheBody).toJson(QJsonDocument::Compact));
+    cache.close();
+
+    QNetworkAccessManager nam;
+    const ReleaseFetch fetch = ReleaseCatalog::fetchStableReleaseLocal(&nam, stableDir.path(), betaDir.path(), 5000, base);
+    QVERIFY2(fetch.error.isEmpty(), qPrintable(fetch.error));
+    QVERIFY2(!fetch.note.isEmpty(), "the beta fallback must explain why");
+    QCOMPARE(fetch.releases.size(), 1);
+    QCOMPARE(fetch.releases.at(0).tagName, QStringLiteral("b9999"));
+    QCOMPARE(fetch.releases.at(0).build, qint64(9999));
 }
 
 QTEST_MAIN(TestReleaseCatalog)

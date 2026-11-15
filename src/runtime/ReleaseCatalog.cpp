@@ -32,6 +32,8 @@ const QRegularExpression kCudartRe(QStringLiteral(R"(^cudart-llama-bin-win-cuda-
 
 const QRegularExpression kShaRe(QStringLiteral(R"((?:sha256\s*[:=]\s*)?([0-9a-fA-F]{64})\s+(\S+))"));
 
+const QRegularExpression kPointerRe(QStringLiteral(R"(^b\d+$)"));
+
 QString normalizedLower(const QString &s)
 {
     return s.toLower();
@@ -69,6 +71,78 @@ HttpClient::Response catalogGet(QNetworkAccessManager *nam, const QUrl &url, con
     const QString host = url.host();
     const bool allowInsecure = host == QLatin1String("127.0.0.1") || host == QLatin1String("::1") || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
     return HttpClient::get(nam, url, options, 5, allowInsecure);
+}
+
+QString responseFailure(const HttpClient::Response &response)
+{
+    if (response.timedOut)
+        return QObject::tr("Timed out fetching release list");
+    if (response.status != 200)
+        return response.status > 0 ? QObject::tr("GitHub API returned HTTP %1").arg(response.status) : QObject::tr("GitHub request failed: %1").arg(response.error);
+    return QString();
+}
+
+// /releases/latest and /releases/tags/<tag> answer a single object; the
+// release parser speaks arrays.
+ReleaseInfo parseSingleRelease(const QByteArray &payload, QJsonObject *raw, QString &reason)
+{
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(payload, &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
+        reason = QObject::tr("Malformed release list from GitHub");
+        return {};
+    }
+    if (raw)
+        *raw = doc.object();
+    QJsonArray items;
+    items.append(doc.object());
+    QString parseError;
+    const QList<ReleaseInfo> parsed = ReleaseCatalog::parseReleasesJson(items, parseError);
+    if (parsed.isEmpty()) {
+        reason = parseError.isEmpty() ? QObject::tr("No releases parsed") : parseError;
+        return {};
+    }
+    return parsed.first();
+}
+
+QString nightlyPointerUrl(const ReleaseInfo &latest)
+{
+    for (const ReleaseAsset &asset : latest.assets) {
+        if (asset.fileName == QLatin1String("nightly-tag.txt"))
+            return asset.downloadUrl;
+    }
+    return {};
+}
+
+// The cached object must re-parse to the composed release: the stable tag is
+// kept (the build comes back through the asset-name recovery), and only
+// platform assets survive so the cached list matches the composed one.
+void writeStableCache(const QString &cacheDir, const QString &sourceUrl, const QJsonObject &latest, const QJsonArray &resolvedAssets)
+{
+    QJsonArray platformAssets;
+    for (const QJsonValue &v : resolvedAssets) {
+        if (!v.isObject())
+            continue;
+        const QJsonObject ao = v.toObject();
+        const ReleaseAsset parsed = ReleaseCatalog::parseAssetName(
+            ao.value(QStringLiteral("name")).toString(), ao.value(QStringLiteral("browser_download_url")).toString(), static_cast<qint64>(ao.value(QStringLiteral("size")).toDouble(-1)));
+        if (!parsed.os.isEmpty())
+            platformAssets.append(v);
+    }
+    QJsonObject release = latest;
+    release.insert(QStringLiteral("assets"), platformAssets);
+    release.insert(QStringLiteral("prerelease"), false);
+    QJsonArray releases;
+    releases.append(release);
+    QJsonObject cache;
+    cache.insert(QStringLiteral("sourceUrl"), sourceUrl);
+    cache.insert(QStringLiteral("releases"), releases);
+    QDir().mkpath(cacheDir);
+    QSaveFile sf(QDir(cacheDir).filePath(QStringLiteral("releases.json")));
+    if (sf.open(QIODevice::WriteOnly)) {
+        sf.write(QJsonDocument(cache).toJson(QJsonDocument::Compact));
+        sf.commit();
+    }
 }
 
 }  // namespace
@@ -329,6 +403,95 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
         sf.commit();
     }
     return parsed;
+}
+
+QString ReleaseCatalog::parseNightlyTag(const QString &content)
+{
+    const QString trimmed = content.trimmed();
+    return kPointerRe.match(trimmed).hasMatch() ? trimmed : QString();
+}
+
+ReleaseInfo ReleaseCatalog::composeStableRelease(const ReleaseInfo &latest, const QString &pointerTag, const ReleaseInfo &resolved)
+{
+    ReleaseInfo out;
+    out.tagName = latest.tagName;
+    out.name = latest.name;
+    out.publishedAt = latest.publishedAt;
+    out.build = extractBuildNumberFromTag(pointerTag);
+    out.prerelease = false;
+    out.body = resolved.body;
+    for (const ReleaseAsset &asset : resolved.assets) {
+        if (asset.os.isEmpty())
+            continue;
+        out.assets.append(asset);
+    }
+    return out;
+}
+
+ReleaseFetch ReleaseCatalog::fetchStableReleaseLocal(QNetworkAccessManager *nam, const QString &stableCacheDir, const QString &betaCacheDir, int timeoutMs, const QString &apiBase)
+{
+    const QString base = apiBase.isEmpty() ? QLatin1String(kStableApiBase) : apiBase;
+    const QString latestUrl = base + QLatin1String("/releases/latest");
+
+    QDateTime cachedAt;
+    qint64 cachedBuild = -1;
+    bool fresh = false;
+    QString cacheErr;
+    const QList<ReleaseInfo> cached = loadCache(stableCacheDir, latestUrl, cachedAt, cachedBuild, fresh, cacheErr);
+    if (fresh)
+        return {cached, {}, {}};
+    const QList<ReleaseInfo> offline = readCacheFile(stableCacheDir, latestUrl, cacheErr);
+
+    const QString betaUrl = apiBase.isEmpty() ? QString() : apiBase + QLatin1String("/releases?per_page=10");
+    const auto hardFail = [&](const QString &reason) -> ReleaseFetch {
+        if (!offline.isEmpty())
+            return {offline, reason, {}};
+        QString betaError;
+        const QList<ReleaseInfo> beta = fetchReleasesLocal(nam, betaCacheDir, betaError, timeoutMs, betaUrl);
+        if (beta.isEmpty())
+            return {{}, betaError, {}};
+        return {beta, {}, reason};
+    };
+
+    HttpClient::Options options;
+    options.timeoutMs = timeoutMs;
+    options.headers = {
+        {"Accept", "application/vnd.github+json"},
+    };
+
+    QString reason;
+    QJsonObject latestRaw;
+    const HttpClient::Response latestResp = catalogGet(nam, QUrl(latestUrl), options);
+    reason = responseFailure(latestResp);
+    if (!reason.isEmpty())
+        return hardFail(reason);
+    const ReleaseInfo latest = parseSingleRelease(latestResp.body, &latestRaw, reason);
+    if (!reason.isEmpty())
+        return hardFail(reason);
+
+    const QString pointerUrl = nightlyPointerUrl(latest);
+    if (pointerUrl.isEmpty())
+        return hardFail(QObject::tr("The stable release does not point at a build"));
+
+    const HttpClient::Response pointerResp = catalogGet(nam, QUrl(pointerUrl), options);
+    reason = responseFailure(pointerResp);
+    if (!reason.isEmpty())
+        return hardFail(reason);
+    const QString pointerTag = parseNightlyTag(QString::fromUtf8(pointerResp.body));
+    if (pointerTag.isEmpty())
+        return hardFail(QObject::tr("The stable release does not point at a build"));
+
+    QJsonObject resolvedRaw;
+    const HttpClient::Response tagResp = catalogGet(nam, QUrl(base + QLatin1String("/releases/tags/") + pointerTag), options);
+    reason = responseFailure(tagResp);
+    if (!reason.isEmpty())
+        return hardFail(reason);
+    const ReleaseInfo resolved = parseSingleRelease(tagResp.body, &resolvedRaw, reason);
+    if (!reason.isEmpty())
+        return hardFail(reason);
+
+    writeStableCache(stableCacheDir, latestUrl, latestRaw, resolvedRaw.value(QStringLiteral("assets")).toArray());
+    return {{composeStableRelease(latest, pointerTag, resolved)}, {}, {}};
 }
 
 PlatformInfo ReleaseCatalog::detectPlatform()
