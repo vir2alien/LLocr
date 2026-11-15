@@ -246,8 +246,8 @@ ScrollView {
                     value: RuntimeInstaller.progress
                 }
 
-                // One row for the whole install: what to install, which release, and
-                // the two actions.
+                // One row for the whole install: channel, backend, release, and the
+                // two actions.
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing

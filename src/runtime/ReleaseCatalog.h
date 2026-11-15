@@ -28,8 +28,8 @@ struct PlatformInfo {
 
 struct ReleaseFetch {
     QList<ReleaseInfo> releases;
-    QString error;  // hard failure; releases empty
-    QString note;   // non-empty: releases is the beta fallback; explains why
+    QString error;  // set: hard failure (releases empty) or the offline stable-cache serve (ADR 202, releases non-empty)
+    QString note;   // set: the beta fallback — error empty, releases is the fresh beta list
 };
 
 class ReleaseCatalog
@@ -62,9 +62,11 @@ public:
 
     // The stable channel: resolves the stable tag's nightly-build pointer
     // (`nightly-tag.txt`), composes the installable release from the
-    // pointed-at build and caches it in `stableCacheDir`. When the chain fails
-    // with no stable cache to serve, the beta list takes over and `note`
-    // carries the reason; `error` is set only when nothing could be served.
+    // pointed-at build and caches it in `stableCacheDir`. Failure comes back
+    // as one of the ReleaseFetch shapes: hard failure (`error` set, `releases`
+    // empty), the offline stable-cache serve (`error` set with the cached
+    // list, the failWithCache mirror of ADR 202) or the beta fallback (`note`
+    // set, `error` empty, fresh beta `releases`).
     static ReleaseFetch
     fetchStableReleaseLocal(QNetworkAccessManager *nam, const QString &stableCacheDir, const QString &betaCacheDir, int timeoutMs = kRequestTimeoutMs, const QString &apiBase = QString());
 
