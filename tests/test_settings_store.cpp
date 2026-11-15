@@ -697,6 +697,8 @@ private slots:
                                               QByteArrayLiteral("serverPath"),
                                               QByteArrayLiteral("runtimeBackend"),
                                               QByteArrayLiteral("installedBuild"),
+                                              QByteArrayLiteral("runtimeChannel"),
+                                              QByteArrayLiteral("installedTag"),
                                               QByteArrayLiteral("setupVersion"),
                                               QByteArrayLiteral("setupDismissed"),
                                               QByteArrayLiteral("checkLaunchModelPath"),
@@ -860,6 +862,50 @@ private slots:
         QCOMPARE(store.language(), QStringLiteral("system"));
         QCOMPARE(store.connectionMode(), QStringLiteral("external"));
         QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
+    }
+
+    void runtimeChannelDefaultsToStable()
+    {
+        const SettingsStore store;
+        QCOMPARE(store.runtimeChannel(), QStringLiteral("stable"));
+        QCOMPARE(store.installedTag(), QString());
+    }
+
+    void runtimeChannelAndInstalledTagRoundtrip()
+    {
+        SettingsStore store;
+        QSignalSpy channelSpy(&store, &SettingsStore::runtimeChannelChanged);
+        QSignalSpy tagSpy(&store, &SettingsStore::installedTagChanged);
+
+        store.setRuntimeChannel(QStringLiteral("beta"));
+        store.setInstalledTag(QStringLiteral("v1.0.0"));
+        QCOMPARE(store.runtimeChannel(), QStringLiteral("beta"));
+        QCOMPARE(store.installedTag(), QStringLiteral("v1.0.0"));
+        QCOMPARE(channelSpy.count(), 1);
+        QCOMPARE(tagSpy.count(), 1);
+
+        store.setRuntimeChannel(QStringLiteral("beta"));  // no-op, no signal spam
+        store.setInstalledTag(QStringLiteral("v1.0.0"));
+        QCOMPARE(channelSpy.count(), 1);
+        QCOMPARE(tagSpy.count(), 1);
+
+        const SettingsStore reopened;
+        QCOMPARE(reopened.runtimeChannel(), QStringLiteral("beta"));
+        QCOMPARE(reopened.installedTag(), QStringLiteral("v1.0.0"));
+    }
+
+    // The channel and the tag describe the runtime on disk, not the product's
+    // schema: a reset of the settings must not un-install it (ADR 297).
+    void resetPreservesChannelAndTag()
+    {
+        SettingsStore store;
+        store.setRuntimeChannel(QStringLiteral("beta"));
+        store.setInstalledTag(QStringLiteral("v1.0.0"));
+
+        store.resetToDefaults();
+
+        QCOMPARE(store.runtimeChannel(), QStringLiteral("beta"));
+        QCOMPARE(store.installedTag(), QStringLiteral("v1.0.0"));
     }
 };
 

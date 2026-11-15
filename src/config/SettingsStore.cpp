@@ -118,6 +118,8 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kRuntimeModelsDir, "runtimeModelsDir", QVariant(QString())},
         {kRuntimeBackend, "runtimeBackend", QVariant(QString())},
         {kInstalledBuild, "installedBuild", QVariant(QString())},
+        {kRuntimeChannel, "runtimeChannel", QVariant(QString::fromUtf8(kDefaultRuntimeChannel))},
+        {kInstalledTag, "installedTag", QVariant(QString())},
         {kAutoStart, "autoStart", QVariant(false)},
         {kStartOnDemand, "startOnDemand", QVariant(true)},
         {kStopOnExit, "stopOnExit", QVariant(true)},
@@ -234,13 +236,17 @@ void SettingsStore::resetToDefaults()
     // paths survive the reset, or the app forgets what it has installed
     // (ADR 297). The backend of the installed build survives with them: the
     // launch preset follows it, so wiping it would run the installed server
-    // under another preset. The wizard's own flags survive too — a reset must
-    // not bring the first-run wizard back.
+    // under another preset. The channel and the installed tag travel with
+    // them: the tag records the release on disk and the channel decides
+    // where the next install comes from. The wizard's own flags survive
+    // too — a reset must not bring the first-run wizard back.
     const QStringList preserved = {QLatin1String(kRuntimeRootDir),
                                    QLatin1String(kRuntimeModelsDir),
                                    QLatin1String(kServerPath),
                                    QLatin1String(kRuntimeBackend),
                                    QLatin1String(kInstalledBuild),
+                                   QLatin1String(kRuntimeChannel),
+                                   QLatin1String(kInstalledTag),
                                    QLatin1String(kCheckLaunchModelPath),
                                    QLatin1String(kCheckLaunchMmprojPath),
                                    QLatin1String(kCheckLaunchDraftPath),
@@ -878,6 +884,32 @@ void SettingsStore::setInstalledBuild(const QString &build)
         return;
     m_settings.setValue(kInstalledBuild, build);
     emit installedBuildChanged();
+}
+
+QString SettingsStore::runtimeChannel() const
+{
+    return m_settings.value(kRuntimeChannel, QString::fromUtf8(kDefaultRuntimeChannel)).toString();
+}
+
+void SettingsStore::setRuntimeChannel(const QString &channel)
+{
+    if (runtimeChannel() == channel)
+        return;
+    m_settings.setValue(kRuntimeChannel, channel);
+    emit runtimeChannelChanged();
+}
+
+QString SettingsStore::installedTag() const
+{
+    return m_settings.value(kInstalledTag).toString();
+}
+
+void SettingsStore::setInstalledTag(const QString &tag)
+{
+    if (installedTag() == tag)
+        return;
+    m_settings.setValue(kInstalledTag, tag);
+    emit installedTagChanged();
 }
 
 bool SettingsStore::autoStart() const
