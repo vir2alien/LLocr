@@ -45,11 +45,34 @@ bool backendMatches(const QString &assetBackend, const QString &requested)
     return assetBackend.startsWith(requested + QLatin1Char('-'));
 }
 
+QString normalizedChannel(const QString &channel)
+{
+    return channel == QLatin1String("beta") ? QStringLiteral("beta") : QStringLiteral("stable");
+}
+
+// A v-tag carries no build number of its own; the installer labels the release
+// with the build its assets resolve to ("v1.0.0 (b12359)"), while a beta tag
+// already is the build.
+QString taggedName(const ReleaseInfo &release)
+{
+    const QString build = QStringLiteral("b%1").arg(release.build);
+    if (release.build > 0 && release.tagName != build)
+        return QStringLiteral("%1 (%2)").arg(release.tagName, build);
+    return release.tagName;
+}
+
+struct CatalogLoad {
+    QList<ReleaseInfo> releases;
+    QString error;
+    QString note;
+};
+
 }  // namespace
 
-RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent)
-    : QObject(parent), m_settings(settings), m_installState(state), m_installedBuilds(new InstalledBuildsModel(settings, this)), m_downloads(new DownloadManager(this)),
-      m_group(new DownloadGroup(m_downloads, this)), m_installLock([this]() -> QLockFile & { return m_installState.installLock(); })
+RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent, const QString &catalogApiBase)
+    : QObject(parent), m_settings(settings), m_installState(state), m_channel(normalizedChannel(settings.runtimeChannel())), m_catalogApiBase(catalogApiBase),
+      m_installedBuilds(new InstalledBuildsModel(settings, this)), m_downloads(new DownloadManager(this)), m_group(new DownloadGroup(m_downloads, this)),
+      m_installLock([this]() -> QLockFile & { return m_installState.installLock(); })
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
     m_platformLabel = QStringLiteral("%1 %2").arg(osLabel(info), info.arch);
@@ -106,6 +129,22 @@ void RuntimeInstaller::setBusy(bool busy)
         return;
     m_busy = busy;
     emit busyChanged();
+}
+
+void RuntimeInstaller::setChannel(const QString &channel)
+{
+    const QString normalized = normalizedChannel(channel);
+    if (normalized == m_channel || m_busy)
+        return;
+    m_channel = normalized;
+    m_settings.setRuntimeChannel(m_channel);
+    emit channelChanged();
+    if (m_state == State::Idle)
+        return;
+    m_releases.clear();
+    setSelectedRelease(0);
+    emit catalogChanged();
+    startCatalogFetch();
 }
 
 void RuntimeInstaller::setBackend(const QString &backend)
@@ -205,7 +244,7 @@ QString RuntimeInstaller::releaseLabel(int index) const
     const ReleaseInfo &r = m_releases.at(index);
     QDate date = QDate::fromString(r.publishedAt.left(10), Qt::ISODate);
     const QString when = date.isValid() ? date.toString(Qt::ISODate) : QStringLiteral("—");
-    return QStringLiteral("%1 · %2").arg(r.tagName, when);
+    return QStringLiteral("%1 · %2").arg(taggedName(r), when);
 }
 
 void RuntimeInstaller::checkForUpdates()
@@ -222,17 +261,26 @@ void RuntimeInstaller::startCatalogFetch()
     setStatusMessage(tr("Checking for updates…"));
 
     const QString cacheDir = m_installState.paths().cacheDir();
-    auto future = QtConcurrent::run([cacheDir]() -> std::pair<QList<ReleaseInfo>, QString> {
+    const QString stableDir = QDir(cacheDir).filePath(QStringLiteral("releases-stable"));
+    const QString betaDir = QDir(cacheDir).filePath(QStringLiteral("releases-beta"));
+    const QString base = m_catalogApiBase.isEmpty() ? QString::fromUtf8(ReleaseCatalog::kStableApiBase) : m_catalogApiBase;
+    const bool beta = m_channel == QLatin1String("beta");
+
+    auto future = QtConcurrent::run([beta, stableDir, betaDir, base]() -> CatalogLoad {
         QNetworkAccessManager nam;
+        if (!beta) {
+            const ReleaseFetch fetch = ReleaseCatalog::fetchStableReleaseLocal(&nam, stableDir, betaDir, ReleaseCatalog::kRequestTimeoutMs, base);
+            return {fetch.releases, fetch.error, fetch.note.isEmpty() ? QString() : tr("Stable release unavailable (%1) — showing beta builds").arg(fetch.note)};
+        }
         QString error;
-        QList<ReleaseInfo> rels = ReleaseCatalog::fetchReleasesLocal(&nam, cacheDir, error);
-        return {rels, error};
+        const QList<ReleaseInfo> rels = ReleaseCatalog::fetchReleasesLocal(&nam, betaDir, error, ReleaseCatalog::kRequestTimeoutMs, base + QStringLiteral("/releases?per_page=10"));
+        return {rels, error, QString()};
     });
 
-    future.then(this, [this](const std::pair<QList<ReleaseInfo>, QString> &res) { onCatalogLoaded(res.first, res.second); });
+    future.then(this, [this](const CatalogLoad &load) { onCatalogLoaded(load.releases, load.error, load.note); });
 }
 
-void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error)
+void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error, const QString &note)
 {
     setBusy(false);
     if (releases.isEmpty()) {
@@ -243,11 +291,13 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
     }
 
     m_releases = releases;
-    // The cache comes with the error that made the app fall back to it: the
-    // check did not succeed, so the catalog keeps the age it had and the
-    // status names the failure instead of claiming a fresh look (ADR 202).
     const bool fromCache = !error.isEmpty();
-    if (!fromCache)
+    const bool betaFallback = !note.isEmpty();
+    // The offline cache comes with the error that made the app fall back to it:
+    // the check did not succeed, so the catalog keeps the age it had and the
+    // status names the failure instead of claiming a fresh look (ADR 202). The
+    // beta fallback list, though, is fresh beta data.
+    if (!fromCache || betaFallback)
         m_lastCatalogAt = QDateTime::currentDateTimeUtc();
     if (m_selectedRelease >= m_releases.size())
         setSelectedRelease(0);
@@ -256,11 +306,12 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
 
     QDate newest = QDate::fromString(m_releases.first().publishedAt.left(10), Qt::ISODate);
     const QString when = newest.isValid() ? newest.toString(Qt::ISODate) : QStringLiteral("—");
-    if (fromCache) {
+    if (betaFallback)
+        setStatusMessage(note);
+    else if (fromCache)
         setStatusMessage(tr("Showing the cached release list — the check failed: %1").arg(error));
-    } else {
-        setStatusMessage(tr("Latest release: %1 (%2)").arg(m_releases.first().tagName, when));
-    }
+    else
+        setStatusMessage(tr("Latest release: %1 (%2)").arg(taggedName(m_releases.first()), when));
     setState(State::Ready);
     emit catalogChanged();
 
@@ -460,6 +511,8 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
 
     m_settings.setServerPath(out.serverPath);
     m_settings.setInstalledBuild(out.build);
+    const ReleaseInfo &rel = m_releases.at(m_selectedRelease);
+    m_settings.setInstalledTag(rel.prerelease ? QString() : rel.tagName);
     m_settings.setRuntimeBackend(m_pendingBackend);
     m_settings.forceSave();
     emit installedChanged();
@@ -589,6 +642,7 @@ QString RuntimeInstaller::activateBuild(int index)
     m_settings.setServerPath(b.serverPath);
     if (!b.build.isEmpty())
         m_settings.setInstalledBuild(b.build);
+    m_settings.setInstalledTag(QString());
     if (!b.backend.isEmpty())
         m_settings.setRuntimeBackend(b.backend);
     m_settings.forceSave();

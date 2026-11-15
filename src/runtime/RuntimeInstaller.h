@@ -28,6 +28,7 @@ class RuntimeInstaller : public QObject
 
     Q_PROPERTY(int state READ stateInt NOTIFY stateChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+    Q_PROPERTY(QString channel READ channel WRITE setChannel NOTIFY channelChanged)
 
     Q_PROPERTY(QString platformLabel READ platformLabel CONSTANT)
     Q_PROPERTY(QString recommendedBackend READ recommendedBackend CONSTANT)
@@ -65,7 +66,7 @@ public:
     };
     Q_ENUM(State)
 
-    explicit RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent = nullptr);
+    explicit RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent = nullptr, const QString &catalogApiBase = QString());
     ~RuntimeInstaller() override;
 
     void shutdown();
@@ -94,6 +95,7 @@ public:
 
     int stateInt() const { return static_cast<int>(m_state); }
     bool busy() const { return m_busy; }
+    QString channel() const { return m_channel; }
     QString platformLabel() const { return m_platformLabel; }
     QString recommendedBackend() const { return m_recommendedBackend; }
     QString recommendationReason() const { return m_recommendationReason; }
@@ -113,13 +115,14 @@ public:
 private:
     void setState(State next);
     void setBusy(bool busy);
+    void setChannel(const QString &channel);
     void setBackend(const QString &backend);
     void setSelectedRelease(int index);
     void setStatusMessage(const QString &msg);
     void setProgress(double p);
 
     void startCatalogFetch();
-    void onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error);
+    void onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error, const QString &note);
     void recomputeHasUpdate();
     void reconcileInstalledBackend();
 
@@ -136,6 +139,7 @@ private:
 signals:
     void stateChanged();
     void busyChanged();
+    void channelChanged();
     void backendChanged();
     void catalogChanged();
     void selectedReleaseChanged();
@@ -153,6 +157,9 @@ private:
     bool m_busy = false;
     QString m_statusMessage;
     double m_progress = 0.0;
+
+    QString m_channel;
+    const QString m_catalogApiBase;
 
     QString m_platformLabel;
     QString m_recommendedBackend;
