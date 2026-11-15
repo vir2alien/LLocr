@@ -26,6 +26,7 @@ QHash<int, QByteArray> InstalledBuildsModel::roleNames() const
         {ServerPathRole, "serverPath"},
         {BinaryFoundRole, "binaryFound"},
         {ActiveRole, "active"},
+        {DisplayBuildRole, "displayBuild"},
         {SizeRole, "sizeBytes"},
     };
 }
@@ -50,6 +51,10 @@ QVariant InstalledBuildsModel::data(const QModelIndex &index, int role) const
         return !build.serverPath.isEmpty();
     case ActiveRole:
         return isActive(build);
+    case DisplayBuildRole:
+        if (isActive(build) && !build.build.isEmpty() && !m_settings.installedTag().isEmpty())
+            return QStringLiteral("%1 (%2)").arg(m_settings.installedTag(), build.build);
+        return build.build;
     case SizeRole:
         return build.sizeBytes;
     }
@@ -72,10 +77,11 @@ void InstalledBuildsModel::settingsChanged()
 {
     if (m_builds.isEmpty())
         return;
-    // Only the active highlight can change; re-emit it for every row.
+    // Only the active highlight and the resolved tag can change; re-emit both
+    // for every row.
     const QModelIndex first = index(0, 0);
     const QModelIndex last = index(m_builds.size() - 1, 0);
-    emit dataChanged(first, last, {ActiveRole});
+    emit dataChanged(first, last, {ActiveRole, DisplayBuildRole});
 }
 
 bool InstalledBuildsModel::isActive(const InstalledBuildInfo &build) const

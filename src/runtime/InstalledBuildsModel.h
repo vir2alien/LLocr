@@ -24,6 +24,7 @@ public:
         ServerPathRole,
         BinaryFoundRole,
         ActiveRole,
+        DisplayBuildRole,
         SizeRole,
     };
     Q_ENUM(Roles)

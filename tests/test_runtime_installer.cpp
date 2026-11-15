@@ -22,6 +22,7 @@
 #include <QtTest>
 
 #include "config/SettingsStore.h"
+#include "runtime/InstalledBuildsModel.h"
 #include "runtime/InstalledState.h"
 #include "runtime/ReleaseCatalog.h"
 #include "runtime/RuntimeInstaller.h"
@@ -366,6 +367,30 @@ private slots:
         QVERIFY2(installer.hasUpdate(), "b100 is older than the beta b9999");
 
         installer.shutdown();
+    }
+
+    // The installed list shows the resolved release tag of the active stable
+    // install ("v1.0.0 (b12359)") instead of the bare build token; a beta
+    // install has no resolved tag and keeps showing the build.
+    void displayBuildRoleShowsResolvedTag()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        const QString serverPath = QDir(root.path()).filePath(QStringLiteral("app/llama-server"));
+        settings.setServerPath(serverPath);
+
+        InstalledBuildsModel model(settings);
+        model.setBuilds({InstalledBuildInfo{QStringLiteral("llama.cpp-b12359-cpu"), QStringLiteral("b12359"), QStringLiteral("cpu"), serverPath}});
+
+        const QModelIndex row = model.index(0, 0);
+        QCOMPARE(model.data(row, InstalledBuildsModel::DisplayBuildRole).toString(), QStringLiteral("b12359"));
+
+        settings.setInstalledTag(QStringLiteral("v1.0.0"));
+        model.settingsChanged();
+        QCOMPARE(model.data(row, InstalledBuildsModel::DisplayBuildRole).toString(), QStringLiteral("v1.0.0 (b12359)"));
     }
 };
 

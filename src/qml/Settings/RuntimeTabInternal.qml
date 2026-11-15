@@ -31,6 +31,7 @@ ScrollView {
         // synced from the source of truth — pushing its post-reset index back
         // into the installer pinned the first available backend on every
         // window open.
+        syncChannelBox()
         syncBackendBox()
 
         var r = []
@@ -40,6 +41,12 @@ ScrollView {
         // The same reset-to-zero applies to the release list, so the box is
         // synced from the source of truth as well.
         syncReleaseBox()
+    }
+
+    function syncChannelBox() {
+        if (!channelBox)
+            return
+        channelBox.currentIndex = RuntimeInstaller.channel === "beta" ? 1 : 0
     }
 
     function syncBackendBox() {
@@ -70,6 +77,9 @@ ScrollView {
         }
         function onSelectedReleaseChanged() {
             syncReleaseBox()
+        }
+        function onChannelChanged() {
+            syncChannelBox()
         }
     }
 
@@ -241,6 +251,22 @@ ScrollView {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing
+
+                    LLOLabel {
+                        text: qsTr("Channel")
+                        font: Theme.bodySmall
+                    }
+                    LLOComboBox {
+                        id: channelBox
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 80
+                        model: [qsTr("Stable"), qsTr("Beta")]
+                        enabled: !RuntimeInstaller.busy
+                        onActivated: {
+                            RuntimeInstaller.channel = currentIndex === 1 ? "beta" : "stable"
+                            root.edited()
+                        }
+                    }
 
                     LLOLabel {
                         text: qsTr("Backend")

@@ -79,6 +79,7 @@ ListView {
         required property string serverPath
         required property bool binaryFound
         required property bool active
+        required property string displayBuild
         required property double sizeBytes
 
         width: root.width
@@ -105,7 +106,7 @@ ListView {
                     wrapMode: Text.NoWrap
                     font.pixelSize: Theme.bodySmallSize
                     color: Theme.textPrimary
-                    text: buildRow.build.length ? buildRow.build : buildRow.tag
+                    text: buildRow.displayBuild.length ? buildRow.displayBuild : buildRow.tag
                 }
                 LLOLabel {
                     Layout.fillWidth: true
