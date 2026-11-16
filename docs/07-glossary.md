@@ -1971,6 +1971,24 @@ appendix at the end of this file.
   `userOwned`). The block button of the mini-panel is the operator's own
   decision and works as before.
 
+- **316.** The controls of the app are drawn by the app. The platform style
+  (Fusion) paints the buttons of `Dialog.standardButtons`, the radio buttons
+  and the number fields, and they carry the look of the system, not of the
+  app: the confirmation of the unsaved changes answered with «Да» and «Нет»
+  right next to the themed «Отмена» and «Сохранить» of the settings footer.
+  Every control has its own component now: the button
+  (`Common/LLOButton.qml`), the checkbox (`Common/LLOCheckBox.qml`), the
+  radio button (`Common/LLORadioButton.qml` — a ring with a dot, the twin of
+  the square of the checkbox), the dropdown (`Common/LLOComboBox.qml`), the
+  number field (`Common/LLOSpinBox.qml` — a flat frame with the chevrons of
+  the app on the right) and the footer of a dialog
+  (`Common/DialogButtons.qml`: the cancel on the left of the pair, the primary
+  action with the accent on the right, the order of the window footers). The
+  dialog wears the theme as well (`Theme.surface`, `Theme.dialogRadius`,
+  `Theme.border`), so the pair does not stand on a light box in the dark
+  theme. The button of a dialog says what it does («Не сохранять»,
+  «Сбросить», «Продолжить») and never «Да» or «OK».
+
 ### Security & secrets
 
 - **33.** ⛔ No automatic attach to a process listening on the configured

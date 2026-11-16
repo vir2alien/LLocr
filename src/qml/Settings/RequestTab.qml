@@ -68,9 +68,8 @@ Item {
                 text: qsTr("Match threshold (%)")
                 font.pixelSize: Theme.bodySmallSize
             }
-            SpinBox {
+            LLOSpinBox {
                 id: thresholdSpin
-                implicitHeight: Theme.controlHeight
                 font.pixelSize: Theme.bodySmallSize
                 from: 0
                 to: 100

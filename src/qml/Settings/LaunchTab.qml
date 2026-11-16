@@ -203,6 +203,7 @@ Item {
         title: qsTr("Save the value anyway?")
         prompt: qsTr("The value will be stored as plain text in the launch profile.")
         promptColor: Theme.accentAttention
+        confirmText: qsTr("Save")
         onConfirmed: {
             root.profiles.saveDraft()
             root.secretConfirmed = true

@@ -266,13 +266,27 @@ ApplicationWindow {
         anchors.centerIn: parent
         width: 420
         title: qsTr("Reset all settings?")
-        standardButtons: Dialog.Yes | Dialog.No
+        standardButtons: Dialog.NoButton
 
-        LLOLabel {
-            width: parent.width
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.dialogRadius
+            border.color: Theme.border
+            border.width: 1
+        }
+
+        contentItem: LLOLabel {
+            width: resetDialog.availableWidth
             wrapMode: Text.WordWrap
             color: Theme.textPrimary
             text: qsTr("Every setting goes back to its default, the custom verification prompts included. The installed runtime, the downloaded models and the keys in the system store stay.")
+        }
+
+        footer: DialogButtons {
+            cancelText: qsTr("Cancel")
+            acceptText: qsTr("Reset")
+            onAccepted: resetDialog.accept()
+            onRejected: resetDialog.reject()
         }
 
         onAccepted: window.resetAll()
@@ -286,15 +300,29 @@ ApplicationWindow {
         anchors.centerIn: parent
         width: 420
         title: qsTr("Discard changes?")
-        standardButtons: Dialog.Yes | Dialog.No
+        standardButtons: Dialog.NoButton
 
-        LLOLabel {
-            width: parent.width
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.dialogRadius
+            border.color: Theme.border
+            border.width: 1
+        }
+
+        contentItem: LLOLabel {
+            width: closeConfirmDialog.availableWidth
             wrapMode: Text.WordWrap
             color: Theme.textPrimary
             text: window.pendingWizard
                   ? qsTr("There are unsaved changes. They will be lost, and the setup wizard will start.")
                   : qsTr("There are unsaved changes. Close without saving?")
+        }
+
+        footer: DialogButtons {
+            cancelText: qsTr("Cancel")
+            acceptText: qsTr("Don't save")
+            onAccepted: closeConfirmDialog.accept()
+            onRejected: closeConfirmDialog.reject()
         }
 
         onAccepted: {

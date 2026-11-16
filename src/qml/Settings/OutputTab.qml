@@ -164,10 +164,9 @@ ColumnLayout {
             text: qsTr("Margins (mm)")
             font: Theme.body
         }
-        SpinBox {
+        LLOSpinBox {
             id: marginSpin
             Layout.preferredWidth: 110
-            implicitHeight: Theme.controlHeight
             font.pixelSize: Theme.bodySize
             from: 0
             to: 50

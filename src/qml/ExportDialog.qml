@@ -93,91 +93,26 @@ Dialog {
             fromSpin.value, toSpin.value)
     }
 
-    component CompactSpinBox: SpinBox {
-        id: sb
-        implicitHeight: Theme.controlHeight
-        implicitWidth: 100
-        editable: true
-        font.pixelSize: Theme.captionSize
-
-        contentItem: TextInput {
-            z: 2
-            text: sb.textFromValue(sb.value, sb.locale)
-            font: sb.font
-            color: sb.enabled ? Theme.textPrimary : Theme.textMuted
-            selectionColor: Theme.selected
-            selectedTextColor: Theme.textPrimary
-            horizontalAlignment: Qt.AlignHCenter
-            verticalAlignment: Qt.AlignVCenter
-            readOnly: !sb.editable
-            validator: sb.validator
-            inputMethodHints: Qt.ImhFormattedNumbersOnly
-            selectByMouse: true
-        }
-
-        up.indicator: Rectangle {
-            x: sb.mirrored ? 0 : sb.width - width
-            y: 0
-            implicitWidth: 20
-            implicitHeight: sb.height / 2
-            color: sb.up.pressed ? Theme.selected : Theme.surfaceSunken
-            border.color: Theme.divider
-            border.width: 1
-
-            Text {
-                text: "▲"
-                font.pixelSize: Theme.footnoteSize
-                color: sb.enabled && sb.value < sb.to ? Theme.textSecondary : Theme.textMuted
-                anchors.centerIn: parent
-            }
-        }
-
-        down.indicator: Rectangle {
-            x: sb.mirrored ? 0 : sb.width - width
-            y: sb.height / 2
-            implicitWidth: 20
-            implicitHeight: sb.height / 2
-            color: sb.down.pressed ? Theme.selected : Theme.surfaceSunken
-            border.color: Theme.divider
-            border.width: 1
-
-            Text {
-                text: "▼"
-                font.pixelSize: Theme.footnoteSize
-                color: sb.enabled && sb.value > sb.from ? Theme.textSecondary : Theme.textMuted
-                anchors.centerIn: parent
-            }
-        }
-
-        background: Rectangle {
-            implicitWidth: 100
-            border.color: Theme.border
-            border.width: 1
-            color: Theme.surfaceAlt
-            radius: Theme.controlRadius
-        }
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: Theme.spacingSmall
 
         ButtonGroup { id: scopeGroup }
 
-        RadioButton {
+        LLORadioButton {
             id: scopeAll
             text: qsTr("All recognized pages")
             font.pixelSize: Theme.captionSize
             checked: true
             ButtonGroup.group: scopeGroup
         }
-        RadioButton {
+        LLORadioButton {
             id: scopeCurrent
             text: qsTr("Current page (%1)").arg(Controller.currentPage + 1)
             font.pixelSize: Theme.captionSize
             ButtonGroup.group: scopeGroup
         }
-        RadioButton {
+        LLORadioButton {
             id: scopeRange
             text: qsTr("Page range")
             font.pixelSize: Theme.captionSize
@@ -194,8 +129,11 @@ Dialog {
                 text: qsTr("from")
                 color: scopeRange.checked ? Theme.textSecondary : Theme.textMuted
             }
-            CompactSpinBox {
+            LLOSpinBox {
                 id: fromSpin
+                implicitWidth: 100
+                editable: true
+                font.pixelSize: Theme.captionSize
                 from: 1
                 to: Controller.pageCount
             }
@@ -203,8 +141,11 @@ Dialog {
                 text: qsTr("to")
                 color: scopeRange.checked ? Theme.textSecondary : Theme.textMuted
             }
-            CompactSpinBox {
+            LLOSpinBox {
                 id: toSpin
+                implicitWidth: 100
+                editable: true
+                font.pixelSize: Theme.captionSize
                 from: 1
                 to: Controller.pageCount
             }

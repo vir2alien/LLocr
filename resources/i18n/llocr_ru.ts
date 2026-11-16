@@ -1489,6 +1489,19 @@
     </message>
 </context>
 <context>
+    <name>InterruptConfirmDialog</name>
+    <message>
+        <location filename="../../src/qml/Common/InterruptConfirmDialog.qml" line="+11"/>
+        <source>Continue</source>
+        <translation>Продолжить</translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+</context>
+<context>
     <name>LaunchTab</name>
     <message>
         <source>Save the value anyway?</source>
@@ -1497,6 +1510,11 @@
     <message>
         <source>The value will be stored as plain text in the launch profile.</source>
         <translation>Значение сохранится открытым текстом в профиль запуска</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Save</source>
+        <translation>Сохранить</translation>
     </message>
     <message>
         <location filename="../../src/qml/Settings/LaunchTab.qml" line="+57"/>
@@ -4119,6 +4137,11 @@
         <translation>Все настройки возвращаются к значениям по умолчанию, включая пользовательские промпты проверки. Установленный рантайм, скачанные модели и ключи в системном хранилище остаются.</translation>
     </message>
     <message>
+        <location line="+19"/>
+        <source>Reset</source>
+        <translation>Сбросить</translation>
+    </message>
+    <message>
         <location line="+8"/>
         <source>Discard changes?</source>
         <translation>Отменить изменения?</translation>
@@ -4132,6 +4155,11 @@
         <location line="+1"/>
         <source>There are unsaved changes. They will be lost, and the setup wizard will start.</source>
         <translation>Есть несохранённые изменения. Они будут потеряны, и запустится мастер настройки.</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>Don&apos;t save</source>
+        <translation>Не сохранять</translation>
     </message>
 </context>
 <context>
