@@ -7,6 +7,10 @@
 // The channel tests cover the stable/beta split: per-channel caches under the
 // app cache, the switch that refetches, the beta fallback when the stable
 // chain fails, and the update flag across both channels.
+//
+// The card tests cover the facts the update card shows: the candidate row
+// (tag, date, size), the mark of the active build in the version list, and
+// the ignored version that stops the offer until it is restored (ADR 315).
 
 #include <functional>
 #include <QDir>
@@ -116,6 +120,45 @@ class TestRuntimeInstaller : public QObject
         writeReleasesCache(QDir(root).filePath(QStringLiteral("app/cache/releases-stable")),
                            QString::fromUtf8(ReleaseCatalog::kStableApiBase) + QStringLiteral("/releases/latest"),
                            stableReleaseJson(ReleaseCatalog::detectPlatform(), 12359));
+    }
+
+    // The backend the installer picks for itself on this machine.
+    static QString installerBackend()
+    {
+        const PlatformInfo info = ReleaseCatalog::detectPlatform();
+        const QStringList backends = ReleaseCatalog::backendsFor(info);
+        return backends.contains(info.backend) ? info.backend : backends.value(0);
+    }
+
+    static QString serverBinaryName()
+    {
+#ifdef Q_OS_WIN
+        return QStringLiteral("llama-server.exe");
+#else
+        return QStringLiteral("llama-server");
+#endif
+    }
+
+    // The directory an installed build lives in — the name the installer
+    // gives it.
+    static QString installedBuildDir(const QString &root, const QString &build, const QString &backend)
+    {
+        const PlatformInfo info = ReleaseCatalog::detectPlatform();
+        return QDir(root).filePath(QStringLiteral("app/runtime/llama.cpp-%1-%2-%3-%4").arg(build, backend, info.osTag, info.arch));
+    }
+
+    // A build on disk: its directory with a server binary inside it.
+    static bool writeInstalledBuild(const QString &root, const QString &build, const QString &backend)
+    {
+        const QString dir = installedBuildDir(root, build, backend);
+        if (!QDir().mkpath(dir))
+            return false;
+        QFile server(QDir(dir).filePath(serverBinaryName()));
+        if (!server.open(QIODevice::WriteOnly))
+            return false;
+        server.write("stub");
+        server.close();
+        return true;
     }
 
     static bool waitFor(const std::function<bool()> &done, int timeoutMs = 20000)
@@ -365,6 +408,171 @@ private slots:
         installer.checkForUpdates();
         QVERIFY2(waitFor([&] { return loads > last; }), "the catalog never reloaded");
         QVERIFY2(installer.hasUpdate(), "b100 is older than the beta b9999");
+
+        installer.shutdown();
+    }
+
+    // The candidate row of the card carries the facts of the chosen release:
+    // the tag, the date and the size of the download — all of them from the
+    // catalog, none of them invented by the UI.
+    void candidateCarriesTheReleaseFacts()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        settings.setRuntimeChannel(QStringLiteral("stable"));
+        settings.setRuntimeIgnoredBuild(QString());
+        writeCachedStableRelease(root.path());
+
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
+
+        installer.checkForUpdates();
+        QVERIFY2(waitFor([&] { return installer.releaseCount() == 1; }), "the stable catalog never arrived");
+
+        QCOMPARE(installer.candidateTag(), QStringLiteral("v1.0.0 (b12359)"));
+        QCOMPARE(installer.candidateDate(), QStringLiteral("2025-11-01"));
+        QCOMPARE(installer.candidateSize(), QStringLiteral("2 KiB"));
+        // The check leaves its mark — the time of the look in the card header.
+        QVERIFY2(!installer.checkedAtLabel().isEmpty(), "the check left no time");
+        // A clean check is not an exception: the yellow alert stays empty.
+        QVERIFY2(installer.catalogWarning().isEmpty(), qPrintable(installer.catalogWarning()));
+        QVERIFY(!installer.candidateIgnored());
+
+        installer.shutdown();
+    }
+
+    // An ignored version is not an update any more: the card stops asking for
+    // it, and the way back restores the offer.
+    void ignoringAVersionStopsTheOfferAndRestoresIt()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        settings.setRuntimeChannel(QStringLiteral("stable"));
+        settings.setRuntimeIgnoredBuild(QString());
+        settings.setInstalledBuild(QStringLiteral("b12000"));
+        writeCachedStableRelease(root.path());
+
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
+
+        installer.checkForUpdates();
+        QVERIFY2(waitFor([&] { return installer.releaseCount() == 1; }), "the stable catalog never arrived");
+        QVERIFY2(installer.hasUpdate(), "b12000 is older than the resolved b12359");
+
+        installer.ignoreSelectedVersion();
+        QCOMPARE(settings.runtimeIgnoredBuild(), QStringLiteral("b12359"));
+        QVERIFY(installer.candidateIgnored());
+        QVERIFY2(!installer.hasUpdate(), "an ignored version is not an update");
+
+        installer.restoreIgnoredVersion();
+        QVERIFY(settings.runtimeIgnoredBuild().isEmpty());
+        QVERIFY(!installer.candidateIgnored());
+        QVERIFY2(installer.hasUpdate(), "the offer did not come back after the restore");
+
+        installer.shutdown();
+    }
+
+    // The version list marks the build that runs on the machine — the row the
+    // menu shows as the active one.
+    void theActiveBuildIsMarkedInTheList()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        settings.setRuntimeChannel(QStringLiteral("stable"));
+        settings.setRuntimeIgnoredBuild(QString());
+        settings.setInstalledBuild(QStringLiteral("b12359"));
+        writeCachedStableRelease(root.path());
+
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
+
+        installer.checkForUpdates();
+        QVERIFY2(waitFor([&] { return installer.releaseCount() == 1; }), "the stable catalog never arrived");
+        QVERIFY(installer.releaseIsActive(0));
+        QVERIFY(!installer.releaseIsActive(1));
+
+        installer.shutdown();
+    }
+
+    // The build the catalog offers is already on disk — it was downloaded,
+    // but another build is the active one. The installer must not fetch it a
+    // second time: the build on disk is activated instead.
+    void anInstalledCandidateIsActivatedInsteadOfDownloaded()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        settings.setRuntimeChannel(QStringLiteral("stable"));
+        settings.setRuntimeIgnoredBuild(QString());
+        settings.setInstalledBuild(QStringLiteral("b12000"));
+        writeCachedStableRelease(root.path());
+
+        const QString backend = installerBackend();
+        QVERIFY(writeInstalledBuild(root.path(), QStringLiteral("b12359"), backend));
+        QVERIFY(writeInstalledBuild(root.path(), QStringLiteral("b12000"), backend));
+        settings.setServerPath(QDir(installedBuildDir(root.path(), QStringLiteral("b12000"), backend)).filePath(serverBinaryName()));
+
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
+
+        installer.checkForUpdates();
+        QVERIFY2(waitFor([&] { return installer.releaseCount() == 1; }), "the stable catalog never arrived");
+        QVERIFY2(installer.hasUpdate(), "b12000 is older than the resolved b12359");
+        QVERIFY2(installer.candidateInstalled(), "the candidate build is on disk");
+
+        QList<int> seen;
+        connect(&installer, &RuntimeInstaller::stateChanged, this, [&]() { seen.append(installer.stateInt()); });
+
+        installer.startDownloadAndInstall();
+
+        QVERIFY2(!seen.contains(RuntimeInstaller::State::Downloading), "the installer downloaded a build that was already on disk");
+        QVERIFY2(seen.contains(RuntimeInstaller::State::Installed), "the switch did not reach the installed state");
+        QCOMPARE(settings.installedBuild(), QStringLiteral("b12359"));
+        const QString candidateServer = QDir(installedBuildDir(root.path(), QStringLiteral("b12359"), backend)).filePath(serverBinaryName());
+        QCOMPARE(RuntimePaths::normalized(settings.serverPath()), RuntimePaths::normalized(candidateServer));
+        QVERIFY2(!installer.hasUpdate(), "the activated build is the newest one");
+
+        installer.shutdown();
+    }
+
+    // The candidate that is not on disk is a download: the flag says what the
+    // card has to do, and the flag is the difference between the two.
+    void aCandidateThatIsNotOnDiskIsDownloaded()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        settings.setRuntimeChannel(QStringLiteral("stable"));
+        settings.setRuntimeIgnoredBuild(QString());
+        settings.setInstalledBuild(QStringLiteral("b12000"));
+        writeCachedStableRelease(root.path());
+
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
+
+        installer.checkForUpdates();
+        QVERIFY2(waitFor([&] { return installer.releaseCount() == 1; }), "the stable catalog never arrived");
+        QVERIFY2(!installer.candidateInstalled(), "nothing is on disk yet");
+
+        QList<int> seen;
+        connect(&installer, &RuntimeInstaller::stateChanged, this, [&]() { seen.append(installer.stateInt()); });
+
+        installer.startDownloadAndInstall();
+
+        QVERIFY2(seen.contains(RuntimeInstaller::State::Downloading), "the build that is not on disk must be downloaded");
 
         installer.shutdown();
     }

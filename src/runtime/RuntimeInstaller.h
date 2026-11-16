@@ -43,8 +43,24 @@ class RuntimeInstaller : public QObject
     Q_PROPERTY(QString installedBuild READ installedBuild NOTIFY installedChanged)
     Q_PROPERTY(QString installedBackend READ installedBackend NOTIFY installedChanged)
     Q_PROPERTY(bool hasUpdate READ hasUpdate NOTIFY hasUpdateChanged)
-    Q_PROPERTY(QString updateBuild READ updateBuild NOTIFY catalogChanged)
-    Q_PROPERTY(QString updateTimestampLabel READ updateTimestampLabel NOTIFY catalogChanged)
+
+    // The release the card offers: the one the user picked in the version
+    // menu, the newest one by default. The facts about it are one row of the
+    // card — the tag, the date and the size of the download (ADR 315).
+    Q_PROPERTY(QString candidateTag READ candidateTag NOTIFY candidateChanged)
+    Q_PROPERTY(QString candidateDate READ candidateDate NOTIFY candidateChanged)
+    Q_PROPERTY(QString candidateSize READ candidateSize NOTIFY candidateChanged)
+    Q_PROPERTY(bool candidateIgnored READ candidateIgnored NOTIFY candidateChanged)
+    Q_PROPERTY(QString ignoredBuild READ ignoredBuild NOTIFY candidateChanged)
+    // The candidate build is on disk already: there is nothing to download,
+    // the build is activated instead (ADR 317).
+    Q_PROPERTY(bool candidateInstalled READ candidateInstalled NOTIFY candidateChanged)
+    // When the catalog was last fetched — the card's «Проверено 09:23».
+    Q_PROPERTY(QString checkedAtLabel READ checkedAtLabel NOTIFY catalogChanged)
+    // The exception of the last check: the stable release was unavailable and
+    // the beta list was shown, or the cache was served. Empty after a clean
+    // check (ADR 315).
+    Q_PROPERTY(QString catalogWarning READ catalogWarning NOTIFY catalogChanged)
 
     Q_PROPERTY(int installedBuildCount READ installedBuildCount NOTIFY installedBuildsChanged)
 
@@ -74,8 +90,16 @@ public:
     void retranslate();
 
     Q_INVOKABLE QString releaseLabel(int index) const;
+    Q_INVOKABLE QString releaseTag(int index) const;
+    Q_INVOKABLE QString releaseDate(int index) const;
+    Q_INVOKABLE bool releaseIsActive(int index) const;
+    Q_INVOKABLE void ignoreSelectedVersion();
+    Q_INVOKABLE void restoreIgnoredVersion();
     Q_INVOKABLE void checkForUpdates();
     Q_INVOKABLE void startDownloadAndInstall();
+    // Switches to the candidate build that is already on disk. False when
+    // there is no such build.
+    Q_INVOKABLE bool activateCandidate();
     Q_INVOKABLE void cancelInstall();
     Q_INVOKABLE QString cleanupUnusedBuilds();
 
@@ -88,10 +112,16 @@ public:
     Q_INVOKABLE QString removeBuild(const QString &tag);
     Q_INVOKABLE static QString backendDisplayName(const QString &backend);
 
-    QString updateBuild() const;
-    QString updateTimestampLabel() const;
     Q_INVOKABLE void openReleasePage();
-    Q_INVOKABLE void installUpdate();
+
+    QString candidateTag() const;
+    QString candidateDate() const;
+    QString candidateSize() const;
+    bool candidateIgnored() const;
+    bool candidateInstalled() const;
+    QString ignoredBuild() const;
+    QString checkedAtLabel() const;
+    QString catalogWarning() const;
 
     int stateInt() const { return static_cast<int>(m_state); }
     bool busy() const { return m_busy; }
@@ -131,6 +161,12 @@ private:
     void runInstallAsync();
     void onInstallFinished(const InstallOutput &out, const QString &warning);
 
+    // The installed build the candidate release resolves to — the same build
+    // and the same backend. Null when the candidate is not on disk.
+    const InstalledBuildInfo *installedCandidate() const;
+    // The settings-only switch to an installed build (ADR 60).
+    bool activateInstalledBuild(const InstalledBuildInfo &build);
+
     ReleaseAsset pickAsset(const ReleaseInfo &release, const QString &backend, bool wantCudart) const;
     void maybeFinishDownloads();
     bool acquireInstallLock(QString &error);
@@ -146,6 +182,7 @@ signals:
     void installedChanged();
     void installedBuildsChanged();
     void hasUpdateChanged();
+    void candidateChanged();
     void progressChanged();
     void statusMessageChanged();
 
@@ -174,6 +211,8 @@ private:
     bool m_installAfterCatalog = false;
     bool m_hasUpdate = false;
     QDateTime m_lastCatalogAt;
+    // The exception of the last check — the yellow alert of the card.
+    QString m_catalogWarning;
     InstalledBuildsModel *m_installedBuilds = nullptr;
 
     QString m_pendingBackend;

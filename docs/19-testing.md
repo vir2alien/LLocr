@@ -26,7 +26,7 @@ inside an MSVC x64 prompt; Qt DLLs must be on `PATH` before `ctest`.
 `--disable-gpu --no-sandbox --single-process`; on some machines its GPU
 initialization aborts (environmental, not a regression).
 
-### The 76 targets, by domain
+### The 77 targets, by domain
 
 | Domain | Targets |
 | --- | --- |
@@ -45,6 +45,7 @@ initialization aborts (environmental, not a regression).
 | UI (the icon set) | `test_ui_icons` |
 | UI (the icon-and-caption button) | `test_icon_tool_button_qml` |
 | Runtime installer, lifetime | `test_runtime_installer`, `test_runtime_lifetime` |
+| The check of the shared server | `test_connection_probe` |
 | Export and rendering | `test_exporter`, `test_export_renderer`, `test_candidate_renderer` |
 | Transport and managed server | `test_http_client`, `test_capabilities`, `test_runtime_locator`, `test_server_process`, `test_ensure_connection` |
 | Downloads, catalogs, installs, locks | `test_model_memory_estimator`, `test_download_manager`, `test_release_catalog`, `test_archive_extractor`, `test_staged_install`, `test_install_transaction`, `test_model_catalog`, `test_model_registry`, `test_hardware_info`, `test_model_installer`, `test_model_install_transaction`, `test_model_preset_catalog`, `test_install_lock` |

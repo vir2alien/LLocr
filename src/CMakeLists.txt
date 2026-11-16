@@ -205,6 +205,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/DownloadGroup.cpp
     runtime/RuntimeController.h
     runtime/RuntimeController.cpp
+    runtime/ConnectionProbe.h
+    runtime/ConnectionProbe.cpp
     runtime/RuntimeLog.h
     runtime/RuntimeLog.cpp
     runtime/SelfTestController.h

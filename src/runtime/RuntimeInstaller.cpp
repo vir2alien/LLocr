@@ -67,6 +67,28 @@ struct CatalogLoad {
     QString note;
 };
 
+// The build number of an installed build tag ("b12359" → 12359). Zero when the
+// tag carries no number.
+int buildNumber(const QString &buildTag)
+{
+    if (!buildTag.startsWith(QLatin1Char('b')))
+        return 0;
+    bool ok = false;
+    const int number = buildTag.mid(1).toInt(&ok);
+    return ok ? number : 0;
+}
+
+QString formatBytes(qint64 bytes)
+{
+    if (bytes <= 0)
+        return QString();
+    if (bytes >= 1073741824LL)
+        return QStringLiteral("%1 GiB").arg(double(bytes) / 1073741824.0, 0, 'f', 1);
+    if (bytes >= 1048576LL)
+        return QStringLiteral("%1 MiB").arg(double(bytes) / 1048576.0, 0, 'f', 0);
+    return QStringLiteral("%1 KiB").arg(double(bytes) / 1024.0, 0, 'f', 0);
+}
+
 }  // namespace
 
 RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent, const QString &catalogApiBase)
@@ -153,6 +175,8 @@ void RuntimeInstaller::setBackend(const QString &backend)
         return;
     m_backend = backend;
     emit backendChanged();
+    // The size of the download belongs to the backend.
+    emit candidateChanged();
 }
 
 void RuntimeInstaller::setSelectedRelease(int index)
@@ -161,6 +185,7 @@ void RuntimeInstaller::setSelectedRelease(int index)
         return;
     m_selectedRelease = index;
     emit selectedReleaseChanged();
+    emit candidateChanged();
 }
 
 void RuntimeInstaller::setStatusMessage(const QString &msg)
@@ -241,10 +266,127 @@ QString RuntimeInstaller::releaseLabel(int index) const
 {
     if (index < 0 || index >= m_releases.size())
         return QString();
-    const ReleaseInfo &r = m_releases.at(index);
-    QDate date = QDate::fromString(r.publishedAt.left(10), Qt::ISODate);
-    const QString when = date.isValid() ? date.toString(Qt::ISODate) : QStringLiteral("—");
-    return QStringLiteral("%1 · %2").arg(taggedName(r), when);
+    return QStringLiteral("%1 · %2").arg(releaseTag(index), releaseDate(index));
+}
+
+QString RuntimeInstaller::releaseTag(int index) const
+{
+    if (index < 0 || index >= m_releases.size())
+        return QString();
+    return taggedName(m_releases.at(index));
+}
+
+QString RuntimeInstaller::releaseDate(int index) const
+{
+    if (index < 0 || index >= m_releases.size())
+        return QString();
+    const QDate date = QDate::fromString(m_releases.at(index).publishedAt.left(10), Qt::ISODate);
+    return date.isValid() ? date.toString(Qt::ISODate) : QStringLiteral("—");
+}
+
+bool RuntimeInstaller::releaseIsActive(int index) const
+{
+    if (index < 0 || index >= m_releases.size())
+        return false;
+    const int build = m_releases.at(index).build;
+    if (build <= 0)
+        return false;
+    return build == buildNumber(installedBuild());
+}
+
+QString RuntimeInstaller::candidateTag() const
+{
+    if (m_releases.isEmpty())
+        return QString();
+    return releaseTag(m_selectedRelease);
+}
+
+QString RuntimeInstaller::candidateDate() const
+{
+    if (m_releases.isEmpty())
+        return QString();
+    return releaseDate(m_selectedRelease);
+}
+
+QString RuntimeInstaller::candidateSize() const
+{
+    if (m_releases.isEmpty() || m_selectedRelease < 0 || m_selectedRelease >= m_releases.size())
+        return QString();
+    const ReleaseAsset asset = pickAsset(m_releases.at(m_selectedRelease), m_backend, /*cudart=*/false);
+    if (asset.size <= 0)
+        return QString();
+    return formatBytes(asset.size);
+}
+
+bool RuntimeInstaller::candidateIgnored() const
+{
+    const QString ignored = ignoredBuild();
+    if (ignored.isEmpty() || m_releases.isEmpty())
+        return false;
+    if (m_selectedRelease < 0 || m_selectedRelease >= m_releases.size())
+        return false;
+    const int build = m_releases.at(m_selectedRelease).build;
+    return build > 0 && ignored == QStringLiteral("b%1").arg(build);
+}
+
+const InstalledBuildInfo *RuntimeInstaller::installedCandidate() const
+{
+    if (m_releases.isEmpty() || m_selectedRelease < 0 || m_selectedRelease >= m_releases.size())
+        return nullptr;
+    const ReleaseInfo &release = m_releases.at(m_selectedRelease);
+    if (release.build <= 0)
+        return nullptr;
+    const QString build = QStringLiteral("b%1").arg(release.build);
+    for (const InstalledBuildInfo &info : m_installedBuilds->builds()) {
+        if (info.build != build || info.serverPath.isEmpty())
+            continue;
+        if (!backendMatches(info.backend, m_backend))
+            continue;
+        return &info;
+    }
+    return nullptr;
+}
+
+bool RuntimeInstaller::candidateInstalled() const
+{
+    return installedCandidate() != nullptr;
+}
+
+bool RuntimeInstaller::activateCandidate()
+{
+    if (m_busy)
+        return false;
+    const InstalledBuildInfo *candidate = installedCandidate();
+    if (!candidate)
+        return false;
+    const InstalledBuildInfo build = *candidate;
+    return activateInstalledBuild(build);
+}
+
+QString RuntimeInstaller::ignoredBuild() const
+{
+    return m_settings.runtimeIgnoredBuild();
+}
+
+void RuntimeInstaller::ignoreSelectedVersion()
+{
+    if (m_releases.isEmpty() || m_selectedRelease < 0 || m_selectedRelease >= m_releases.size())
+        return;
+    const int build = m_releases.at(m_selectedRelease).build;
+    if (build <= 0)
+        return;
+    m_settings.setRuntimeIgnoredBuild(QStringLiteral("b%1").arg(build));
+    emit candidateChanged();
+    recomputeHasUpdate();
+}
+
+void RuntimeInstaller::restoreIgnoredVersion()
+{
+    if (m_settings.runtimeIgnoredBuild().isEmpty())
+        return;
+    m_settings.setRuntimeIgnoredBuild(QString());
+    emit candidateChanged();
+    recomputeHasUpdate();
 }
 
 void RuntimeInstaller::checkForUpdates()
@@ -285,8 +427,10 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
     setBusy(false);
     if (releases.isEmpty()) {
         m_installAfterCatalog = false;
+        m_catalogWarning.clear();
         setStatusMessage(error.isEmpty() ? tr("No releases available") : error);
         setState(State::Error);
+        emit catalogChanged();
         return;
     }
 
@@ -303,15 +447,21 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
         setSelectedRelease(0);
 
     recomputeHasUpdate();
+    emit candidateChanged();
 
     QDate newest = QDate::fromString(m_releases.first().publishedAt.left(10), Qt::ISODate);
     const QString when = newest.isValid() ? newest.toString(Qt::ISODate) : QStringLiteral("—");
-    if (betaFallback)
+    if (betaFallback) {
         setStatusMessage(note);
-    else if (fromCache)
-        setStatusMessage(tr("Showing the cached release list — the check failed: %1").arg(error));
-    else
+        m_catalogWarning = note;
+    } else if (fromCache) {
+        const QString cached = tr("Showing the cached release list — the check failed: %1").arg(error);
+        setStatusMessage(cached);
+        m_catalogWarning = cached;
+    } else {
         setStatusMessage(tr("Latest release: %1 (%2)").arg(taggedName(m_releases.first()), when));
+        m_catalogWarning.clear();
+    }
     setState(State::Ready);
     emit catalogChanged();
 
@@ -321,35 +471,25 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
     }
 }
 
-QString RuntimeInstaller::updateBuild() const
-{
-    if (m_releases.isEmpty())
-        return QString();
-    return m_releases.first().tagName;
-}
-
-QString RuntimeInstaller::updateTimestampLabel() const
+QString RuntimeInstaller::checkedAtLabel() const
 {
     if (!m_lastCatalogAt.isValid())
         return QString();
     return m_lastCatalogAt.time().toString(QStringLiteral("HH:mm"));
 }
 
+QString RuntimeInstaller::catalogWarning() const
+{
+    return m_catalogWarning;
+}
+
 void RuntimeInstaller::openReleasePage()
 {
     if (m_releases.isEmpty())
         return;
-    const QString tag = m_releases.first().tagName;
+    const QString tag = m_releases.at(qBound(0, m_selectedRelease, m_releases.size() - 1)).tagName;
     const QUrl url(QStringLiteral("https://github.com/ggml-org/llama.cpp/releases/tag/%1").arg(tag));
     QDesktopServices::openUrl(url);
-}
-
-void RuntimeInstaller::installUpdate()
-{
-    if (m_releases.isEmpty())
-        return;
-    setSelectedRelease(0);
-    startDownloadAndInstall();
 }
 
 void RuntimeInstaller::startDownloadAndInstall()
@@ -368,6 +508,10 @@ void RuntimeInstaller::startDownloadAndInstall()
         setState(State::Error);
         return;
     }
+    // The candidate build is on disk already: the build is switched to, not
+    // fetched a second time (ADR 317).
+    if (activateCandidate())
+        return;
     QString lockError;
     if (!acquireInstallLock(lockError)) {
         setStatusMessage(lockError);
@@ -527,8 +671,11 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
 void RuntimeInstaller::recomputeHasUpdate()
 {
     const int latestBuild = m_releases.isEmpty() ? -1 : m_releases.first().build;
-    const int cur = installedBuild().startsWith(QLatin1Char('b')) ? installedBuild().mid(1).toInt() : -1;
-    const bool upd = cur >= 0 && latestBuild > cur;
+    const int cur = buildNumber(installedBuild());
+    // An ignored version is not an update: the user told the app to stop
+    // offering it, so the card must not ask for it again (ADR 315).
+    const bool ignored = latestBuild > 0 && ignoredBuild() == QStringLiteral("b%1").arg(latestBuild);
+    const bool upd = cur >= 0 && latestBuild > cur && !ignored;
     if (m_hasUpdate != upd) {
         m_hasUpdate = upd;
         emit hasUpdateChanged();
@@ -592,6 +739,8 @@ void RuntimeInstaller::rescanInstalledBuilds()
 {
     m_installedBuilds->setBuilds(InstallTransaction::scanInstalledBuilds(m_installState.paths()));
     emit installedBuildsChanged();
+    // What is on disk decides whether the candidate still needs a download.
+    emit candidateChanged();
 }
 
 void RuntimeInstaller::reconcileInstalledBackend()
@@ -639,19 +788,30 @@ QString RuntimeInstaller::activateBuild(int index)
     if (b.serverPath.isEmpty())
         return tr("The build directory contains no llama-server binary");
 
-    m_settings.setServerPath(b.serverPath);
-    if (!b.build.isEmpty())
-        m_settings.setInstalledBuild(b.build);
+    activateInstalledBuild(b);
+    return QString();
+}
+
+bool RuntimeInstaller::activateInstalledBuild(const InstalledBuildInfo &build)
+{
+    m_settings.setServerPath(build.serverPath);
+    if (!build.build.isEmpty())
+        m_settings.setInstalledBuild(build.build);
     m_settings.setInstalledTag(QString());
-    if (!b.backend.isEmpty())
-        m_settings.setRuntimeBackend(b.backend);
+    if (!build.backend.isEmpty())
+        m_settings.setRuntimeBackend(build.backend);
     m_settings.forceSave();
 
-    setStatusMessage(tr("Activated %1%2").arg(b.build.isEmpty() ? b.tag : b.build, b.backend.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(backendDisplayName(b.backend))));
+    const QString label = build.build.isEmpty() ? build.tag : build.build;
+    const QString suffix = build.backend.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(backendDisplayName(build.backend));
+    setStatusMessage(tr("Activated %1%2").arg(label, suffix));
     emit installedChanged();
     rescanInstalledBuilds();
     recomputeHasUpdate();
-    return QString();
+    // The switch is an installation from the wizard's point of view: a build
+    // is installed and active.
+    setState(State::Installed);
+    return true;
 }
 
 QString RuntimeInstaller::removeBuild(const QString &tag)

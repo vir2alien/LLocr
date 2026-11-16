@@ -28,7 +28,7 @@ Windows: дерево пресета `dev-win` (`build/win-msvc2022`, Ninja), с
 `--disable-gpu --no-sandbox --single-process`; на некоторых машинах его
 GPU-инициализация прерывается (особенность среды, не регрессия).
 
-### 76 цели, по доменам
+### 77 цели, по доменам
 
 | Домен | Цели |
 | --- | --- |
@@ -47,6 +47,7 @@ GPU-инициализация прерывается (особенность с
 | UI (набор иконок) | `test_ui_icons` |
 | UI (кнопка с иконкой и подписью) | `test_icon_tool_button_qml` |
 | Установщик рантайма, жизненный цикл | `test_runtime_installer`, `test_runtime_lifetime` |
+| Проверка общего сервера | `test_connection_probe` |
 | Экспорт и рендеринг | `test_exporter`, `test_export_renderer`, `test_candidate_renderer` |
 | Транспорт и управляемый сервер | `test_http_client`, `test_capabilities`, `test_runtime_locator`, `test_server_process`, `test_ensure_connection` |
 | Загрузки, каталоги, установки, блокировки | `test_model_memory_estimator`, `test_download_manager`, `test_release_catalog`, `test_archive_extractor`, `test_staged_install`, `test_install_transaction`, `test_model_catalog`, `test_model_registry`, `test_hardware_info`, `test_model_installer`, `test_model_install_transaction`, `test_model_preset_catalog`, `test_install_lock` |

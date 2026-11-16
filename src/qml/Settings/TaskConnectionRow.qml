@@ -7,20 +7,19 @@ import QtQuick.Layouts
 import LLocr
 import "../Common"
 
-// One task of the external connection table: its own endpoint, its own key
-// and its own model alias. An empty endpoint or an empty key means the
-// shared value (ADR 226).
-RowLayout {
+// One task of the external connection: the model name in the row, its own
+// endpoint and key behind the gear (ADR 226). An empty endpoint or an empty
+// key means the shared value.
+Item {
     id: root
+
+    implicitHeight: row.implicitHeight
 
     signal edited()
 
     property string task: ""
 
-    property int titleWidth: 160
-    property int endpointWidth: 200
-    property int keyWidth: 200
-    property int aliasWidth: 150
+    property int titleWidth: 140
 
     // The tab owns the "Show" switch: one switch reveals every key.
     property bool revealed: false
@@ -33,28 +32,32 @@ RowLayout {
     // user's, so it must not mark the settings window dirty.
     property bool loading: false
 
-    property alias endpointText: endpointField.text
-    property alias aliasText: aliasField.text
-
-    readonly property alias plaintextKeyWarningVisible: plaintextKeyWarning.visible
-
-    // The key's presence is not a binding: the secret store has no notify
-    // signal, the settings do.
+    // The drafts of the row: the model name, the endpoint and the key the
+    // user typed. The popup edits the last two.
+    property string aliasText: ""
+    property string endpointText: ""
+    property string keyDraft: ""
+    property bool keyEdited: false
     property bool keyPresent: false
+
+    readonly property bool plaintextKeyWarningVisible: Settings.isPlaintextKeyEndpoint(root.endpointText)
 
     function load() {
         root.loading = true
-        endpointField.text = Settings.baseUrlForRole(task)
-        aliasField.text = Settings.modelNameForRole(task)
+        root.aliasText = Settings.modelNameForRole(task)
+        root.endpointText = Settings.baseUrlForRole(task)
         root.keyPresent = Settings.apiKeySetForRole(task)
-        keyCell.load()
+        root.keyDraft = ""
+        root.keyEdited = false
+        aliasField.text = root.aliasText
         root.loading = false
     }
 
     function save() {
-        Settings.setBaseUrlForRole(task, endpointField.text)
-        Settings.setModelNameForRole(task, aliasField.text)
-        keyCell.save()
+        Settings.setModelNameForRole(task, root.aliasText)
+        Settings.setBaseUrlForRole(task, root.endpointText)
+        if (root.keyEdited)
+            Settings.setApiKeyForRole(task, root.keyDraft)
     }
 
     onReloadTokenChanged: root.load()
@@ -62,6 +65,8 @@ RowLayout {
 
     Component.onCompleted: root.load()
 
+    // The key's presence is not a binding: the secret store has no notify
+    // signal, the settings do.
     Connections {
         target: Settings
         function onSecretsChanged() {
@@ -69,58 +74,93 @@ RowLayout {
         }
     }
 
-    LLOLabel {
-        Layout.preferredWidth: root.titleWidth
-        Layout.fillHeight: true
-        text: RoleProfiles.title(root.task)
-        font.pixelSize: Theme.bodySmallSize
-        color: Theme.textPrimary
-        wrapMode: Text.WordWrap
-        verticalAlignment: Text.AlignVCenter
-    }
-
-    ColumnLayout {
-        Layout.preferredWidth: root.endpointWidth
-        Layout.fillWidth: true
+    // The row itself is a layout; the popup is a sibling of it, not a child:
+    // a popup inside a layout would be sized and placed by the layout.
+    RowLayout {
+        id: row
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         spacing: Theme.spacingSmall
 
+        LLOLabel {
+            Layout.preferredWidth: root.titleWidth
+            Layout.fillHeight: true
+            text: RoleProfiles.title(root.task)
+            font.pixelSize: Theme.bodySmallSize
+            color: Theme.textPrimary
+            wrapMode: Text.WordWrap
+            verticalAlignment: Text.AlignVCenter
+        }
+
         TextField {
-            id: endpointField
+            id: aliasField
             Layout.fillWidth: true
             implicitHeight: Theme.controlHeight
             font.pixelSize: Theme.bodySmallSize
             selectByMouse: true
-            placeholderText: Settings.baseUrl
-            onTextChanged: if (!root.loading) root.edited()
+            placeholderText: qsTr("the model id")
+            onTextEdited: {
+                root.aliasText = aliasField.text
+                root.edited()
+            }
         }
 
-        LLOLabel {
-            id: plaintextKeyWarning
-            Layout.fillWidth: true
-            font.pixelSize: Theme.footnoteSize
-            color: Theme.accentAttention
-            visible: Settings.isPlaintextKeyEndpoint(endpointField.text)
-            wrapMode: Text.WordWrap
-            text: qsTr("The key will be sent in plain text (http outside the local machine).")
+        ToolButton {
+            id: gearButton
+
+            implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
+            implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
+            onClicked: endpointPopup.open()
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Endpoint and key")
+
+            contentItem: Item {
+                implicitWidth: gearIcon.size
+                implicitHeight: gearIcon.size
+
+                Icon {
+                    id: gearIcon
+                    anchors.centerIn: parent
+                    name: "settings"
+                    size: Theme.iconSizeMedium
+                    color: gearButton.enabled ? Theme.textPrimary : Theme.textMuted
+                }
+            }
         }
     }
 
-    SecretKeyField {
-        id: keyCell
-        Layout.preferredWidth: root.keyWidth
-        keySet: root.keyPresent
-        revealed: root.revealed
-        commit: function(text) { Settings.setApiKeyForRole(root.task, text) }
-    }
+    Popup {
+        id: endpointPopup
 
-    TextField {
-        id: aliasField
-        Layout.preferredWidth: root.aliasWidth
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        font.pixelSize: Theme.bodySmallSize
-        selectByMouse: true
-        placeholderText: qsTr("the model id")
-        onTextChanged: if (!root.loading) root.edited()
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        width: 420
+        padding: Theme.spacing
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+            radius: Theme.controlRadius
+        }
+
+        contentItem: TaskEndpointForm {
+            taskTitle: RoleProfiles.title(root.task)
+            revealed: root.revealed
+            endpointDraft: root.endpointText
+            keyDraft: root.keyDraft
+            keyEdited: root.keyEdited
+            keyPresent: root.keyPresent
+            onEdited: (endpoint, key, keyIsEdited) => {
+                root.endpointText = endpoint
+                root.keyDraft = key
+                root.keyEdited = keyIsEdited
+                root.edited()
+            }
+            onCloseRequested: endpointPopup.close()
+        }
     }
 }

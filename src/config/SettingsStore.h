@@ -26,6 +26,10 @@ class SettingsStore : public QObject
     // store answered. The UI shows it: a key that is not there must say why,
     // and "the key is gone" is not a reason (ADR 227).
     Q_PROPERTY(QString secretError READ secretError NOTIFY secretsChanged)
+    // What the last read of the store answered: "ok", "notFound",
+    // "refused", "unavailable" or "failed". The store without a key and the
+    // store that refused the item are two different answers (ADR 233).
+    Q_PROPERTY(QString secretStatus READ secretStatus NOTIFY secretsChanged)
     // False means the OS store refused the last key: it lives in the memory
     // until the app exits, and the UI must say so.
     Q_PROPERTY(bool lastKeyPersisted READ lastKeyPersisted NOTIFY secretsChanged)
@@ -60,6 +64,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString runtimeBackend READ runtimeBackend WRITE setRuntimeBackend NOTIFY runtimeBackendChanged)
     Q_PROPERTY(QString installedBuild READ installedBuild WRITE setInstalledBuild NOTIFY installedBuildChanged)
     Q_PROPERTY(QString runtimeChannel READ runtimeChannel WRITE setRuntimeChannel NOTIFY runtimeChannelChanged)
+    Q_PROPERTY(QString runtimeIgnoredBuild READ runtimeIgnoredBuild WRITE setRuntimeIgnoredBuild NOTIFY runtimeIgnoredBuildChanged)
     Q_PROPERTY(QString installedTag READ installedTag WRITE setInstalledTag NOTIFY installedTagChanged)
     Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart NOTIFY autoStartChanged)
     Q_PROPERTY(bool startOnDemand READ startOnDemand WRITE setStartOnDemand NOTIFY startOnDemandChanged)
@@ -163,6 +168,7 @@ public:
     bool secretStoreAvailable() const;
     QString secretStoreName() const;
     QString secretError() const;
+    QString secretStatus() const;
     bool lastKeyPersisted() const;
 
     int connectionTimeoutMs() const;
@@ -237,6 +243,10 @@ public:
     void setInstalledBuild(const QString &build);
     QString runtimeChannel() const;
     void setRuntimeChannel(const QString &channel);
+    // The build the user told the app to stop offering ("b12430"). It is a
+    // plain setting, not a secret: it belongs to the profile of the machine.
+    QString runtimeIgnoredBuild() const;
+    void setRuntimeIgnoredBuild(const QString &build);
     QString installedTag() const;
     void setInstalledTag(const QString &tag);
     bool autoStart() const;
@@ -367,6 +377,7 @@ signals:
     void runtimeBackendChanged();
     void installedBuildChanged();
     void runtimeChannelChanged();
+    void runtimeIgnoredBuildChanged();
     void installedTagChanged();
     void autoStartChanged();
     void startOnDemandChanged();
@@ -505,6 +516,7 @@ private:
     static constexpr const char *kRuntimeBackend = "runtime/backend";
     static constexpr const char *kInstalledBuild = "runtime/installedBuild";
     static constexpr const char *kRuntimeChannel = "runtime/channel";
+    static constexpr const char *kRuntimeIgnoredBuild = "runtime/ignoredBuild";
     static constexpr const char *kDefaultRuntimeChannel = "stable";
     static constexpr const char *kInstalledTag = "runtime/installedTag";
     static constexpr const char *kAutoStart = "runtime/autoStart";

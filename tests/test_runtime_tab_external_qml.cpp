@@ -1,4 +1,5 @@
-// The external server tab: the six task rows and what they write.
+// The external server tab: the shared server and the task rows, and what
+// they write.
 //
 // The tab is the one place where an external connection is configured: the
 // shared server plus a row per task (ADR 226). The rows edit the settings
@@ -18,6 +19,7 @@
 
 #include "config/SecretStore.h"
 #include "config/SettingsStore.h"
+#include "runtime/ConnectionProbe.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -68,6 +70,7 @@ private:
 
     std::unique_ptr<FakeUiController> m_uiController;
     std::unique_ptr<SettingsStore> m_settings;
+    std::unique_ptr<ConnectionProbe> m_probe;
     std::unique_ptr<QQmlEngine> m_engine;
     QStringList m_warnings;
     QString m_qmlRoot;
@@ -81,9 +84,12 @@ void TestRuntimeTabExternalQml::initTestCase()
 
     m_uiController = std::make_unique<FakeUiController>();
     m_settings = std::make_unique<SettingsStore>();
+    m_probe = std::make_unique<ConnectionProbe>(*m_settings);
 
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", m_settings.get());
     qmlRegisterSingletonInstance("LLocr", 1, 0, "UiController", m_uiController.get());
+    // The check of the shared server goes through the runtime layer.
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "ConnectionProbe", m_probe.get());
 
     // The module's own singletons, read from the source tree.
     const auto registerSingleton = [this](const char *name) { qmlRegisterSingletonType(QUrl::fromLocalFile(m_qmlRoot + QStringLiteral("/%1.qml").arg(name)), "LLocr", 1, 0, name); };

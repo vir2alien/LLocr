@@ -4,44 +4,53 @@
 <context>
     <name>AppController</name>
     <message>
+        <location filename="../../src/app/AppController.cpp" line="+1483"/>
         <source>Nothing to check:</source>
         <translation>Проверять нечего:</translation>
     </message>
     <message>
+        <location line="-127"/>
         <source>Nothing to recognize: the blocks in scope already carry text</source>
         <translation>Распознавать нечего: блоки в области уже имеют текст</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Nothing to mark up: the pages in scope already carry markup</source>
         <translation>Размечать нечего: на страницах области уже есть разметка</translation>
     </message>
     <message>
+        <location line="+37"/>
+        <location line="+13"/>
         <source>Nothing to fix: the blocks in scope already carry a remedy answer</source>
         <translation>Исправлять нечего: блоки в области уже обработаны</translation>
     </message>
     <message>
+        <location line="+13"/>
         <source>Nothing to read: the blocks in scope do not wait for a reading</source>
         <translation>Перечитывать нечего: блоки в области не ждут чтения</translation>
     </message>
     <message>
+        <location line="-47"/>
         <source>Nothing to check: the blocks in scope already carry a verdict</source>
         <translation>Проверять нечего: блоки в области уже имеют вердикт</translation>
     </message>
     <message>
+        <location line="+97"/>
         <source>%1 block(s) already verified</source>
         <translation>уже проверенных блоков: %1</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>%1 formula(s) rejected: invalid LaTeX syntax</source>
         <translation>отклонено формул с неверным LaTeX: %1</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+600"/>
+        <location line="-729"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
-        <location line="+464"/>
+        <location line="+443"/>
         <source>Block added.</source>
         <translation>Блок добавлен.</translation>
     </message>
@@ -56,32 +65,31 @@
         <translation>Утверждение блока отозвано.</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="-275"/>
         <source>The block text was returned to the document.</source>
         <translation>Текст блока возвращён в документ.</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>The changed fragment is no longer in the document text.</source>
-        <translation>Изменённый фрагмент больше не найден в тексте документа.</translation>
+        <translation type="vanished">Изменённый фрагмент больше не найден в тексте документа.</translation>
     </message>
     <message>
-        <location line="+562"/>
+        <location line="+1232"/>
         <source>Page %1 turned %2° clockwise.</source>
         <translation>Страница %1 повёрнута на %2° по часовой стрелке.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="-2125"/>
         <source>Page %1: the orientation is not clear, the page was left as it is.</source>
         <translation>Страница %1: ориентация не определяется, страница оставлена как есть.</translation>
     </message>
     <message>
-        <location line="-3"/>
+        <location line="-4"/>
         <source>Page %1 lies on its side. The check cannot tell which way it has to be turned — turn it by hand.</source>
         <translation>Страница %1 лежит боком. Проверка не может определить, в какую сторону её повернуть — поверните вручную.</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+7"/>
         <source>Page %1: there is no text on the page, it was left as it is.</source>
         <translation>Страница %1: на странице нет текста, она оставлена как есть.</translation>
     </message>
@@ -90,11 +98,12 @@
         <translation>Страница %1 выровнена на %2°.</translation>
     </message>
     <message>
+        <location line="+1700"/>
         <source>Page %1 lies on its side — turned by %2°, the markup runs again.</source>
         <translation>Страница %1 лежала боком — повёрнута на %2°, разметка запускается снова.</translation>
     </message>
     <message>
-        <location line="-640"/>
+        <location line="-978"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
     </message>
@@ -115,29 +124,22 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+12"/>
-        <location line="+17"/>
-        <location line="+408"/>
-        <source>Set a model name in Settings first.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+94"/>
+        <location line="+760"/>
         <source>Page text copied to the clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+11"/>
         <source>The layout model does not support page markup.</source>
         <translation>Модель разметки не поддерживает разметку страниц.</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>The model profile has no markup prompt.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+48"/>
+        <location line="+64"/>
         <source>The model returned no layout blocks for page %1.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -147,12 +149,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+53"/>
         <source>Page %1 marked up: %2 block(s).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+220"/>
+        <location line="+277"/>
         <source>Markdown (*.md)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -177,12 +179,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1183"/>
+        <location line="-1528"/>
         <source>Page %1 could not be rendered and is shown blank — see the problem log.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+166"/>
+        <location line="+191"/>
         <source>Importing %1 (%2/%3)…</source>
         <translation>Импорт %1 (%2/%3)…</translation>
     </message>
@@ -202,54 +204,140 @@
         <translation>Добавлено файлов: %1, страниц: %2</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+222"/>
         <source>The automatic pipeline is done.</source>
         <translation>Автопайплайн завершён.</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>The automatic pipeline was stopped.</source>
         <translation>Автопайплайн остановлен.</translation>
     </message>
 </context>
 <context>
+    <name>AutoPipelineController</name>
+    <message>
+        <location filename="../../src/app/AutoPipelineController.cpp" line="+47"/>
+        <location line="+28"/>
+        <source>Another job is running</source>
+        <translation>Другая работа уже выполняется</translation>
+    </message>
+    <message>
+        <location line="-26"/>
+        <location line="+31"/>
+        <source>No pages to process</source>
+        <translation>Нет страниц для обработки</translation>
+    </message>
+    <message>
+        <location filename="../../src/app/AppController.cpp" line="+798"/>
+        <source>No model for the markup or the recognition task</source>
+        <translation>Нет модели для разметки или распознавания</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>The markup model does not support page markup</source>
+        <translation>Модель разметки не умеет размечать страницы</translation>
+    </message>
+</context>
+<context>
+    <name>AutoPipelineStage</name>
+    <message>
+        <source>Markup</source>
+        <translation>Разметка</translation>
+    </message>
+    <message>
+        <source>Nothing to mark up</source>
+        <translation>Нет страниц для разметки</translation>
+    </message>
+    <message>
+        <source>No model for this task</source>
+        <translation>Нет модели для этой задачи</translation>
+    </message>
+    <message>
+        <source>The markup pass failed</source>
+        <translation>Разметка не удалась</translation>
+    </message>
+    <message>
+        <source>Block recognition</source>
+        <translation>Распознавание блоков</translation>
+    </message>
+    <message>
+        <source>Nothing to recognize</source>
+        <translation>Нечего распознавать</translation>
+    </message>
+    <message>
+        <source>Nothing to check</source>
+        <translation>Нечего проверять</translation>
+    </message>
+    <message>
+        <source>Fix</source>
+        <translation>Исправление</translation>
+    </message>
+    <message>
+        <source>Nothing to fix</source>
+        <translation>Нечего исправлять</translation>
+    </message>
+    <message>
+        <source>Verification</source>
+        <translation>Проверка</translation>
+    </message>
+    <message>
+        <source>Verification of the corrected blocks</source>
+        <translation>Проверка исправленных блоков</translation>
+    </message>
+    <message>
+        <source>The markup model does not support page markup</source>
+        <translation>Модель разметки не умеет размечать страницы</translation>
+    </message>
+    <message>
+        <source>The block recognition did not start: the queue refused the work</source>
+        <translation>Распознавание блоков не началось: очередь не приняла работу</translation>
+    </message>
+    <message>
+        <source>The verification did not start: the queue refused the work</source>
+        <translation>Проверка не началась: очередь не приняла работу</translation>
+    </message>
+    <message>
+        <source>The fix did not start: the queue refused the work</source>
+        <translation>Исправление не началось: очередь не приняла работу</translation>
+    </message>
+</context>
+<context>
     <name>BlockEditPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+0"/>
+        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+293"/>
         <source>The document text differs from the block</source>
         <translation>Текст в документе отличается от блока</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="+16"/>
         <source>Restore the block text</source>
         <translation>Вернуть текст блока</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+63"/>
-        <location line="+61"/>
+        <location line="-222"/>
+        <location line="+59"/>
         <source>Verified</source>
         <translation type="unfinished">Проверено</translation>
     </message>
     <message>
-        <location line="-55"/>
-        <location line="+56"/>
+        <location line="-53"/>
+        <location line="+54"/>
         <source>Damaged</source>
         <translation type="unfinished">Повреждено</translation>
     </message>
     <message>
-        <location line="-54"/>
-        <location line="+55"/>
+        <location line="-52"/>
+        <location line="+53"/>
         <source>Mismatch</source>
         <translation type="unfinished">Не совпало</translation>
     </message>
     <message>
-        <location line="-53"/>
-        <location line="+54"/>
+        <location line="-51"/>
+        <location line="+52"/>
         <source>Invalid syntax</source>
         <translation>Неверный синтаксис</translation>
     </message>
     <message>
-        <location line="-40"/>
+        <location line="-38"/>
         <source>Unclosed brace</source>
         <translation>Незакрытая скобка</translation>
     </message>
@@ -300,18 +388,18 @@
     </message>
     <message>
         <location line="-65"/>
-        <location line="+57"/>
+        <location line="+55"/>
         <source>Approved</source>
         <translation type="unfinished">Утверждён</translation>
     </message>
     <message>
-        <location line="-55"/>
-        <location line="+56"/>
+        <location line="-53"/>
+        <location line="+54"/>
         <source>Manually modified</source>
         <translation type="unfinished">Ручная правка</translation>
     </message>
     <message>
-        <location line="-28"/>
+        <location line="-26"/>
         <source>Unbalanced left and <byte value="xd"/>ight</source>
         <translation type="unfinished"></translation>
     </message>
@@ -321,32 +409,33 @@
         <translation>Разметка</translation>
     </message>
     <message>
-        <location line="+102"/>
+        <location line="+101"/>
         <source>No correction required</source>
         <translation type="unfinished">Не требует исправления</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+7"/>
         <source>Read: the text matches the image</source>
         <translation type="unfinished">Прочитано: текст совпадает с картинкой</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="-118"/>
         <source>Could not read the block</source>
         <translation type="unfinished">Не удалось прочитать блок</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+7"/>
+        <location line="+1"/>
         <source>Read</source>
         <translation type="unfinished">Прочитано</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+208"/>
         <source>Read text (AI)</source>
         <translation type="unfinished">Прочитанный текст (AI)</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="-87"/>
         <source>Differences</source>
         <translation type="unfinished">Различия</translation>
     </message>
@@ -356,12 +445,12 @@
         <translation type="unfinished">Подсветить, что изменило исправление</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>Reset correction</source>
         <translation type="unfinished">Сбросить исправление</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+38"/>
         <source>Approve block</source>
         <translation type="unfinished">Утвердить блок</translation>
     </message>
@@ -381,7 +470,7 @@
         <translation type="unfinished">Распознанный текст (OCR)</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+20"/>
         <source>Corrected text (AI)</source>
         <translation type="unfinished">Исправленный текст (AI)</translation>
     </message>
@@ -527,7 +616,7 @@
         <translation>Печати и штампы</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+22"/>
         <source>Main content</source>
         <translation>Основное содержимое</translation>
     </message>
@@ -545,7 +634,7 @@
 <context>
     <name>BlockRecognitionModel</name>
     <message>
-        <location filename="../../src/models/BlockRecognitionModel.cpp" line="+20"/>
+        <location filename="../../src/models/BlockRecognitionModel.cpp" line="+21"/>
         <source>Failed to encode the block image</source>
         <translation>Не удалось закодировать изображение блока</translation>
     </message>
@@ -553,17 +642,15 @@
 <context>
     <name>BlockVersionCard</name>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockVersionCard.qml" line="+152"/>
         <source>Edit</source>
-        <translation type="unfinished">Изм.</translation>
+        <translation type="vanished">Изм.</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Save</source>
-        <translation type="unfinished">Сохранить</translation>
+        <translation>Сохранить</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location filename="../../src/qml/MainWindow/BlockVersionCard.qml" line="+118"/>
         <source>In the document</source>
         <translation type="unfinished">Используется в документе</translation>
     </message>
@@ -574,9 +661,44 @@
     </message>
 </context>
 <context>
+    <name>CandidateRenderer</name>
+    <message>
+        <source>The candidate renderer is busy.</source>
+        <translation>Рендерер кандидата занят.</translation>
+    </message>
+    <message>
+        <source>The candidate render timed out.</source>
+        <translation>Истекло время отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <source>Cannot load the candidate render page.</source>
+        <translation>Не удалось загрузить страницу отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <source>The candidate renderer process terminated.</source>
+        <translation>Процесс отрисовки кандидата завершился аварийно.</translation>
+    </message>
+    <message>
+        <source>The candidate render produced an empty page.</source>
+        <translation>Отрисовка кандидата дала пустую страницу.</translation>
+    </message>
+    <message>
+        <source>The candidate render could not create a temporary file.</source>
+        <translation>Не удалось создать временный файл для отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <source>PDF printing failed.</source>
+        <translation>Не удалось напечатать PDF.</translation>
+    </message>
+    <message>
+        <source>The candidate render could not be rasterized.</source>
+        <translation>Не удалось растрировать отрисовку кандидата.</translation>
+    </message>
+</context>
+<context>
     <name>DecisionModel</name>
     <message>
-        <location filename="../../src/models/DecisionModel.cpp" line="+124"/>
+        <location filename="../../src/models/DecisionModel.cpp" line="+62"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный JSON-ответ</translation>
     </message>
@@ -591,23 +713,33 @@
         <translation>В ответе отсутствует ответ о совпадении</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <location line="+11"/>
-        <location line="+2"/>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>Unsupported decision answer format</source>
         <translation>Неподдерживаемый формат ответа decision</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+21"/>
         <source>Failed to encode the block image</source>
         <translation>Не удалось закодировать изображение блока</translation>
     </message>
 </context>
 <context>
+    <name>DecisionQueue</name>
+    <message>
+        <location filename="../../src/app/DecisionQueue.cpp" line="+52"/>
+        <source>No candidate renderer: the visual-diff decision model needs the candidate as an image.</source>
+        <translation>Нет рендерера кандидата: модели визуальной сверки кандидат нужен картинкой.</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>The candidate render failed: %1</source>
+        <translation>Не удалось отрисовать кандидата: %1</translation>
+    </message>
+</context>
+<context>
     <name>DetTokenParser</name>
     <message>
-        <location filename="../../src/parsers/DetTokenParserBase.cpp" line="+202"/>
+        <location filename="../../src/parsers/DetTokenParserBase.cpp" line="+198"/>
         <source>No layout tokens found in the model reply — the text was kept as one block. Check that the OCR model and the output parser match.</source>
         <translation>В ответе модели не найдено токенов разметки — текст сохранён одним блоком. Проверьте, что модель OCR и парсер вывода совпадают.</translation>
     </message>
@@ -615,44 +747,34 @@
 <context>
     <name>DjVuDocument</name>
     <message>
-        <location filename="../../src/app/DjVuDocument.cpp" line="+63"/>
-        <location line="+81"/>
         <source>DjVu decoding timed out.</source>
         <translation>Превышено время ожидания декодирования DjVu.</translation>
     </message>
     <message>
-        <location line="-73"/>
-        <location line="+10"/>
         <source>DjVu decoding failed.</source>
         <translation>Не удалось декодировать DjVu.</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Failed to open DjVu %1: %2</source>
         <translation>Не удалось открыть DjVu %1: %2</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Failed to read DjVu %1, page %2: %3</source>
         <translation>Не удалось прочитать DjVu %1, страницу %2: %3</translation>
     </message>
     <message>
-        <location line="+13"/>
         <source>File does not exist or is not readable.</source>
         <translation>Файл не существует или недоступен для чтения.</translation>
     </message>
     <message>
-        <location line="+38"/>
         <source>Invalid DjVu page index.</source>
         <translation>Недопустимый номер страницы DjVu.</translation>
     </message>
     <message>
-        <location line="+39"/>
         <source>Invalid DjVu page or render size.</source>
         <translation>Недопустимая страница DjVu или размер изображения.</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Unable to allocate the DjVu image buffer.</source>
         <translation>Не удалось выделить память для изображения DjVu.</translation>
     </message>
@@ -660,7 +782,7 @@
 <context>
     <name>DocumentModel</name>
     <message>
-        <location filename="../../src/app/DocumentModel.cpp" line="+161"/>
+        <location filename="../../src/app/DocumentModel.cpp" line="+182"/>
         <source>Failed to read DjVu %1, page %2.</source>
         <translation>Не удалось прочитать DjVu %1, страницу %2.</translation>
     </message>
@@ -686,7 +808,7 @@
         <translation>Поддержка DjVu в этой сборке недоступна. Установите DjVuLibre и пересоберите LLocr (см. docs/06-dev-setup.md) или преобразуйте документ в PDF.</translation>
     </message>
     <message>
-        <location line="+132"/>
+        <location line="+145"/>
         <location line="+80"/>
         <source>DjVu document is not open: %1</source>
         <translation>Документ DjVu не открыт: %1</translation>
@@ -776,7 +898,7 @@
 <context>
     <name>Exporter</name>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="+319"/>
+        <location filename="../../src/app/Exporter.cpp" line="+321"/>
         <location filename="../../src/app/ExportRenderer.cpp" line="+56"/>
         <source>Nothing to export.</source>
         <translation>Экспортировать нечего.</translation>
@@ -792,18 +914,18 @@
         <translation>Для экспорта в DOCX требуется Pandoc, который не найден в PATH. Установите с pandoc.org или экспортируйте в Markdown/HTML.</translation>
     </message>
     <message>
+        <location line="+13"/>
         <location filename="../../src/app/ExportController.cpp" line="+25"/>
-        <location filename="../../src/app/Exporter.cpp" line="+13"/>
         <source>Exported PDF using the built-in writer (%1).</source>
         <translation>PDF экспортирован встроенным модулем (%1).</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location filename="../../src/app/ExportController.cpp" line="+9"/>
         <source>Exported HTML using the basic writer (%1).</source>
         <translation>HTML экспортирован упрощённым модулем (%1).</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="+42"/>
+        <location filename="../../src/app/Exporter.cpp" line="+43"/>
         <source>Cannot create a temporary directory for images.</source>
         <translation>Не удалось создать временную папку для изображений.</translation>
     </message>
@@ -818,20 +940,20 @@
         <translation>Не удалось записать файл: %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../../src/app/ExportController.cpp" line="-12"/>
-        <location filename="../../src/app/Exporter.cpp" line="+2"/>
-        <location line="+30"/>
+        <location line="+2"/>
+        <location line="+36"/>
         <location line="+55"/>
+        <location filename="../../src/app/ExportController.cpp" line="-12"/>
         <source>Exported to %1</source>
         <translation>Экспортировано: %1</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="-78"/>
+        <location line="-77"/>
         <source>Pandoc not found.</source>
         <translation>Pandoc не найден.</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+7"/>
         <source>Failed to start Pandoc.</source>
         <translation>Не удалось запустить Pandoc.</translation>
     </message>
@@ -854,17 +976,15 @@
 <context>
     <name>FixController</name>
     <message>
-        <location filename="../../src/app/FixController.cpp" line="+113"/>
+        <location filename="../../src/app/FixController.cpp" line="+147"/>
         <source>The thinking budget was cut to %1 tokens to fit the context window.</source>
         <translation>Бюджет размышления урезан до %1 токенов, чтобы поместиться в окно контекста.</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>Stopped before the fix started.</source>
         <translation>Остановлено до начала исправления.</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>Stopped before the read started.</source>
         <translation>Остановлено до начала чтения.</translation>
     </message>
@@ -872,7 +992,7 @@
 <context>
     <name>FixDiffGate</name>
     <message>
-        <location filename="../../src/models/FixDiffGate.cpp" line="+157"/>
+        <location filename="../../src/models/FixDiffGate.cpp" line="+166"/>
         <source>The model declared no change instead of a verdict; the block needs a human look.</source>
         <translation>Модель не предложила правку, а просто констатировала отсутствие изменений — блок нужно посмотреть глазами.</translation>
     </message>
@@ -890,52 +1010,50 @@
 <context>
     <name>FixModel</name>
     <message>
-        <location filename="../../src/models/FixModel.cpp" line="+36"/>
+        <location filename="../../src/models/FixModel.cpp" line="+160"/>
         <source>Failed to encode the block image</source>
         <translation>Не удалось закодировать изображение блока</translation>
     </message>
     <message>
-        <location line="+44"/>
         <source>The model returned no corrected text: %1</source>
         <translation>Модель не вернула исправленный текст: %1</translation>
     </message>
     <message>
-        <location line="+44"/>
         <source>The model returned no block text: %1</source>
         <translation>Модель не вернула текст блока: %1</translation>
     </message>
     <message>
-        <location line="+106"/>
+        <location line="-26"/>
         <source>The server ignored the reasoning budget — the answer was requested again without the thinking.</source>
         <translation>Сервер проигнорировал бюджет размышлений — ответ запрошен заново, без размышлений.</translation>
     </message>
     <message>
-        <location line="+100"/>
+        <location line="-18"/>
         <source>The thinking was left out: the server ignores the reasoning budget (reasoning_budget_tokens).</source>
         <translation>Размышления отключены: сервер игнорирует бюджет размышлений (reasoning_budget_tokens).</translation>
     </message>
     <message>
-        <location line="+38"/>
+        <location line="+154"/>
         <source>The reply was cut by the token budget; the block needs a human look.</source>
         <translation>Ответ обрезан бюджетом токенов — блок нужно посмотреть глазами.</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+22"/>
         <source>The reply does not follow the %1 scheme: %2</source>
         <translation>Ответ не соответствует схеме %1: %2</translation>
     </message>
     <message>
-        <location filename="../../src/models/FixModel.cpp" line="+238"/>
+        <location line="-45"/>
         <source>The block could not be read: the crop is cut, covered or blurred.</source>
         <translation>Не удалось прочитать блок: кроп обрезан, закрыт или размыт.</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+16"/>
         <source>The block could not be read: the model wrote no text.</source>
         <translation>Не удалось прочитать блок: модель не написала текст.</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+21"/>
         <source>The block was read: the text matches the image, so the block text is kept.</source>
         <translation>Прочитано: текст совпадает с картинкой, текст блока не изменён.</translation>
     </message>
@@ -943,12 +1061,12 @@
 <context>
     <name>Footer</name>
     <message>
-        <location filename="../../src/qml/MainWindow/Footer.qml" line="+24"/>
+        <location filename="../../src/qml/MainWindow/Footer.qml" line="+26"/>
         <source>Blank replacement — this page could not be decoded. %1</source>
         <translation>Пустая страница вместо повреждённой — не удалось декодировать оригинал. %1</translation>
     </message>
     <message>
-        <location line="+94"/>
+        <location line="+111"/>
         <source>Launch settings changed — restart the server to apply them.</source>
         <translation>Параметры запуска изменены — перезапустите сервер, чтобы они применились.</translation>
     </message>
@@ -963,7 +1081,7 @@
         <translation>Скрыть</translation>
     </message>
     <message>
-        <location line="+155"/>
+        <location line="+180"/>
         <source>Stop server</source>
         <translation>Остановить сервер</translation>
     </message>
@@ -973,17 +1091,17 @@
         <translation>Запустить сервер</translation>
     </message>
     <message>
-        <location line="+37"/>
+        <location line="+39"/>
         <source>Server log — click to open. %1</source>
         <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="-1"/>
         <source>Request log — click to open. %1</source>
         <translation>Журнал запросов — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location line="-265"/>
+        <location line="-291"/>
         <source>The local runtime is owned by another LLocr instance.</source>
         <translation>Локальный рантайм занят другим экземпляром LLocr.</translation>
     </message>
@@ -1048,7 +1166,7 @@
         <translation>Остановить</translation>
     </message>
     <message numerus="yes">
-        <location line="+57"/>
+        <location line="+59"/>
         <source>%n problem(s) logged</source>
         <translation>
             <numerusform>В журнале: %n проблема</numerusform>
@@ -1057,7 +1175,7 @@
         </translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+11"/>
         <source>Details…</source>
         <translation>Подробнее…</translation>
     </message>
@@ -1081,12 +1199,12 @@
         <translation>Журнал проблем — нажмите, чтобы открыть</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="-93"/>
         <source>Stop</source>
         <translation>Стоп</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+126"/>
         <source>Restart server?</source>
         <translation>Перезапустить сервер?</translation>
     </message>
@@ -1109,32 +1227,32 @@
 <context>
     <name>Header</name>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+74"/>
+        <location filename="../../src/qml/MainWindow/Header.qml" line="+73"/>
         <source>File</source>
         <translation>Файл</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+71"/>
+        <location line="-7"/>
         <source>Document</source>
         <translation>Документ</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+109"/>
+        <location line="+38"/>
         <source>Target pages</source>
         <translation>Целевые страницы</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+140"/>
+        <location line="+28"/>
         <source>Pages:</source>
         <translation>Стр:</translation>
     </message>
     <message>
-        <location line="+394"/>
+        <location line="+282"/>
         <source>Open project…</source>
         <translation>Открыть проект…</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+10"/>
         <source>Save project</source>
         <translation>Сохранить проект</translation>
     </message>
@@ -1144,109 +1262,102 @@
         <translation>Сохранить проект как…</translation>
     </message>
     <message>
-        <location line="-347"/>
         <source>Automatic pipelines arrive in a later step</source>
         <translation type="vanished">Автоматические пайплайны появятся в следующем шаге</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="-232"/>
         <source>Mark up</source>
         <translation>Разметить</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+7"/>
         <source>Find the blocks on the selected pages</source>
         <translation>Найти блоки на выбранных страницах</translation>
     </message>
     <message>
-        <location line="-19"/>
         <source>With markup</source>
-        <translation>С разметкой</translation>
+        <translation type="vanished">С разметкой</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>Without markup</source>
-        <translation>Без разметки</translation>
+        <translation type="vanished">Без разметки</translation>
     </message>
     <message>
-        <location line="-12"/>
         <source>Recognize the selected pages: blocks and their text in one pass</source>
-        <translation>Распознать выбранные страницы: блоки и их текст одним проходом</translation>
+        <translation type="vanished">Распознать выбранные страницы: блоки и их текст одним проходом</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+23"/>
         <source>Recognize the marked blocks that still have no text</source>
         <translation>Распознать размеченные блоки, у которых ещё нет текста</translation>
     </message>
     <message>
-        <location line="-11"/>
         <source>Recognize the selected pages as raw text</source>
-        <translation>Распознать выбранные страницы как сплошной текст</translation>
+        <translation type="vanished">Распознать выбранные страницы как сплошной текст</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+25"/>
         <source>Verify</source>
         <translation>Проверить</translation>
     </message>
     <message>
-        <location line="+42"/>
+        <location line="+23"/>
         <location line="+1"/>
         <source>Fix</source>
         <translation>Исправить</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+8"/>
         <source>Fix the blocks that wait for a fix on the selected pages</source>
         <translation>Исправить блоки, ожидающие исправления, на выбранных страницах</translation>
     </message>
     <message>
-        <location line="-32"/>
+        <location line="+16"/>
         <location line="+1"/>
         <source>Recognize exactly</source>
         <translation>Распознать точно</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+11"/>
         <source>Recognize the text with a large AI model</source>
         <translation>Распознать текст большой ИИ-моделью</translation>
     </message>
     <message>
-        <location line="+38"/>
+        <location line="-242"/>
         <source>Export</source>
         <translation>Экспорт</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+269"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location line="-307"/>
         <source>Verification and fixing</source>
         <translation type="vanished">Проверка и исправление</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+262"/>
+        <location line="-93"/>
         <source>Verification and AI correction</source>
         <translation>Проверки и AI-коррекция</translation>
     </message>
     <message>
-        <location line="-460"/>
+        <location line="-186"/>
         <source>Import</source>
         <translation>Импорт</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+5"/>
         <source>Open images, PDF or DjVu</source>
         <translation>Открыть изображения, PDF или DjVu</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Pages</source>
-        <translation type="vanished">Страницы</translation>
+        <translation>Страницы</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+36"/>
         <source>All</source>
         <translation>Все</translation>
     </message>
@@ -1256,68 +1367,60 @@
         <translation>Страницы для обработки: следуют за выделением в панели миниатюр, либо введите диапазон вида 1-10, 15</translation>
     </message>
     <message>
-        <location line="-18"/>
         <source>Auto</source>
         <translation type="vanished">Авто</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+185"/>
+        <location line="+54"/>
         <source>Auto pass</source>
         <translation>Авто-проход</translation>
     </message>
     <message>
-        <location line="+37"/>
         <source>Fast</source>
         <translation type="vanished">Быстро</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Balanced</source>
         <translation type="vanished">Баланс</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Accurate</source>
         <translation type="vanished">Точно</translation>
     </message>
     <message>
-        <location line="+24"/>
         <source>Recognize %1 pg.</source>
         <translation type="vanished">Распознать %1 стр.</translation>
     </message>
     <message>
-        <location line="+29"/>
         <source>Recognition</source>
         <translation type="vanished">Распознавание</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+215"/>
+        <location line="+34"/>
         <source>Markup and OCR</source>
         <translation>Разметка и OCR</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+12"/>
         <source>Stop the layout pass</source>
         <translation>Остановить разметку</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+16"/>
         <source>Recognize blocks</source>
         <translation>Распознать блоки</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+7"/>
         <source>Stop the block recognition</source>
         <translation>Остановить распознавание блоков</translation>
     </message>
     <message>
-        <location line="-10"/>
-        <location line="+20"/>
         <source>Stop the recognition</source>
-        <translation>Остановить распознавание</translation>
+        <translation type="vanished">Остановить распознавание</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+32"/>
         <source>Stop the verification</source>
         <translation>Остановить проверку</translation>
     </message>
@@ -1327,22 +1430,22 @@
         <translation>Проверить распознанные блоки, не исправляя их</translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+24"/>
         <source>Stop the fix</source>
         <translation>Остановить исправление</translation>
     </message>
     <message>
-        <location line="-23"/>
+        <location line="+28"/>
         <source>Stop the exact recognition</source>
         <translation>Остановить распознавание точно</translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="-236"/>
         <source>Export the recognized text</source>
         <translation>Экспортировать распознанный текст</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+387"/>
         <source>Mark up?</source>
         <translation>Разметить?</translation>
     </message>
@@ -1357,7 +1460,7 @@
         <translation>На выбранных страницах уже есть разметка и результаты. Переделать разметку (заменит блоки и все результаты) или разметить только страницы, где её ещё нет?</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Header.qml" line="+167"/>
+        <location line="-297"/>
         <source>Stop the automatic pipeline</source>
         <translation>Остановить автопайплайн</translation>
     </message>
@@ -1367,7 +1470,7 @@
         <translation>Разметить, распознать, проверить и исправить %1 стр.</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+313"/>
         <source>Automatic pipeline?</source>
         <translation>Автопайплайн?</translation>
     </message>
@@ -1382,50 +1485,62 @@
         <translation>На выбранных страницах уже есть результаты. Переделать всё с начала (разметка заново, все результаты стираются) или дополнить только то, чего не хватает?</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Recognize blocks?</source>
         <translation>Распознать блоки?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>The blocks on every page are already recognized. Redo the recognition (it erases the text, the corrections and the verdicts of these blocks) or recognize only the blocks that still have no text?</source>
         <translation>Блоки на всех страницах уже распознаны. Переделать распознавание (стирает текст, исправления и вердикты этих блоков) или распознать только блоки, у которых ещё нет текста?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>The blocks on the selected pages are already recognized. Redo the recognition (it erases the text, the corrections and the verdicts of these blocks) or recognize only the blocks that still have no text?</source>
         <translation>Блоки на выбранных страницах уже распознаны. Переделать распознавание (стирает текст, исправления и вердикты этих блоков) или распознать только блоки, у которых ещё нет текста?</translation>
     </message>
     <message>
+        <location line="+15"/>
         <source>Verify?</source>
         <translation>Проверить?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Some of the blocks on every page are already verified. Redo the verification (the current verdicts are erased and the blocks are verified again) or verify only the blocks without a verdict?</source>
         <translation>Часть блоков на всех страницах уже проверена. Переделать проверку (текущие вердикты стираются, блоки проверяются заново) или проверить только блоки без вердикта?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Some of the blocks on the selected pages are already verified. Redo the verification (the current verdicts are erased and the blocks are verified again) or verify only the blocks without a verdict?</source>
         <translation>Часть блоков на выбранных страницах уже проверена. Переделать проверку (текущие вердикты стираются, блоки проверяются заново) или проверить только блоки без вердикта?</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Fix?</source>
         <translation>Исправить?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Some of the blocks on every page are already fixed. Redo the fix (it erases the corrections and repeats them over the recognized text) or fix only the blocks that still wait for a fix?</source>
         <translation>Часть блоков на всех страницах уже исправлена. Переделать исправление (стирает исправления и повторяет их по распознанному тексту) или исправить только блоки, которые ещё ждут исправления?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Some of the blocks on the selected pages are already fixed. Redo the fix (it erases the corrections and repeats them over the recognized text) or fix only the blocks that still wait for a fix?</source>
         <translation>Часть блоков на выбранных страницах уже исправлена. Переделать исправление (стирает исправления и повторяет их по распознанному тексту) или исправить только блоки, которые ещё ждут исправления?</translation>
     </message>
     <message>
+        <location line="+15"/>
         <source>Recognize exactly?</source>
         <translation>Распознать точно?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Some of the blocks on every page have already been recognized exactly. Redo the recognition (it erases its results) or recognize exactly only the blocks that have not been recognized yet?</source>
         <translation>Часть блоков на каждой странице уже распознана точно. Переделать распознавание (стирает его результаты) или распознать точно только блоки, которые ещё не распознаны точно?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Some of the blocks on the selected pages have already been recognized exactly. Redo the recognition (it erases its results) or recognize exactly only the blocks that have not been recognized yet?</source>
         <translation>Часть блоков на выбранных страницах уже распознана точно. Переделать распознавание (стирает его результаты) или распознать точно только блоки, которые ещё не распознаны точно?</translation>
     </message>
@@ -1441,7 +1556,7 @@
 <context>
     <name>ImagePreview</name>
     <message>
-        <location filename="../../src/qml/MainWindow/ImagePreview.qml" line="+252"/>
+        <location filename="../../src/qml/MainWindow/ImagePreview.qml" line="+255"/>
         <source>Rendering page…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1462,28 +1577,28 @@
 <context>
     <name>InterfaceSettings</name>
     <message>
-        <location filename="../../src/qml/Common/InterfaceSettings.qml" line="+16"/>
+        <location filename="../../src/qml/Common/InterfaceSettings.qml" line="+20"/>
         <source>Language</source>
         <translation>Язык</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location line="+26"/>
+        <location line="+10"/>
+        <location line="+28"/>
         <source>System</source>
         <translation>Как в ОС</translation>
     </message>
     <message>
-        <location line="-6"/>
+        <location line="-7"/>
         <source>Theme</source>
         <translation>Тема</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
         <source>Light</source>
         <translation>Светлая</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="+1"/>
         <source>Dark</source>
         <translation>Тёмная</translation>
     </message>
@@ -1504,10 +1619,12 @@
 <context>
     <name>LaunchTab</name>
     <message>
+        <location filename="../../src/qml/Settings/LaunchTab.qml" line="+203"/>
         <source>Save the value anyway?</source>
         <translation>Всё равно сохранить значение?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>The value will be stored as plain text in the launch profile.</source>
         <translation>Значение сохранится открытым текстом в профиль запуска</translation>
     </message>
@@ -1517,17 +1634,17 @@
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/LaunchTab.qml" line="+57"/>
+        <location line="-120"/>
         <source>(flag)</source>
         <translation>(флаг)</translation>
     </message>
     <message>
-        <location line="+53"/>
+        <location line="+84"/>
         <source>The machine&apos;s parameters: how much of the model goes to the GPU, flash attention, and the context window. Everything else — the server policy and the model&apos;s own parameters — is tuned by the app and its model profiles.</source>
         <translation>Параметры машины: сколько слоёв модели на GPU, flash attention и размер контекста. Всё остальное — политика сервера и собственные параметры модели — подобрано приложением и профилями моделей</translation>
     </message>
     <message>
-        <location line="-27"/>
+        <location line="-51"/>
         <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, draft %5, KV cache %6, working set %7, vision %8, overhead %9.</source>
         <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, черновик %5, KV-кэш %6, рабочий буфер %7, зрение %8, накладные %9.</translation>
     </message>
@@ -1537,20 +1654,22 @@
         <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, черновик %5, KV-кэш %6, рабочий буфер %7, накладные %8.</translation>
     </message>
     <message>
+        <location line="+28"/>
         <source>Partial offload: the card holds %1 of the weights, %2 stay in RAM — RAM ≥ %3 of %4 on this machine.</source>
         <translation>Частичная выгрузка: карта держит %1 весов, %2 остаются в памяти — нужно RAM ≥ %3 из %4 на этой машине.</translation>
     </message>
     <message>
-        <location line="+28"/>
+        <location line="+13"/>
         <source>The model does not fit in this card&apos;s video memory. Lower the number of GPU layers or the context window, or pick a smaller quantization.</source>
         <translation>Модель не помещается в видеопамять этой карты. Уменьшите число слоёв на GPU или размер контекста, либо выберите меньший квант.</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>Not enough RAM for partial offload: the model needs %1, this machine has %2.</source>
         <translation>Для частичной выгрузки не хватает RAM: модели нужно %1, на этой машине %2.</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+24"/>
         <source>The model is managed by the external server. Location and download settings are not available in this mode.</source>
         <translation>Моделью управляет внешний сервер. Настройки расположения и скачивания модели в этом режиме недоступны.</translation>
     </message>
@@ -1563,8 +1682,7 @@
 <context>
     <name>LayoutController</name>
     <message>
-        <location filename="../../src/app/LayoutController.cpp" line="+40"/>
-        <source>The model returned no markup: the server's answer was empty.</source>
+        <source>The model returned no markup: the server&apos;s answer was empty.</source>
         <translation>Модель не вернула разметку: ответ сервера пуст.</translation>
     </message>
 </context>
@@ -1579,12 +1697,12 @@
 <context>
     <name>LlamaClient</name>
     <message>
-        <location filename="../../src/core/LlamaClient.cpp" line="+95"/>
+        <location filename="../../src/core/LlamaClient.cpp" line="+140"/>
         <source>Request timed out after %1 ms</source>
         <translation>Превышено время ожидания запроса (%1 мс)</translation>
     </message>
     <message>
-        <location line="-46"/>
+        <location line="-70"/>
         <source>Connection to %1 timed out after %2 ms</source>
         <translation>Превышено время ожидания подключения к %1 (%2 мс)</translation>
     </message>
@@ -1594,15 +1712,17 @@
         <translation>Не удалось подключиться к %1: %2</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+71"/>
         <source>The server refused the request (HTTP 401): the API key was not sent, or it was not accepted.</source>
         <translation>Сервер отказал в запросе (HTTP 401): ключ не отправлен или не принят.</translation>
     </message>
     <message>
+        <location line="-14"/>
         <source>The server returned a redirect — the endpoint must not redirect requests</source>
         <translation>Сервер вернул redirect — endpoint не должен перенаправлять запросы</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>The server response exceeded the reasonable size (%1 MB)</source>
         <translation>Ответ сервера превысил разумный размер (%1 МБ)</translation>
     </message>
@@ -1610,12 +1730,12 @@
 <context>
     <name>Main</name>
     <message>
-        <location filename="../../src/qml/Main.qml" line="+25"/>
+        <location filename="../../src/qml/Main.qml" line="+27"/>
         <source>LLM OCR</source>
         <translation>LLM OCR</translation>
     </message>
     <message>
-        <location line="+129"/>
+        <location line="+132"/>
         <source>Drop to open</source>
         <translation>Перетащите чтобы открыть</translation>
     </message>
@@ -1640,12 +1760,12 @@
         <translation>Экспорт распознанного текста</translation>
     </message>
     <message>
-        <location line="-149"/>
+        <location line="-152"/>
         <source>LLM OCR — %1</source>
         <translation>LLM OCR — %1</translation>
     </message>
     <message>
-        <location line="+165"/>
+        <location line="+168"/>
         <source>Open project</source>
         <translation>Открытие проекта</translation>
     </message>
@@ -1662,40 +1782,94 @@
     </message>
 </context>
 <context>
-    <name>MarkdownPreview</name>
-    <message>
-        <location filename="../../src/qml/MainWindow/MarkdownPreview.qml" line="+74"/>
-        <source>Failed to load the preview page (%1).</source>
-        <translation>Не удалось загрузить страницу предпросмотра (%1).</translation>
-    </message>
-</context>
-<context>
     <name>MarkdownEditor</name>
     <message>
-        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+26"/>
+        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+29"/>
         <source>Zoom in</source>
         <translation>Увеличить</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+27"/>
+        <location line="+1"/>
         <source>Zoom out</source>
         <translation>Уменьшить</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+28"/>
+        <location line="+1"/>
         <source>Reset the zoom</source>
         <translation>Сбросить масштаб</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/MarkdownEditor.qml" line="+71"/>
+        <location line="+104"/>
         <source>Failed to load the editor page (%1).</source>
         <translation>Не удалось загрузить страницу редактора (%1).</translation>
     </message>
 </context>
 <context>
+    <name>MarkdownPreview</name>
+    <message>
+        <source>Failed to load the preview page (%1).</source>
+        <translation type="vanished">Не удалось загрузить страницу предпросмотра (%1).</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsSection</name>
+    <message>
+        <location filename="../../src/qml/Settings/ModelsSection.qml" line="+267"/>
+        <source>Models to download</source>
+        <translation>Модели для скачивания</translation>
+    </message>
+    <message>
+        <location line="+25"/>
+        <source>Download</source>
+        <translation>Скачать</translation>
+    </message>
+    <message>
+        <location line="-168"/>
+        <source>Downloaded models</source>
+        <translation>Загруженные модели</translation>
+    </message>
+    <message>
+        <location line="+127"/>
+        <source>Downloaded models will appear here — pick a quantization in the rows above and save.</source>
+        <translation>Скачанные модели появятся здесь — выберите квантование в строках выше и сохраните.</translation>
+    </message>
+    <message>
+        <location line="-53"/>
+        <source>Open folder</source>
+        <translation>Открыть папку</translation>
+    </message>
+    <message>
+        <location line="+29"/>
+        <location line="+121"/>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Delete model file</source>
+        <translation>Удалить файл модели</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Delete %1 from disk?</source>
+        <translation>Удалить %1 с диска?</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>%1 is used by %2 task(s). The task rows keep their choice, but the model is gone from disk until you download it again.</source>
+        <translation>%1 привязана к задачам (%2). Строки задач сохранят выбор, но модели на диске больше нет, пока вы не скачаете её снова.</translation>
+    </message>
+    <message>
+        <location line="-37"/>
+        <location line="+56"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+</context>
+<context>
     <name>OcrModel</name>
     <message>
-        <location filename="../../src/models/OcrModel.cpp" line="+179"/>
+        <location filename="../../src/models/OcrModel.cpp" line="+172"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный JSON-ответ</translation>
     </message>
@@ -1713,47 +1887,47 @@
 <context>
     <name>OutputTab</name>
     <message>
-        <location filename="../../src/qml/Settings/OutputTab.qml" line="+78"/>
+        <location filename="../../src/qml/Settings/OutputTab.qml" line="+86"/>
         <source>Output parser</source>
         <translation>Парсер вывода</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+18"/>
         <source>Split pages</source>
         <translation>Разбивать на страницы</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Keep headers and page numbers</source>
         <translation>Сохранять колонтитулы и номера страниц</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Keep tables as HTML</source>
         <translation>Сохранять таблицы в HTML формате</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Check the page orientation</source>
         <translation>Проверять ориентацию страницы</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+7"/>
         <source>Turn a sideways page after markup automatically</source>
         <translation>Поворачивать боковую страницу после разметки автоматически</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+7"/>
         <source>PDF export</source>
         <translation>Экспорт в PDF</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+11"/>
         <source>Orientation</source>
         <translation>Ориентация</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+5"/>
         <source>Portrait</source>
         <translation>Книжная</translation>
     </message>
@@ -1763,7 +1937,7 @@
         <translation>Альбомная</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+11"/>
         <source>Margins (mm)</source>
         <translation>Поля (мм)</translation>
     </message>
@@ -1771,7 +1945,7 @@
 <context>
     <name>PageStatus</name>
     <message>
-        <location filename="../../src/qml/PageStatus.qml" line="+11"/>
+        <location filename="../../src/qml/PageStatus.qml" line="+12"/>
         <source>On its side</source>
         <translation>Лежит боком</translation>
     </message>
@@ -1781,7 +1955,7 @@
         <translation>Ориентация не определена</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+2"/>
         <source>Verified (no errors)</source>
         <translation>Нет ошибок</translation>
     </message>
@@ -1809,12 +1983,12 @@
 <context>
     <name>PageToolBar</name>
     <message>
-        <location filename="../../src/qml/MainWindow/PageToolBar.qml" line="+78"/>
+        <location filename="../../src/qml/MainWindow/PageToolBar.qml" line="+81"/>
         <source>Page</source>
         <translation>Стр.</translation>
     </message>
     <message>
-        <location line="+180"/>
+        <location line="+184"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -1839,17 +2013,17 @@
         <translation>Поворот страницы сбрасывает распознавание: блоки прочитаны при прежней ориентации. Продолжить?</translation>
     </message>
     <message>
-        <location line="-34"/>
+        <location line="-37"/>
         <source>Zoom in</source>
         <translation>Увеличить</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>Zoom out</source>
         <translation>Уменьшить</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>Fit page</source>
         <translation>Вписать страницу</translation>
     </message>
@@ -1857,22 +2031,22 @@
 <context>
     <name>ParamsTableEditor</name>
     <message>
-        <location filename="../../src/qml/Common/ParamsTableEditor.qml" line="+14"/>
+        <location filename="../../src/qml/Common/ParamsTableEditor.qml" line="+18"/>
         <source>value</source>
         <translation>значение</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+18"/>
         <source>Parameter</source>
         <translation>Параметр</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>Value</source>
         <translation>Значение</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+8"/>
         <source>Description</source>
         <translation>Описание</translation>
     </message>
@@ -1880,7 +2054,7 @@
 <context>
     <name>ParserFactory</name>
     <message>
-        <location filename="../../src/parsers/ParserFactory.cpp" line="+38"/>
+        <location filename="../../src/parsers/ParserFactory.cpp" line="+27"/>
         <source>Automatic (model default)</source>
         <translation>Автоматически (по модели)</translation>
     </message>
@@ -1962,7 +2136,7 @@
 <context>
     <name>ProjectController</name>
     <message>
-        <location filename="../../src/app/ProjectController.cpp" line="+268"/>
+        <location filename="../../src/app/ProjectController.cpp" line="+272"/>
         <location line="+48"/>
         <source>No project selected.</source>
         <translation>Проект не выбран</translation>
@@ -1988,12 +2162,12 @@
         <translation>Нечего сохранять — нет открытых страниц</translation>
     </message>
     <message>
-        <location line="-259"/>
+        <location line="-263"/>
         <source>The source file %1 is gone, and the page has no rendered copy to embed.</source>
         <translation>Исходный файл %1 отсутствует, и у страницы нет копии изображения для встраивания</translation>
     </message>
     <message>
-        <location line="+278"/>
+        <location line="+282"/>
         <source>Saving project…</source>
         <translation>Сохранение проекта…</translation>
     </message>
@@ -2009,7 +2183,7 @@
         <translation>Проект сохранён: %1</translation>
     </message>
     <message>
-        <location line="-94"/>
+        <location line="-95"/>
         <source>Project pages %1 could not be restored — see the problem log.</source>
         <translation>Страницы проекта %1 не удалось восстановить — подробности в журнале проблем</translation>
     </message>
@@ -2032,13 +2206,11 @@
 <context>
     <name>ProjectStore</name>
     <message>
-        <location filename="../../src/app/ProjectStore.cpp" line="+186"/>
-        <location line="+96"/>
         <source>Cannot overwrite %1.</source>
-        <translation>Не удалось перезаписать %1</translation>
+        <translation type="vanished">Не удалось перезаписать %1</translation>
     </message>
     <message>
-        <location line="-32"/>
+        <location filename="../../src/app/ProjectStore.cpp" line="+258"/>
         <source>Cannot read %1.</source>
         <translation>Не удалось прочитать %1</translation>
     </message>
@@ -2048,7 +2220,8 @@
         <translation>Не удалось закодировать изображение %1</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="-74"/>
+        <location line="+98"/>
         <source>Cannot write %1.</source>
         <translation>Не удалось записать %1</translation>
     </message>
@@ -2091,36 +2264,36 @@
         <translation>Неподдерживаемый тип архива: %1</translation>
     </message>
     <message>
-        <location line="-118"/>
-        <location line="+276"/>
+        <location line="+9"/>
+        <location line="+258"/>
         <source>Unable to open archive: %1</source>
         <translation>Не удалось открыть архив: %1</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <location line="+321"/>
+        <location line="-254"/>
+        <location line="+258"/>
         <source>Archive is too large</source>
         <translation>Архив слишком велик</translation>
     </message>
     <message>
-        <location line="-118"/>
-        <location line="+276"/>
+        <location line="-122"/>
+        <location line="+283"/>
         <location line="+40"/>
         <source>unable to create directory for %1</source>
         <translation>не удалось создать каталог для %1</translation>
     </message>
     <message>
-        <location line="-311"/>
+        <location line="-318"/>
         <location line="+27"/>
-        <location line="+289"/>
+        <location line="+296"/>
         <location line="+5"/>
         <location line="+5"/>
         <source>unable to write %1</source>
         <translation>не удалось записать %1</translation>
     </message>
     <message>
-        <location line="-165"/>
-        <location line="+138"/>
+        <location line="-168"/>
+        <location line="+141"/>
         <source>archive total uncompressed size exceeds limit</source>
         <translation>полный распакованный размер архива превышает лимит</translation>
     </message>
@@ -2145,18 +2318,18 @@
         <translation>архив содержит слишком много файлов</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/DownloadTask.cpp" line="+178"/>
+        <location filename="../../src/runtime/DownloadTask.cpp" line="+189"/>
         <source>Unable to create target directory: %1</source>
         <translation>Не удалось создать целевую папку: %1</translation>
     </message>
     <message>
         <location line="+21"/>
-        <location line="+118"/>
+        <location line="+131"/>
         <source>Not enough free space on the target volume</source>
         <translation>Недостаточно свободного места на целевом томе</translation>
     </message>
     <message>
-        <location line="-95"/>
+        <location line="-108"/>
         <source>Only https download URLs are allowed</source>
         <translation>Разрешены только https-ссылки для скачивания</translation>
     </message>
@@ -2166,7 +2339,7 @@
         <translation>Отсутствует сетевой менеджер</translation>
     </message>
     <message>
-        <location line="+76"/>
+        <location line="+89"/>
         <source>HTTP error %1</source>
         <translation>Ошибка HTTP %1</translation>
     </message>
@@ -2182,7 +2355,7 @@
         <translation>Ошибка записи при скачивании %1</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+95"/>
         <source>Too many redirects</source>
         <translation>Слишком много перенаправлений</translation>
     </message>
@@ -2192,17 +2365,18 @@
         <translation>Отказ следовать перенаправлению не по https</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+44"/>
         <source>Unable to read %1</source>
         <translation>Не удалось прочитать %1</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="-239"/>
+        <location line="+13"/>
         <source>The server did not report the file size — the download was refused</source>
         <translation>Сервер не сообщил размер файла — скачивание отклонено</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+242"/>
         <source>No sha256 digest was published for %1 — the download was refused.</source>
         <translation>Для %1 не опубликована контрольная сумма sha256 — скачивание отклонено.</translation>
     </message>
@@ -2218,12 +2392,12 @@
         <translation>Не удалось завершить %1</translation>
     </message>
     <message>
-        <location line="-92"/>
+        <location line="-107"/>
         <source>Unable to write %1</source>
         <translation>Не удалось записать %1</translation>
     </message>
     <message>
-        <location line="+179"/>
+        <location line="+196"/>
         <source>Download interrupted</source>
         <translation>Скачивание прервано</translation>
     </message>
@@ -2288,33 +2462,33 @@
         <translation>Не удалось атомарно переименовать установку</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/LlamaServerProcess.cpp" line="+148"/>
+        <location filename="../../src/runtime/LlamaServerProcess.cpp" line="+156"/>
         <source>Unable to allocate a free loopback port</source>
         <translation>Не удалось выделить свободный порт loopback</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-17"/>
         <source>Server is already running</source>
         <translation>Сервер уже запущен</translation>
     </message>
     <message>
-        <location line="-69"/>
+        <location line="-70"/>
         <source>the response has no &quot;data&quot; member</source>
         <translation>в ответе нет элемента &quot;data&quot;</translation>
     </message>
     <message>
-        <location line="+97"/>
-        <location line="+323"/>
+        <location line="+99"/>
+        <location line="+346"/>
         <source>Starting server (attempt %1)</source>
         <translation>Запуск сервера (попытка %1)</translation>
     </message>
     <message>
-        <location line="-270"/>
+        <location line="-291"/>
         <source>Server did not answer /health within %1 ms</source>
         <translation>Сервер не ответил на /health в течение %1 мс</translation>
     </message>
     <message>
-        <location line="+176"/>
+        <location line="+197"/>
         <location line="+45"/>
         <location line="+39"/>
         <location line="+16"/>
@@ -2354,13 +2528,14 @@
         <translation>Подготовка контекста…</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ReleaseCatalog.cpp" line="+144"/>
+        <location filename="../../src/runtime/ReleaseCatalog.cpp" line="+264"/>
         <source>The GitHub releases response contained no releases</source>
         <translation>Ответ GitHub не содержал релизов</translation>
     </message>
     <message>
         <location line="+8"/>
-        <location line="+28"/>
+        <location line="+17"/>
+        <location line="+16"/>
         <source>No cached releases yet</source>
         <translation>Кэшированных релизов ещё нет</translation>
     </message>
@@ -2370,7 +2545,7 @@
         <translation>Кэш списка релизов устарел</translation>
     </message>
     <message>
-        <location line="-28"/>
+        <location line="-33"/>
         <source>Unable to read cached releases</source>
         <translation>Не удалось прочитать кэш релизов</translation>
     </message>
@@ -2380,12 +2555,13 @@
         <translation>Кэш релизов повреждён</translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+62"/>
         <source>No network client available</source>
         <translation>Нет доступного сетевого клиента</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="-266"/>
+        <location line="+283"/>
         <source>Timed out fetching release list</source>
         <translation>Истекло время ожидания при получении списка релизов</translation>
     </message>
@@ -2400,27 +2576,37 @@
         <translation>Достигнут лимит запросов к GitHub; повторите примерно в %1</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-297"/>
+        <location line="+301"/>
         <source>GitHub API returned HTTP %1</source>
         <translation>API GitHub вернул HTTP %1</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="-301"/>
+        <location line="+301"/>
         <source>GitHub request failed: %1</source>
         <translation>Не удалось выполнить запрос к GitHub: %1</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="-290"/>
+        <location line="+297"/>
         <source>Malformed release list from GitHub</source>
         <translation>Некорректный список релизов от GitHub</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="-287"/>
+        <location line="+292"/>
         <source>No releases parsed</source>
         <translation>Релизы не распознаны</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+80"/>
+        <location line="+8"/>
+        <source>The stable release does not point at a build</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+34"/>
         <source>NVIDIA GPU detected (%1): CUDA backend recommended</source>
         <translation>Обнаружен GPU NVIDIA (%1): рекомендуется бэкенд CUDA</translation>
     </message>
@@ -2440,7 +2626,7 @@
         <translation>На Apple Silicon рекомендуется бэкенд Metal; на Intel используется CPU</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="+67"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="+73"/>
         <source>Recognition failed</source>
         <translation>Ошибка распознавания</translation>
     </message>
@@ -2502,7 +2688,7 @@
         <translation>Не удалось создать папку: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelRegistry.cpp" line="+203"/>
+        <location filename="../../src/runtime/ModelRegistry.cpp" line="+215"/>
         <location line="+89"/>
         <source>Unable to read model registry: %1</source>
         <translation>Не удалось прочитать реестр моделей: %1</translation>
@@ -2544,17 +2730,22 @@
         <translation>Не удалось зафиксировать индекс моделей: %1</translation>
     </message>
     <message>
-        <location line="+79"/>
+        <location line="+86"/>
         <source>This model is external and can only be hidden from the list, not deleted</source>
         <translation>Эта модель внешняя — её можно только скрыть из списка, но не удалить</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-7"/>
         <source>This model file lies outside the models directory and cannot be removed.</source>
         <translation>Файл этой модели лежит вне каталога моделей и не может быть удалён.</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+19"/>
+        <source>This model directory is the models directory itself and cannot be removed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
         <source>This model is in use. Stop the server before removing it.</source>
         <translation>Эта модель используется. Остановите сервер перед удалением.</translation>
     </message>
@@ -2631,7 +2822,7 @@
         <translation>Модуль черновика %1 не найден в %2</translation>
     </message>
     <message>
-        <location line="+184"/>
+        <location line="+185"/>
         <source>Unable to keep the existing file %1</source>
         <translation>Не удалось сохранить существующий файл %1</translation>
     </message>
@@ -2661,32 +2852,28 @@
         <translation>Профиль модели %1 не содержит квантизаций</translation>
     </message>
     <message>
-        <location line="+105"/>
         <source>Budget for the model&apos;s thinking tokens; 0 means the reply is the answer only.</source>
-        <translation>Бюджет токенов размышления модели; 0 — ответом будет сам ответ.</translation>
+        <translation type="vanished">Бюджет токенов размышления модели; 0 — ответом будет сам ответ.</translation>
     </message>
     <message>
-        <location line="+37"/>
         <source>Request profile %1 has a malformed reasoning mode</source>
-        <translation>Профиль запросов %1 содержит некорректный режим размышления</translation>
+        <translation type="vanished">Профиль запросов %1 содержит некорректный режим размышления</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Request profile %1 has a reasoning mode without a label</source>
-        <translation>Профиль запросов %1 содержит режим размышления без названия</translation>
+        <translation type="vanished">Профиль запросов %1 содержит режим размышления без названия</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Request profile %1 has a reasoning mode without a budget</source>
-        <translation>Профиль запросов %1 содержит режим размышления без бюджета</translation>
+        <translation type="vanished">Профиль запросов %1 содержит режим размышления без бюджета</translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+135"/>
         <source>A model profile has an empty id</source>
         <translation>Профиль модели имеет пустой id</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+37"/>
         <source>Model profile</source>
         <translation>Профиль модели</translation>
     </message>
@@ -2701,8 +2888,7 @@
         <translation>Профиль модели %1 содержит промпт без id или текста</translation>
     </message>
     <message>
-        <location line="-210"/>
-        <location line="+9"/>
+        <location line="-163"/>
         <source>Model profile %1 has a block prompt without a block type or text</source>
         <translation>Профиль модели %1 содержит блочный промпт без типа блока или текста</translation>
     </message>
@@ -2712,18 +2898,17 @@
         <translation>Профиль модели %1 содержит псевдоним блока без типа блока или цели</translation>
     </message>
     <message>
-        <location line="+218"/>
+        <location line="+188"/>
         <source>Model profile directory not found: %1</source>
         <translation>Каталог профилей моделей не найден: %1</translation>
     </message>
     <message>
-        <location line="-148"/>
+        <location line="-138"/>
         <source>A request profile has an empty id</source>
         <translation>Профиль запросов имеет пустой id</translation>
     </message>
     <message>
-        <location line="-91"/>
-        <location line="+9"/>
+        <location line="-62"/>
         <source>Request profile %1 has a block prompt without a block type or text</source>
         <translation>Профиль запросов %1 содержит блочный промпт без типа блока или текста</translation>
     </message>
@@ -2733,7 +2918,7 @@
         <translation>Профиль запросов %1 содержит псевдоним блока без типа блока или цели</translation>
     </message>
     <message>
-        <location line="+271"/>
+        <location line="+240"/>
         <source>Request profile directory not found: %1</source>
         <translation>Каталог профилей запросов не найден: %1</translation>
     </message>
@@ -2743,27 +2928,32 @@
         <translation>Дублирующийся id профиля запросов: %1</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-44"/>
         <source>Model profile %1 references an unknown request profile: %2</source>
         <translation>Профиль модели %1 ссылается на неизвестный профиль запросов: %2</translation>
     </message>
     <message>
-        <location line="-23"/>
-        <location line="+52"/>
+        <location line="-50"/>
+        <source>Model profile %1 has a read block prompt without a block type or text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <location line="+51"/>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+4"/>
         <source>Unable to read %1: %2</source>
         <translation>Не удалось прочитать %1: %2</translation>
     </message>
     <message>
-        <location line="-46"/>
-        <location line="+52"/>
+        <location line="-45"/>
+        <location line="+51"/>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+6"/>
         <source>%1 is malformed: %2</source>
         <translation>Некорректный формат %1: %2</translation>
     </message>
     <message>
-        <location line="-46"/>
-        <location line="+52"/>
+        <location line="-45"/>
+        <location line="+51"/>
         <source>%1: %2</source>
         <translation>%1: %2</translation>
     </message>
@@ -2773,7 +2963,7 @@
         <translation>Дублирующийся id профиля модели: %1</translation>
     </message>
     <message>
-        <location line="+309"/>
+        <location line="+287"/>
         <source>Maximum tokens the model may generate for one page.</source>
         <translation>Максимум токенов, которые модель может сгенерировать для одной страницы.</translation>
     </message>
@@ -2818,31 +3008,31 @@
         <translation>Профиль запроса не содержит массива параметров</translation>
     </message>
     <message>
-        <location filename="../../src/core/LaunchProfile.cpp" line="+138"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="-61"/>
+        <location line="-61"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+149"/>
         <source>%1 parameter is not an object</source>
         <translation>%1: параметр не является объектом</translation>
     </message>
     <message>
-        <location line="-47"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+7"/>
+        <location line="+7"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="-47"/>
         <source>%1 parameter has an empty name</source>
         <translation>%1: у параметра пустое имя</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+6"/>
+        <location line="+6"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+8"/>
         <source>%1 parameter %2 has an invalid order</source>
         <translation>%1: параметр %2 имеет некорректный порядок</translation>
     </message>
     <message>
-        <location line="+22"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+9"/>
+        <location line="+9"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+22"/>
         <source>%1 parameter %2 has an unsupported value</source>
         <translation>%1: параметр %2 имеет неподдерживаемое значение</translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="+8"/>
+        <location line="+8"/>
         <source>%1 parameter %2 has a malformed choice</source>
         <translation>%1: параметр %2 содержит некорректный вариант</translation>
     </message>
@@ -2857,13 +3047,13 @@
         <translation>%1: параметр %2 содержит вариант с неподдерживаемым значением</translation>
     </message>
     <message>
+        <location line="+7"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+25"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+7"/>
         <source>%1 has a duplicate parameter: %2</source>
         <translation>%1: дублирующийся параметр: %2</translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="+18"/>
+        <location line="+18"/>
         <source>Request profile</source>
         <translation>Профиль запроса</translation>
     </message>
@@ -2922,19 +3112,32 @@
     </message>
 </context>
 <context>
+    <name>RemedyQueue</name>
+    <message>
+        <location filename="../../src/app/RemedyQueue.cpp" line="+90"/>
+        <source>The read prompts (%1) are missing: the block was not sent.</source>
+        <translation>Промпты чтения (%1) отсутствуют: блок не отправлен.</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>Blocks read: %1 rewritten, %2 confirmed, %3 unreadable.</source>
+        <translation>Прочитано блоков: переписано — %1, подтверждено — %2, не прочитано — %3.</translation>
+    </message>
+</context>
+<context>
     <name>RequestTab</name>
     <message>
-        <location filename="../../src/qml/Settings/RequestTab.qml" line="+49"/>
+        <location filename="../../src/qml/Settings/RequestTab.qml" line="+68"/>
         <source>Match threshold (%)</source>
         <translation>Порог совпадения (%)</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+27"/>
         <source>The decision model answers with the probability that the text matches the image. A block counts as correct when the probability reaches this threshold; the rest are re-recognized when automatic re-recognition is on.</source>
         <translation>Модель decision отвечает вероятностью того, что текст соответствует изображению. Блок считается правильным, если вероятность достигла порога; остальные повторно распознаются, если включено автоматическое повторное распознавание.</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+24"/>
         <source>The decision model answers in a single forward pass and generates no text, so it has no sampling parameters — the threshold above is its only setting here.</source>
         <translation>Модель decision отвечает за один проход и не генерирует текста, поэтому параметров сэмплирования у неё нет — порог выше является единственной настройкой здесь.</translation>
     </message>
@@ -2942,14 +3145,17 @@
 <context>
     <name>RerunConfirmDialog</name>
     <message>
-        <source>Only what's not done</source>
+        <location filename="../../src/qml/Common/RerunConfirmDialog.qml" line="+27"/>
+        <source>Only what&apos;s not done</source>
         <translation>Только где не сделано</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Redo all</source>
         <translation>Переделать всё</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -2957,7 +3163,7 @@
 <context>
     <name>RoleProfiles</name>
     <message>
-        <location filename="../../src/qml/RoleProfiles.qml" line="+59"/>
+        <location filename="../../src/qml/RoleProfiles.qml" line="+43"/>
         <source>Block fix</source>
         <translation>Исправление блока</translation>
     </message>
@@ -2972,17 +3178,15 @@
         <translation>Разметка</translation>
     </message>
     <message>
-        <location line="-32"/>
         <source>Recognition with markup</source>
-        <translation>Распознавание с разметкой</translation>
+        <translation type="vanished">Распознавание с разметкой</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Recognition without markup</source>
-        <translation>Распознавание без разметки</translation>
+        <translation type="vanished">Распознавание без разметки</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="-8"/>
         <source>Verification</source>
         <translation>Проверка</translation>
     </message>
@@ -3002,17 +3206,15 @@
         <translation>Параметры сэмплирования для каждого запроса разметки страницы. Набор приходит из профиля модели — правьте значения, а не список.</translation>
     </message>
     <message>
-        <location line="-24"/>
         <source>Sampling parameters sent with every plain-text page recognition request. The set comes from the model profile — edit the values, not the list.</source>
-        <translation>Параметры сэмплирования для каждого запроса распознавания страницы сплошным текстом. Набор приходит из профиля модели — правьте значения, а не список.</translation>
+        <translation type="vanished">Параметры сэмплирования для каждого запроса распознавания страницы сплошным текстом. Набор приходит из профиля модели — правьте значения, а не список.</translation>
+    </message>
+    <message>
+        <source>Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation type="vanished">Параметры сэмплирования, отправляемые с каждым запросом распознавания. Набор задаёт профиль модели — меняйте значения, а не список</translation>
     </message>
     <message>
         <location line="-8"/>
-        <source>Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.</source>
-        <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания. Набор задаёт профиль модели — меняйте значения, а не список</translation>
-    </message>
-    <message>
-        <location line="+24"/>
         <source>Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.</source>
         <translation>Параметры запроса к decision-эндпоинту. Набор задаёт профиль модели — меняйте значения, а не список</translation>
     </message>
@@ -3020,19 +3222,19 @@
 <context>
     <name>RuntimeBuildsList</name>
     <message>
-        <location filename="../../src/qml/Common/RuntimeBuildsList.qml" line="+118"/>
+        <location filename="../../src/qml/Common/RuntimeBuildsList.qml" line="+121"/>
         <source>%1 — binary missing</source>
         <translation>%1 — бинарник отсутствует</translation>
     </message>
     <message>
-        <location line="-60"/>
-        <location line="+82"/>
+        <location line="-61"/>
+        <location line="+83"/>
         <source>Active</source>
         <translation>Активна</translation>
     </message>
     <message>
-        <location line="-81"/>
-        <location line="+81"/>
+        <location line="-82"/>
+        <location line="+82"/>
         <source>Activate</source>
         <translation>Активировать</translation>
     </message>
@@ -3066,6 +3268,13 @@
     </message>
 </context>
 <context>
+    <name>RuntimeController</name>
+    <message>
+        <source>The API key is in the system secret store, but the store did not give it: %1</source>
+        <translation>Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
+    </message>
+</context>
+<context>
     <name>RuntimeNoteWarning</name>
     <message>
         <location filename="../../src/qml/Common/RuntimeNoteWarning.qml" line="+12"/>
@@ -3076,17 +3285,31 @@
 <context>
     <name>RuntimeTab</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTab.qml" line="+37"/>
+        <location filename="../../src/qml/Settings/RuntimeTab.qml" line="+62"/>
         <source>Connection mode</source>
         <translation>Режим подключения</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>External runtime settings</source>
-        <translation>Настройки внешнего рантайма</translation>
+        <translation type="vanished">Настройки внешнего рантайма</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="-19"/>
+        <source>connect %1 · answer %2</source>
+        <translation>подключение %1 · ответ %2</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>%1 s</source>
+        <translation>%1 с</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 min</source>
+        <translation>%1 мин</translation>
+    </message>
+    <message>
+        <location line="+14"/>
         <source>External</source>
         <translation>Внешний</translation>
     </message>
@@ -3096,25 +3319,44 @@
         <translation>Управляемый</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+16"/>
+        <source>The models run on your own server with an OpenAI-compatible API.</source>
+        <translation>Модели выполняются на вашем сервере с OpenAI-совместимым API.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The app downloads and runs llama.cpp on this machine.</source>
+        <translation>Приложение само скачивает и запускает llama.cpp на этой машине.</translation>
+    </message>
+    <message>
+        <location line="+50"/>
+        <source>Timeouts</source>
+        <translation>Таймауты</translation>
+    </message>
+    <message>
+        <location line="+30"/>
         <source>Connection timeout (ms)</source>
         <translation>Таймаут подключения (мс)</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+20"/>
         <source>Request timeout (ms)</source>
         <translation>Время ожидания ответа (мс)</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+25"/>
+        <source>The connection timeout is how long to wait for the server to accept a connection; the request timeout is how long to wait for the model&apos;s response. Raise the request timeout if long recognitions are cut off.</source>
+        <translation>Таймаут подключения — сколько ждать, пока сервер примет соединение; таймаут запроса — сколько ждать ответа модели. Увеличьте ожидание ответа, если длинные распознавания обрываются.</translation>
+    </message>
+    <message>
         <source>Connection timeout — how long to wait for the server to accept a connection. Request timeout — how long to wait for the model&apos;s response; raise it if long recognitions are cut off.</source>
-        <translation>Таймаут подключения — сколько ждать установления соединения с сервером. Время ожидания ответа — сколько ждать ответ модели; увеличьте его, если длинные распознавания обрываются.</translation>
+        <translation type="vanished">Таймаут подключения — сколько ждать установления соединения с сервером. Время ожидания ответа — сколько ждать ответ модели; увеличьте его, если длинные распознавания обрываются.</translation>
     </message>
 </context>
 <context>
     <name>RuntimeTabExternal</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+66"/>
+        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+74"/>
         <source>The key is kept in %1 — not in the settings file.</source>
         <translation>Ключ хранится в %1 — не в файле настроек.</translation>
     </message>
@@ -3129,164 +3371,312 @@
         <translation>Системное хранилище отказало: ключ держится в памяти до закрытия приложения.</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Shared server — the default for every task</source>
-        <translation>Общий сервер — значение по умолчанию для всех задач</translation>
+        <translation type="vanished">Общий сервер — значение по умолчанию для всех задач</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+225"/>
         <source>The system store did not answer: %1</source>
         <translation>Системное хранилище не ответило: %1</translation>
     </message>
     <message>
-        <location line="-61"/>
+        <location line="-110"/>
         <source>Endpoint base URL</source>
         <translation>Базовый URL конечной точки</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="-106"/>
+        <source>No system secret store</source>
+        <translation>Нет системного хранилища</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The system store did not answer</source>
+        <translation>Системное хранилище не ответило</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The system store refused the key</source>
+        <translation>Системное хранилище отказало в ключе</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Checking the server…</source>
+        <translation>Проверка сервера…</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Connected · %1 ms</source>
+        <translation>Подключено · %1 мс</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>%1 models</source>
+        <translation>%1 моделей</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>No answer: %1</source>
+        <translation>Нет ответа: %1</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Shared server</source>
+        <translation>Общий сервер</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The default for every task</source>
+        <translation>Значение по умолчанию для всех задач</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Check</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <location line="+92"/>
         <source>The key will be sent in plain text (http outside the local machine).</source>
         <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <location line="+71"/>
+        <location line="+40"/>
+        <source>Retry</source>
+        <translation>Повторить</translation>
+    </message>
+    <message>
+        <location line="+45"/>
+        <source>Tasks</source>
+        <translation>Задачи</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>An empty field takes the shared value</source>
+        <translation>Пустое поле берёт общее значение</translation>
+    </message>
+    <message>
+        <location line="-137"/>
         <source>API key</source>
         <translation>API-ключ</translation>
     </message>
     <message>
-        <location line="-66"/>
-        <location line="+69"/>
+        <location line="+6"/>
         <source>Show</source>
         <translation>Показать</translation>
     </message>
     <message>
-        <location line="-31"/>
         <source>Tasks — an empty field takes the shared value</source>
-        <translation>Задачи — пустое поле берёт общее значение</translation>
+        <translation type="vanished">Задачи — пустое поле берёт общее значение</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Task</source>
-        <translation>Задача</translation>
+        <translation type="vanished">Задача</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Endpoint</source>
         <translation>Эндпоинт</translation>
     </message>
     <message>
-        <location line="+22"/>
         <source>Model alias</source>
-        <translation>Алиас модели</translation>
+        <translation type="vanished">Алиас модели</translation>
     </message>
 </context>
 <context>
     <name>RuntimeTabInternal</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+90"/>
         <source>Manage llama.cpp</source>
-        <translation>Управление llama.cpp</translation>
+        <translation type="vanished">Управление llama.cpp</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+106"/>
         <source>No runtime installed yet</source>
         <translation>Рантайм ещё не установлен</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Installed builds</source>
-        <translation>Установленные сборки</translation>
+        <translation type="vanished">Установленные сборки</translation>
     </message>
     <message>
-        <location line="+46"/>
         <source>A newer build %1 is available%2</source>
-        <translation>Доступна новая сборка %1%2</translation>
+        <translation type="vanished">Доступна новая сборка %1%2</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source> (checked %1)</source>
-        <translation> (проверено %1)</translation>
+        <translation type="vanished"> (проверено %1)</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Updating will install it after the running server is stopped.</source>
-        <translation>Обновление установится после остановки работающего сервера.</translation>
+        <translation type="vanished">Обновление установится после остановки работающего сервера.</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>You can keep working — updating installs in the background.</source>
-        <translation>Можно продолжать работу — обновление установится в фоне.</translation>
+        <translation type="vanished">Можно продолжать работу — обновление установится в фоне.</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Stop server and update</source>
-        <translation>Остановить сервер и обновить</translation>
+        <translation type="vanished">Остановить сервер и обновить</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+212"/>
         <source>Update</source>
         <translation>Обновить</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>View changes</source>
-        <translation>Посмотреть изменения</translation>
+        <translation type="vanished">Посмотреть изменения</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="-183"/>
         <source>Platform: %1 · recommended backend: %2</source>
         <translation>Платформа: %1 · рекомендуемый backend: %2</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="-46"/>
+        <source>llama.cpp builds</source>
+        <translation>Сборки llama.cpp</translation>
+    </message>
+    <message>
+        <location line="+109"/>
+        <source>Updates</source>
+        <translation>Обновления</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Checked at %1</source>
+        <translation>Проверено %1</translation>
+    </message>
+    <message>
+        <location line="+58"/>
+        <source>Could not check</source>
+        <translation>Не удалось проверить</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Could not install</source>
+        <translation>Не удалось установить</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Retry</source>
+        <translation>Повторить</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Ignored</source>
+        <translation>Игнорирована</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Available</source>
+        <translation>Доступна</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+305"/>
+        <source>Installed</source>
+        <translation>Установлена</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+320"/>
+        <source>Activate</source>
+        <translation>Активировать</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Changes</source>
+        <translation>Изменения</translation>
+    </message>
+    <message>
+        <source>Up to date</source>
+        <translation type="vanished">Актуально</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Active %1 — this is the latest build.</source>
+        <translation>Активна %1 — это последняя версия.</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Installing %1…</source>
+        <translation>Установка %1…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Downloading %1…</source>
+        <translation>Загрузка %1…</translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>The installation runs in the background — you can keep working.</source>
+        <translation>Установка идёт в фоне — работать можно не прерываясь.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Restore this version</source>
+        <translation>Вернуть версию</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Ignore this version</source>
+        <translation>Игнорировать версию</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>Channel</source>
+        <translation>Канал</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Stable</source>
+        <translation>Стабильный</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Beta</source>
+        <translation>Бета</translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>Backend</source>
         <translation>Backend</translation>
     </message>
     <message>
-        <location line="+13"/>
         <source>Release</source>
-        <translation>Релиз</translation>
+        <translation type="vanished">Релиз</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="-225"/>
         <source>Check for updates</source>
         <translation>Проверить обновления</translation>
     </message>
     <message>
-        <location line="-47"/>
         <source>Open this tab or press “Check for updates” to load releases.</source>
-        <translation>Откройте эту вкладку или нажмите «Проверить обновления», чтобы загрузить релизы.</translation>
+        <translation type="vanished">Откройте эту вкладку или нажмите «Проверить обновления», чтобы загрузить релизы.</translation>
     </message>
     <message>
-        <location line="+53"/>
+        <location line="+155"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Download and install</source>
-        <translation>Скачать и установить</translation>
+        <translation type="vanished">Скачать и установить</translation>
     </message>
     <message>
-        <location line="-164"/>
+        <location line="-276"/>
         <source>Clean up unused builds</source>
         <translation>Очистить неиспользуемые сборки</translation>
     </message>
     <message>
-        <location line="+181"/>
         <source>Press “Check for updates” to see if a newer release is available.</source>
-        <translation>Нажмите «Проверить обновления», чтобы узнать о новых релизах.</translation>
+        <translation type="vanished">Нажмите «Проверить обновления», чтобы узнать о новых релизах.</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>A newer release is available.</source>
-        <translation>Доступен более новый релиз.</translation>
+        <translation type="vanished">Доступен более новый релиз.</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Your runtime build is up to date.</source>
-        <translation>Ваша сборка среды выполнения актуальна.</translation>
+        <translation type="vanished">Ваша сборка среды выполнения актуальна.</translation>
     </message>
 </context>
 <context>
@@ -3295,6 +3685,92 @@
         <location filename="../../src/qml/Common/SecretKeyField.qml" line="+22"/>
         <source>the shared key</source>
         <translation>общий ключ</translation>
+    </message>
+</context>
+<context>
+    <name>SecretStore</name>
+    <message>
+        <source>The macOS Keychain is not available</source>
+        <translation>Связка ключей macOS недоступна</translation>
+    </message>
+    <message>
+        <source>The Keychain has no such key</source>
+        <translation>В связке ключей нет такого ключа</translation>
+    </message>
+    <message>
+        <source>The Keychain item is not a password</source>
+        <translation>Элемент связки ключей — не пароль</translation>
+    </message>
+    <message>
+        <source>Keychain: the access was denied — the item “%1” belongs to an earlier build of the app. Answer the Keychain prompt with “Always Allow”, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
+        <translation>Связка ключей: доступ запрещён — элемент «%1» принадлежит прежней сборке приложения. Ответьте на запрос связки «Всегда разрешать» или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
+    </message>
+    <message>
+        <source>Keychain: the access to the item “%1” needs the user&apos;s confirmation, and none was given. Allow it, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
+        <translation>Связка ключей: доступ к элементу «%1» требует подтверждения пользователя, и подтверждения не было. Разрешите доступ или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
+    </message>
+    <message>
+        <source>Keychain: the item “%1” is still there and cannot be replaced.</source>
+        <translation>Связка ключей: элемент «%1» всё ещё на месте, и заменить его не удалось.</translation>
+    </message>
+    <message>
+        <source>Keychain: %1</source>
+        <translation>Связка ключей: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/config/SecretStore.cpp" line="+60"/>
+        <location line="+45"/>
+        <source>The secret has no name</source>
+        <translation>У секрета нет имени</translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>The secret store took the key but did not give it back</source>
+        <translation>Хранилище секретов взяло ключ, но не отдало его обратно</translation>
+    </message>
+    <message>
+        <source>Credential Manager: error %1</source>
+        <translation>Диспетчер учётных данных: ошибка %1</translation>
+    </message>
+    <message>
+        <source>Credential Manager: there is no such key</source>
+        <translation>Диспетчер учётных данных: нет такого ключа</translation>
+    </message>
+    <message>
+        <source>No secret service on the session bus</source>
+        <translation>Служба секретов недоступна в шине сессии</translation>
+    </message>
+    <message>
+        <source>Secret Service: the session could not be opened</source>
+        <translation>Служба секретов: не удалось открыть сессию</translation>
+    </message>
+    <message>
+        <source>Secret Service: the search failed</source>
+        <translation>Служба секретов: поиск не удался</translation>
+    </message>
+    <message>
+        <source>Secret Service: there is no such key</source>
+        <translation>Служба секретов: нет такого ключа</translation>
+    </message>
+    <message>
+        <source>Secret Service: the collection could not be unlocked</source>
+        <translation>Служба секретов: не удалось разблокировать коллекцию</translation>
+    </message>
+    <message>
+        <source>The keyring is locked — unlock it and try again</source>
+        <translation>Связка ключей заблокирована — разблокируйте её и повторите</translation>
+    </message>
+    <message>
+        <source>Secret Service: the key could not be read</source>
+        <translation>Служба секретов: не удалось прочитать ключ</translation>
+    </message>
+    <message>
+        <source>Secret Service: the key could not be stored</source>
+        <translation>Служба секретов: не удалось сохранить ключ</translation>
+    </message>
+    <message>
+        <source>Secret Service: the key could not be deleted</source>
+        <translation>Служба секретов: не удалось удалить ключ</translation>
     </message>
 </context>
 <context>
@@ -3308,32 +3784,32 @@
 <context>
     <name>ServerLogWindow</name>
     <message>
-        <location filename="../../src/qml/ServerLogWindow.qml" line="+12"/>
+        <location filename="../../src/qml/ServerLogWindow.qml" line="+16"/>
         <source>llama-server log</source>
         <translation>Журнал llama-server</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+0"/>
         <source>Request log</source>
         <translation>Журнал запросов</translation>
     </message>
     <message>
-        <location line="+133"/>
+        <location line="+135"/>
         <source>No log output yet.</source>
         <translation>Вывода журнала пока нет.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+0"/>
         <source>No requests yet.</source>
         <translation>Запросов пока нет.</translation>
     </message>
     <message>
-        <location line="-84"/>
+        <location line="-85"/>
         <source>Copy log</source>
         <translation>Скопировать журнал</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>Open directory</source>
         <translation>Открыть папку</translation>
     </message>
@@ -3350,6 +3826,94 @@
             <numerusform>%n строки</numerusform>
             <numerusform>%n строк</numerusform>
         </translation>
+    </message>
+</context>
+<context>
+    <name>SettingsWindow</name>
+    <message>
+        <location filename="../../src/qml/Settings/SettingsWindow.qml" line="+16"/>
+        <source>Settings</source>
+        <translation>Настройки</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Interface</source>
+        <translation>Интерфейс</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Output</source>
+        <translation>Вывод</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Verification</source>
+        <translation>Проверка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime</source>
+        <translation>Рантайм</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Models</source>
+        <translation>Модели</translation>
+    </message>
+    <message>
+        <location line="+124"/>
+        <source>Setup wizard</source>
+        <translation>Мастер настройки</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Reset all settings</source>
+        <translation>Сбросить все настройки</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <location line="+90"/>
+        <source>Reset all settings?</source>
+        <translation>Сбросить все настройки?</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Every setting goes back to its default, the custom verification prompts included. The installed runtime, the downloaded models and the keys in the system store stay.</source>
+        <translation>Все настройки возвращаются к значениям по умолчанию, включая пользовательские промпты проверки. Установленный рантайм, скачанные модели и ключи в системном хранилище остаются.</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Reset</source>
+        <translation>Сбросить</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Discard changes?</source>
+        <translation>Отменить изменения?</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>There are unsaved changes. Close without saving?</source>
+        <translation>Есть несохранённые изменения. Закрыть без сохранения?</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>There are unsaved changes. They will be lost, and the setup wizard will start.</source>
+        <translation>Есть несохранённые изменения. Они будут потеряны, и запустится мастер настройки.</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>Don&apos;t save</source>
+        <translation>Не сохранять</translation>
     </message>
 </context>
 <context>
@@ -3489,11 +4053,12 @@
     </message>
     <message>
         <location line="-5"/>
+        <location line="+6"/>
         <source>Check the connection to the internet and the free disk space, then press the button above again.</source>
         <translation>Проверьте подключение к интернету и свободное место на диске, затем нажмите кнопку выше ещё раз.</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+5"/>
         <source>The server could not start: the port it wants is taken by another program.</source>
         <translation>Сервер не запустился: нужный ему порт занят другой программой.</translation>
     </message>
@@ -3619,7 +4184,7 @@
 <context>
     <name>StepHardware</name>
     <message>
-        <location filename="../../src/qml/Setup/StepHardware.qml" line="+53"/>
+        <location filename="../../src/qml/Setup/StepHardware.qml" line="+61"/>
         <source>Hardware and models</source>
         <translation>Оборудование и модели</translation>
     </message>
@@ -3653,6 +4218,11 @@
         <source>Runtime backend</source>
         <translation>Рекомендуемый рантайм</translation>
     </message>
+    <message>
+        <location line="+73"/>
+        <source>The launch parameters are written only after you confirm the value that looks like a secret. Answer the question and press Next again.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>StepIntro</name>
@@ -3662,7 +4232,7 @@
         <translation>Добро пожаловать в LLM OCR</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>This assistant recognizes text from images and PDFs using a local LLM. A few steps will configure the app — you can change everything later in Settings.</source>
         <translation>Этот помощник распознаёт текст на изображениях и PDF с помощью локальной LLM. Несколько шагов настроят приложение — всё потом можно изменить в настройках.</translation>
     </message>
@@ -3698,39 +4268,77 @@
 <context>
     <name>TaskConnectionRow</name>
     <message>
-        <location filename="../../src/qml/Settings/TaskConnectionRow.qml" line="+95"/>
         <source>The key will be sent in plain text (http outside the local machine).</source>
         <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location filename="../../src/qml/Settings/TaskConnectionRow.qml" line="+102"/>
         <source>the model id</source>
         <translation>идентификатор модели</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Endpoint and key</source>
+        <translation>Эндпоинт и ключ</translation>
+    </message>
+</context>
+<context>
+    <name>TaskEndpointForm</name>
+    <message>
+        <location filename="../../src/qml/Settings/TaskEndpointForm.qml" line="+65"/>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Endpoint</source>
+        <translation>Эндпоинт</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>The key will be sent in plain text (http outside the local machine).</source>
+        <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>API key</source>
+        <translation>API-ключ</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Show</source>
+        <translation>Показать</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>the shared key</source>
+        <translation>общий ключ</translation>
     </message>
 </context>
 <context>
     <name>TaskModelsTable</name>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+229"/>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+244"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-24"/>
         <source>VRAM ≥ %1</source>
         <translation>VRAM ≥ %1</translation>
     </message>
     <message>
+        <location line="-2"/>
         <source>RAM ≥ %1 · VRAM ≥ %2 (split) / %3 (full)</source>
         <translation>RAM ≥ %1 · VRAM ≥ %2 (частично) / %3 (полностью)</translation>
     </message>
     <message>
-        <location line="+221"/>
+        <location line="+229"/>
         <source>Launch and request settings</source>
         <translation>Запуск и запрос</translation>
     </message>
     <message>
-        <location line="+86"/>
+        <location line="+95"/>
         <source>Launch</source>
         <translation>Запуск</translation>
     </message>
@@ -3746,65 +4354,9 @@
     </message>
 </context>
 <context>
-    <name>ModelsSection</name>
-    <message>
-        <location filename="../../src/qml/Settings/ModelsSection.qml" line="+129"/>
-        <source>Models to download</source>
-        <translation>Модели для скачивания</translation>
-    </message>
-    <message>
-        <location line="+25"/>
-        <source>Download</source>
-        <translation>Скачать</translation>
-    </message>
-    <message>
-        <location line="-170"/>
-        <source>Downloaded models</source>
-        <translation>Загруженные модели</translation>
-    </message>
-    <message>
-        <location line="+129"/>
-        <source>Downloaded models will appear here — pick a quantization in the rows above and save.</source>
-        <translation>Скачанные модели появятся здесь — выберите квантование в строках выше и сохраните.</translation>
-    </message>
-    <message>
-        <location line="-56"/>
-        <source>Open folder</source>
-        <translation>Открыть папку</translation>
-    </message>
-    <message>
-        <location line="+31"/>
-        <location line="+122"/>
-        <source>Delete</source>
-        <translation>Удалить</translation>
-    </message>
-    <message>
-        <location line="-34"/>
-        <source>Delete model file</source>
-        <translation>Удалить файл модели</translation>
-    </message>
-    <message>
-        <location line="+11"/>
-        <source>Delete %1 from disk?</source>
-        <translation>Удалить %1 с диска?</translation>
-    </message>
-    <message>
-        <location line="-1"/>
-        <source>%1 is used by %2 task(s). The task rows keep their choice, but the model is gone from disk until you download it again.</source>
-        <translation>%1 привязана к задачам (%2). Строки задач сохранят выбор, но модели на диске больше нет, пока вы не скачаете её снова.</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <location line="+245"/>
-        <location line="+56"/>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
-    </message>
-</context>
-<context>
     <name>TaskStatus</name>
     <message>
-        <location filename="../../src/qml/TaskStatus.qml" line="+31"/>
+        <location filename="../../src/qml/TaskStatus.qml" line="+33"/>
         <source>Opening %1 / %2</source>
         <translation>Открытие %1 / %2</translation>
     </message>
@@ -3819,12 +4371,11 @@
         <translation>Исправление %1 / %2</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Re-reading %1 / %2</source>
-        <translation>Перечитывание %1 / %2</translation>
+        <translation type="vanished">Перечитывание %1 / %2</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>Re-recognizing %1 / %2</source>
         <translation>Распознавание %1 / %2</translation>
     </message>
@@ -3834,12 +4385,12 @@
         <translation>Разметка %1 / %2</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+8"/>
         <source>Check finished</source>
         <translation>Проверка закончена</translation>
     </message>
     <message numerus="yes">
-        <location line="-16"/>
+        <location line="-23"/>
         <source>%n more in queue</source>
         <translation>
             <numerusform>ещё %n в очереди</numerusform>
@@ -3848,7 +4399,7 @@
         </translation>
     </message>
     <message>
-        <location filename="../../src/qml/TaskStatus.qml" line="+23"/>
+        <location line="-7"/>
         <source>Auto %1/%2</source>
         <translation>Авто %1/%2</translation>
     </message>
@@ -3862,16 +4413,34 @@
         <source>%1 %2 / %3</source>
         <translation>%1 %2 / %3</translation>
     </message>
+    <message>
+        <location line="+15"/>
+        <source>Reading %1 / %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TestAppImport</name>
+    <message>
+        <location filename="../../tests/test_app_import.cpp" line="+1176"/>
+        <source>Broken page %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>Page %1 is blank.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>ThumbDelegate</name>
     <message>
-        <location filename="../../src/qml/MainWindow/ThumbDelegate.qml" line="+89"/>
+        <location filename="../../src/qml/MainWindow/ThumbDelegate.qml" line="+94"/>
         <source>Has duplicates</source>
         <translation>Дубликаты</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Edited</source>
         <translation>Изменено</translation>
     </message>
@@ -3891,37 +4460,37 @@
         <translation>Стр. %1</translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+120"/>
         <source>Delete page</source>
         <translation>Удалить страницу</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Delete page %1</source>
-        <translation>Удалить страницу %1</translation>
+        <translation type="vanished">Удалить страницу %1</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-22"/>
         <source>Move page up</source>
         <translation>Переместить вверх</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+6"/>
         <source>Move page down</source>
         <translation>Переместить вниз</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+7"/>
+        <location line="+53"/>
         <source>Move page to position</source>
         <translation>Перенести на позицию</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+20"/>
         <source>Move</source>
         <translation>Перенести</translation>
     </message>
     <message>
-        <location line="-93"/>
+        <location line="-216"/>
         <source>Load error</source>
         <translation>Ошибка загрузки</translation>
     </message>
@@ -3939,7 +4508,7 @@
         <translation>Страницы</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+10"/>
         <source>Select all (%1)</source>
         <translation>Выбрать все (%1)</translation>
     </message>
@@ -3950,216 +4519,80 @@
     </message>
 </context>
 <context>
+    <name>UpdateVersionMenu</name>
+    <message>
+        <location filename="../../src/qml/Settings/UpdateVersionMenu.qml" line="+37"/>
+        <location line="+91"/>
+        <source>· active</source>
+        <translation>· активна</translation>
+    </message>
+</context>
+<context>
     <name>VerificationBlocksTab</name>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="24"/>
+        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="+24"/>
         <source>Off</source>
         <translation>Выкл</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="25"/>
+        <location line="+1"/>
         <source>Low</source>
         <translation>Низкое</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="26"/>
+        <location line="+1"/>
         <source>Medium</source>
         <translation>Среднее</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="27"/>
+        <location line="+1"/>
         <source>High</source>
         <translation>Высокое</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="159"/>
+        <location line="+117"/>
         <source>Thinking during fix</source>
         <translation>Мышление при исправлении</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="179"/>
+        <location line="+15"/>
         <source>Thinking during read</source>
         <translation>Мышление при чтении</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="199"/>
+        <location line="+21"/>
         <source>Tokens the model may spend thinking before the answer. Models without a thinking channel ignore this; when the context window cannot fit the thinking, the budget is cut and the status line says so.</source>
         <translation>Сколько токенов модель может потратить на размышления перед ответом. Модели без канала мышления это игнорируют; если размышления не помещаются в контекстное окно, бюджет урезается, и строка состояния об этом сообщает.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="209"/>
+        <location line="+10"/>
         <source>Show model confidence</source>
         <translation>Показывать уверенность модели</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="220"/>
+        <location line="+11"/>
         <source>Block types to check</source>
         <translation>Типы блоков для проверки</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="225"/>
+        <location line="+5"/>
         <source>Select all</source>
         <translation>Выбрать все</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="242"/>
+        <location line="+20"/>
         <source>Deselect all</source>
         <translation>Снять выбор</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="257"/>
+        <location line="+18"/>
         <source>Selected %1 of %2</source>
         <translation>Выбрано %1 из %2</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/VerificationBlocksTab.qml" line="351"/>
+        <location line="+108"/>
         <source>Blocks without OCR text are not checked.</source>
         <translation>Блоки без OCR-текста не проверяются.</translation>
-    </message>
-</context>
-<context>
-    <name>CandidateRenderer</name>
-    <message>
-        <source>The candidate renderer is busy.</source>
-        <translation>Рендерер кандидата занят.</translation>
-    </message>
-    <message>
-        <source>The candidate render timed out.</source>
-        <translation>Истекло время отрисовки кандидата.</translation>
-    </message>
-    <message>
-        <source>Cannot load the candidate render page.</source>
-        <translation>Не удалось загрузить страницу отрисовки кандидата.</translation>
-    </message>
-    <message>
-        <source>The candidate renderer process terminated.</source>
-        <translation>Процесс отрисовки кандидата завершился аварийно.</translation>
-    </message>
-    <message>
-        <source>The candidate render produced an empty page.</source>
-        <translation>Отрисовка кандидата дала пустую страницу.</translation>
-    </message>
-    <message>
-        <source>The candidate render could not create a temporary file.</source>
-        <translation>Не удалось создать временный файл для отрисовки кандидата.</translation>
-    </message>
-    <message>
-        <source>PDF printing failed.</source>
-        <translation>Не удалось напечатать PDF.</translation>
-    </message>
-    <message>
-        <source>The candidate render could not be rasterized.</source>
-        <translation>Не удалось растрировать отрисовку кандидата.</translation>
-    </message>
-</context>
-<context>
-    <name>DecisionQueue</name>
-    <message>
-        <source>No candidate renderer: the visual-diff decision model needs the candidate as an image.</source>
-        <translation>Нет рендерера кандидата: модели визуальной сверки кандидат нужен картинкой.</translation>
-    </message>
-    <message>
-        <source>The candidate render failed: %1</source>
-        <translation>Не удалось отрисовать кандидата: %1</translation>
-    </message>
-</context>
-<context>
-    <name>RemedyQueue</name>
-    <message>
-        <source>The read prompts (%1) are missing: the block was not sent.</source>
-        <translation>Промпты чтения (%1) отсутствуют: блок не отправлен.</translation>
-    </message>
-    <message>
-        <source>Blocks read: %1 rewritten, %2 confirmed, %3 unreadable.</source>
-        <translation>Прочитано блоков: переписано — %1, подтверждено — %2, не прочитано — %3.</translation>
-    </message>
-</context>
-<context>
-    <name>SettingsWindow</name>
-    <message>
-        <location filename="../../src/qml/Settings/SettingsWindow.qml" line="+16"/>
-        <source>Settings</source>
-        <translation>Настройки</translation>
-    </message>
-    <message>
-        <location line="+16"/>
-        <source>Interface</source>
-        <translation>Интерфейс</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Output</source>
-        <translation>Вывод</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Verification</source>
-        <translation>Проверка</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Runtime</source>
-        <translation>Рантайм</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Models</source>
-        <translation>Модели</translation>
-    </message>
-    <message>
-        <location line="+127"/>
-        <source>Setup wizard</source>
-        <translation>Мастер настройки</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Reset all settings</source>
-        <translation>Сбросить все настройки</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Save</source>
-        <translation>Сохранить</translation>
-    </message>
-    <message>
-        <location line="+95"/>
-        <source>Reset all settings?</source>
-        <translation>Сбросить все настройки?</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>Every setting goes back to its default, the custom verification prompts included. The installed runtime, the downloaded models and the keys in the system store stay.</source>
-        <translation>Все настройки возвращаются к значениям по умолчанию, включая пользовательские промпты проверки. Установленный рантайм, скачанные модели и ключи в системном хранилище остаются.</translation>
-    </message>
-    <message>
-        <location line="+19"/>
-        <source>Reset</source>
-        <translation>Сбросить</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Discard changes?</source>
-        <translation>Отменить изменения?</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>There are unsaved changes. Close without saving?</source>
-        <translation>Есть несохранённые изменения. Закрыть без сохранения?</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>There are unsaved changes. They will be lost, and the setup wizard will start.</source>
-        <translation>Есть несохранённые изменения. Они будут потеряны, и запустится мастер настройки.</translation>
-    </message>
-    <message>
-        <location line="+26"/>
-        <source>Don&apos;t save</source>
-        <translation>Не сохранять</translation>
     </message>
 </context>
 <context>
@@ -4175,27 +4608,28 @@
         <translation>В ответе нет ответа: %1</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+12"/>
         <source>the reply is not a JSON object</source>
         <translation>ответ — не JSON-объект</translation>
     </message>
     <message>
-        <location line="+84"/>
+        <location line="+6"/>
+        <location line="+3"/>
         <source>the server answered with an error: %1</source>
         <translation>сервер ответил ошибкой: %1</translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+7"/>
         <source>the reply has no choices (%1)</source>
         <translation>в ответе нет вариантов (%1)</translation>
     </message>
     <message>
-        <location line="+98"/>
+        <location line="+5"/>
         <source>the model spent the token budget on reasoning and returned no answer</source>
         <translation>модель потратила бюджет токенов на размышления и не вернула ответ</translation>
     </message>
     <message>
-        <location line="+100"/>
+        <location line="+1"/>
         <source>the reply carries an empty answer</source>
         <translation>ответ пустой</translation>
     </message>
@@ -4203,29 +4637,32 @@
 <context>
     <name>WorkPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/WorkPanel.qml" line="+30"/>
+        <location filename="../../src/qml/MainWindow/WorkPanel.qml" line="+45"/>
         <source>Recognized text will appear here</source>
         <translation>Здесь появится распознанный текст</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+22"/>
         <source>Edited</source>
         <translation>Изменено</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+22"/>
         <source>Revert</source>
         <translation>Отменить изменения</translation>
     </message>
     <message>
+        <location line="-6"/>
         <source>Turn left</source>
         <translation>Повернуть влево</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Turn right</source>
         <translation>Повернуть вправо</translation>
     </message>
     <message>
+        <location line="-2"/>
         <source>Turn upside up</source>
         <translation>Развернуть</translation>
     </message>
@@ -4234,20 +4671,92 @@
         <translation>Поворачивать боковую страницу после разметки автоматически</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+23"/>
         <location line="+2"/>
         <source>Copy the page text</source>
         <translation>Копировать текст страницы</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+13"/>
         <source>Text (MD)</source>
         <translation>Текст (MD)</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="+1"/>
         <source>WYSIWYG</source>
         <translation>WYSIWYG</translation>
+    </message>
+</context>
+<context>
+    <name>llocr::CandidateRenderer</name>
+    <message>
+        <location filename="../../src/app/CandidateRenderer.cpp" line="+115"/>
+        <source>The candidate render timed out.</source>
+        <translation type="unfinished">Истекло время отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>The candidate renderer is busy.</source>
+        <translation type="unfinished">Рендерер кандидата занят.</translation>
+    </message>
+    <message>
+        <location line="+23"/>
+        <location line="+28"/>
+        <source>Cannot load the candidate render page.</source>
+        <translation type="unfinished">Не удалось загрузить страницу отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <location line="-23"/>
+        <source>The candidate renderer process terminated.</source>
+        <translation type="unfinished">Процесс отрисовки кандидата завершился аварийно.</translation>
+    </message>
+    <message>
+        <location line="+71"/>
+        <source>The candidate render produced an empty page.</source>
+        <translation type="unfinished">Отрисовка кандидата дала пустую страницу.</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>The candidate render could not create a temporary file.</source>
+        <translation type="unfinished">Не удалось создать временный файл для отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>PDF printing failed.</source>
+        <translation type="unfinished">Не удалось напечатать PDF.</translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>The candidate render did not fit on one page.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>The candidate render could not be rasterized.</source>
+        <translation type="unfinished">Не удалось растрировать отрисовку кандидата.</translation>
+    </message>
+</context>
+<context>
+    <name>llocr::ConnectionProbe</name>
+    <message>
+        <location filename="../../src/runtime/ConnectionProbe.cpp" line="+49"/>
+        <source>No server address</source>
+        <translation>Не указан адрес сервера</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The address is not a valid URL</source>
+        <translation>Адрес не похож на URL</translation>
+    </message>
+    <message>
+        <location line="+52"/>
+        <source>The server refused the key</source>
+        <translation>Сервер отказал в ключе</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server answered with %1</source>
+        <translation>Сервер ответил кодом %1</translation>
     </message>
 </context>
 <context>
@@ -4284,7 +4793,7 @@
 <context>
     <name>llocr::InstallTransaction</name>
     <message>
-        <location filename="../../src/runtime/InstallTransaction.cpp" line="+40"/>
+        <location filename="../../src/runtime/InstallTransaction.cpp" line="+45"/>
         <source>Cannot tell which build is in use — nothing was removed. Install or activate a build first.</source>
         <translation>Не удалось определить, какая сборка используется — ничего не удалено. Сначала установите или активируйте сборку.</translation>
     </message>
@@ -4309,7 +4818,7 @@
 <context>
     <name>llocr::ModelInstallTransaction</name>
     <message>
-        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="-244"/>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="-245"/>
         <source>Looking up %1 …</source>
         <translation>Поиск %1 …</translation>
     </message>
@@ -4341,7 +4850,7 @@
         <translation>В репозитории есть файлы с одинаковыми именами в разных подкаталогах; установка невозможна</translation>
     </message>
     <message>
-        <location line="+137"/>
+        <location line="+138"/>
         <source>Download failed — check your connection and try again</source>
         <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
     </message>
@@ -4374,24 +4883,24 @@
 <context>
     <name>llocr::ModelInstaller</name>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="+308"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="+281"/>
         <location line="+131"/>
-        <location line="+84"/>
+        <location line="+99"/>
         <source>Invalid model selection</source>
         <translation>Неверный выбор модели</translation>
     </message>
     <message>
-        <location line="-212"/>
+        <location line="-227"/>
         <source>This model has no model file selected</source>
         <translation>У этой модели не выбран файл модели</translation>
     </message>
     <message>
-        <location line="+181"/>
+        <location line="+189"/>
         <source>Unable to remove model file: %1</source>
         <translation>Не удалось удалить файл модели: %1</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+13"/>
         <source>Unable to remove model directory: %1</source>
         <translation>Не удалось удалить каталог модели: %1</translation>
     </message>
@@ -4411,7 +4920,7 @@
         <translation>Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="-224"/>
+        <location line="-239"/>
         <source>The selected model is no longer on disk: %1 — pick another one in Settings → Models.</source>
         <translation>Выбранной модели больше нет на диске: %1 — выберите другую в Настройки → Модели.</translation>
     </message>
@@ -4423,12 +4932,12 @@
     </message>
     <message>
         <location line="-45"/>
-        <location line="+356"/>
+        <location line="+371"/>
         <source>This quantization is not available for download</source>
         <translation>Этот квант недоступен для скачивания</translation>
     </message>
     <message>
-        <location line="-375"/>
+        <location line="-390"/>
         <location line="+9"/>
         <location line="+29"/>
         <source>This model is not installed</source>
@@ -4438,12 +4947,12 @@
 <context>
     <name>llocr::RuntimeController</name>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="+509"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="+597"/>
         <source>Another LLocr instance is already running</source>
         <translation>Уже запущен другой экземпляр LLocr</translation>
     </message>
     <message>
-        <location line="+297"/>
+        <location line="+346"/>
         <source>Probing %1…</source>
         <translation>Проверка %1…</translation>
     </message>
@@ -4458,12 +4967,12 @@
         <translation>Остановка…</translation>
     </message>
     <message>
-        <location line="-631"/>
+        <location line="-701"/>
         <source>Managed server is not configured</source>
         <translation>Управляемый сервер не настроен</translation>
     </message>
     <message>
-        <location line="-192"/>
+        <location line="-199"/>
         <source>A llama-server from a previous LLocr run is still running (pid %1, port %2).</source>
         <translation>Остался запущенным llama-server от предыдущего запуска LLocr (pid %1, порт %2).</translation>
     </message>
@@ -4488,72 +4997,73 @@
         <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
     </message>
     <message>
-        <location line="+159"/>
         <source>Model file not found: %1 — re-select the model in Settings → Models</source>
-        <translation>Файл модели не найден: %1 — выберите модель заново в Settings → Models</translation>
+        <translation type="vanished">Файл модели не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+179"/>
         <source>Layout model is not selected — pick a model in Settings → Layout model</source>
         <translation>Модель разметки не выбрана — выберите модель в Настройки → Модель разметки</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>Layout model file not found: %1 — re-select the model in Settings → Layout model</source>
         <translation>Файл модели разметки не найден: %1 — выберите модель заново в Настройки → Модель разметки</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+50"/>
         <source>%1 needs llama.cpp %2 or newer (this build is %3) — update the runtime in Settings → Runtime</source>
         <translation>%1 требует llama.cpp %2 или новее (эта сборка — %3) — обновите рантайм в Настройки → Рантайм</translation>
     </message>
     <message>
-        <location line="+155"/>
+        <location line="+173"/>
         <source>Server is not set to start automatically. Start it from the main window or Settings → Runtime.</source>
         <translation>Сервер не настроен на автозапуск. Запустите его из главного окна или через Настройки → Рантайм.</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+114"/>
         <source>Server stopped</source>
         <translation>Сервер остановлен</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+10"/>
         <source>Switching to the layout model…</source>
         <translation>Переключение на модель разметки…</translation>
     </message>
     <message>
-        <location line="-2"/>
         <source>Switching to the raw OCR model…</source>
-        <translation>Переключение на модель raw OCR…</translation>
+        <translation type="vanished">Переключение на модель raw OCR…</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>Switching to the fix model…</source>
         <translation>Переключение на модель исправления…</translation>
     </message>
     <message>
-        <location line="-322"/>
         <source>Raw OCR model is not selected — pick a model in Settings → Models</source>
-        <translation>Модель raw OCR не выбрана — выберите модель в Settings → Models</translation>
+        <translation type="vanished">Модель raw OCR не выбрана — выберите модель в Settings → Models</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Raw OCR model file not found: %1 — re-select the model in Settings → Models</source>
-        <translation>Файл модели raw OCR не найден: %1 — выберите модель заново в Settings → Models</translation>
+        <translation type="vanished">Файл модели raw OCR не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="-340"/>
         <source>Fix model is not selected — pick a model in Settings → Models</source>
         <translation>Модель исправления не выбрана — выберите модель в Settings → Models</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>Fix model file not found: %1 — re-select the model in Settings → Models</source>
         <translation>Файл модели исправления не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
-        <location line="+365"/>
+        <location line="+118"/>
+        <source>The API key is in the system secret store, but the store did not give it: %1</source>
+        <translation type="unfinished">Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
+    </message>
+    <message>
+        <location line="+283"/>
         <source>Failed to query /v1/models: %1</source>
         <translation>Не удалось получить список моделей (/v1/models): %1</translation>
     </message>
@@ -4568,12 +5078,12 @@
         <translation>Сервер не вернул модели в /v1/models. Выберите модель в Settings → Models</translation>
     </message>
     <message>
-        <location line="+28"/>
+        <location line="+29"/>
         <source>Server failed</source>
         <translation>Сбой сервера</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+33"/>
         <source>Port is busy. Change the port or enable auto-pick</source>
         <translation>Порт занят. Измените порт или включите авто-подбор</translation>
     </message>
@@ -4613,13 +5123,13 @@
         <translation>Сервер не ответил вовремя; смотрите журнал ниже</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+21"/>
         <source>No server binary selected</source>
         <translation>Бинарник сервера не выбран</translation>
     </message>
     <message>
-        <location line="-492"/>
-        <location line="+495"/>
+        <location line="-551"/>
+        <location line="+554"/>
         <source>File not found: %1</source>
         <translation>Файл не найден: %1</translation>
     </message>
@@ -4634,16 +5144,16 @@
         <translation>Сервер уже запущен</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Host %1 is not allowed: the server is available only locally. To allow a non-loopback host, enable the allowNonLoopback setting</source>
         <translation>Хост %1 недопустим: сервер доступен только локально. Разрешить не-loopback хост можно настройкой allowNonLoopback</translation>
     </message>
     <message>
-        <location line="-490"/>
         <source>Model is not selected — pick a model in Settings → Models or in the Setup wizard</source>
-        <translation>Модель не выбрана — выберите модель в Settings → Models или в мастере настройки</translation>
+        <translation type="vanished">Модель не выбрана — выберите модель в Settings → Models или в мастере настройки</translation>
     </message>
     <message>
-        <location line="+724"/>
+        <location line="+250"/>
         <source>Server start cancelled</source>
         <translation>Запуск сервера отменён</translation>
     </message>
@@ -4653,7 +5163,7 @@
         <translation>Остановлен</translation>
     </message>
     <message>
-        <location line="-394"/>
+        <location line="-452"/>
         <source>Switching to the block OCR model…</source>
         <translation>Переключение на модель OCR блока…</translation>
     </message>
@@ -4663,27 +5173,26 @@
         <translation>Переключение на модель decision…</translation>
     </message>
     <message>
-        <location line="-2"/>
         <source>Switching to the OCR model…</source>
-        <translation>Переключение на OCR-модель…</translation>
+        <translation type="vanished">Переключение на OCR-модель…</translation>
     </message>
     <message>
-        <location line="-300"/>
+        <location line="-324"/>
         <source>Block OCR model is not selected — pick a model in Settings → Block OCR model</source>
         <translation>Модель OCR блока не выбрана — выберите её в Settings → Модель OCR блока</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>Block OCR model file not found: %1 — re-select the model in Settings → Block OCR model</source>
         <translation>Файл модели OCR блока не найден: %1 — выберите модель заново в Settings → Модель OCR блока</translation>
     </message>
     <message>
-        <location line="-36"/>
+        <location line="-42"/>
         <source>Decision model is not selected — pick a model in Settings → Decision model</source>
         <translation>Модель decision не выбрана — выберите её в Settings → Модель decision</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>Decision model file not found: %1 — re-select the model in Settings → Decision model</source>
         <translation>Файл модели decision не найден: %1 — выберите модель заново в Settings → Модель decision</translation>
     </message>
@@ -4707,41 +5216,46 @@
         <translation>Linux</translation>
     </message>
     <message>
-        <location line="+31"/>
-        <location line="+75"/>
-        <location line="+198"/>
+        <location line="+76"/>
+        <location line="+94"/>
+        <location line="+304"/>
         <source>Downloading %1 …</source>
         <translation>Скачивание %1 …</translation>
     </message>
     <message>
-        <location line="-273"/>
-        <location line="+75"/>
+        <location line="-398"/>
+        <location line="+94"/>
         <source>runtime</source>
         <translation>среда</translation>
     </message>
     <message>
         <location line="-3"/>
-        <location line="+83"/>
+        <location line="+166"/>
         <source>Checking for updates…</source>
         <translation>Проверка обновлений…</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+12"/>
+        <source>Stable release unavailable (%1) — showing beta builds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <source>No releases available</source>
         <translation>Нет доступных релизов</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+27"/>
         <source>Showing the cached release list — the check failed: %1</source>
         <translation>Показан сохранённый список релизов — проверка не удалась: %1</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>Latest release: %1 (%2)</source>
         <translation>Последний релиз: %1 (%2)</translation>
     </message>
     <message>
-        <location line="+42"/>
+        <location line="+45"/>
         <source>No release selected — check for updates first</source>
         <translation>Не выбран релиз — сначала проверьте обновления</translation>
     </message>
@@ -4751,11 +5265,12 @@
         <translation>Сборка %1 для этой платформы недоступна в релизе %2</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+44"/>
         <source>Download failed — check your connection and try again</source>
         <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Download failed: %1</source>
         <translation>Скачивание не удалось: %1</translation>
     </message>
@@ -4765,7 +5280,7 @@
         <translation>Другой экземпляр LLocr сейчас устанавливает рантайм; повторите попытку чуть позже.</translation>
     </message>
     <message>
-        <location line="+231"/>
+        <location line="+237"/>
         <source>This build is active — activate another build first</source>
         <translation>Эта сборка активна — сначала активируйте другую</translation>
     </message>
@@ -4780,8 +5295,8 @@
         <translation>Удалена сборка %1</translation>
     </message>
     <message>
-        <location line="-481"/>
-        <location line="+246"/>
+        <location line="-596"/>
+        <location line="+355"/>
         <source>Installing %1 …</source>
         <translation>Установка %1 …</translation>
     </message>
@@ -4801,7 +5316,7 @@
         <translation>Установлено %1 (%2). %3</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+37"/>
         <source>Installation cancelled</source>
         <translation>Установка отменена</translation>
     </message>
@@ -4817,26 +5332,26 @@
     </message>
     <message>
         <location line="+7"/>
-        <location line="+34"/>
+        <location line="+35"/>
         <source>An install is in progress</source>
         <translation>Идёт установка</translation>
     </message>
     <message>
-        <location line="-47"/>
+        <location line="-48"/>
         <location line="+15"/>
-        <location line="+26"/>
+        <location line="+27"/>
         <location line="+11"/>
         <source>No such build</source>
         <translation>Сборка не найдена</translation>
     </message>
     <message>
-        <location line="-49"/>
+        <location line="-50"/>
         <location line="+15"/>
         <source>The build directory contains no llama-server binary</source>
         <translation>В каталоге сборки нет бинарника llama-server</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+10"/>
         <source>Activated %1%2</source>
         <translation>Активировано %1%2</translation>
     </message>
@@ -4844,29 +5359,29 @@
 <context>
     <name>llocr::SelfTestController</name>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="-32"/>
-        <location line="+61"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="-37"/>
+        <location line="+79"/>
         <source>Self-test is available only in Managed mode</source>
         <translation>Самопроверка доступна только в управляемом режиме</translation>
     </message>
     <message>
-        <location line="-52"/>
+        <location line="-70"/>
         <source>Server not available</source>
         <translation>Сервер недоступен</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+18"/>
         <source>Describe the text in this image in one short line.</source>
         <translation>Опишите одним коротким предложением текст на этом изображении.</translation>
     </message>
     <message>
-        <location line="+24"/>
-        <location line="+17"/>
+        <location line="+41"/>
+        <location line="+18"/>
         <source>Running self-test…</source>
         <translation>Выполняется самопроверка…</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+10"/>
         <source>Recognition failed</source>
         <translation>Ошибка распознавания</translation>
     </message>
@@ -4877,222 +5392,6 @@
         <location filename="../../src/runtime/SingleInstanceGuard.cpp" line="+18"/>
         <source>Another LLocr instance is already running; local server operations are disabled.</source>
         <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
-    </message>
-</context>
-<context>
-    <name>AutoPipelineController</name>
-    <message>
-        <location filename="../../src/app/AutoPipelineController.cpp" line="+47"/>
-        <location line="+28"/>
-        <source>Another job is running</source>
-        <translation>Другая работа уже выполняется</translation>
-    </message>
-    <message>
-        <location line="-26"/>
-        <location line="+31"/>
-        <source>No pages to process</source>
-        <translation>Нет страниц для обработки</translation>
-    </message>
-    <message>
-        <location filename="../../src/app/AppController.cpp" line="+1340"/>
-        <source>No model for the markup or the recognition task</source>
-        <translation>Нет модели для разметки или распознавания</translation>
-    </message>
-    <message>
-        <location filename="../../src/app/AppController.cpp" line="+8"/>
-        <source>The markup model does not support page markup</source>
-        <translation>Модель разметки не умеет размечать страницы</translation>
-    </message>
-</context>
-<context>
-    <name>AutoPipelineStage</name>
-    <message>
-        <location filename="../../src/app/AutoPipelineStages.cpp" line="+34"/>
-        <source>Markup</source>
-        <translation>Разметка</translation>
-    </message>
-    <message>
-        <source>Nothing to mark up</source>
-        <translation>Нет страниц для разметки</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <location line="+55"/>
-        <location line="+49"/>
-        <location line="+49"/>
-        <source>No model for this task</source>
-        <translation>Нет модели для этой задачи</translation>
-    </message>
-    <message>
-        <location line="-135"/>
-        <source>The markup pass failed</source>
-        <translation>Разметка не удалась</translation>
-    </message>
-    <message>
-        <location line="+24"/>
-        <source>Block recognition</source>
-        <translation>Распознавание блоков</translation>
-    </message>
-    <message>
-        <location line="+15"/>
-        <source>Nothing to recognize</source>
-        <translation>Нечего распознавать</translation>
-    </message>
-    <message>
-        <location line="+49"/>
-        <source>Nothing to check</source>
-        <translation>Нечего проверять</translation>
-    </message>
-    <message>
-        <location line="+34"/>
-        <source>Fix</source>
-        <translation>Исправление</translation>
-    </message>
-    <message>
-        <location line="+15"/>
-        <source>Nothing to fix</source>
-        <translation>Нечего исправлять</translation>
-    </message>
-    <message>
-        <location filename="../../src/app/AppController.cpp" line="+196"/>
-        <source>Verification</source>
-        <translation>Проверка</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Verification of the corrected blocks</source>
-        <translation>Проверка исправленных блоков</translation>
-    </message>
-    <message>
-        <location filename="../../src/app/AutoPipelineStages.cpp" line="+30"/>
-        <source>The markup model does not support page markup</source>
-        <translation>Модель разметки не умеет размечать страницы</translation>
-    </message>
-    <message>
-        <location line="+74"/>
-        <source>The block recognition did not start: the queue refused the work</source>
-        <translation>Распознавание блоков не началось: очередь не приняла работу</translation>
-    </message>
-    <message>
-        <location line="+56"/>
-        <source>The verification did not start: the queue refused the work</source>
-        <translation>Проверка не началась: очередь не приняла работу</translation>
-    </message>
-    <message>
-        <location line="+56"/>
-        <source>The fix did not start: the queue refused the work</source>
-        <translation>Исправление не началось: очередь не приняла работу</translation>
-    </message>
-</context>
-<context>
-    <name>RuntimeController</name>
-    <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="+490"/>
-        <source>The API key is in the system secret store, but the store did not give it: %1</source>
-        <translation>Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
-    </message>
-</context>
-<context>
-    <name>SecretStore</name>
-    <message>
-        <location filename="../../src/config/SecretStore_mac.cpp" line="+45"/>
-        <source>The macOS Keychain is not available</source>
-        <translation>Связка ключей macOS недоступна</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>The Keychain has no such key</source>
-        <translation>В связке ключей нет такого ключа</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>The Keychain item is not a password</source>
-        <translation>Элемент связки ключей — не пароль</translation>
-    </message>
-    <message>
-        <location line="-12"/>
-        <source>Keychain: the access was denied — the item “%1” belongs to an earlier build of the app. Answer the Keychain prompt with “Always Allow”, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
-        <translation>Связка ключей: доступ запрещён — элемент «%1» принадлежит прежней сборке приложения. Ответьте на запрос связки «Всегда разрешать» или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Keychain: the access to the item “%1” needs the user's confirmation, and none was given. Allow it, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
-        <translation>Связка ключей: доступ к элементу «%1» требует подтверждения пользователя, и подтверждения не было. Разрешите доступ или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Keychain: the item “%1” is still there and cannot be replaced.</source>
-        <translation>Связка ключей: элемент «%1» всё ещё на месте, и заменить его не удалось.</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>Keychain: %1</source>
-        <translation>Связка ключей: %1</translation>
-    </message>
-    <message>
-        <location filename="../../src/config/SecretStore.cpp" line="+20"/>
-        <source>The secret has no name</source>
-        <translation>У секрета нет имени</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>The secret store took the key but did not give it back</source>
-        <translation>Хранилище секретов взяло ключ, но не отдало его обратно</translation>
-    </message>
-    <message>
-        <location filename="../../src/config/SecretStore_win.cpp" line="+30"/>
-        <source>Credential Manager: error %1</source>
-        <translation>Диспетчер учётных данных: ошибка %1</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Credential Manager: there is no such key</source>
-        <translation>Диспетчер учётных данных: нет такого ключа</translation>
-    </message>
-    <message>
-        <location filename="../../src/config/SecretStore_linux.cpp" line="+40"/>
-        <source>No secret service on the session bus</source>
-        <translation>Служба секретов недоступна в шине сессии</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Secret Service: the session could not be opened</source>
-        <translation>Служба секретов: не удалось открыть сессию</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Secret Service: the search failed</source>
-        <translation>Служба секретов: поиск не удался</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Secret Service: there is no such key</source>
-        <translation>Служба секретов: нет такого ключа</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Secret Service: the collection could not be unlocked</source>
-        <translation>Служба секретов: не удалось разблокировать коллекцию</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>The keyring is locked — unlock it and try again</source>
-        <translation>Связка ключей заблокирована — разблокируйте её и повторите</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Secret Service: the key could not be read</source>
-        <translation>Служба секретов: не удалось прочитать ключ</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Secret Service: the key could not be stored</source>
-        <translation>Служба секретов: не удалось сохранить ключ</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Secret Service: the key could not be deleted</source>
-        <translation>Служба секретов: не удалось удалить ключ</translation>
     </message>
 </context>
 </TS>

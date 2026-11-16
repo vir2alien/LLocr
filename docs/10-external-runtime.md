@@ -34,12 +34,22 @@ it in the base URL itself.
 ### Where it is configured
 
 **Settings → Runtime → External** (`src/qml/Settings/RuntimeTabExternal.qml`):
-a shared-server block (base URL + key) and one `Settings/TaskConnectionRow.qml`
-per task — endpoint, key, alias. The first-run wizard's External step
+two blocks of their own (ADR 314). The **shared server** block carries the
+base URL, the API key, the **check** of the server and the answer of the
+secret store; the **tasks** block carries one row per task with the model
+name in the row and the endpoint and the key behind its gear
+(`Settings/TaskEndpointForm.qml`). The first-run wizard's External step
 (`Setup/StepExternal.qml`) shows the shared server only, in a compact mode;
-the per-task table lives in the settings. The **Models** window shows the same
+the tasks live in the settings. The **Models** window shows the same
 four tasks in external mode, but its alias cell is read-only there — the alias
 belongs to the connection and is edited in one place (ADR 226).
+
+The **check** asks the server whether it answers: `runtime/ConnectionProbe`
+(QML singleton `ConnectionProbe`) sends `GET <base URL>/v1/models` and reports
+the answer, the latency and the number of models. The stored key is read in
+the C++ — it never travels through the UI — and a refused key is named as
+such («The server refused the key»). The block shows the answer right under
+the fields («Connected · 80 ms»).
 
 ### Resolution
 

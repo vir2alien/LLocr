@@ -17,6 +17,7 @@
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
 #include "core/ModelProfiles.h"
+#include "runtime/ConnectionProbe.h"
 #include "runtime/HardwareInfo.h"
 #include "runtime/InstalledState.h"
 #include "runtime/InstallTransaction.h"
@@ -150,6 +151,11 @@ int main(int argc, char *argv[])
     llocr::RuntimeController runtimeController(settingsStore, launchProfiles, &installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
     runtimeController.setLogTarget(&runtimeLog);
+
+    // The settings ask the server whether it answers: the check belongs to
+    // the runtime layer, so the UI does not touch the network itself.
+    llocr::ConnectionProbe connectionProbe(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "ConnectionProbe", &connectionProbe);
 
     llocr::SelfTestController selfTestController(settingsStore, runtimeController, requestProfilesBlock);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);

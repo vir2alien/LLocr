@@ -121,21 +121,25 @@ runs alone in the main window.
 |             | (`export/pdfMarginMm`, 0–50, default 15)                             |
 | Verification | the thinking budget of the two tasks — during the fix and during the read — as four levels (off / low / medium / high = 0 / 512 / 1024 / 1536 tokens, `check/fixReasoningBudgetTokens`, `check/readReasoningBudgetTokens`); **show the model confidence** (`check/showConfidence` — the decision model's probability in percent next to a verified block, in the color of the block's frame; a debugging aid for the decision model); **block types to check** — the three groups (main content, captions/footnotes/references, service) as cards with a per-group counter; the lists are not stretched over the card's height, so the rows keep one spacing in every group; the math types are one item, «Formulas» (`type = "formula"` — it covers `equation`, `formula` and `equation_block`, all of them one style, `BlockStyle::Equation`); the user's choice kept in `profiles/verifyPrompts.json` (a legacy `equation` key follows the merged item) |
 | Runtime     | connection mode (`External` / `Managed`) as a segmented toggle —      |
-|             | applies immediately;                                                  |
-|             | External: the **shared server** (endpoint base URL + API key) and,    |
-|             | per task, its own endpoint, key and model alias (ADR 226) — an empty  |
-|             | task field takes the shared value; one «Show» checkbox in the table   |
-|             | header reveals every key of the tab at once; a stored key is shown as |
-|             | a mask in the field itself and is removed by clearing that field —    |
-|             | there is no «Delete» button;                                          |
-|             | Managed: `llama-server` path + probe, Start/Stop/Restart, Show log,   |
-|             | installer — «Clean up unused builds» sits in the «Manage llama.cpp»  |
-|             | header, the installed-builds list below shows what is installed       |
-|             | (the «Installed: …» caption was dropped as redundant), and the        |
-|             | release/backend pickers, «Check for updates» and «Download and        |
-|             | install» share one bottom row. Both blocks are cards of their own:     |
-|             | «External runtime settings» and «Manage llama.cpp», with the header    |
-|             | of a card title like the block types of the verification section       |
+|             | applies immediately; the mode is explained in one line under it;       |
+|             | External: two blocks of their own (ADR 314) — the **shared server**    |
+|             | (endpoint base URL + API key, the **check** of the server and its      |
+|             | answer, the note where the key lives and the refusal of the store      |
+|             | as a badge with a «Retry») and the **tasks** (one row per task         |
+|             | with the model name in the row; the endpoint and the key of a task     |
+|             | live in the popup behind its gear — ADR 226); an empty task field      |
+|             | takes the shared value; one «Show» checkbox in the shared server       |
+|             | block reveals every key of the tab at once; a stored key is shown      |
+|             | as a mask in the field itself and is removed by clearing that          |
+|             | field — there is no «Delete» button;                                   |
+|             | Managed: two blocks of their own — the **llama.cpp builds** (the       |
+|             | installed-builds list, «Clean up unused builds» in the header and      |
+|             | the platform line) and the **updates** (ADR 315: the candidate row     |
+|             | with the tag, the date and the size, the chip of the state, the        |
+|             | single «Update» action, the check in the header «Checked at 09:23 ↻»,  |
+|             | the version list behind ⋮ and the quiet channel/backend row); the      |
+|             | timeouts are a collapsed block at the bottom whose header says what    |
+|             | they are («connect 5 s · answer 5 min») and whose fields are narrow    |
 | Models      | the **task table** — one row per task (layout, block recognition,     |
 |             | decision, fix) with the model and its quantization; the gear of the    |
 |             | row opens that task's **Launch** (launch-parameter profile, ADR 57)    |
@@ -499,6 +503,11 @@ complete; the decisions are recorded as ADRs in `docs/07-glossary.md`).
   `DownloadTask`/`DownloadManager`, hardened `ArchiveExtractor` (ZIP +
   `.tar.gz` via zlib), transactional `InstallTransaction`, «Check for updates»,
   «Clean up unused builds». ✅
+- **A build that is on disk is activated, not downloaded** (ADR 317): the
+  update card compares the candidate with the builds on disk, and a candidate
+  that is already there is offered as «Активировать» (a settings-only switch,
+  ADR 60) instead of a download — `RuntimeInstaller::candidateInstalled` and
+  `activateCandidate()` carry the fact and the action. ✅
 - **Release channel** (ADR 313): the install row carries a **Channel** combo
   (**Stable** — the default — / **Beta**; switching refetches the catalog).
   The stable channel resolves the stable release's pointer —

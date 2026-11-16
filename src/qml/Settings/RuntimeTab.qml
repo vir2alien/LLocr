@@ -10,7 +10,7 @@ import "../Common"
 ColumnLayout {
     id: runtimeLayout
     clip: true
-    spacing: Theme.spacingSmall
+    spacing: Theme.spacing
 
     signal edited()
 
@@ -37,6 +37,23 @@ ColumnLayout {
         rtExternal.saveValues();
     }
 
+    // The timeouts are rarely touched: the collapsed header says what they
+    // are, and the fields wait below it.
+    function timeoutSummary() {
+        return qsTr("connect %1 · answer %2")
+            .arg(formatDuration(connectionTimeoutField.text))
+            .arg(formatDuration(responseTimeoutField.text))
+    }
+
+    function formatDuration(ms) {
+        const value = parseInt(ms)
+        if (!value || value <= 0)
+            return "—"
+        if (value < 60000)
+            return qsTr("%1 s").arg(Math.round(value / 1000))
+        return qsTr("%1 min").arg(Math.round(value / 60000))
+    }
+
     RowLayout {
         Layout.fillWidth: true
         spacing: Theme.spacing
@@ -59,108 +76,142 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: Theme.spacingMedium
-
-        ColumnLayout {
-            spacing: Theme.spacingSmall
-            Layout.fillWidth: true
-
-            LLOLabel {
-                text: qsTr("Connection timeout (ms)")
-                font: Theme.body
-            }
-            TextField {
-                id: connectionTimeoutField
-                Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.bodySize
-                selectByMouse: true
-                inputMethodHints: Qt.ImhDigitsOnly
-                validator: IntValidator { bottom: 1000; top: 3600000 }
-                onTextChanged: if (!runtimeLayout.loading) runtimeLayout.edited()
-            }
-        }
-
-        ColumnLayout {
-            spacing: Theme.spacingSmall
-            Layout.fillWidth: true
-
-            LLOLabel {
-                text: qsTr("Request timeout (ms)")
-                font: Theme.body
-            }
-            TextField {
-                id: responseTimeoutField
-                Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.bodySize
-                selectByMouse: true
-                inputMethodHints: Qt.ImhDigitsOnly
-                validator: IntValidator { bottom: 1000; top: 3600000 }
-                onTextChanged: if (!runtimeLayout.loading) runtimeLayout.edited()
-            }
-        }
-    }
-
     LLOLabel {
         Layout.fillWidth: true
-        font.pixelSize: Theme.footnoteSize
-        color: Theme.helpColor
         wrapMode: Text.WordWrap
-        text: qsTr("Connection timeout — how long to wait for the server to accept a connection. "
-                   + "Request timeout — how long to wait for the model's response; raise it if long recognitions are cut off.")
+        font.pixelSize: Theme.bodySmallSize
+        color: Theme.helpColor
+        text: runtimeLayout.externalMode
+              ? qsTr("The models run on your own server with an OpenAI-compatible API.")
+              : qsTr("The app downloads and runs llama.cpp on this machine.")
     }
 
-    // The external server is a card of its own: the connection above it is
-    // another thing.
-    Rectangle {
-        id: externalCard
-
+    RuntimeTabExternal {
+        id: rtExternal
         visible: runtimeLayout.externalMode
         Layout.fillWidth: true
-        Layout.fillHeight: true
-        implicitHeight: externalCardColumn.implicitHeight + Theme.spacing * 2
-        color: Theme.surfaceAlt
-        border.color: Theme.border
-        border.width: 1
-        radius: Theme.controlRadius + 2
-
-        ColumnLayout {
-            id: externalCardColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: Theme.spacing
-            spacing: Theme.spacingSmall
-
-            LLOLabel {
-                Layout.fillWidth: true
-                text: qsTr("External runtime settings")
-                font.pixelSize: Theme.bodySize
-                font.bold: true
-                color: Theme.textPrimary
-            }
-
-            RuntimeTabExternal {
-                id: rtExternal
-                Layout.fillWidth: true
-                onEdited: runtimeLayout.edited()
-            }
-        }
+        onEdited: runtimeLayout.edited()
     }
 
     RuntimeTabInternal {
         id: rtInternal
         visible: !runtimeLayout.externalMode
         Layout.fillWidth: true
-        Layout.fillHeight: true
         onEdited: runtimeLayout.edited()
     }
 
-    Item {
-        visible: externalCard.visible
-        Layout.fillHeight: true
+    // The timeouts are a block of their own at the bottom: the connection and
+    // the models come first, the waiting belongs after them.
+    Rectangle {
+        id: timeoutsCard
+
+        property bool expanded: false
+
+        Layout.fillWidth: true
+        implicitHeight: timeoutsColumn.implicitHeight + Theme.spacing * 2
+        color: Theme.surfaceAlt
+        border.color: Theme.border
+        border.width: 1
+        radius: Theme.controlRadius + 2
+
+        ColumnLayout {
+            id: timeoutsColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Theme.spacing
+            spacing: Theme.spacingSmall
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Icon {
+                    name: "chevron-down"
+                    rotation: timeoutsCard.expanded ? 0 : 90
+                    size: Theme.iconSizeSmall
+                    color: Theme.textSecondary
+                }
+                LLOLabel {
+                    text: qsTr("Timeouts")
+                    font.pixelSize: Theme.bodySize
+                    font.bold: true
+                    color: Theme.textPrimary
+                }
+                Item { Layout.fillWidth: true }
+                LLOLabel {
+                    text: runtimeLayout.timeoutSummary()
+                    font.pixelSize: Theme.footnoteSize
+                    color: Theme.helpColor
+                }
+
+                HoverHandler {
+                    id: timeoutsHover
+                    cursorShape: Qt.PointingHandCursor
+                }
+                TapHandler {
+                    onTapped: timeoutsCard.expanded = !timeoutsCard.expanded
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingMedium
+                visible: timeoutsCard.expanded
+
+                ColumnLayout {
+                    spacing: Theme.spacingSmall
+
+                    LLOLabel {
+                        text: qsTr("Connection timeout (ms)")
+                        font.pixelSize: Theme.bodySmallSize
+                        color: Theme.textPrimary
+                    }
+                    TextField {
+                        id: connectionTimeoutField
+                        Layout.preferredWidth: 160
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.bodySmallSize
+                        selectByMouse: true
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        validator: IntValidator { bottom: 1000; top: 3600000 }
+                        onTextChanged: if (!runtimeLayout.loading) runtimeLayout.edited()
+                    }
+                }
+
+                ColumnLayout {
+                    spacing: Theme.spacingSmall
+
+                    LLOLabel {
+                        text: qsTr("Request timeout (ms)")
+                        font.pixelSize: Theme.bodySmallSize
+                        color: Theme.textPrimary
+                    }
+                    TextField {
+                        id: responseTimeoutField
+                        Layout.preferredWidth: 160
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.bodySmallSize
+                        selectByMouse: true
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        validator: IntValidator { bottom: 1000; top: 3600000 }
+                        onTextChanged: if (!runtimeLayout.loading) runtimeLayout.edited()
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+            LLOLabel {
+                Layout.fillWidth: true
+                visible: timeoutsCard.expanded
+                wrapMode: Text.WordWrap
+                font.pixelSize: Theme.footnoteSize
+                color: Theme.helpColor
+                text: qsTr("The connection timeout is how long to wait for the server to accept a connection; "
+                           + "the request timeout is how long to wait for the model's response. "
+                           + "Raise the request timeout if long recognitions are cut off.")
+            }
+        }
     }
 }

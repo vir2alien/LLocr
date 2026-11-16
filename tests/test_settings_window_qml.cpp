@@ -29,6 +29,7 @@
 #include "app/UiController.h"
 #include "app/VerificationPromptStore.h"
 #include "config/SettingsStore.h"
+#include "runtime/ConnectionProbe.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -54,6 +55,30 @@ bool hasLabelWithText(QObject *root, const QString &text)
     if (content && content != root)
         return hasLabelWithText(content, text);
     return false;
+}
+
+// The first item under the object that carries this text. Its visibility
+// tells the state of the card: the rows of the update card are all in the
+// tree, only the one of the current state is shown.
+QQuickItem *findItemWithText(QObject *root, const QString &text)
+{
+    if (!root)
+        return nullptr;
+    if (root->property("text").toString() == text) {
+        if (auto *item = qobject_cast<QQuickItem *>(root))
+            return item;
+    }
+    if (auto *item = qobject_cast<QQuickItem *>(root)) {
+        const QList<QQuickItem *> children = item->childItems();
+        for (QQuickItem *child : children) {
+            if (QQuickItem *found = findItemWithText(child, text))
+                return found;
+        }
+    }
+    QObject *content = root->property("contentItem").value<QObject *>();
+    if (content && content != root)
+        return findItemWithText(content, text);
+    return nullptr;
 }
 
 // The runtime tab itself: the QML type carries the suffix the module gives it.
@@ -254,7 +279,7 @@ private:
 class FakeRuntimeInstaller : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(int state READ state CONSTANT)
+    Q_PROPERTY(int state READ state NOTIFY stateChanged)
     Q_PROPERTY(bool busy READ busy CONSTANT)
     Q_PROPERTY(QString channel READ channel WRITE setChannel NOTIFY channelChanged)
     Q_PROPERTY(QString platformLabel READ platformLabel CONSTANT)
@@ -266,12 +291,18 @@ class FakeRuntimeInstaller : public QObject
     Q_PROPERTY(int selectedRelease READ selectedRelease WRITE setSelectedRelease NOTIFY selectedReleaseChanged)
     Q_PROPERTY(QString installedBuild READ installedBuild CONSTANT)
     Q_PROPERTY(QString installedBackend READ installedBackend CONSTANT)
-    Q_PROPERTY(bool hasUpdate READ hasUpdate CONSTANT)
-    Q_PROPERTY(QString updateBuild READ updateBuild CONSTANT)
-    Q_PROPERTY(QString updateTimestampLabel READ updateTimestampLabel CONSTANT)
+    Q_PROPERTY(bool hasUpdate READ hasUpdate NOTIFY hasUpdateChanged)
+    Q_PROPERTY(QString candidateTag READ candidateTag NOTIFY candidateChanged)
+    Q_PROPERTY(QString candidateDate READ candidateDate NOTIFY candidateChanged)
+    Q_PROPERTY(QString candidateSize READ candidateSize NOTIFY candidateChanged)
+    Q_PROPERTY(bool candidateIgnored READ candidateIgnored NOTIFY candidateChanged)
+    Q_PROPERTY(bool candidateInstalled READ candidateInstalled NOTIFY candidateChanged)
+    Q_PROPERTY(QString ignoredBuild READ ignoredBuild NOTIFY candidateChanged)
+    Q_PROPERTY(QString checkedAtLabel READ checkedAtLabel NOTIFY catalogChanged)
+    Q_PROPERTY(QString catalogWarning READ catalogWarning NOTIFY catalogChanged)
     Q_PROPERTY(int installedBuildCount READ installedBuildCount CONSTANT)
     Q_PROPERTY(QObject *installedBuilds READ installedBuilds CONSTANT)
-    Q_PROPERTY(double progress READ progress CONSTANT)
+    Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage CONSTANT)
     Q_PROPERTY(bool canInstall READ canInstall CONSTANT)
 
@@ -301,7 +332,7 @@ public:
         m_backend = backend;
         emit backendChanged();
     }
-    int releaseCount() const { return 0; }
+    int releaseCount() const { return 1; }
     int selectedRelease() const { return m_selectedRelease; }
     void setSelectedRelease(int index)
     {
@@ -310,11 +341,45 @@ public:
         m_selectedRelease = index;
         emit selectedReleaseChanged();
     }
-    QString installedBuild() const { return QString(); }
+    QString installedBuild() const { return QStringLiteral("b12345"); }
     QString installedBackend() const { return QString(); }
-    bool hasUpdate() const { return false; }
-    QString updateBuild() const { return QString(); }
-    QString updateTimestampLabel() const { return QString(); }
+    bool hasUpdate() const { return m_hasUpdate; }
+    void setHasUpdate(bool value)
+    {
+        if (m_hasUpdate == value)
+            return;
+        m_hasUpdate = value;
+        emit hasUpdateChanged();
+    }
+    QString candidateTag() const { return QStringLiteral("b12345"); }
+    QString candidateDate() const { return QStringLiteral("2026-11-16"); }
+    QString candidateSize() const { return QStringLiteral("649 MiB"); }
+    bool candidateIgnored() const { return m_candidateIgnored; }
+    void setCandidateIgnored(bool value)
+    {
+        if (m_candidateIgnored == value)
+            return;
+        m_candidateIgnored = value;
+        emit candidateChanged();
+    }
+    bool candidateInstalled() const { return m_candidateInstalled; }
+    void setCandidateInstalled(bool value)
+    {
+        if (m_candidateInstalled == value)
+            return;
+        m_candidateInstalled = value;
+        emit candidateChanged();
+    }
+    QString ignoredBuild() const { return QString(); }
+    QString checkedAtLabel() const { return QStringLiteral("09:23"); }
+    QString catalogWarning() const { return m_catalogWarning; }
+    void setCatalogWarning(const QString &value)
+    {
+        if (m_catalogWarning == value)
+            return;
+        m_catalogWarning = value;
+        emit catalogChanged();
+    }
     int installedBuildCount() const { return 0; }
     QObject *installedBuilds() const { return m_builds; }
     double progress() const { return 0.0; }
@@ -326,8 +391,26 @@ public:
         Q_UNUSED(index)
         return QString();
     }
+    Q_INVOKABLE QString releaseTag(int index) const
+    {
+        Q_UNUSED(index)
+        return QStringLiteral("b12345");
+    }
+    Q_INVOKABLE QString releaseDate(int index) const
+    {
+        Q_UNUSED(index)
+        return QStringLiteral("2026-11-16");
+    }
+    Q_INVOKABLE bool releaseIsActive(int index) const
+    {
+        Q_UNUSED(index)
+        return false;
+    }
+    Q_INVOKABLE void ignoreSelectedVersion() {}
+    Q_INVOKABLE void restoreIgnoredVersion() {}
     Q_INVOKABLE void checkForUpdates() {}
     Q_INVOKABLE void startDownloadAndInstall() {}
+    Q_INVOKABLE bool activateCandidate() { return m_candidateInstalled; }
     Q_INVOKABLE void cancelInstall() {}
     Q_INVOKABLE QString cleanupUnusedBuilds() { return QString(); }
     Q_INVOKABLE void rescanInstalledBuilds() {}
@@ -353,7 +436,6 @@ public:
     }
     Q_INVOKABLE static QString backendDisplayName(const QString &backend) { return backend; }
     Q_INVOKABLE void openReleasePage() {}
-    Q_INVOKABLE void installUpdate() {}
 
 signals:
     void backendChanged();
@@ -363,12 +445,19 @@ signals:
     void installedChanged();
     void installedBuildsChanged();
     void stateChanged();
+    void hasUpdateChanged();
+    void candidateChanged();
+    void progressChanged();
 
 private:
     FakeQuantModel *m_builds = new FakeQuantModel(this);
     QString m_backend = QStringLiteral("cpu");
     QString m_channel = QStringLiteral("stable");
+    QString m_catalogWarning;
     int m_selectedRelease = -1;
+    bool m_hasUpdate = false;
+    bool m_candidateIgnored = false;
+    bool m_candidateInstalled = false;
 };
 
 // The stand-in for the runtime controller: the runtime section asks it for the
@@ -461,6 +550,9 @@ private slots:
     void theInterfacePickersKeepTheirSize();
     void theOutputParserKeepsItsOwnWidth();
     void theRuntimeAndModelsBlocksAreCards();
+    void theUpdatesCardOffersOneActionAndOneFact();
+    void theUpdatesCardActivatesTheBuildThatIsOnDisk();
+    void theUpdatesCardShowsTheActiveBuildWhenThereIsNothingToInstall();
     void theCancelRestoresTheInterface();
     void theCancelRestoresTheBlockTypes();
     void theResetWritesAtOnceAndKeepsTheWindowClean();
@@ -477,6 +569,7 @@ private:
     std::unique_ptr<UiController> m_uiController;
     std::unique_ptr<I18n> m_i18n;
     std::unique_ptr<VerificationPromptStore> m_verification;
+    std::unique_ptr<ConnectionProbe> m_probe;
     std::unique_ptr<FakeModelInstaller> m_modelInstaller;
     std::unique_ptr<FakeRuntimeInstaller> m_runtimeInstaller;
     std::unique_ptr<FakeRuntime> m_runtime;
@@ -506,6 +599,7 @@ void TestSettingsWindowQml::initTestCase()
     m_uiController = std::make_unique<UiController>(*m_settings);
     m_i18n = std::make_unique<I18n>(*m_settings);
     m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
+    m_probe = std::make_unique<ConnectionProbe>(*m_settings);
     m_modelInstaller = std::make_unique<FakeModelInstaller>();
     m_runtimeInstaller = std::make_unique<FakeRuntimeInstaller>();
     m_runtime = std::make_unique<FakeRuntime>();
@@ -519,6 +613,8 @@ void TestSettingsWindowQml::initTestCase()
     qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", m_modelInstaller.get());
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", m_runtimeInstaller.get());
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", m_runtime.get());
+    // The check of the shared server goes through the runtime layer.
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "ConnectionProbe", m_probe.get());
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Controller", m_controller.get());
     qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", m_launchProfiles.get());
     for (const char *name : {"RequestProfilesBlock", "RequestProfilesDecision", "RequestProfilesLayout", "RequestProfilesFix"}) {
@@ -713,7 +809,9 @@ void TestSettingsWindowQml::theOutputParserKeepsItsOwnWidth()
 }
 
 // The runtime management and the downloaded models are cards of their own,
-// with the headers the block titles of the verification section carry.
+// with the headers the block titles of the verification section carry. The
+// runtime section keeps its blocks apart: the builds, the updates, the
+// shared server and the tasks.
 void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
 {
     const std::unique_ptr<QObject> window = loadWindow();
@@ -725,9 +823,12 @@ void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
     QCoreApplication::processEvents();
     QObject *runtime = evaluate(window.get(), QStringLiteral("runtimeSection")).value<QObject *>();
     QVERIFY(runtime);
-    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Manage llama.cpp")), "the runtime card has no «Manage llama.cpp» header");
+    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("llama.cpp builds")), "the builds card has no header");
+    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Updates")), "the updates card has no header");
+    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Shared server")), "the shared server card has no header");
+    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Tasks")), "the tasks card has no header");
+    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Timeouts")), "the timeouts block has no header");
     QVERIFY2(!hasLabelWithText(runtime, QStringLiteral("Install llama.cpp")), "the old runtime header is still there");
-    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("External runtime settings")), "the external runtime card has no header");
     // The divider between the connection settings and the blocks is gone: the
     // card carries the separation now.
     QObject *runtimeRoot = evaluate(window.get(), QStringLiteral("runtimeSection")).value<QObject *>();
@@ -742,6 +843,128 @@ void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
     QVERIFY(models);
     QVERIFY2(hasLabelWithText(models, QStringLiteral("Downloaded models")), "the models card has no «Downloaded models» header");
     QVERIFY2(!hasLabelWithText(models, QStringLiteral("Downloaded model files on disk")), "the old models header is still there");
+}
+
+// The update card with a candidate: one row of facts with a chip, one
+// action — the button that starts the installation — and the quiet settings
+// under it. The version can be ignored, and the manual choice of a release
+// is not a select in the main flow (ADR 315).
+void TestSettingsWindowQml::theUpdatesCardOffersOneActionAndOneFact()
+{
+    m_runtimeInstaller->setHasUpdate(true);
+    m_runtimeInstaller->setCandidateIgnored(false);
+    m_runtimeInstaller->setCandidateInstalled(false);
+    // The card lives in the managed half of the runtime tab.
+    m_settings->setConnectionMode(QStringLiteral("managed"));
+
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("runtime"))));
+    QCoreApplication::processEvents();
+    QObject *runtime = evaluate(window.get(), QStringLiteral("runtimeSection")).value<QObject *>();
+    QVERIFY(runtime);
+
+    // The check leaves its mark in the header of the card.
+    QQuickItem *checked = findItemWithText(runtime, QStringLiteral("Checked at 09:23"));
+    QVERIFY2(checked, "the header does not say when the catalog was looked at");
+    QVERIFY(checked->isVisible());
+
+    // One fact in one place: the candidate row with its chip.
+    QQuickItem *chip = findItemWithText(runtime, QStringLiteral("Available"));
+    QVERIFY2(chip, "the candidate row has no chip");
+    QVERIFY(chip->isVisible());
+    QQuickItem *facts = findItemWithText(runtime, QStringLiteral("b12345 · 2026-11-16 · 649 MiB"));
+    QVERIFY2(facts, "the candidate row does not carry the facts of the release");
+    QVERIFY(facts->isVisible());
+
+    // One action: the button that starts the installation.
+    QQuickItem *update = findItemWithText(runtime, QStringLiteral("Update"));
+    QVERIFY2(update, "the card has no «Update» action");
+    QVERIFY(update->isVisible());
+
+    // The way out of the offer, and the quiet settings without a select.
+    QQuickItem *ignore = findItemWithText(runtime, QStringLiteral("Ignore this version"));
+    QVERIFY2(ignore, "the card has no way to ignore the version");
+    QVERIFY(ignore->isVisible());
+    QVERIFY2(!findItemWithText(runtime, QStringLiteral("Release")), "the quiet settings row still has a «Release» select");
+
+    // The other state of the card is not shown at the same time.
+    QQuickItem *active = findItemWithText(runtime, QStringLiteral("Active b12345 — this is the latest build."));
+    QVERIFY(active);
+    QVERIFY2(!active->isVisible(), "the card shows two states at once");
+}
+
+// The candidate that is on disk already: the card offers the switch to it,
+// not a download of it (ADR 317).
+void TestSettingsWindowQml::theUpdatesCardActivatesTheBuildThatIsOnDisk()
+{
+    m_runtimeInstaller->setHasUpdate(true);
+    m_runtimeInstaller->setCandidateIgnored(false);
+    m_runtimeInstaller->setCandidateInstalled(true);
+    // The card lives in the managed half of the runtime tab.
+    m_settings->setConnectionMode(QStringLiteral("managed"));
+
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("runtime"))));
+    QCoreApplication::processEvents();
+    QObject *runtime = evaluate(window.get(), QStringLiteral("runtimeSection")).value<QObject *>();
+    QVERIFY(runtime);
+
+    // The chip names the state: the build is there, it is not offered.
+    QQuickItem *chip = findItemWithText(runtime, QStringLiteral("Installed"));
+    QVERIFY2(chip, "the candidate row has no chip");
+    QVERIFY(chip->isVisible());
+
+    // No download, so the size of the archive is not a fact of the row.
+    QQuickItem *facts = findItemWithText(runtime, QStringLiteral("b12345 · 2026-11-16"));
+    QVERIFY2(facts, "the candidate row does not carry the facts of the release");
+    QVERIFY(facts->isVisible());
+    QVERIFY2(!findItemWithText(runtime, QStringLiteral("649 MiB")), "the row still carries the size of a download");
+
+    // One action: the switch to the build that is on disk.
+    QQuickItem *activate = findItemWithText(runtime, QStringLiteral("Activate"));
+    QVERIFY2(activate, "the card has no «Activate» action");
+    QVERIFY(activate->isVisible());
+    QVERIFY2(!findItemWithText(runtime, QStringLiteral("Update")), "the card still offers a download of the build that is on disk");
+}
+
+// Nothing to install: the card says which build runs and that it is the
+// latest one — no action, no candidate.
+void TestSettingsWindowQml::theUpdatesCardShowsTheActiveBuildWhenThereIsNothingToInstall()
+{
+    m_runtimeInstaller->setHasUpdate(false);
+    m_runtimeInstaller->setCandidateIgnored(false);
+    m_runtimeInstaller->setCandidateInstalled(false);
+    // The card lives in the managed half of the runtime tab.
+    m_settings->setConnectionMode(QStringLiteral("managed"));
+
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("runtime"))));
+    QCoreApplication::processEvents();
+    QObject *runtime = evaluate(window.get(), QStringLiteral("runtimeSection")).value<QObject *>();
+    QVERIFY(runtime);
+
+    QQuickItem *active = findItemWithText(runtime, QStringLiteral("Active b12345 — this is the latest build."));
+    QVERIFY2(active, "the card does not name the build that runs");
+    QVERIFY(active->isVisible());
+
+    QQuickItem *available = findItemWithText(runtime, QStringLiteral("Available"));
+    QVERIFY(available);
+    QVERIFY2(!available->isVisible(), "the card offers a version that it does not have");
+    QQuickItem *update = findItemWithText(runtime, QStringLiteral("Update"));
+    QVERIFY(update);
+    QVERIFY2(!update->isVisible(), "the card asks for an update that does not exist");
 }
 
 void TestSettingsWindowQml::theCancelRestoresTheInterface()

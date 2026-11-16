@@ -482,6 +482,18 @@ QString SettingsStore::secretError() const
     return SecretStore::lastError();
 }
 
+QString SettingsStore::secretStatus() const
+{
+    switch (SecretStore::lastStatus()) {
+    case SecretStore::Status::Ok: return QStringLiteral("ok");
+    case SecretStore::Status::NotFound: return QStringLiteral("notFound");
+    case SecretStore::Status::Refused: return QStringLiteral("refused");
+    case SecretStore::Status::Unavailable: return QStringLiteral("unavailable");
+    case SecretStore::Status::Failed: return QStringLiteral("failed");
+    }
+    return QStringLiteral("ok");
+}
+
 bool SettingsStore::lastKeyPersisted() const
 {
     return m_lastKeyPersisted;
@@ -897,6 +909,19 @@ void SettingsStore::setRuntimeChannel(const QString &channel)
         return;
     m_settings.setValue(kRuntimeChannel, channel);
     emit runtimeChannelChanged();
+}
+
+QString SettingsStore::runtimeIgnoredBuild() const
+{
+    return m_settings.value(kRuntimeIgnoredBuild).toString();
+}
+
+void SettingsStore::setRuntimeIgnoredBuild(const QString &build)
+{
+    if (runtimeIgnoredBuild() == build)
+        return;
+    m_settings.setValue(kRuntimeIgnoredBuild, build);
+    emit runtimeIgnoredBuildChanged();
 }
 
 QString SettingsStore::installedTag() const

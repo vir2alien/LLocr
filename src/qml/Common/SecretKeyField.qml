@@ -28,6 +28,10 @@ RowLayout {
     // The mask is text, so it can be erased like any other text.
     readonly property string maskText: "••••••••"
 
+    // The user typed a key: the plain text goes out, so a field that lives
+    // in a popup can hand it over before the popup is gone.
+    signal typed(string plainText)
+
     // Whether the user touched the field. An untouched field keeps the
     // stored key; a cleared one removes it.
     property bool edited: false
@@ -66,6 +70,7 @@ RowLayout {
         onTextEdited: {
             root.edited = true
             keyField.text = root.plainText(keyField.text)
+            root.typed(keyField.text)
         }
     }
 }

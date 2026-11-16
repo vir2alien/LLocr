@@ -615,6 +615,21 @@ appendix at the end of this file.
   degrades gracefully if the shape drifts (`extractBuildNumber` → −1 →
   `buildAtLeast` true, an unreadable tag cannot refuse a start, and the
   `--help` feature checks remain).
+- **317.** The installer never downloads a build that is on disk already. A
+  release the catalog offers can already lie in `<runtimeDir>` — it was
+  downloaded and not activated — and the card used to offer that download
+  again: the update flag compared the catalog's newest build with the
+  *active* one only, so a build that was there but not running read as "an
+  update is available", the archive was fetched a second time, and the
+  installation replaced the very directory it had just extracted. The runtime
+  layer now knows the candidate on disk (`RuntimeInstaller::candidateInstalled`
+  — the same build and the same backend, with the server binary in it): the
+  card names the state («Установлена»), drops the size of the download and
+  offers the switch («Активировать») instead of the download, and
+  `startDownloadAndInstall()` activates the build that is on disk when there
+  is one — so every way into the installer (the card, the wizard) behaves the
+  same. The switch is the one of the list of the installed builds (ADR 60): a
+  settings-only commit, no download, no probe.
 
 ### Models & tasks
 
@@ -1970,7 +1985,44 @@ appendix at the end of this file.
   says what the user reads, not what the user owns (`core/BoxTransitions.h`:
   `userOwned`). The block button of the mini-panel is the operator's own
   decision and works as before.
-
+- **314.** The runtime settings are blocks, not one list. The external mode
+  carries the **shared server** (the base URL, the key, the check of the
+  server and the answer of the secret store) and the **tasks** (the model
+  name in the row; the endpoint and the key of a task behind its gear) as
+  two cards of their own; the managed mode carries the **llama.cpp builds**
+  and the **updates** as two cards; the timeouts are a collapsed block at the
+  bottom whose header says what they are («connect 5 s · answer 5 min») and
+  whose fields are narrow. Every field of the section stands under its
+  label, as in the timeouts block: a label beside its field makes the two
+  fields of a row begin at different heights, and three labels beside three
+  lists in one line do not fit the width of a card. The check of the shared
+  server is
+  `runtime/ConnectionProbe` (QML singleton `ConnectionProbe`): it asks
+  `GET <base URL>/v1/models` and reports the answer, the latency and the
+  model count; the stored key is read in the C++ and never travels through
+  the UI, and a refused key is named as such. The refusal of the system
+  store is a badge with a «Retry», not a footnote: the store that answers
+  with an error and the store without a key are two different answers
+  (ADR 233). The channel of the managed runtime stays where it was — the
+  layout changed, the choice did not.
+- **315.** The update card says one thing at a time. The candidate is one
+  row — the tag, the date and the size of the download, with a chip that
+  names the state («Available», «Up to date», «Ignored»); the banner that
+  repeated the version is gone, and the yellow alert is left to the
+  exceptions (the stable release was unavailable, the cache was served).
+  There is one action: the «Update» button, and the row becomes a progress
+  bar with a «Cancel» while the installation runs in the background — that
+  is what the background means. The check is the header's «Checked at 09:23»
+  and a compact ↻, not a button and not a line of text under it. The manual
+  choice of a version is a menu behind ⋮, where the list really is (the
+  active build is marked); the channel and the backend are one quiet row
+  under the action, and the release select is gone. The states are
+  available → installing → up to date, plus the failure; a version the user
+  does not want to hear about is ignored, and the way back («Restore») stays
+  next to it. The facts come from the runtime layer
+  (`runtime/RuntimeInstaller`: `candidateTag`, `candidateDate`,
+  `candidateSize`, `checkedAtLabel`, `catalogWarning`), and the ignored
+  build is a plain setting (`runtime/ignoredBuild`), not a secret.
 - **316.** The controls of the app are drawn by the app. The platform style
   (Fusion) paints the buttons of `Dialog.standardButtons`, the radio buttons
   and the number fields, and they carry the look of the system, not of the

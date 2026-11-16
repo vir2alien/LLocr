@@ -239,10 +239,29 @@ target_link_libraries(test_runtime_tab_external_qml PRIVATE
     Qt6::Test
     Qt6::Quick
     Qt6::QuickControls2
-    llocr_config
+    Qt6::Network
+    Qt6::Concurrent
+    llocr_runtime
 )
+# The tab draws icons (the check, the store's warning).
+llocr_add_ui_icons(test_runtime_tab_external_qml)
 # --- App layer: pipeline, queue, availability ---
 add_test(NAME test_runtime_tab_external_qml COMMAND test_runtime_tab_external_qml)
+
+# The check of the shared server: the probe asks the server whether it
+# answers, and the status it shows says what the answer was.
+qt_add_executable(test_connection_probe test_connection_probe.cpp)
+target_compile_definitions(test_connection_probe PRIVATE
+    LLOCR_MOCK_SERVER="$<TARGET_FILE:mock_llama_server>"
+)
+
+target_link_libraries(test_connection_probe PRIVATE
+    Qt6::Test
+    Qt6::Network
+    Qt6::Concurrent
+    llocr_runtime
+)
+add_test(NAME test_connection_probe COMMAND test_connection_probe)
 
 qt_add_executable(test_verification_prompts test_verification_prompts.cpp)
 
