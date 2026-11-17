@@ -14,7 +14,9 @@
 #include <QQmlEngine>
 #include <QQmlError>
 #include <QQmlExpression>
+#include <QQuickItem>
 #include <QQuickStyle>
+#include <QQuickWindow>
 #include <QTranslator>
 #include <QtTest>
 
@@ -43,11 +45,22 @@ public:
 
     QHash<int, QByteArray> roleNames() const override { return {{Qt::UserRole + 1, QByteArrayLiteral("key")}, {Qt::UserRole + 2, QByteArrayLiteral("title")}}; }
 
+    // The quantization rows of a model: the ids, the sizes and the memory
+    // floors — the numbers behind a quantization, the reason the dropdown is
+    // opened at all.
+    QVariantList quants() const
+    {
+        QVariantList list;
+        list.append(quant(QStringLiteral("Q4_K_XL"), QStringLiteral("13.3 GiB"), QStringLiteral("13.3 GiB"), QStringLiteral("16.0 GiB"), QStringLiteral("3.9 GiB"), true));
+        list.append(quant(QStringLiteral("Q8_0"), QStringLiteral("18.6 GiB"), QStringLiteral("18.6 GiB"), QString(), QString(), false));
+        return list;
+    }
+
     Q_INVOKABLE QVariantMap rowFor(const QString &key) const
     {
         Q_UNUSED(key)
         QVariantMap row;
-        row.insert(QStringLiteral("quants"), QVariantList());
+        row.insert(QStringLiteral("quants"), quants());
         row.insert(QStringLiteral("selected"), -1);
         return row;
     }
@@ -59,6 +72,22 @@ public:
     }
 
     explicit FakeQuantModel(QObject *parent = nullptr) : QAbstractListModel(parent) {}
+
+private:
+    static QVariantMap quant(const QString &id, const QString &size, const QString &vram, const QString &ram, const QString &vramFloor, bool cpuOffload)
+    {
+        QVariantMap item;
+        item.insert(QStringLiteral("id"), id);
+        item.insert(QStringLiteral("sizeLabel"), size);
+        item.insert(QStringLiteral("vramLabel"), vram);
+        item.insert(QStringLiteral("ramLabel"), ram);
+        item.insert(QStringLiteral("vramFloorLabel"), vramFloor);
+        item.insert(QStringLiteral("cpuOffload"), cpuOffload);
+        item.insert(QStringLiteral("installed"), false);
+        item.insert(QStringLiteral("active"), false);
+        item.insert(QStringLiteral("downloadable"), true);
+        return item;
+    }
 };
 
 // A stand-in for the ModelInstaller singleton: the table only asks it for the
@@ -75,6 +104,7 @@ class FakeModelInstaller : public QObject
 public:
     QObject *allModels() const { return m_models; }
     QObject *quantModels() const { return m_models; }
+    QVariantList quants() const { return m_models->quants(); }
 
 signals:
     void installedChanged();
@@ -191,12 +221,19 @@ private slots:
     void theCancelPathThrowsTheEditAway();
     void theSaveTabsWritesBothTabs();
     void theSaveTabsAsksBeforeWritingTheLaunchDraft();
+    void theQuantizationFieldFitsTheQuantization();
+    void theQuantizationPopupIsAsWideAsItsWidestEntry();
+    void theColumnsFitTheNarrowWindowOfTheWizard();
+    void theGearStandsNextToTheFields();
 
 private:
     void registerModuleTypes();
     std::unique_ptr<QObject> loadTable();
+    std::unique_ptr<QObject> loadTable(bool externalMode, QQuickItem *host);
     QVariant evaluate(QObject *scope, const QString &expression);
     QObject *draftEntry(QObject *table, const QString &task);
+    QQuickItem *comboBox(QObject *table, const QString &textRole);
+    QList<QQuickItem *> itemsByType(QQuickItem *root, const QString &typeName);
 
     std::unique_ptr<FakeModelInstaller> m_modelInstaller;
     std::unique_ptr<FakeRuntime> m_runtime;
@@ -260,6 +297,10 @@ void TestTaskModelsTableQml::initTestCase()
     QObject *theme = m_engine->singletonInstance<QObject *>(QStringLiteral("LLocr"), QStringLiteral("Theme"));
     QVERIFY(theme);
     m_engine->rootContext()->setContextProperty(QStringLiteral("Theme"), theme);
+
+    // The quantization rows of the fake model, so the test can measure the
+    // texts of the dropdown without reaching into the model's own rows.
+    m_engine->rootContext()->setContextProperty(QStringLiteral("FakeQuants"), m_modelInstaller->quants());
 }
 
 void TestTaskModelsTableQml::registerModuleTypes()
@@ -316,6 +357,13 @@ QObject *TestTaskModelsTableQml::draftEntry(QObject *table, const QString &task)
 
 std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable()
 {
+    return loadTable(true, nullptr);
+}
+
+// The table in a host of its own: the host gives the table the width of the
+// window it stands in, so the test measures the row as it is drawn.
+std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable(bool externalMode, QQuickItem *host)
+{
     m_warnings.clear();
 
     const QString tablePath = QDir(m_qmlRoot).filePath(QStringLiteral("Common/TaskModelsTable.qml"));
@@ -328,9 +376,49 @@ std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable()
     std::unique_ptr<QObject> object(table.create());
     if (!object)
         m_warnings.append(table.errorString());
-    else
-        object->setProperty("externalMode", true);
+    else {
+        object->setProperty("externalMode", externalMode);
+        if (host) {
+            if (auto *item = qobject_cast<QQuickItem *>(object.get())) {
+                item->setParentItem(host);
+                item->setWidth(host->width());
+                item->setHeight(host->height());
+            }
+        }
+    }
     return object;
+}
+
+// Every item of the given QML type in the visual tree of the root.
+QList<QQuickItem *> TestTaskModelsTableQml::itemsByType(QQuickItem *root, const QString &typeName)
+{
+    QList<QQuickItem *> found;
+    if (!root)
+        return found;
+    // A QML type's class name carries the engine's suffix
+    // ("LLOComboBox_QMLTYPE_23"), so the name is matched by its prefix.
+    const QString name = QString::fromLatin1(root->metaObject()->className());
+    if (name == typeName || name.startsWith(typeName + QStringLiteral("_QMLTYPE")))
+        found.append(root);
+    const QList<QQuickItem *> children = root->childItems();
+    for (QQuickItem *child : children)
+        found.append(itemsByType(child, typeName));
+    return found;
+}
+
+// The dropdown of the table that reads the given role: the name of a model
+// or the quantization of a task.
+QQuickItem *TestTaskModelsTableQml::comboBox(QObject *table, const QString &textRole)
+{
+    auto *root = qobject_cast<QQuickItem *>(table);
+    if (!root)
+        return nullptr;
+    const QList<QQuickItem *> combos = itemsByType(root, QStringLiteral("LLOComboBox"));
+    for (QQuickItem *combo : combos) {
+        if (combo->property("textRole").toString() == textRole)
+            return combo;
+    }
+    return nullptr;
 }
 
 void TestTaskModelsTableQml::theTableLoadsWithoutWarnings()
@@ -457,6 +545,133 @@ void TestTaskModelsTableQml::theSaveTabsAsksBeforeWritingTheLaunchDraft()
     // request tab was written anyway.
     QCOMPARE(m_launchProfiles->saves(), 0);
     QCOMPARE(m_profiles->saves(), 1);
+}
+
+// The columns of the table have their own width: the name of a quantization
+// and its marker must fit into the field, and the name of a model must not
+// take the room of the rest of the row (ADR 317).
+void TestTaskModelsTableQml::theQuantizationFieldFitsTheQuantization()
+{
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(false, host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    // The layout is applied in the polish: let it happen before the test
+    // measures the row.
+    QTest::qWait(20);
+
+    QQuickItem *quant = comboBox(table.get(), QStringLiteral("id"));
+    QVERIFY(quant);
+    QQuickItem *model = comboBox(table.get(), QStringLiteral("title"));
+    QVERIFY(model);
+
+    // The field fits the id of a quantization and its marker, with the
+    // padding of the control around them.
+    const double text = evaluate(table.get(), QStringLiteral("textWidth('Q4_K_XL  ⬇')")).toDouble();
+    QVERIFY(text > 0);
+    const double padding = quant->property("leftPadding").toDouble() + quant->property("rightPadding").toDouble();
+    QVERIFY(quant->property("width").toDouble() >= text + padding);
+
+    // The columns keep the width they were given: the free space of the row
+    // goes to the gap before the gear, not to the name of the model.
+    QCOMPARE(model->property("width").toDouble(), static_cast<double>(table->property("modelColumnWidth").toInt()));
+    QCOMPARE(quant->property("width").toDouble(), static_cast<double>(table->property("quantColumnWidth").toInt()));
+}
+
+// The dropdown of a quantization is as wide as its widest entry: the numbers
+// behind a quantization are the reason to open it, and the fixed width of
+// 360 cut the longest line in half (ADR 317).
+void TestTaskModelsTableQml::theQuantizationPopupIsAsWideAsItsWidestEntry()
+{
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(false, host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    const double widest = evaluate(table.get(), QStringLiteral("textWidth(quantItemText(FakeQuants[0]))")).toDouble();
+    QVERIFY(widest > 0);
+    const double wanted = evaluate(table.get(), QStringLiteral("quantPopupWidth(FakeQuants, quantColumnWidth)")).toDouble();
+    QVERIFY(wanted >= widest);
+    QVERIFY(wanted > 360.0);
+
+    // The popup that opens really takes that width.
+    QQuickItem *quant = comboBox(table.get(), QStringLiteral("id"));
+    QVERIFY(quant);
+    QObject *popup = quant->property("popup").value<QObject *>();
+    QVERIFY(popup);
+    QVERIFY(QMetaObject::invokeMethod(popup, "open"));
+    QTest::qWait(20);
+    QCOMPARE(popup->property("width").toDouble(), wanted);
+}
+
+// The same table stands in the hardware step of the setup wizard, whose
+// window is narrower than the «Models» window: the row must stay inside it,
+// and the field of a quantization must keep its width there too.
+void TestTaskModelsTableQml::theColumnsFitTheNarrowWindowOfTheWizard()
+{
+    QQuickWindow window;
+    window.resize(760, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(720, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(false, host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    QQuickItem *quant = comboBox(table.get(), QStringLiteral("id"));
+    QVERIFY(quant);
+
+    // The id and its marker fit even in the narrow window.
+    QCOMPARE(quant->property("width").toDouble(), static_cast<double>(table->property("quantColumnWidth").toInt()));
+
+    // The row stays inside the window: nothing is pushed out of sight.
+    QVERIFY(quant->property("x").toDouble() + quant->property("width").toDouble() <= host->width());
+}
+
+// The gear opens the settings of its own task: it stands next to the fields
+// of that task, and the free space of the row lies to the right of it.
+void TestTaskModelsTableQml::theGearStandsNextToTheFields()
+{
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(false, host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    QQuickItem *quant = comboBox(table.get(), QStringLiteral("id"));
+    QVERIFY(quant);
+    QQuickItem *row = quant->parentItem();
+    QVERIFY(row);
+
+    const QList<QQuickItem *> gears = itemsByType(row, QStringLiteral("ToolButton"));
+    QCOMPARE(gears.size(), 1);
+    QQuickItem *gear = gears.first();
+
+    const double gap = gear->property("x").toDouble() - (quant->property("x").toDouble() + quant->property("width").toDouble());
+    QVERIFY(gap >= 0);
+    QVERIFY(gap <= 8);
+
+    // The free space is to the right of the gear, not between it and the
+    // fields it belongs to.
+    QVERIFY(host->width() - (gear->property("x").toDouble() + gear->property("width").toDouble()) > 100);
 }
 
 int main(int argc, char *argv[])

@@ -2040,6 +2040,20 @@ appendix at the end of this file.
   `Theme.border`), so the pair does not stand on a light box in the dark
   theme. The button of a dialog says what it does («Не сохранять»,
   «Сбросить», «Продолжить») and never «Да» or «OK».
+- **317.** The columns of the task table have a width of their own. The name
+  of a model gets exactly the room it needs and no more (260 px, 140 px at
+  the least), the field of a quantization is wide enough for the longest id
+  together with its marker (150 px), and the free space of the row goes to
+  the right of the gear — the name of a model must not push the quantization
+  out of sight, and the gear must stand next to the fields it belongs to. The
+  dropdown of a quantization opens as wide as
+  its widest entry: the numbers behind a quantization (the size, the RAM and
+  the VRAM it needs) are the reason to open it, and a clipped line says
+  nothing. The width is measured in the very font the menu entry is drawn in
+  (`FontMetrics`) and never grows past the window that holds it. The same
+  table stands in two windows — the «Models» window (1040 px) and the setup
+  wizard (760 px) — and in the narrow one the columns shrink to their
+  minimum.
 
 ### Security & secrets
 

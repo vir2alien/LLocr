@@ -35,6 +35,17 @@ Item {
     // is its single source (ADR 215) — the table keeps no copy of it.
     readonly property var taskIds: Settings.taskRoles
 
+    // The columns of the table. The model name gets the room it needs and no
+    // more, the quantization column is wide enough for the longest id, and the
+    // free space goes to the right of the gear — the model name must not push
+    // the quantization out of sight, and the gear must stand next to the
+    // fields it belongs to (ADR 317).
+    readonly property int taskColumnWidth: 140
+    readonly property int modelColumnWidth: 260
+    readonly property int quantColumnWidth: 150
+    readonly property int nameColumnWidth: 210
+    readonly property int gearColumnWidth: 36
+
     // The draft: one entry per task. Every entry is a real object with
     // properties, so a change is a change of the entry and the row binds to
     // the entry itself — not to a snapshot of a plain object (ADR 200).
@@ -221,6 +232,29 @@ Item {
         return s
     }
 
+    // The width a text needs in the font of the menu entries. The popup of
+    // a quantization is as wide as its widest entry — the numbers behind a
+    // quantization are the reason to open it, and a clipped line says
+    // nothing.
+    function textWidth(text) {
+        return quantMetrics.advanceWidth(text)
+    }
+
+    // The width the dropdown of a quantization needs: the widest entry plus
+    // the padding of a menu item. The control's own width is the lower
+    // bound — a short list still opens a dropdown of the field's size.
+    function quantPopupWidth(quants, minimumWidth) {
+        let widest = 0
+        for (let i = 0; i < (quants || []).length; ++i)
+            widest = Math.max(widest, textWidth(quantItemText(quants[i])))
+        return Math.max(minimumWidth, widest + Theme.spacing * 4)
+    }
+
+    FontMetrics {
+        id: quantMetrics
+        font: Theme.button
+    }
+
     // The entries exist before the rows are built: the rows are the entries.
     Component.onCompleted: {
         table.ensureDraft()
@@ -236,15 +270,23 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
-            Item { Layout.preferredWidth: 140 }
+            Item { Layout.preferredWidth: table.taskColumnWidth }
             LLOLabel {
-                Layout.fillWidth: true
+                Layout.preferredWidth: table.modelColumnWidth
                 font.pixelSize: Theme.footnoteSize
                 color: Theme.textMuted
                 text: qsTr("Model")
             }
-            Item { Layout.preferredWidth: 105 }
-            Item { Layout.preferredWidth: 36 }
+            Item {
+                Layout.preferredWidth: table.quantColumnWidth
+                visible: !table.externalMode
+            }
+            Item {
+                Layout.preferredWidth: table.nameColumnWidth
+                visible: table.externalMode
+            }
+            Item { Layout.preferredWidth: table.gearColumnWidth }
+            Item { Layout.fillWidth: true }
         }
 
         Repeater {
@@ -263,7 +305,7 @@ Item {
                 spacing: Theme.spacingSmall
 
                 Item {
-                    Layout.preferredWidth: 140
+                    Layout.preferredWidth: table.taskColumnWidth
                     implicitHeight: modelBox.implicitHeight
 
                     LLOLabel {
@@ -280,7 +322,8 @@ Item {
 
                 LLOComboBox {
                     id: modelBox
-                    Layout.fillWidth: true
+                    Layout.preferredWidth: table.modelColumnWidth
+                    Layout.minimumWidth: 140
                     model: taskRow.quantModel
                     textRole: "title"
                     valueRole: "key"
@@ -321,21 +364,28 @@ Item {
                 LLOComboBox {
                     id: quantBox
                     visible: !table.externalMode
-                    Layout.preferredWidth: 105
+                    Layout.preferredWidth: table.quantColumnWidth
+                    Layout.minimumWidth: table.quantColumnWidth
                     textRole: "id"
 
                     // The dropdown is wider than the control and hangs off
                     // its right edge, leftward — the rows sit at the right
                     // edge of the host, so a centered popup would leave it.
                     popup: Popup {
+                        id: quantPopup
                         y: quantBox.height + 2
-                        width: 360
                         padding: 1
                         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
 
                         onAboutToShow: {
                             const host = Overlay.overlay
                             const p = quantBox.mapToItem(null, 0, 0)
+                            // The popup is as wide as its widest entry: the
+                            // numbers behind a quantization are the reason to
+                            // open it, and a clipped line says nothing. It
+                            // never grows past the window that holds it.
+                            width = Math.min(table.quantPopupWidth(quantBox.model, quantBox.width),
+                                             host.width - Theme.spacing * 2)
                             const left = Math.max(Theme.spacingSmall,
                                                   Math.min(p.x + quantBox.width - width,
                                                            host.width - width - Theme.spacingSmall))
@@ -363,6 +413,7 @@ Item {
                                     required property var modelData
                                     required property int index
 
+                                    font: Theme.button
                                     width: quantBox.popup.width - quantBox.popup.padding * 2
                                     height: Theme.controlHeight
                                     highlighted: quantEntry.index === quantBox.currentIndex
@@ -419,7 +470,7 @@ Item {
                 TextField {
                     id: nameField
                     visible: table.externalMode
-                    Layout.preferredWidth: 210
+                    Layout.preferredWidth: table.nameColumnWidth
                     implicitHeight: Theme.controlHeight
                     font.pixelSize: Theme.bodySmallSize
                     text: taskRow.entry.modelName || ""
@@ -459,6 +510,11 @@ Item {
                         }
                     }
                 }
+
+                // The free space of the row lies to the right of the gear:
+                // the fields and the button that opens their settings stand
+                // together, and the empty place is at the edge.
+                Item { Layout.fillWidth: true }
             }
         }
     }
