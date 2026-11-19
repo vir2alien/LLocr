@@ -46,8 +46,12 @@ void RequestJournal::record(const Record &record)
     {
         QMutexLocker locker(&m_mutex);
         m_records.append(record);
-        while (m_records.size() > kMaxRecords)
+        while (m_records.size() > kMaxRecords) {
+            // format() is the only source of the line count: the mirror of
+            // the journal must drop exactly the lines the record occupied.
+            m_droppedLines += format(m_records.first()).size();
             m_records.removeFirst();
+        }
     }
     emit changed();
 }
@@ -67,11 +71,18 @@ int RequestJournal::count() const
     return m_records.size();
 }
 
+int RequestJournal::droppedLines() const
+{
+    QMutexLocker locker(&m_mutex);
+    return m_droppedLines;
+}
+
 void RequestJournal::clear()
 {
     {
         QMutexLocker locker(&m_mutex);
         m_records.clear();
+        m_droppedLines = 0;
     }
     emit changed();
 }

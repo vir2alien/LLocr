@@ -53,7 +53,12 @@ void RuntimeLog::setServer(LlamaServerProcess *server)
             }
             m_flushTimer.start();
         });
-        connect(m_server, &QObject::destroyed, this, [this]() { m_server = nullptr; });
+        connect(m_server, &QObject::destroyed, this, [this]() {
+            m_server = nullptr;
+            // The path of the log file is gone with the server: the window
+            // must learn it and take the button away.
+            emit serverLogChanged();
+        });
     }
     flushToView();
 }
@@ -66,6 +71,19 @@ QString RuntimeLog::serverLog() const
 QString RuntimeLog::journalLog() const
 {
     return RequestJournal::instance().lines().join(QLatin1Char('\n'));
+}
+
+// Both sources, the server's own output first and the journal below it,
+// separated by an empty line: the two halves of the window in one text.
+QString RuntimeLog::combinedLog() const
+{
+    const QString server = serverLog();
+    const QString journal = journalLog();
+    if (server.isEmpty())
+        return journal;
+    if (journal.isEmpty())
+        return server;
+    return server + QLatin1String("\n\n") + journal;
 }
 
 int RuntimeLog::lineCount() const
@@ -96,10 +114,8 @@ QString RuntimeLog::serverLogDir() const
 
 void RuntimeLog::copyServerLog()
 {
-    const QString server = serverLog();
-    const QString journal = journalLog();
-    const QString text = server.isEmpty() ? journal : (journal.isEmpty() ? server : server + QLatin1String("\n\n") + journal);
-    QGuiApplication::clipboard()->setText(text);
+    if (QClipboard *clipboard = QGuiApplication::clipboard())
+        clipboard->setText(combinedLog());
 }
 
 void RuntimeLog::clearServerLog()
@@ -162,7 +178,15 @@ void RuntimeLog::flushToView()
 
 void RuntimeLog::flushJournalToView()
 {
-    m_journalSync.apply(RequestJournal::instance().lines(), 0, QString());
+    const RequestJournal &journal = RequestJournal::instance();
+    const int droppedTotal = journal.droppedLines();
+    // The journal drops whole records from its front, so the lines it lost
+    // are counted exactly; the mirror has only been told about part of them.
+    int dropped = droppedTotal - m_journalDropped;
+    if (dropped < 0)
+        dropped = 0;  // the journal was cleared: its counter went back to zero
+    m_journalDropped = droppedTotal;
+    m_journalSync.apply(journal.lines(), dropped, QString());
     emit serverLogChanged();
 }
 

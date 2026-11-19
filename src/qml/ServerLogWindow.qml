@@ -94,11 +94,13 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
             LLOLabel {
-                text: qsTr("%n line(s)", "", RuntimeLog.lineCount)
+                objectName: "serverLineCount"
+                text: qsTr("Server: %n line(s)", "", RuntimeLog.lineCount)
                 color: Theme.textMuted
             }
             LLOLabel {
-                text: qsTr("%n request(s)", "", RuntimeLog.journalLineCount)
+                objectName: "journalRequestCount"
+                text: qsTr("Requests: %n request(s)", "", RuntimeLog.journalLineCount)
                 color: Theme.textMuted
             }
         }
@@ -116,6 +118,7 @@ ApplicationWindow {
             spacing: Theme.spacingSmall
 
             LLOLabel {
+                objectName: "serverOutputLabel"
                 text: qsTr("Server output")
                 color: Theme.textMuted
             }
@@ -131,6 +134,7 @@ ApplicationWindow {
                 Flickable {
                     id: logScroll
                     anchors.fill: parent
+                    anchors.margins: 10
                     clip: true
                     contentWidth: logArea.contentWidth
                     contentHeight: logArea.contentHeight
@@ -165,6 +169,7 @@ ApplicationWindow {
 
                     TextArea.flickable: TextArea {
                         id: logArea
+                        objectName: "serverLogArea"
                         readOnly: true
                         wrapMode: TextEdit.NoWrap
                         font.family: Theme.monoFamily
@@ -196,6 +201,7 @@ ApplicationWindow {
             spacing: Theme.spacingSmall
 
             LLOLabel {
+                objectName: "journalLabel"
                 text: qsTr("Request journal")
                 color: Theme.textMuted
             }
@@ -211,6 +217,7 @@ ApplicationWindow {
                 Flickable {
                     id: journalScroll
                     anchors.fill: parent
+                    anchors.margins: 10
                     clip: true
                     contentWidth: journalArea.contentWidth
                     contentHeight: journalArea.contentHeight
@@ -245,6 +252,7 @@ ApplicationWindow {
 
                     TextArea.flickable: TextArea {
                         id: journalArea
+                        objectName: "journalLogArea"
                         readOnly: true
                         wrapMode: TextEdit.NoWrap
                         font.family: Theme.monoFamily

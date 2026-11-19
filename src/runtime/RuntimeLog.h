@@ -32,6 +32,7 @@ public:
     // never stands for the journal: the window shows both.
     Q_INVOKABLE QString serverLog() const;
     Q_INVOKABLE QString journalLog() const;
+    Q_INVOKABLE QString combinedLog() const;
     int lineCount() const;
     Q_INVOKABLE int journalLineCount() const;
 
@@ -63,6 +64,10 @@ private:
     QTimer m_flushTimer;
     QStringList m_lines;
     int m_pendingDropped = 0;
+    // The journal lines that already fell off its front and were reported to
+    // the mirror: the journal counts them, the mirror must drop the same
+    // lines to stay in step with it.
+    int m_journalDropped = 0;
     bool m_viewVisible = false;
     LogDocumentSync m_sync;
     LogDocumentSync m_journalSync;

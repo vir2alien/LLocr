@@ -43,6 +43,10 @@ public:
 
     QStringList lines() const;
     int count() const;
+    // The lines that fell off the front of lines() since the last clear: the
+    // journal keeps the last records only, so a mirror of it must drop the
+    // same lines to stay in step.
+    int droppedLines() const;
     void clear();
 
     // The reply's head for the trace: the answer text when the server sent
@@ -59,6 +63,7 @@ private:
 
     mutable QMutex m_mutex;
     QList<Record> m_records;
+    int m_droppedLines = 0;
     static constexpr int kMaxRecords = 500;
     static constexpr int kExcerptLimit = 1200;
 };

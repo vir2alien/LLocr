@@ -1125,6 +1125,17 @@ target_link_libraries(test_runtime_log PRIVATE
 )
 add_test(NAME test_runtime_log COMMAND test_runtime_log)
 
+# ---- The log window itself: two panes, two sources -----------------------------
+qt_add_executable(test_server_log_window_qml test_server_log_window_qml.cpp)
+
+target_link_libraries(test_server_log_window_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_runtime
+)
+add_test(NAME test_server_log_window_qml COMMAND test_server_log_window_qml)
+
 get_property(_llocr_all_tests DIRECTORY PROPERTY TESTS)
 foreach(_llocr_test IN LISTS _llocr_all_tests)
     get_property(_llocr_timeout TEST ${_llocr_test} PROPERTY TIMEOUT)

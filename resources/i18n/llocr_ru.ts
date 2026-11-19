@@ -95,7 +95,7 @@
     </message>
     <message>
         <source>Page %1 straightened by %2°.</source>
-        <translation>Страница %1 выровнена на %2°.</translation>
+        <translation type="vanished">Страница %1 выровнена на %2°.</translation>
     </message>
     <message>
         <location line="+1700"/>
@@ -205,11 +205,11 @@
     </message>
     <message>
         <source>The automatic pipeline is done.</source>
-        <translation>Автопайплайн завершён.</translation>
+        <translation type="vanished">Автопайплайн завершён.</translation>
     </message>
     <message>
         <source>The automatic pipeline was stopped.</source>
-        <translation>Автопайплайн остановлен.</translation>
+        <translation type="vanished">Автопайплайн остановлен.</translation>
     </message>
 </context>
 <context>
@@ -241,63 +241,63 @@
     <name>AutoPipelineStage</name>
     <message>
         <source>Markup</source>
-        <translation>Разметка</translation>
+        <translation type="vanished">Разметка</translation>
     </message>
     <message>
         <source>Nothing to mark up</source>
-        <translation>Нет страниц для разметки</translation>
+        <translation type="vanished">Нет страниц для разметки</translation>
     </message>
     <message>
         <source>No model for this task</source>
-        <translation>Нет модели для этой задачи</translation>
+        <translation type="vanished">Нет модели для этой задачи</translation>
     </message>
     <message>
         <source>The markup pass failed</source>
-        <translation>Разметка не удалась</translation>
+        <translation type="vanished">Разметка не удалась</translation>
     </message>
     <message>
         <source>Block recognition</source>
-        <translation>Распознавание блоков</translation>
+        <translation type="vanished">Распознавание блоков</translation>
     </message>
     <message>
         <source>Nothing to recognize</source>
-        <translation>Нечего распознавать</translation>
+        <translation type="vanished">Нечего распознавать</translation>
     </message>
     <message>
         <source>Nothing to check</source>
-        <translation>Нечего проверять</translation>
+        <translation type="vanished">Нечего проверять</translation>
     </message>
     <message>
         <source>Fix</source>
-        <translation>Исправление</translation>
+        <translation type="vanished">Исправление</translation>
     </message>
     <message>
         <source>Nothing to fix</source>
-        <translation>Нечего исправлять</translation>
+        <translation type="vanished">Нечего исправлять</translation>
     </message>
     <message>
         <source>Verification</source>
-        <translation>Проверка</translation>
+        <translation type="vanished">Проверка</translation>
     </message>
     <message>
         <source>Verification of the corrected blocks</source>
-        <translation>Проверка исправленных блоков</translation>
+        <translation type="vanished">Проверка исправленных блоков</translation>
     </message>
     <message>
         <source>The markup model does not support page markup</source>
-        <translation>Модель разметки не умеет размечать страницы</translation>
+        <translation type="vanished">Модель разметки не умеет размечать страницы</translation>
     </message>
     <message>
         <source>The block recognition did not start: the queue refused the work</source>
-        <translation>Распознавание блоков не началось: очередь не приняла работу</translation>
+        <translation type="vanished">Распознавание блоков не началось: очередь не приняла работу</translation>
     </message>
     <message>
         <source>The verification did not start: the queue refused the work</source>
-        <translation>Проверка не началась: очередь не приняла работу</translation>
+        <translation type="vanished">Проверка не началась: очередь не приняла работу</translation>
     </message>
     <message>
         <source>The fix did not start: the queue refused the work</source>
-        <translation>Исправление не началось: очередь не приняла работу</translation>
+        <translation type="vanished">Исправление не началось: очередь не приняла работу</translation>
     </message>
 </context>
 <context>
@@ -647,7 +647,7 @@
     </message>
     <message>
         <source>Save</source>
-        <translation>Сохранить</translation>
+        <translation type="vanished">Сохранить</translation>
     </message>
     <message>
         <location filename="../../src/qml/MainWindow/BlockVersionCard.qml" line="+118"/>
@@ -663,36 +663,73 @@
 <context>
     <name>CandidateRenderer</name>
     <message>
+        <location filename="../../src/app/CandidateRenderer.cpp" line="+124"/>
         <source>The candidate renderer is busy.</source>
         <translation>Рендерер кандидата занят.</translation>
     </message>
     <message>
+        <location line="-9"/>
         <source>The candidate render timed out.</source>
         <translation>Истекло время отрисовки кандидата.</translation>
     </message>
     <message>
+        <location line="+32"/>
+        <location line="+28"/>
         <source>Cannot load the candidate render page.</source>
         <translation>Не удалось загрузить страницу отрисовки кандидата.</translation>
     </message>
     <message>
+        <location line="-23"/>
         <source>The candidate renderer process terminated.</source>
         <translation>Процесс отрисовки кандидата завершился аварийно.</translation>
     </message>
     <message>
+        <location line="+71"/>
         <source>The candidate render produced an empty page.</source>
         <translation>Отрисовка кандидата дала пустую страницу.</translation>
     </message>
     <message>
+        <location line="+12"/>
         <source>The candidate render could not create a temporary file.</source>
         <translation>Не удалось создать временный файл для отрисовки кандидата.</translation>
     </message>
     <message>
+        <location line="+18"/>
         <source>PDF printing failed.</source>
         <translation>Не удалось напечатать PDF.</translation>
     </message>
     <message>
+        <location line="+28"/>
+        <source>The candidate render did not fit on one page.</source>
+        <translation>Отображение кандидата не поместилось на одной странице.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>The candidate render could not be rasterized.</source>
         <translation>Не удалось растрировать отрисовку кандидата.</translation>
+    </message>
+</context>
+<context>
+    <name>ConnectionProbe</name>
+    <message>
+        <location filename="../../src/runtime/ConnectionProbe.cpp" line="+49"/>
+        <source>No server address</source>
+        <translation>Адрес сервера не указан</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The address is not a valid URL</source>
+        <translation>Адрес не является корректным URL</translation>
+    </message>
+    <message>
+        <location line="+52"/>
+        <source>The server refused the key</source>
+        <translation>Сервер отклонил ключ</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>The server answered with %1</source>
+        <translation>Сервер ответил: %1</translation>
     </message>
 </context>
 <context>
@@ -748,35 +785,35 @@
     <name>DjVuDocument</name>
     <message>
         <source>DjVu decoding timed out.</source>
-        <translation>Превышено время ожидания декодирования DjVu.</translation>
+        <translation type="vanished">Превышено время ожидания декодирования DjVu.</translation>
     </message>
     <message>
         <source>DjVu decoding failed.</source>
-        <translation>Не удалось декодировать DjVu.</translation>
+        <translation type="vanished">Не удалось декодировать DjVu.</translation>
     </message>
     <message>
         <source>Failed to open DjVu %1: %2</source>
-        <translation>Не удалось открыть DjVu %1: %2</translation>
+        <translation type="vanished">Не удалось открыть DjVu %1: %2</translation>
     </message>
     <message>
         <source>Failed to read DjVu %1, page %2: %3</source>
-        <translation>Не удалось прочитать DjVu %1, страницу %2: %3</translation>
+        <translation type="vanished">Не удалось прочитать DjVu %1, страницу %2: %3</translation>
     </message>
     <message>
         <source>File does not exist or is not readable.</source>
-        <translation>Файл не существует или недоступен для чтения.</translation>
+        <translation type="vanished">Файл не существует или недоступен для чтения.</translation>
     </message>
     <message>
         <source>Invalid DjVu page index.</source>
-        <translation>Недопустимый номер страницы DjVu.</translation>
+        <translation type="vanished">Недопустимый номер страницы DjVu.</translation>
     </message>
     <message>
         <source>Invalid DjVu page or render size.</source>
-        <translation>Недопустимая страница DjVu или размер изображения.</translation>
+        <translation type="vanished">Недопустимая страница DjVu или размер изображения.</translation>
     </message>
     <message>
         <source>Unable to allocate the DjVu image buffer.</source>
-        <translation>Не удалось выделить память для изображения DjVu.</translation>
+        <translation type="vanished">Не удалось выделить память для изображения DjVu.</translation>
     </message>
 </context>
 <context>
@@ -865,7 +902,7 @@
         <translation>Экспортировать</translation>
     </message>
     <message>
-        <location line="+97"/>
+        <location line="+32"/>
         <source>All recognized pages</source>
         <translation>Все распознанные страницы</translation>
     </message>
@@ -885,21 +922,52 @@
         <translation>от</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+12"/>
         <source>to</source>
         <translation>до</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+19"/>
         <source>Only recognized pages inside the selection are exported.</source>
         <translation>Экспортируются только распознанные страницы в выбранном диапазоне.</translation>
+    </message>
+</context>
+<context>
+    <name>ExportRenderer</name>
+    <message>
+        <location filename="../../src/app/ExportRenderer.cpp" line="+42"/>
+        <source>Export rendering timed out.</source>
+        <translation>Истекло время отрисовки экспорта.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>The export renderer is busy.</source>
+        <translation>Отрисовщик экспорта занят.</translation>
+    </message>
+    <message>
+        <location line="+35"/>
+        <location line="+25"/>
+        <location line="+26"/>
+        <location line="+16"/>
+        <source>Cannot load the export page.</source>
+        <translation>Не удалось загрузить страницу экспорта.</translation>
+    </message>
+    <message>
+        <location line="-62"/>
+        <source>The export renderer process terminated.</source>
+        <translation>Процесс отрисовщика экспорта завершился.</translation>
+    </message>
+    <message>
+        <location line="+112"/>
+        <source>PDF printing failed.</source>
+        <translation>Не удалось сохранить PDF.</translation>
     </message>
 </context>
 <context>
     <name>Exporter</name>
     <message>
         <location filename="../../src/app/Exporter.cpp" line="+321"/>
-        <location filename="../../src/app/ExportRenderer.cpp" line="+56"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="-147"/>
         <source>Nothing to export.</source>
         <translation>Экспортировать нечего.</translation>
     </message>
@@ -914,13 +982,13 @@
         <translation>Для экспорта в DOCX требуется Pandoc, который не найден в PATH. Установите с pandoc.org или экспортируйте в Markdown/HTML.</translation>
     </message>
     <message>
-        <location line="+13"/>
         <location filename="../../src/app/ExportController.cpp" line="+25"/>
+        <location filename="../../src/app/Exporter.cpp" line="+13"/>
         <source>Exported PDF using the built-in writer (%1).</source>
         <translation>PDF экспортирован встроенным модулем (%1).</translation>
     </message>
     <message>
-        <location filename="../../src/app/ExportController.cpp" line="+9"/>
+        <location line="+9"/>
         <source>Exported HTML using the basic writer (%1).</source>
         <translation>HTML экспортирован упрощённым модулем (%1).</translation>
     </message>
@@ -940,15 +1008,15 @@
         <translation>Не удалось записать файл: %1 (%2)</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location filename="../../src/app/ExportController.cpp" line="-12"/>
+        <location filename="../../src/app/Exporter.cpp" line="+2"/>
         <location line="+36"/>
         <location line="+55"/>
-        <location filename="../../src/app/ExportController.cpp" line="-12"/>
         <source>Exported to %1</source>
         <translation>Экспортировано: %1</translation>
     </message>
     <message>
-        <location line="-77"/>
+        <location filename="../../src/app/Exporter.cpp" line="-77"/>
         <source>Pandoc not found.</source>
         <translation>Pandoc не найден.</translation>
     </message>
@@ -982,11 +1050,11 @@
     </message>
     <message>
         <source>Stopped before the fix started.</source>
-        <translation>Остановлено до начала исправления.</translation>
+        <translation type="vanished">Остановлено до начала исправления.</translation>
     </message>
     <message>
         <source>Stopped before the read started.</source>
-        <translation>Остановлено до начала чтения.</translation>
+        <translation type="vanished">Остановлено до начала чтения.</translation>
     </message>
 </context>
 <context>
@@ -1016,11 +1084,11 @@
     </message>
     <message>
         <source>The model returned no corrected text: %1</source>
-        <translation>Модель не вернула исправленный текст: %1</translation>
+        <translation type="vanished">Модель не вернула исправленный текст: %1</translation>
     </message>
     <message>
         <source>The model returned no block text: %1</source>
-        <translation>Модель не вернула текст блока: %1</translation>
+        <translation type="vanished">Модель не вернула текст блока: %1</translation>
     </message>
     <message>
         <location line="-26"/>
@@ -1354,7 +1422,7 @@
     </message>
     <message>
         <source>Pages</source>
-        <translation>Страницы</translation>
+        <translation type="vanished">Страницы</translation>
     </message>
     <message>
         <location line="+36"/>
@@ -1567,6 +1635,23 @@
     </message>
 </context>
 <context>
+    <name>InstalledFilesModel</name>
+    <message numerus="yes">
+        <location filename="../../src/runtime/InstalledFilesModel.cpp" line="+80"/>
+        <source>Used by %n task(s)</source>
+        <translation>
+            <numerusform>Используется в %n задаче</numerusform>
+            <numerusform>Используется в %n задачах</numerusform>
+            <numerusform>Используется в %n задачах</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Not used</source>
+        <translation>Не используется</translation>
+    </message>
+</context>
+<context>
     <name>InstallerProgressRow</name>
     <message>
         <location filename="../../src/qml/Common/InstallerProgressRow.qml" line="+30"/>
@@ -1611,7 +1696,7 @@
         <translation>Продолжить</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+24"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -1629,12 +1714,12 @@
         <translation>Значение сохранится открытым текстом в профиль запуска</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location line="-120"/>
+        <location line="-122"/>
         <source>(flag)</source>
         <translation>(флаг)</translation>
     </message>
@@ -1683,7 +1768,7 @@
     <name>LayoutController</name>
     <message>
         <source>The model returned no markup: the server&apos;s answer was empty.</source>
-        <translation>Модель не вернула разметку: ответ сервера пуст.</translation>
+        <translation type="vanished">Модель не вернула разметку: ответ сервера пуст.</translation>
     </message>
 </context>
 <context>
@@ -1809,6 +1894,135 @@
     <message>
         <source>Failed to load the preview page (%1).</source>
         <translation type="vanished">Не удалось загрузить страницу предпросмотра (%1).</translation>
+    </message>
+</context>
+<context>
+    <name>ModelInstallTransaction</name>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="+195"/>
+        <location line="+171"/>
+        <source>Downloading %1 …</source>
+        <translation>Загрузка %1 …</translation>
+    </message>
+    <message>
+        <location line="-168"/>
+        <location line="+121"/>
+        <source>Ready: %1 (%2)</source>
+        <translation>Готово: %1 (%2)</translation>
+    </message>
+    <message>
+        <location line="-100"/>
+        <source>Looking up %1 …</source>
+        <translation>Поиск %1 …</translation>
+    </message>
+    <message>
+        <location line="+109"/>
+        <source>Nothing prepared to install</source>
+        <translation>Нечего устанавливать</translation>
+    </message>
+    <message>
+        <location line="+25"/>
+        <source>Another LLocr instance is installing a model right now; try again in a moment.</source>
+        <translation>Другой экземпляр LLocr сейчас устанавливает модель; повторите попытку через минуту.</translation>
+    </message>
+    <message>
+        <location line="+55"/>
+        <source>Repository contains identically named files in different subdirectories; cannot install</source>
+        <translation>В репозитории есть одноимённые файлы в разных подкаталогах; установка невозможна</translation>
+    </message>
+    <message>
+        <location line="+138"/>
+        <source>Download failed — check your connection and try again</source>
+        <translation>Загрузка не удалась — проверьте соединение и повторите попытку</translation>
+    </message>
+    <message>
+        <location line="+25"/>
+        <source>Unable to read downloaded file %1</source>
+        <translation>Не удалось прочитать загруженный файл %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>File %1 is not a valid GGUF (missing magic)</source>
+        <translation>Файл %1 не является корректным GGUF (нет магической подписи)</translation>
+    </message>
+    <message>
+        <location line="+85"/>
+        <source>Model downloaded, but the registry could not be saved: %1</source>
+        <translation>Модель загружена, но реестр сохранить не удалось: %1</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>Installed %1</source>
+        <translation>Установлено %1</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Download canceled</source>
+        <translation>Загрузка отменена</translation>
+    </message>
+</context>
+<context>
+    <name>ModelInstaller</name>
+    <message>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="+261"/>
+        <source>The selected model is no longer on disk: %1 — pick another one in Settings → Models.</source>
+        <translation>Выбранной модели больше нет на диске: %1 — выберите другую в Настройках → Модели.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+131"/>
+        <location line="+99"/>
+        <source>Invalid model selection</source>
+        <translation>Неверный выбор модели</translation>
+    </message>
+    <message>
+        <location line="-227"/>
+        <source>This model has no model file selected</source>
+        <translation>Для этой модели не выбран файл</translation>
+    </message>
+    <message>
+        <location line="+57"/>
+        <location line="+9"/>
+        <location line="+29"/>
+        <source>This model is not installed</source>
+        <translation>Эта модель не установлена</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <location line="+371"/>
+        <source>This quantization is not available for download</source>
+        <translation>Эта квантизация недоступна для загрузки</translation>
+    </message>
+    <message>
+        <location line="-360"/>
+        <location line="+34"/>
+        <source>This quantization is not installed</source>
+        <translation>Эта квантизация не установлена</translation>
+    </message>
+    <message>
+        <location line="+68"/>
+        <source>Unable to remove model file: %1</source>
+        <translation>Не удалось удалить файл модели: %1</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Unable to remove model directory: %1</source>
+        <translation>Не удалось удалить папку модели: %1</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Model files removed, but the registry could not be saved: %1</source>
+        <translation>Файлы модели удалены, но реестр сохранить не удалось: %1</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Model folder not found</source>
+        <translation>Папка модели не найдена</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Model folder not found: %1</source>
+        <translation>Папка модели не найдена: %1</translation>
     </message>
 </context>
 <context>
@@ -2626,7 +2840,7 @@
         <translation>На Apple Silicon рекомендуется бэкенд Metal; на Intel используется CPU</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="+73"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="+74"/>
         <source>Recognition failed</source>
         <translation>Ошибка распознавания</translation>
     </message>
@@ -2800,7 +3014,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="+242"/>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="-452"/>
         <location line="+24"/>
         <source>Could not resolve repository %1</source>
         <translation>Не удалось определить репозиторий %1</translation>
@@ -3008,31 +3222,31 @@
         <translation>Профиль запроса не содержит массива параметров</translation>
     </message>
     <message>
-        <location line="-61"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+149"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="-61"/>
         <source>%1 parameter is not an object</source>
         <translation>%1: параметр не является объектом</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <location filename="../../src/core/LaunchProfile.cpp" line="-47"/>
+        <location line="-47"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="+7"/>
         <source>%1 parameter has an empty name</source>
         <translation>%1: у параметра пустое имя</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location filename="../../src/core/LaunchProfile.cpp" line="+8"/>
+        <location line="+8"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="+6"/>
         <source>%1 parameter %2 has an invalid order</source>
         <translation>%1: параметр %2 имеет некорректный порядок</translation>
     </message>
     <message>
-        <location line="+9"/>
-        <location filename="../../src/core/LaunchProfile.cpp" line="+22"/>
+        <location line="+22"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="+9"/>
         <source>%1 parameter %2 has an unsupported value</source>
         <translation>%1: параметр %2 имеет неподдерживаемое значение</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="+8"/>
         <source>%1 parameter %2 has a malformed choice</source>
         <translation>%1: параметр %2 содержит некорректный вариант</translation>
     </message>
@@ -3047,13 +3261,13 @@
         <translation>%1: параметр %2 содержит вариант с неподдерживаемым значением</translation>
     </message>
     <message>
-        <location line="+7"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+25"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="+7"/>
         <source>%1 has a duplicate parameter: %2</source>
         <translation>%1: дублирующийся параметр: %2</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="+18"/>
         <source>Request profile</source>
         <translation>Профиль запроса</translation>
     </message>
@@ -3132,7 +3346,7 @@
         <translation>Порог совпадения (%)</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+26"/>
         <source>The decision model answers with the probability that the text matches the image. A block counts as correct when the probability reaches this threshold; the rest are re-recognized when automatic re-recognition is on.</source>
         <translation>Модель decision отвечает вероятностью того, что текст соответствует изображению. Блок считается правильным, если вероятность достигла порога; остальные повторно распознаются, если включено автоматическое повторное распознавание.</translation>
     </message>
@@ -3270,8 +3484,394 @@
 <context>
     <name>RuntimeController</name>
     <message>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="+158"/>
+        <source>A llama-server from a previous LLocr run is still running (pid %1, port %2).</source>
+        <translation>llama-server от прошлого запуска LLocr всё ещё работает (pid %1, порт %2).</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>No orphaned server to terminate</source>
+        <translation>Нет потерянного сервера, который нужно завершить</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The orphaned server is already gone</source>
+        <translation>Потерянный сервер уже не работает</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Unable to terminate the process (pid %1)</source>
+        <translation>Не удалось завершить процесс (pid %1)</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Another LLocr instance is already running; local server operations are disabled.</source>
+        <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
+    </message>
+    <message>
+        <location line="+208"/>
+        <source>Managed server is not configured</source>
+        <translation>Локальный сервер не настроен</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <location line="+555"/>
+        <source>File not found: %1</source>
+        <translation>Файл не найден: %1</translation>
+    </message>
+    <message>
+        <location line="-545"/>
+        <source>Decision model is not selected — pick a model in Settings → Decision model</source>
+        <translation>Модель проверки не выбрана — выберите модель в Настройках → Модель проверки</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Decision model file not found: %1 — re-select the model in Settings → Decision model</source>
+        <translation>Файл модели проверки не найден: %1 — заново выберите модель в Настройках → Модель проверки</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Layout model is not selected — pick a model in Settings → Layout model</source>
+        <translation>Модель разметки не выбрана — выберите модель в Настройках → Модель разметки</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Layout model file not found: %1 — re-select the model in Settings → Layout model</source>
+        <translation>Файл модели разметки не найден: %1 — заново выберите модель в Настройках → Модель разметки</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Fix model is not selected — pick a model in Settings → Models</source>
+        <translation>Модель исправления не выбрана — выберите модель в Настройках → Модели</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Fix model file not found: %1 — re-select the model in Settings → Models</source>
+        <translation>Файл модели исправления не найден: %1 — заново выберите модель в Настройках → Модели</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Block OCR model is not selected — pick a model in Settings → Block OCR model</source>
+        <translation>Модель распознавания блоков не выбрана — выберите модель в Настройках → Модель распознавания блоков</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Block OCR model file not found: %1 — re-select the model in Settings → Block OCR model</source>
+        <translation>Файл модели распознавания блоков не найден: %1 — заново выберите модель в Настройках → Модель распознавания блоков</translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>%1 needs llama.cpp %2 or newer (this build is %3) — update the runtime in Settings → Runtime</source>
+        <translation>%1 требует llama.cpp %2 или новее (эта сборка — %3) — обновите среду выполнения в Настройках → Среда выполнения</translation>
+    </message>
+    <message>
+        <location line="+80"/>
         <source>The API key is in the system secret store, but the store did not give it: %1</source>
         <translation>Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
+    </message>
+    <message>
+        <location line="+78"/>
+        <source>Another LLocr instance is already running</source>
+        <translation>Другой экземпляр LLocr уже запущен</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Server is not set to start automatically. Start it from the main window or Settings → Runtime.</source>
+        <translation>Автозапуск сервера не включён. Запустите его из главного окна или из Настроек → Среда выполнения.</translation>
+    </message>
+    <message>
+        <location line="+114"/>
+        <source>Server stopped</source>
+        <translation>Сервер остановлен</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Switching to the decision model…</source>
+        <translation>Переключение на модель проверки…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Switching to the layout model…</source>
+        <translation>Переключение на модель разметки…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Switching to the fix model…</source>
+        <translation>Переключение на модель исправления…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Switching to the block OCR model…</source>
+        <translation>Переключение на модель распознавания блоков…</translation>
+    </message>
+    <message>
+        <location line="+64"/>
+        <source>Failed to query /v1/models: %1</source>
+        <translation>Не удалось запросить /v1/models: %1</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Server returned a malformed /v1/models response: %1</source>
+        <translation>Сервер вернул некорректный ответ /v1/models: %1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Server advertised no models via /v1/models. Select a model in Settings → Models</source>
+        <translation>Сервер не сообщил ни одной модели через /v1/models. Выберите модель в Настройках → Модели</translation>
+    </message>
+    <message>
+        <location line="+29"/>
+        <source>Server failed</source>
+        <translation>Сервер завершился с ошибкой</translation>
+    </message>
+    <message>
+        <location line="+33"/>
+        <source>Port is busy. Change the port or enable auto-pick</source>
+        <translation>Порт занят. Смените порт или включите автоподбор</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The server rejected an argument that is not supported by your build</source>
+        <translation>Сервер отклонил аргумент, не поддерживаемый вашей сборкой</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Model file not found. Re-check the model path in Settings</source>
+        <translation>Файл модели не найден. Проверьте путь к модели в настройках</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Not enough VRAM. Lower --n-gpu-layers or --ctx-size</source>
+        <translation>Недостаточно видеопамяти. Уменьшите --n-gpu-layers или --ctx-size</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>CUDA runtime not installed. Install the CUDA archive or pick CPU/Vulkan</source>
+        <translation>Среда выполнения CUDA не установлена. Установите архив CUDA или выберите CPU/Vulkan</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Vulkan is unavailable; pick a different backend</source>
+        <translation>Vulkan недоступен; выберите другой бэкенд</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>This GGUF format is not supported by your llama.cpp build</source>
+        <translation>Этот формат GGUF не поддерживается вашей сборкой llama.cpp</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Server did not respond in time; see the log below</source>
+        <translation>Сервер не ответил вовремя; смотрите журнал ниже</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>No task uses the managed runtime</source>
+        <translation>Ни одна задача не использует локальный сервер</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>No server binary selected</source>
+        <translation>Файл сервера не выбран</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Another instance is already running</source>
+        <translation>Другой экземпляр уже запущен</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Server is already running</source>
+        <translation>Сервер уже запущен</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Host %1 is not allowed: the server is available only locally. To allow a non-loopback host, enable the allowNonLoopback setting</source>
+        <translation>Хост %1 не разрешён: сервер доступен только локально. Чтобы разрешить нелокальный хост, включите параметр allowNonLoopback</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Probing %1…</source>
+        <translation>Проверка %1…</translation>
+    </message>
+    <message>
+        <location line="+85"/>
+        <source>Starting server…</source>
+        <translation>Запуск сервера…</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Stopping…</source>
+        <translation>Остановка…</translation>
+    </message>
+    <message>
+        <location line="+116"/>
+        <source>Server start cancelled</source>
+        <translation>Запуск сервера отменён</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Stopped</source>
+        <translation>Остановлен</translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeInstaller</name>
+    <message>
+        <location filename="../../src/runtime/RuntimeInstaller.cpp" line="+30"/>
+        <source>Windows</source>
+        <translation>Windows</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>macOS</source>
+        <translation>macOS</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+2"/>
+        <source>Linux</source>
+        <translation>Linux</translation>
+    </message>
+    <message>
+        <location line="+76"/>
+        <location line="+94"/>
+        <location line="+342"/>
+        <source>Downloading %1 …</source>
+        <translation>Загрузка %1 …</translation>
+    </message>
+    <message>
+        <location line="-436"/>
+        <location line="+94"/>
+        <source>runtime</source>
+        <translation>среды выполнения</translation>
+    </message>
+    <message>
+        <location line="-3"/>
+        <location line="+200"/>
+        <source>Checking for updates…</source>
+        <translation>Проверка обновлений…</translation>
+    </message>
+    <message>
+        <location line="-194"/>
+        <location line="+393"/>
+        <source>Installing %1 …</source>
+        <translation>Установка %1 …</translation>
+    </message>
+    <message>
+        <location line="-187"/>
+        <source>Stable release unavailable (%1) — showing beta builds</source>
+        <translation>Стабильный выпуск недоступен (%1) — показаны сборки beta</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>No releases available</source>
+        <translation>Выпуски недоступны</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Showing the cached release list — the check failed: %1</source>
+        <translation>Показан сохранённый список выпусков — проверка не удалась: %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Latest release: %1 (%2)</source>
+        <translation>Последний выпуск: %1 (%2)</translation>
+    </message>
+    <message>
+        <location line="+45"/>
+        <source>No release selected — check for updates first</source>
+        <translation>Выпуск не выбран — сначала проверьте обновления</translation>
+    </message>
+    <message>
+        <location line="+23"/>
+        <source>No %1 build available for this platform in release %2</source>
+        <translation>В выпуске %2 нет сборки %1 для этой платформы</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Download failed — check your connection and try again</source>
+        <translation>Загрузка не удалась — проверьте соединение и повторите попытку</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Download failed: %1</source>
+        <translation>Загрузка не удалась: %1</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Another LLocr instance is installing a runtime right now; try again in a moment.</source>
+        <translation>Другой экземпляр LLocr сейчас устанавливает среду выполнения; повторите попытку через минуту.</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>CUDA runtime extraction warning: %1</source>
+        <translation>Предупреждение при распаковке среды выполнения CUDA: %1</translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>Installed %1 (%2)</source>
+        <translation>Установлено %1 (%2)</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Installed %1 (%2). %3</source>
+        <translation>Установлено %1 (%2). %3</translation>
+    </message>
+    <message>
+        <location line="+37"/>
+        <source>Installation cancelled</source>
+        <translation>Установка отменена</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>No active runtime build — cleanup would remove every installed build. Install or activate a build first.</source>
+        <translation>Нет активной сборки среды выполнения — очистка удалит все установленные сборки. Сначала установите или активируйте сборку.</translation>
+    </message>
+    <message>
+        <location line="+72"/>
+        <location line="+15"/>
+        <location line="+38"/>
+        <location line="+11"/>
+        <source>No such build</source>
+        <translation>Такой сборки нет</translation>
+    </message>
+    <message>
+        <location line="-61"/>
+        <location line="+15"/>
+        <source>The build directory contains no llama-server binary</source>
+        <translation>В папке сборки нет файла llama-server</translation>
+    </message>
+    <message>
+        <location line="-12"/>
+        <source>Unable to open %1</source>
+        <translation>Не удалось открыть %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <location line="+46"/>
+        <source>An install is in progress</source>
+        <translation>Установка уже выполняется</translation>
+    </message>
+    <message>
+        <location line="-23"/>
+        <source>Activated %1%2</source>
+        <translation>Активировано %1%2</translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>This build is active — activate another build first</source>
+        <translation>Эта сборка активна — сначала активируйте другую</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Unable to remove %1</source>
+        <translation>Не удалось удалить %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Removed %1</source>
+        <translation>Удалено %1</translation>
     </message>
 </context>
 <context>
@@ -3474,7 +4074,7 @@
     </message>
     <message>
         <source>Endpoint</source>
-        <translation>Эндпоинт</translation>
+        <translation type="vanished">Эндпоинт</translation>
     </message>
     <message>
         <source>Model alias</source>
@@ -3517,7 +4117,7 @@
         <translation type="vanished">Остановить сервер и обновить</translation>
     </message>
     <message>
-        <location line="+212"/>
+        <location line="+218"/>
         <source>Update</source>
         <translation>Обновить</translation>
     </message>
@@ -3526,7 +4126,7 @@
         <translation type="vanished">Посмотреть изменения</translation>
     </message>
     <message>
-        <location line="-183"/>
+        <location line="-189"/>
         <source>Platform: %1 · recommended backend: %2</source>
         <translation>Платформа: %1 · рекомендуемый backend: %2</translation>
     </message>
@@ -3536,7 +4136,7 @@
         <translation>Сборки llama.cpp</translation>
     </message>
     <message>
-        <location line="+109"/>
+        <location line="+113"/>
         <source>Updates</source>
         <translation>Обновления</translation>
     </message>
@@ -3566,22 +4166,22 @@
         <translation>Игнорирована</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="+2"/>
         <source>Available</source>
         <translation>Доступна</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+305"/>
+        <location line="-1"/>
         <source>Installed</source>
         <translation>Установлена</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabInternal.qml" line="+320"/>
+        <location line="+16"/>
         <source>Activate</source>
         <translation>Активировать</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+11"/>
         <source>Changes</source>
         <translation>Изменения</translation>
     </message>
@@ -3644,7 +4244,7 @@
         <translation type="vanished">Релиз</translation>
     </message>
     <message>
-        <location line="-225"/>
+        <location line="-232"/>
         <source>Check for updates</source>
         <translation>Проверить обновления</translation>
     </message>
@@ -3653,7 +4253,7 @@
         <translation type="vanished">Откройте эту вкладку или нажмите «Проверить обновления», чтобы загрузить релизы.</translation>
     </message>
     <message>
-        <location line="+155"/>
+        <location line="+162"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -3662,7 +4262,7 @@
         <translation type="vanished">Скачать и установить</translation>
     </message>
     <message>
-        <location line="-276"/>
+        <location line="-287"/>
         <source>Clean up unused builds</source>
         <translation>Очистить неиспользуемые сборки</translation>
     </message>
@@ -3691,31 +4291,31 @@
     <name>SecretStore</name>
     <message>
         <source>The macOS Keychain is not available</source>
-        <translation>Связка ключей macOS недоступна</translation>
+        <translation type="vanished">Связка ключей macOS недоступна</translation>
     </message>
     <message>
         <source>The Keychain has no such key</source>
-        <translation>В связке ключей нет такого ключа</translation>
+        <translation type="vanished">В связке ключей нет такого ключа</translation>
     </message>
     <message>
         <source>The Keychain item is not a password</source>
-        <translation>Элемент связки ключей — не пароль</translation>
+        <translation type="vanished">Элемент связки ключей — не пароль</translation>
     </message>
     <message>
         <source>Keychain: the access was denied — the item “%1” belongs to an earlier build of the app. Answer the Keychain prompt with “Always Allow”, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
-        <translation>Связка ключей: доступ запрещён — элемент «%1» принадлежит прежней сборке приложения. Ответьте на запрос связки «Всегда разрешать» или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
+        <translation type="vanished">Связка ключей: доступ запрещён — элемент «%1» принадлежит прежней сборке приложения. Ответьте на запрос связки «Всегда разрешать» или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
     </message>
     <message>
         <source>Keychain: the access to the item “%1” needs the user&apos;s confirmation, and none was given. Allow it, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
-        <translation>Связка ключей: доступ к элементу «%1» требует подтверждения пользователя, и подтверждения не было. Разрешите доступ или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
+        <translation type="vanished">Связка ключей: доступ к элементу «%1» требует подтверждения пользователя, и подтверждения не было. Разрешите доступ или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
     </message>
     <message>
         <source>Keychain: the item “%1” is still there and cannot be replaced.</source>
-        <translation>Связка ключей: элемент «%1» всё ещё на месте, и заменить его не удалось.</translation>
+        <translation type="vanished">Связка ключей: элемент «%1» всё ещё на месте, и заменить его не удалось.</translation>
     </message>
     <message>
         <source>Keychain: %1</source>
-        <translation>Связка ключей: %1</translation>
+        <translation type="vanished">Связка ключей: %1</translation>
     </message>
     <message>
         <location filename="../../src/config/SecretStore.cpp" line="+60"/>
@@ -3730,86 +4330,121 @@
     </message>
     <message>
         <source>Credential Manager: error %1</source>
-        <translation>Диспетчер учётных данных: ошибка %1</translation>
+        <translation type="vanished">Диспетчер учётных данных: ошибка %1</translation>
     </message>
     <message>
         <source>Credential Manager: there is no such key</source>
-        <translation>Диспетчер учётных данных: нет такого ключа</translation>
+        <translation type="vanished">Диспетчер учётных данных: нет такого ключа</translation>
     </message>
     <message>
         <source>No secret service on the session bus</source>
-        <translation>Служба секретов недоступна в шине сессии</translation>
+        <translation type="vanished">Служба секретов недоступна в шине сессии</translation>
     </message>
     <message>
         <source>Secret Service: the session could not be opened</source>
-        <translation>Служба секретов: не удалось открыть сессию</translation>
+        <translation type="vanished">Служба секретов: не удалось открыть сессию</translation>
     </message>
     <message>
         <source>Secret Service: the search failed</source>
-        <translation>Служба секретов: поиск не удался</translation>
+        <translation type="vanished">Служба секретов: поиск не удался</translation>
     </message>
     <message>
         <source>Secret Service: there is no such key</source>
-        <translation>Служба секретов: нет такого ключа</translation>
+        <translation type="vanished">Служба секретов: нет такого ключа</translation>
     </message>
     <message>
         <source>Secret Service: the collection could not be unlocked</source>
-        <translation>Служба секретов: не удалось разблокировать коллекцию</translation>
+        <translation type="vanished">Служба секретов: не удалось разблокировать коллекцию</translation>
     </message>
     <message>
         <source>The keyring is locked — unlock it and try again</source>
-        <translation>Связка ключей заблокирована — разблокируйте её и повторите</translation>
+        <translation type="vanished">Связка ключей заблокирована — разблокируйте её и повторите</translation>
     </message>
     <message>
         <source>Secret Service: the key could not be read</source>
-        <translation>Служба секретов: не удалось прочитать ключ</translation>
+        <translation type="vanished">Служба секретов: не удалось прочитать ключ</translation>
     </message>
     <message>
         <source>Secret Service: the key could not be stored</source>
-        <translation>Служба секретов: не удалось сохранить ключ</translation>
+        <translation type="vanished">Служба секретов: не удалось сохранить ключ</translation>
     </message>
     <message>
         <source>Secret Service: the key could not be deleted</source>
-        <translation>Служба секретов: не удалось удалить ключ</translation>
+        <translation type="vanished">Служба секретов: не удалось удалить ключ</translation>
     </message>
 </context>
 <context>
     <name>SelfTestController</name>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="-7"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="-44"/>
+        <location line="+79"/>
+        <source>Self-test is available only when a task uses the managed runtime</source>
+        <translation>Самопроверка доступна, только когда задача использует локальный сервер</translation>
+    </message>
+    <message>
+        <location line="-70"/>
+        <source>Server not available</source>
+        <translation>Сервер недоступен</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Describe the text in this image in one short line.</source>
+        <translation>Опишите текст на этом изображении одной короткой строкой.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
         <source>No response</source>
         <translation>Нет ответа</translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <location line="+18"/>
+        <source>Running self-test…</source>
+        <translation>Самопроверка…</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Recognition failed</source>
+        <translation>Распознавание не удалось</translation>
     </message>
 </context>
 <context>
     <name>ServerLogWindow</name>
     <message>
-        <location filename="../../src/qml/ServerLogWindow.qml" line="+16"/>
         <source>llama-server log</source>
-        <translation>Журнал llama-server</translation>
+        <translation type="vanished">Журнал llama-server</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Request log</source>
-        <translation>Журнал запросов</translation>
+        <translation type="vanished">Журнал запросов</translation>
     </message>
     <message>
-        <location line="+135"/>
+        <location filename="../../src/qml/ServerLogWindow.qml" line="+191"/>
         <source>No log output yet.</source>
         <translation>Вывода журнала пока нет.</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="+14"/>
+        <source>Request journal</source>
+        <translation>Журнал запросов</translation>
+    </message>
+    <message>
+        <location line="+69"/>
         <source>No requests yet.</source>
         <translation>Запросов пока нет.</translation>
     </message>
     <message>
-        <location line="-85"/>
+        <location line="-191"/>
         <source>Copy log</source>
         <translation>Скопировать журнал</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="-67"/>
+        <source>Runtime log</source>
+        <translation>Журнал работы</translation>
+    </message>
+    <message>
+        <location line="+72"/>
         <source>Open directory</source>
         <translation>Открыть папку</translation>
     </message>
@@ -3819,9 +4454,31 @@
         <translation>Очистить вид</translation>
     </message>
     <message numerus="yes">
-        <location line="+5"/>
-        <source>%n line(s)</source>
+        <location line="+6"/>
+        <source>Server: %n line(s)</source>
         <translation>
+            <numerusform>Сервер: %n строка</numerusform>
+            <numerusform>Сервер: %n строки</numerusform>
+            <numerusform>Сервер: %n строк</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+5"/>
+        <source>Requests: %n request(s)</source>
+        <translation>
+            <numerusform>Запросы: %n запрос</numerusform>
+            <numerusform>Запросы: %n запроса</numerusform>
+            <numerusform>Запросы: %n запросов</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Server output</source>
+        <translation>Вывод сервера</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n line(s)</source>
+        <translation type="vanished">
             <numerusform>%n строка</numerusform>
             <numerusform>%n строки</numerusform>
             <numerusform>%n строк</numerusform>
@@ -3872,11 +4529,13 @@
     </message>
     <message>
         <location line="+5"/>
+        <location line="+116"/>
+        <location line="+36"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="-144"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
@@ -3886,22 +4545,22 @@
         <translation>Сбросить все настройки?</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+14"/>
         <source>Every setting goes back to its default, the custom verification prompts included. The installed runtime, the downloaded models and the keys in the system store stay.</source>
         <translation>Все настройки возвращаются к значениям по умолчанию, включая пользовательские промпты проверки. Установленный рантайм, скачанные модели и ключи в системном хранилище остаются.</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+5"/>
         <source>Reset</source>
         <translation>Сбросить</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+15"/>
         <source>Discard changes?</source>
         <translation>Отменить изменения?</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+16"/>
         <source>There are unsaved changes. Close without saving?</source>
         <translation>Есть несохранённые изменения. Закрыть без сохранения?</translation>
     </message>
@@ -3911,7 +4570,7 @@
         <translation>Есть несохранённые изменения. Они будут потеряны, и запустится мастер настройки.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+6"/>
         <source>Don&apos;t save</source>
         <translation>Не сохранять</translation>
     </message>
@@ -3947,6 +4606,14 @@
         <location line="+0"/>
         <source>Next</source>
         <translation>Далее</translation>
+    </message>
+</context>
+<context>
+    <name>SingleInstanceGuard</name>
+    <message>
+        <location filename="../../src/runtime/SingleInstanceGuard.cpp" line="+18"/>
+        <source>Another LLocr instance is already running; local server operations are disabled.</source>
+        <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
     </message>
 </context>
 <context>
@@ -4269,7 +4936,7 @@
     <name>TaskConnectionRow</name>
     <message>
         <source>The key will be sent in plain text (http outside the local machine).</source>
-        <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
+        <translation type="vanished">Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
     <message>
         <location filename="../../src/qml/Settings/TaskConnectionRow.qml" line="+102"/>
@@ -4318,12 +4985,12 @@
 <context>
     <name>TaskModelsTable</name>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+244"/>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+278"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
     <message>
-        <location line="-24"/>
+        <location line="-47"/>
         <source>VRAM ≥ %1</source>
         <translation>VRAM ≥ %1</translation>
     </message>
@@ -4333,12 +5000,12 @@
         <translation>RAM ≥ %1 · VRAM ≥ %2 (частично) / %3 (полностью)</translation>
     </message>
     <message>
-        <location line="+229"/>
+        <location line="+269"/>
         <source>Launch and request settings</source>
         <translation>Запуск и запрос</translation>
     </message>
     <message>
-        <location line="+95"/>
+        <location line="+100"/>
         <source>Launch</source>
         <translation>Запуск</translation>
     </message>
@@ -4668,7 +5335,7 @@
     </message>
     <message>
         <source>Turn a sideways page after markup automatically</source>
-        <translation>Поворачивать боковую страницу после разметки автоматически</translation>
+        <translation type="vanished">Поворачивать боковую страницу после разметки автоматически</translation>
     </message>
     <message>
         <location line="+23"/>
@@ -4690,104 +5357,78 @@
 <context>
     <name>llocr::CandidateRenderer</name>
     <message>
-        <location filename="../../src/app/CandidateRenderer.cpp" line="+115"/>
         <source>The candidate render timed out.</source>
-        <translation type="unfinished">Истекло время отрисовки кандидата.</translation>
+        <translation type="obsolete">Истекло время отрисовки кандидата.</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>The candidate renderer is busy.</source>
-        <translation type="unfinished">Рендерер кандидата занят.</translation>
+        <translation type="obsolete">Рендерер кандидата занят.</translation>
     </message>
     <message>
-        <location line="+23"/>
-        <location line="+28"/>
         <source>Cannot load the candidate render page.</source>
-        <translation type="unfinished">Не удалось загрузить страницу отрисовки кандидата.</translation>
+        <translation type="obsolete">Не удалось загрузить страницу отрисовки кандидата.</translation>
     </message>
     <message>
-        <location line="-23"/>
         <source>The candidate renderer process terminated.</source>
-        <translation type="unfinished">Процесс отрисовки кандидата завершился аварийно.</translation>
+        <translation type="obsolete">Процесс отрисовки кандидата завершился аварийно.</translation>
     </message>
     <message>
-        <location line="+71"/>
         <source>The candidate render produced an empty page.</source>
-        <translation type="unfinished">Отрисовка кандидата дала пустую страницу.</translation>
+        <translation type="obsolete">Отрисовка кандидата дала пустую страницу.</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>The candidate render could not create a temporary file.</source>
-        <translation type="unfinished">Не удалось создать временный файл для отрисовки кандидата.</translation>
+        <translation type="obsolete">Не удалось создать временный файл для отрисовки кандидата.</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>PDF printing failed.</source>
-        <translation type="unfinished">Не удалось напечатать PDF.</translation>
+        <translation type="obsolete">Не удалось напечатать PDF.</translation>
     </message>
     <message>
-        <location line="+28"/>
-        <source>The candidate render did not fit on one page.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+3"/>
         <source>The candidate render could not be rasterized.</source>
-        <translation type="unfinished">Не удалось растрировать отрисовку кандидата.</translation>
+        <translation type="obsolete">Не удалось растрировать отрисовку кандидата.</translation>
     </message>
 </context>
 <context>
     <name>llocr::ConnectionProbe</name>
     <message>
-        <location filename="../../src/runtime/ConnectionProbe.cpp" line="+49"/>
         <source>No server address</source>
-        <translation>Не указан адрес сервера</translation>
+        <translation type="vanished">Не указан адрес сервера</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>The address is not a valid URL</source>
-        <translation>Адрес не похож на URL</translation>
+        <translation type="vanished">Адрес не похож на URL</translation>
     </message>
     <message>
-        <location line="+52"/>
         <source>The server refused the key</source>
-        <translation>Сервер отказал в ключе</translation>
+        <translation type="vanished">Сервер отказал в ключе</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>The server answered with %1</source>
-        <translation>Сервер ответил кодом %1</translation>
+        <translation type="vanished">Сервер ответил кодом %1</translation>
     </message>
 </context>
 <context>
     <name>llocr::ExportRenderer</name>
     <message>
-        <location filename="../../src/app/ExportRenderer.cpp" line="-14"/>
         <source>Export rendering timed out.</source>
-        <translation>Превышено время ожидания рендеринга экспорта.</translation>
+        <translation type="vanished">Превышено время ожидания рендеринга экспорта.</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>The export renderer is busy.</source>
-        <translation>Модуль рендеринга экспорта занят.</translation>
+        <translation type="vanished">Модуль рендеринга экспорта занят.</translation>
     </message>
     <message>
-        <location line="+35"/>
-        <location line="+25"/>
-        <location line="+26"/>
-        <location line="+16"/>
         <source>Cannot load the export page.</source>
-        <translation>Не удалось загрузить страницу экспорта.</translation>
+        <translation type="vanished">Не удалось загрузить страницу экспорта.</translation>
     </message>
     <message>
-        <location line="-62"/>
         <source>The export renderer process terminated.</source>
-        <translation>Процесс рендеринга экспорта аварийно завершился.</translation>
+        <translation type="vanished">Процесс рендеринга экспорта аварийно завершился.</translation>
     </message>
     <message>
-        <location line="+112"/>
         <source>PDF printing failed.</source>
-        <translation>Не удалось напечатать PDF.</translation>
+        <translation type="vanished">Не удалось напечатать PDF.</translation>
     </message>
 </context>
 <context>
@@ -4801,243 +5442,193 @@
 <context>
     <name>llocr::InstalledFilesModel</name>
     <message numerus="yes">
-        <location filename="../../src/runtime/InstalledFilesModel.cpp" line="+80"/>
         <source>Used by %n task(s)</source>
-        <translation>
+        <translation type="vanished">
             <numerusform>Используется в %n задаче</numerusform>
             <numerusform>Используется в %n задачах</numerusform>
             <numerusform>Используется в %n задачах</numerusform>
         </translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Not used</source>
-        <translation>Не используется</translation>
+        <translation type="vanished">Не используется</translation>
     </message>
 </context>
 <context>
     <name>llocr::ModelInstallTransaction</name>
     <message>
-        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="-245"/>
         <source>Looking up %1 …</source>
-        <translation>Поиск %1 …</translation>
+        <translation type="vanished">Поиск %1 …</translation>
     </message>
     <message>
-        <location line="-21"/>
-        <location line="+121"/>
         <source>Ready: %1 (%2)</source>
-        <translation>Готово: %1 (%2)</translation>
+        <translation type="vanished">Готово: %1 (%2)</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>Nothing prepared to install</source>
-        <translation>Ничего не подготовлено к установке</translation>
+        <translation type="vanished">Ничего не подготовлено к установке</translation>
     </message>
     <message>
-        <location line="-133"/>
-        <location line="+171"/>
         <source>Downloading %1 …</source>
-        <translation>Скачивание %1 …</translation>
+        <translation type="vanished">Скачивание %1 …</translation>
     </message>
     <message>
-        <location line="-13"/>
         <source>Another LLocr instance is installing a model right now; try again in a moment.</source>
-        <translation>Другой экземпляр LLocr сейчас устанавливает модель; повторите попытку чуть позже.</translation>
+        <translation type="vanished">Другой экземпляр LLocr сейчас устанавливает модель; повторите попытку чуть позже.</translation>
     </message>
     <message>
-        <location line="+55"/>
         <source>Repository contains identically named files in different subdirectories; cannot install</source>
-        <translation>В репозитории есть файлы с одинаковыми именами в разных подкаталогах; установка невозможна</translation>
+        <translation type="vanished">В репозитории есть файлы с одинаковыми именами в разных подкаталогах; установка невозможна</translation>
     </message>
     <message>
-        <location line="+138"/>
         <source>Download failed — check your connection and try again</source>
-        <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
+        <translation type="vanished">Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
     </message>
     <message>
-        <location line="+25"/>
         <source>Unable to read downloaded file %1</source>
-        <translation>Не удалось прочитать скачанный файл %1</translation>
+        <translation type="vanished">Не удалось прочитать скачанный файл %1</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>File %1 is not a valid GGUF (missing magic)</source>
-        <translation>Файл %1 не является корректным GGUF (отсутствует сигнатура)</translation>
+        <translation type="vanished">Файл %1 не является корректным GGUF (отсутствует сигнатура)</translation>
     </message>
     <message>
-        <location line="+85"/>
         <source>Model downloaded, but the registry could not be saved: %1</source>
-        <translation>Модель загружена, но реестр не удалось сохранить: %1</translation>
+        <translation type="vanished">Модель загружена, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>Installed %1</source>
-        <translation>Установлено %1</translation>
+        <translation type="vanished">Установлено %1</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Download canceled</source>
-        <translation>Скачивание отменено</translation>
+        <translation type="vanished">Скачивание отменено</translation>
     </message>
 </context>
 <context>
     <name>llocr::ModelInstaller</name>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="+281"/>
-        <location line="+131"/>
-        <location line="+99"/>
         <source>Invalid model selection</source>
-        <translation>Неверный выбор модели</translation>
+        <translation type="vanished">Неверный выбор модели</translation>
     </message>
     <message>
-        <location line="-227"/>
         <source>This model has no model file selected</source>
-        <translation>У этой модели не выбран файл модели</translation>
+        <translation type="vanished">У этой модели не выбран файл модели</translation>
     </message>
     <message>
-        <location line="+189"/>
         <source>Unable to remove model file: %1</source>
-        <translation>Не удалось удалить файл модели: %1</translation>
+        <translation type="vanished">Не удалось удалить файл модели: %1</translation>
     </message>
     <message>
-        <location line="+13"/>
         <source>Unable to remove model directory: %1</source>
-        <translation>Не удалось удалить каталог модели: %1</translation>
+        <translation type="vanished">Не удалось удалить каталог модели: %1</translation>
     </message>
     <message>
-        <location line="+31"/>
         <source>Model folder not found</source>
-        <translation>Папка модели не найдена</translation>
+        <translation type="vanished">Папка модели не найдена</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Model folder not found: %1</source>
-        <translation>Папка модели не найдена: %1</translation>
+        <translation type="vanished">Папка модели не найдена: %1</translation>
     </message>
     <message>
-        <location line="-19"/>
         <source>Model files removed, but the registry could not be saved: %1</source>
-        <translation>Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
+        <translation type="vanished">Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="-239"/>
         <source>The selected model is no longer on disk: %1 — pick another one in Settings → Models.</source>
-        <translation>Выбранной модели больше нет на диске: %1 — выберите другую в Настройки → Модели.</translation>
+        <translation type="vanished">Выбранной модели больше нет на диске: %1 — выберите другую в Настройки → Модели.</translation>
     </message>
     <message>
-        <location line="+110"/>
-        <location line="+34"/>
         <source>This quantization is not installed</source>
-        <translation>Этот квант не установлен</translation>
+        <translation type="vanished">Этот квант не установлен</translation>
     </message>
     <message>
-        <location line="-45"/>
-        <location line="+371"/>
         <source>This quantization is not available for download</source>
-        <translation>Этот квант недоступен для скачивания</translation>
+        <translation type="vanished">Этот квант недоступен для скачивания</translation>
     </message>
     <message>
-        <location line="-390"/>
-        <location line="+9"/>
-        <location line="+29"/>
         <source>This model is not installed</source>
-        <translation>Эта модель не установлена</translation>
+        <translation type="vanished">Эта модель не установлена</translation>
     </message>
 </context>
 <context>
     <name>llocr::RuntimeController</name>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="+597"/>
         <source>Another LLocr instance is already running</source>
-        <translation>Уже запущен другой экземпляр LLocr</translation>
+        <translation type="vanished">Уже запущен другой экземпляр LLocr</translation>
     </message>
     <message>
-        <location line="+346"/>
         <source>Probing %1…</source>
-        <translation>Проверка %1…</translation>
+        <translation type="vanished">Проверка %1…</translation>
     </message>
     <message>
-        <location line="+85"/>
         <source>Starting server…</source>
-        <translation>Запуск сервера…</translation>
+        <translation type="vanished">Запуск сервера…</translation>
     </message>
     <message>
-        <location line="+30"/>
         <source>Stopping…</source>
-        <translation>Остановка…</translation>
+        <translation type="vanished">Остановка…</translation>
     </message>
     <message>
-        <location line="-701"/>
         <source>Managed server is not configured</source>
-        <translation>Управляемый сервер не настроен</translation>
+        <translation type="vanished">Управляемый сервер не настроен</translation>
     </message>
     <message>
-        <location line="-199"/>
         <source>A llama-server from a previous LLocr run is still running (pid %1, port %2).</source>
-        <translation>Остался запущенным llama-server от предыдущего запуска LLocr (pid %1, порт %2).</translation>
+        <translation type="vanished">Остался запущенным llama-server от предыдущего запуска LLocr (pid %1, порт %2).</translation>
     </message>
     <message>
-        <location line="+26"/>
         <source>No orphaned server to terminate</source>
-        <translation>Оставшийся сервер не найден</translation>
+        <translation type="vanished">Оставшийся сервер не найден</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>The orphaned server is already gone</source>
-        <translation>Оставшийся сервер уже завершился</translation>
+        <translation type="vanished">Оставшийся сервер уже завершился</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Unable to terminate the process (pid %1)</source>
-        <translation>Не удалось завершить процесс (pid %1)</translation>
+        <translation type="vanished">Не удалось завершить процесс (pid %1)</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>Another LLocr instance is already running; local server operations are disabled.</source>
-        <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
+        <translation type="vanished">Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
     </message>
     <message>
         <source>Model file not found: %1 — re-select the model in Settings → Models</source>
         <translation type="vanished">Файл модели не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
-        <location line="+179"/>
         <source>Layout model is not selected — pick a model in Settings → Layout model</source>
-        <translation>Модель разметки не выбрана — выберите модель в Настройки → Модель разметки</translation>
+        <translation type="vanished">Модель разметки не выбрана — выберите модель в Настройки → Модель разметки</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Layout model file not found: %1 — re-select the model in Settings → Layout model</source>
-        <translation>Файл модели разметки не найден: %1 — выберите модель заново в Настройки → Модель разметки</translation>
+        <translation type="vanished">Файл модели разметки не найден: %1 — выберите модель заново в Настройки → Модель разметки</translation>
     </message>
     <message>
-        <location line="+50"/>
         <source>%1 needs llama.cpp %2 or newer (this build is %3) — update the runtime in Settings → Runtime</source>
-        <translation>%1 требует llama.cpp %2 или новее (эта сборка — %3) — обновите рантайм в Настройки → Рантайм</translation>
+        <translation type="vanished">%1 требует llama.cpp %2 или новее (эта сборка — %3) — обновите рантайм в Настройки → Рантайм</translation>
     </message>
     <message>
-        <location line="+173"/>
         <source>Server is not set to start automatically. Start it from the main window or Settings → Runtime.</source>
-        <translation>Сервер не настроен на автозапуск. Запустите его из главного окна или через Настройки → Рантайм.</translation>
+        <translation type="vanished">Сервер не настроен на автозапуск. Запустите его из главного окна или через Настройки → Рантайм.</translation>
     </message>
     <message>
-        <location line="+114"/>
         <source>Server stopped</source>
-        <translation>Сервер остановлен</translation>
+        <translation type="vanished">Сервер остановлен</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Switching to the layout model…</source>
-        <translation>Переключение на модель разметки…</translation>
+        <translation type="vanished">Переключение на модель разметки…</translation>
     </message>
     <message>
         <source>Switching to the raw OCR model…</source>
         <translation type="vanished">Переключение на модель raw OCR…</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Switching to the fix model…</source>
-        <translation>Переключение на модель исправления…</translation>
+        <translation type="vanished">Переключение на модель исправления…</translation>
     </message>
     <message>
         <source>Raw OCR model is not selected — pick a model in Settings → Models</source>
@@ -5048,350 +5639,269 @@
         <translation type="vanished">Файл модели raw OCR не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
-        <location line="-340"/>
         <source>Fix model is not selected — pick a model in Settings → Models</source>
-        <translation>Модель исправления не выбрана — выберите модель в Settings → Models</translation>
+        <translation type="vanished">Модель исправления не выбрана — выберите модель в Settings → Models</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Fix model file not found: %1 — re-select the model in Settings → Models</source>
-        <translation>Файл модели исправления не найден: %1 — выберите модель заново в Settings → Models</translation>
+        <translation type="vanished">Файл модели исправления не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
-        <location line="+118"/>
         <source>The API key is in the system secret store, but the store did not give it: %1</source>
-        <translation type="unfinished">Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
+        <translation type="obsolete">Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
     </message>
     <message>
-        <location line="+283"/>
         <source>Failed to query /v1/models: %1</source>
-        <translation>Не удалось получить список моделей (/v1/models): %1</translation>
+        <translation type="vanished">Не удалось получить список моделей (/v1/models): %1</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Server returned a malformed /v1/models response: %1</source>
-        <translation>Сервер вернул некорректный ответ /v1/models: %1</translation>
+        <translation type="vanished">Сервер вернул некорректный ответ /v1/models: %1</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Server advertised no models via /v1/models. Select a model in Settings → Models</source>
-        <translation>Сервер не вернул модели в /v1/models. Выберите модель в Settings → Models</translation>
+        <translation type="vanished">Сервер не вернул модели в /v1/models. Выберите модель в Settings → Models</translation>
     </message>
     <message>
-        <location line="+29"/>
         <source>Server failed</source>
-        <translation>Сбой сервера</translation>
+        <translation type="vanished">Сбой сервера</translation>
     </message>
     <message>
-        <location line="+33"/>
         <source>Port is busy. Change the port or enable auto-pick</source>
-        <translation>Порт занят. Измените порт или включите авто-подбор</translation>
+        <translation type="vanished">Порт занят. Измените порт или включите авто-подбор</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>The server rejected an argument that is not supported by your build</source>
-        <translation>Сервер отверг аргумент, не поддерживаемый вашей сборкой</translation>
+        <translation type="vanished">Сервер отверг аргумент, не поддерживаемый вашей сборкой</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Model file not found. Re-check the model path in Settings</source>
-        <translation>Файл модели не найден. Проверьте путь к модели в настройках</translation>
+        <translation type="vanished">Файл модели не найден. Проверьте путь к модели в настройках</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Not enough VRAM. Lower --n-gpu-layers or --ctx-size</source>
-        <translation>Недостаточно VRAM. Уменьшите --n-gpu-layers или --ctx-size</translation>
+        <translation type="vanished">Недостаточно VRAM. Уменьшите --n-gpu-layers или --ctx-size</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>CUDA runtime not installed. Install the CUDA archive or pick CPU/Vulkan</source>
-        <translation>CUDA runtime не установлен. Установите CUDA-архив или выберите CPU/Vulkan</translation>
+        <translation type="vanished">CUDA runtime не установлен. Установите CUDA-архив или выберите CPU/Vulkan</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Vulkan is unavailable; pick a different backend</source>
-        <translation>Vulkan недоступен; выберите другой backend</translation>
+        <translation type="vanished">Vulkan недоступен; выберите другой backend</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>This GGUF format is not supported by your llama.cpp build</source>
-        <translation>Формат GGUF не поддерживается вашей сборкой llama.cpp</translation>
+        <translation type="vanished">Формат GGUF не поддерживается вашей сборкой llama.cpp</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Server did not respond in time; see the log below</source>
-        <translation>Сервер не ответил вовремя; смотрите журнал ниже</translation>
+        <translation type="vanished">Сервер не ответил вовремя; смотрите журнал ниже</translation>
     </message>
     <message>
-        <location line="+21"/>
         <source>No server binary selected</source>
-        <translation>Бинарник сервера не выбран</translation>
+        <translation type="vanished">Бинарник сервера не выбран</translation>
     </message>
     <message>
-        <location line="-551"/>
-        <location line="+554"/>
         <source>File not found: %1</source>
-        <translation>Файл не найден: %1</translation>
+        <translation type="vanished">Файл не найден: %1</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Another instance is already running</source>
-        <translation>Другой экземпляр уже запущен</translation>
+        <translation type="vanished">Другой экземпляр уже запущен</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Server is already running</source>
-        <translation>Сервер уже запущен</translation>
+        <translation type="vanished">Сервер уже запущен</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Host %1 is not allowed: the server is available only locally. To allow a non-loopback host, enable the allowNonLoopback setting</source>
-        <translation>Хост %1 недопустим: сервер доступен только локально. Разрешить не-loopback хост можно настройкой allowNonLoopback</translation>
+        <translation type="vanished">Хост %1 недопустим: сервер доступен только локально. Разрешить не-loopback хост можно настройкой allowNonLoopback</translation>
     </message>
     <message>
         <source>Model is not selected — pick a model in Settings → Models or in the Setup wizard</source>
         <translation type="vanished">Модель не выбрана — выберите модель в Settings → Models или в мастере настройки</translation>
     </message>
     <message>
-        <location line="+250"/>
         <source>Server start cancelled</source>
-        <translation>Запуск сервера отменён</translation>
+        <translation type="vanished">Запуск сервера отменён</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Stopped</source>
-        <translation>Остановлен</translation>
+        <translation type="vanished">Остановлен</translation>
     </message>
     <message>
-        <location line="-452"/>
         <source>Switching to the block OCR model…</source>
-        <translation>Переключение на модель OCR блока…</translation>
+        <translation type="vanished">Переключение на модель OCR блока…</translation>
     </message>
     <message>
-        <location line="-3"/>
         <source>Switching to the decision model…</source>
-        <translation>Переключение на модель decision…</translation>
+        <translation type="vanished">Переключение на модель decision…</translation>
     </message>
     <message>
         <source>Switching to the OCR model…</source>
         <translation type="vanished">Переключение на OCR-модель…</translation>
     </message>
     <message>
-        <location line="-324"/>
         <source>Block OCR model is not selected — pick a model in Settings → Block OCR model</source>
-        <translation>Модель OCR блока не выбрана — выберите её в Settings → Модель OCR блока</translation>
+        <translation type="vanished">Модель OCR блока не выбрана — выберите её в Settings → Модель OCR блока</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Block OCR model file not found: %1 — re-select the model in Settings → Block OCR model</source>
-        <translation>Файл модели OCR блока не найден: %1 — выберите модель заново в Settings → Модель OCR блока</translation>
+        <translation type="vanished">Файл модели OCR блока не найден: %1 — выберите модель заново в Settings → Модель OCR блока</translation>
     </message>
     <message>
-        <location line="-42"/>
         <source>Decision model is not selected — pick a model in Settings → Decision model</source>
-        <translation>Модель decision не выбрана — выберите её в Settings → Модель decision</translation>
+        <translation type="vanished">Модель decision не выбрана — выберите её в Settings → Модель decision</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Decision model file not found: %1 — re-select the model in Settings → Decision model</source>
-        <translation>Файл модели decision не найден: %1 — выберите модель заново в Settings → Модель decision</translation>
+        <translation type="vanished">Файл модели decision не найден: %1 — выберите модель заново в Settings → Модель decision</translation>
     </message>
 </context>
 <context>
     <name>llocr::RuntimeInstaller</name>
     <message>
-        <location filename="../../src/runtime/RuntimeInstaller.cpp" line="+30"/>
         <source>Windows</source>
-        <translation>Windows</translation>
+        <translation type="vanished">Windows</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>macOS</source>
-        <translation>macOS</translation>
+        <translation type="vanished">macOS</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <location line="+2"/>
         <source>Linux</source>
-        <translation>Linux</translation>
+        <translation type="vanished">Linux</translation>
     </message>
     <message>
-        <location line="+76"/>
-        <location line="+94"/>
-        <location line="+304"/>
         <source>Downloading %1 …</source>
-        <translation>Скачивание %1 …</translation>
+        <translation type="vanished">Скачивание %1 …</translation>
     </message>
     <message>
-        <location line="-398"/>
-        <location line="+94"/>
         <source>runtime</source>
-        <translation>среда</translation>
+        <translation type="vanished">среда</translation>
     </message>
     <message>
-        <location line="-3"/>
-        <location line="+166"/>
         <source>Checking for updates…</source>
-        <translation>Проверка обновлений…</translation>
+        <translation type="vanished">Проверка обновлений…</translation>
     </message>
     <message>
-        <location line="+12"/>
-        <source>Stable release unavailable (%1) — showing beta builds</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+16"/>
         <source>No releases available</source>
-        <translation>Нет доступных релизов</translation>
+        <translation type="vanished">Нет доступных релизов</translation>
     </message>
     <message>
-        <location line="+27"/>
         <source>Showing the cached release list — the check failed: %1</source>
-        <translation>Показан сохранённый список релизов — проверка не удалась: %1</translation>
+        <translation type="vanished">Показан сохранённый список релизов — проверка не удалась: %1</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Latest release: %1 (%2)</source>
-        <translation>Последний релиз: %1 (%2)</translation>
+        <translation type="vanished">Последний релиз: %1 (%2)</translation>
     </message>
     <message>
-        <location line="+45"/>
         <source>No release selected — check for updates first</source>
-        <translation>Не выбран релиз — сначала проверьте обновления</translation>
+        <translation type="vanished">Не выбран релиз — сначала проверьте обновления</translation>
     </message>
     <message>
-        <location line="+19"/>
         <source>No %1 build available for this platform in release %2</source>
-        <translation>Сборка %1 для этой платформы недоступна в релизе %2</translation>
+        <translation type="vanished">Сборка %1 для этой платформы недоступна в релизе %2</translation>
     </message>
     <message>
-        <location line="+44"/>
         <source>Download failed — check your connection and try again</source>
-        <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
+        <translation type="vanished">Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Download failed: %1</source>
-        <translation>Скачивание не удалось: %1</translation>
+        <translation type="vanished">Скачивание не удалось: %1</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Another LLocr instance is installing a runtime right now; try again in a moment.</source>
-        <translation>Другой экземпляр LLocr сейчас устанавливает рантайм; повторите попытку чуть позже.</translation>
+        <translation type="vanished">Другой экземпляр LLocr сейчас устанавливает рантайм; повторите попытку чуть позже.</translation>
     </message>
     <message>
-        <location line="+237"/>
         <source>This build is active — activate another build first</source>
-        <translation>Эта сборка активна — сначала активируйте другую</translation>
+        <translation type="vanished">Эта сборка активна — сначала активируйте другую</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Unable to remove %1</source>
-        <translation>Не удалось удалить %1</translation>
+        <translation type="vanished">Не удалось удалить %1</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Removed %1</source>
-        <translation>Удалена сборка %1</translation>
+        <translation type="vanished">Удалена сборка %1</translation>
     </message>
     <message>
-        <location line="-596"/>
-        <location line="+355"/>
         <source>Installing %1 …</source>
-        <translation>Установка %1 …</translation>
+        <translation type="vanished">Установка %1 …</translation>
     </message>
     <message>
-        <location line="+22"/>
         <source>CUDA runtime extraction warning: %1</source>
-        <translation>Предупреждение при распаковке CUDA runtime: %1</translation>
+        <translation type="vanished">Предупреждение при распаковке CUDA runtime: %1</translation>
     </message>
     <message>
-        <location line="+28"/>
         <source>Installed %1 (%2)</source>
-        <translation>Установлено %1 (%2)</translation>
+        <translation type="vanished">Установлено %1 (%2)</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Installed %1 (%2). %3</source>
-        <translation>Установлено %1 (%2). %3</translation>
+        <translation type="vanished">Установлено %1 (%2). %3</translation>
     </message>
     <message>
-        <location line="+37"/>
         <source>Installation cancelled</source>
-        <translation>Установка отменена</translation>
+        <translation type="vanished">Установка отменена</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>No active runtime build — cleanup would remove every installed build. Install or activate a build first.</source>
-        <translation>Нет активной сборки рантайма — очистка удалила бы все установленные сборки. Сначала установите или активируйте сборку.</translation>
+        <translation type="vanished">Нет активной сборки рантайма — очистка удалила бы все установленные сборки. Сначала установите или активируйте сборку.</translation>
     </message>
     <message>
-        <location line="+76"/>
         <source>Unable to open %1</source>
-        <translation>Не удалось открыть %1</translation>
+        <translation type="vanished">Не удалось открыть %1</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <location line="+35"/>
         <source>An install is in progress</source>
-        <translation>Идёт установка</translation>
+        <translation type="vanished">Идёт установка</translation>
     </message>
     <message>
-        <location line="-48"/>
-        <location line="+15"/>
-        <location line="+27"/>
-        <location line="+11"/>
         <source>No such build</source>
-        <translation>Сборка не найдена</translation>
+        <translation type="vanished">Сборка не найдена</translation>
     </message>
     <message>
-        <location line="-50"/>
-        <location line="+15"/>
         <source>The build directory contains no llama-server binary</source>
-        <translation>В каталоге сборки нет бинарника llama-server</translation>
+        <translation type="vanished">В каталоге сборки нет бинарника llama-server</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Activated %1%2</source>
-        <translation>Активировано %1%2</translation>
+        <translation type="vanished">Активировано %1%2</translation>
     </message>
 </context>
 <context>
     <name>llocr::SelfTestController</name>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="-37"/>
-        <location line="+79"/>
         <source>Self-test is available only in Managed mode</source>
-        <translation>Самопроверка доступна только в управляемом режиме</translation>
+        <translation type="vanished">Самопроверка доступна только в управляемом режиме</translation>
     </message>
     <message>
-        <location line="-70"/>
         <source>Server not available</source>
-        <translation>Сервер недоступен</translation>
+        <translation type="vanished">Сервер недоступен</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>Describe the text in this image in one short line.</source>
-        <translation>Опишите одним коротким предложением текст на этом изображении.</translation>
+        <translation type="vanished">Опишите одним коротким предложением текст на этом изображении.</translation>
     </message>
     <message>
-        <location line="+41"/>
-        <location line="+18"/>
         <source>Running self-test…</source>
-        <translation>Выполняется самопроверка…</translation>
+        <translation type="vanished">Выполняется самопроверка…</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Recognition failed</source>
-        <translation>Ошибка распознавания</translation>
+        <translation type="vanished">Ошибка распознавания</translation>
     </message>
 </context>
 <context>
     <name>llocr::SingleInstanceGuard</name>
     <message>
-        <location filename="../../src/runtime/SingleInstanceGuard.cpp" line="+18"/>
         <source>Another LLocr instance is already running; local server operations are disabled.</source>
-        <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
+        <translation type="vanished">Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
     </message>
 </context>
 </TS>
