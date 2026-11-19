@@ -19,54 +19,38 @@ Item {
     signal runtimeSectionRequested()
 
     // The split of the tasks: how many run on the local server and how many
-    // send their data to an external API.
-    property int managedCount: 0
-    property int externalCount: 0
-    property string externalTaskSummary: ""
-
-    // The counts follow the settings: the modes are written when the window
-    // is saved, and the table shows them right away.
-    function refreshRuntimeSummary() {
-        root.managedCount = Settings.managedRoles().length
-        root.externalCount = Settings.externalRoles().length
-        const titles = []
-        for (const role of Settings.externalRoles())
-            titles.push(RoleProfiles.title(role))
-        root.externalTaskSummary = titles.join(", ")
-    }
-
-    Connections {
-        target: Settings
-        function onTaskRuntimeModesChanged() { root.refreshRuntimeSummary() }
-    }
-
-    Component.onCompleted: root.refreshRuntimeSummary()
+    // send their data to an external API. The counts follow the draft of the
+    // table, so the counter and the rows on screen agree.
+    readonly property int managedCount: taskTable.managedCount
+    readonly property int externalCount: taskTable.externalCount
+    readonly property string externalTaskSummary: taskTable.externalTaskSummary
 
     function loadValues() {
         ModelInstaller.refreshInstalled()
         ModelInstaller.reloadPresets()
         ModelInstaller.rescanRegistry()
         taskTable.syncDraft()
-        root.refreshRuntimeSummary()
     }
 
     // False when the picks were not written: a launch parameter asked the
     // user a question first, or a chosen model is not on disk. The window
-    // stays open and one reason is reported at a time.
+    // stays open and one reason is reported at a time. The runtime modes are
+    // a plain setting: they are written when the save has succeeded, so a
+    // failed save leaves them for the next attempt.
     function saveValues() {
         if (!taskTable.saveTabs())
             return false
-        taskTable.applyRuntimeModes()
 
         const missing = ModelInstaller.applyTaskChoices(taskTable.buildChoices())
-        taskTable.markDraftSaved()
-        root.refreshRuntimeSummary()
-        if (missing.length === 0)
-            return true
+        if (missing.length > 0) {
+            missingDialog.items = missing
+            missingDialog.open()
+            return false
+        }
 
-        missingDialog.items = missing
-        missingDialog.open()
-        return false
+        taskTable.applyRuntimeModes()
+        taskTable.markDraftSaved()
+        return true
     }
 
     function cancelValues() {

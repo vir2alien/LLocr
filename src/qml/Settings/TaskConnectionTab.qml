@@ -26,9 +26,6 @@ ColumnLayout {
     // itself by the taller of them.
     readonly property real contentHeight: root.implicitHeight
 
-    // The load fills the fields from the settings: that write is not the
-    // user's, so it must not mark the settings window dirty.
-    property bool loading: false
     property bool revealed: false
     property string aliasDraft: ""
     property string endpointDraft: ""
@@ -37,7 +34,6 @@ ColumnLayout {
     property bool keyPresent: false
 
     function loadValues() {
-        root.loading = true
         root.aliasDraft = Settings.modelNameForRole(root.task)
         root.endpointDraft = Settings.baseUrlForRole(root.task)
         root.keyPresent = Settings.apiKeySetForRole(root.task)
@@ -51,7 +47,9 @@ ColumnLayout {
         endpointForm.keyDraft = ""
         endpointForm.keyEdited = false
         endpointForm.keyPresent = root.keyPresent
-        root.loading = false
+        // The fields follow the drafts even when the drafts did not change:
+        // the user typed an endpoint, the load puts the saved one back.
+        endpointForm.syncFields()
     }
 
     function saveValues() {

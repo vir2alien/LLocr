@@ -1876,19 +1876,19 @@
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/ModelsSection.qml" line="+98"/>
+        <location filename="../../src/qml/Settings/ModelsSection.qml" line="82"/>
         <source>Local: %1 · External API: %2</source>
         <translation>Локально: %1 · Внешний API: %2</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location filename="../../src/qml/Settings/ModelsSection.qml" line="98"/>
         <source>External API will receive the data of these tasks: %1.</source>
         <translation>Внешний API получат данные задач: %1.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location filename="../../src/qml/Settings/ModelsSection.qml" line="102"/>
         <source>Configure runtimes</source>
-        <translation>Настроить рантаймы</translation>
+        <translation>Настроить рантайм</translation>
     </message>
 </context>
 <context>
@@ -4342,22 +4342,22 @@
 <context>
     <name>TaskConnectionTab</name>
     <message>
-        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="+73"/>
+        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="71"/>
         <source>Model alias</source>
         <translation>Псевдоним модели</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="83"/>
         <source>the model id</source>
         <translation>идентификатор модели</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="95"/>
         <source>An empty endpoint and an empty key take the shared server from Settings → Runtime.</source>
-        <translation>Пустой эндпоинт и пустой ключ берут общий сервер из Настроек → Среда выполнения.</translation>
+        <translation>Пустой эндпоинт и пустой ключ берут общий сервер из Настроек → Рантайм.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="102"/>
         <source>Endpoint and key</source>
         <translation>Эндпоинт и ключ</translation>
     </message>
@@ -4433,22 +4433,22 @@
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+327"/>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="362"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
     <message>
-        <location line="+53"/>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="417"/>
         <source>Managed</source>
         <translation>Управляемый</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="418"/>
         <source>External</source>
         <translation>Внешний</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+303"/>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="721"/>
         <source>Connection</source>
         <translation>Подключение</translation>
     </message>

@@ -57,6 +57,28 @@ bool hasLabelWithText(QObject *root, const QString &text)
     return false;
 }
 
+// The text of the first label under the object that starts with this prefix.
+QString labelTextStartingWith(QObject *root, const QString &prefix)
+{
+    if (!root)
+        return QString();
+    if (root->property("text").toString().startsWith(prefix))
+        return root->property("text").toString();
+    if (auto *item = qobject_cast<QQuickItem *>(root)) {
+        const QList<QQuickItem *> children = item->childItems();
+        for (QQuickItem *child : children) {
+            const QString text = labelTextStartingWith(child, prefix);
+            if (!text.isEmpty())
+                return text;
+        }
+    }
+    // A scroll view keeps its content in the content item, not in the children.
+    QObject *content = root->property("contentItem").value<QObject *>();
+    if (content && content != root)
+        return labelTextStartingWith(content, prefix);
+    return QString();
+}
+
 // The first item under the object that carries this text. Its visibility
 // tells the state of the card: the rows of the update card are all in the
 // tree, only the one of the current state is shown.
@@ -257,7 +279,13 @@ public:
     }
     Q_INVOKABLE void installPrepared() {}
     Q_INVOKABLE void cancelInstall() {}
-    Q_INVOKABLE QVariantList applyTaskChoices(const QVariantList &choices) { return choices; }
+    // The models that are not on disk: the save of the section fails while
+    // the list is not empty.
+    Q_INVOKABLE QVariantList applyTaskChoices(const QVariantList &choices)
+    {
+        Q_UNUSED(choices)
+        return m_missing;
+    }
     Q_INVOKABLE void queueTaskInstalls(const QVariantList &choices) { Q_UNUSED(choices) }
     Q_INVOKABLE QVariantList defaultTaskChoices(qint64 budgetBytes = -1)
     {
@@ -266,12 +294,15 @@ public:
     }
     Q_INVOKABLE void cancelTaskInstalls() {}
 
+    void setMissingModels(const QVariantList &missing) { m_missing = missing; }
+
 signals:
     void installedChanged();
     void presetsChanged();
 
 private:
     FakeQuantModel *m_models = new FakeQuantModel(this);
+    QVariantList m_missing;
 };
 
 // The stand-in for the runtime installer: the runtime section shows the
@@ -559,11 +590,13 @@ private slots:
     void theWizardRequestClosesTheWindowAndAsksForTheWizard();
     void theWizardAsksBeforeItDropsTheChanges();
     void theValuesAreReadOncePerSession();
+    void theFailedSaveKeepsTheRuntimeModes();
 
 private:
     void registerModuleTypes();
     std::unique_ptr<QObject> loadWindow();
     QVariant evaluate(QObject *scope, const QString &expression);
+    QQuickItem *findItemByType(QQuickItem *root, const QString &typeName);
 
     std::unique_ptr<SettingsStore> m_settings;
     std::unique_ptr<UiController> m_uiController;
@@ -710,6 +743,26 @@ std::unique_ptr<QObject> TestSettingsWindowQml::loadWindow()
     if (!object)
         m_warnings.append(window.errorString());
     return object;
+}
+
+// The item of the given QML type in the tree of the root. A scroll view
+// keeps its content in the content item, not in the children.
+QQuickItem *TestSettingsWindowQml::findItemByType(QQuickItem *root, const QString &typeName)
+{
+    if (!root)
+        return nullptr;
+    const QString name = QString::fromLatin1(root->metaObject()->className());
+    if (name == typeName || name.startsWith(typeName + QStringLiteral("_QMLTYPE")))
+        return root;
+    const QList<QQuickItem *> children = root->childItems();
+    for (QQuickItem *child : children) {
+        if (QQuickItem *found = findItemByType(child, typeName))
+            return found;
+    }
+    QObject *content = root->property("contentItem").value<QObject *>();
+    if (content && content != root)
+        return findItemByType(qobject_cast<QQuickItem *>(content), typeName);
+    return nullptr;
 }
 
 void TestSettingsWindowQml::theWindowHasFiveSections()
@@ -1126,6 +1179,60 @@ void TestSettingsWindowQml::theValuesAreReadOncePerSession()
     QCoreApplication::processEvents();
 
     QCOMPARE(window->property("dirty").toBool(), true);
+}
+
+// The runtime modes are a plain setting: they are written when the save has
+// succeeded. A save that reports a missing model leaves them alone, so the
+// user's next Cancel can still take them back.
+void TestSettingsWindowQml::theFailedSaveKeepsTheRuntimeModes()
+{
+    // Every task runs on the local server; the user moves one of them to an
+    // external server.
+    for (const QString &role : connectionRoleIds())
+        m_settings->setRuntimeModeForRole(role, QStringLiteral("managed"));
+
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QObject *models = evaluate(window.get(), QStringLiteral("modelsSection")).value<QObject *>();
+    QVERIFY(models);
+
+    // The user moves the decision task to an external server.
+    QQuickItem *table = findItemByType(qobject_cast<QQuickItem *>(models), QStringLiteral("TaskModelsTable"));
+    QVERIFY(table);
+    QVERIFY(QMetaObject::invokeMethod(table, "setRuntimeModeForTask", Q_ARG(QVariant, QStringLiteral("decision")), Q_ARG(QVariant, QStringLiteral("external"))));
+    QCoreApplication::processEvents();
+    QCOMPARE(evaluate(table, QStringLiteral("draftEntry('decision').runtimeMode")).toString(), QStringLiteral("external"));
+    // The counter of the section follows the draft: the rows on screen and
+    // the numbers above them agree.
+    QCOMPARE(evaluate(models, QStringLiteral("managedCount")).toInt(), 3);
+    QCOMPARE(evaluate(models, QStringLiteral("externalCount")).toInt(), 1);
+    QCOMPARE(labelTextStartingWith(models, QStringLiteral("Local:")), QStringLiteral("Local: 3 · External API: 1"));
+
+    // The model of the task is not on disk: the save fails.
+    QVariantMap missing;
+    missing.insert(QStringLiteral("task"), QStringLiteral("decision"));
+    missing.insert(QStringLiteral("model"), QStringLiteral("minicpm-jev"));
+    missing.insert(QStringLiteral("quantId"), QStringLiteral("Q4_K_M"));
+    missing.insert(QStringLiteral("size"), 1024);
+    m_modelInstaller->setMissingModels({missing});
+
+    QVariant result;
+    QVERIFY(QMetaObject::invokeMethod(models, "saveValues", Q_RETURN_ARG(QVariant, result)));
+    QCOMPARE(result.toBool(), false);
+
+    // The mode was not written: the window is still open and the user can
+    // cancel the switch away.
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
+
+    // The save that succeeds writes it.
+    m_modelInstaller->setMissingModels({});
+    QVERIFY(QMetaObject::invokeMethod(models, "saveValues", Q_RETURN_ARG(QVariant, result)));
+    QCOMPARE(result.toBool(), true);
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("external"));
+
+    m_settings->setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
 }
 
 int main(int argc, char *argv[])

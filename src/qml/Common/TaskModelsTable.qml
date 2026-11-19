@@ -108,15 +108,36 @@ Item {
         return table.showRuntimeColumn ? Settings.runtimeModeForRole(task) : "managed"
     }
 
-    // The runtime of a task is written at once: the gear popup reads it to
-    // show the tabs of that task, and the settings keep the choice.
-    function setRuntimeModeForTask(task, mode) {
-        Settings.setRuntimeModeForRole(task, mode)
-        const entry = table.draftEntry(task)
-        if (entry) {
-            entry.runtimeMode = mode
-            entry.runtimeModeEdited = true
+    // The split of the tasks in the draft: how many run on the local server
+    // and how many send their data to an external API. The host counts the
+    // draft, so its counter and the rows on screen cannot disagree.
+    readonly property int managedCount: {
+        let count = 0
+        for (let i = 0; i < table.draft.length; ++i) {
+            if (table.draft[i].runtimeMode !== "external")
+                ++count
         }
+        return count
+    }
+    readonly property int externalCount: table.draft.length - table.managedCount
+    readonly property string externalTaskSummary: {
+        const titles = []
+        for (let i = 0; i < table.draft.length; ++i) {
+            if (table.draft[i].runtimeMode === "external")
+                titles.push(RoleProfiles.title(table.draft[i].task))
+        }
+        return titles.join(", ")
+    }
+
+    // The runtime of a task is the draft's own choice: the gear popup reads
+    // it to show the tabs of that task, and the settings take it on Save.
+    function setRuntimeModeForTask(task, mode) {
+        const entry = table.draftEntry(task)
+        if (!entry)
+            return
+        entry.runtimeMode = mode
+        entry.runtimeModeEdited = true
+        table.edited()
     }
 
     // Draft quant id for a task's profile: the row's own default — the active
@@ -390,6 +411,7 @@ Item {
                 SegmentedControl {
                     Layout.preferredWidth: table.runtimeColumnWidth
                     Layout.minimumWidth: table.runtimeColumnWidth
+                    implicitHeight: Theme.controlHeight
                     visible: table.showRuntimeColumn
                     options: [
                         { label: qsTr("Managed") },

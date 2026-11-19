@@ -17,6 +17,7 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSignalSpy>
 #include <QTranslator>
 #include <QtTest>
 
@@ -27,6 +28,15 @@
 using namespace llocr;
 
 namespace {
+
+// The keystrokes of the test: every character goes through the window as a
+// real key event, so the field's onTextEdited fires the way it does for the
+// user.
+void typeText(QQuickWindow *window, const QString &text)
+{
+    for (const QChar &character : text)
+        QTest::keyClick(window, character.toLatin1(), Qt::NoModifier, 0);
+}
 
 // A stand-in for the models list: no rows, so every row of the table falls
 // back to "no model chosen".
@@ -220,13 +230,15 @@ private slots:
     void theTaskTextsKeepTheirTranslationContext();
     void theTableShowsARuntimeColumnPerTask();
     void theRuntimeColumnSwitchesTheTask();
+    void theSplitFollowsTheDraft();
     void anUnsavedModelNameSurvivesTheSync();
     void theCancelPathThrowsTheEditAway();
-    void theSaveTabsWritesBothTabs();
+    void theSaveTabsWritesEveryTab();
     void theSaveTabsAsksBeforeWritingTheLaunchDraft();
     void theQuantizationFieldFitsTheQuantization();
     void theQuantizationPopupIsAsWideAsItsWidestEntry();
     void theColumnsFitTheNarrowWindowOfTheWizard();
+    void theColumnsFitTheSettingsWindow();
     void theGearStandsNextToTheFields();
 
 private:
@@ -234,9 +246,12 @@ private:
     void useManagedTasks();
     std::unique_ptr<QObject> loadTable();
     std::unique_ptr<QObject> loadTable(QQuickItem *host);
+    std::unique_ptr<QObject> loadTable(QQuickItem *host, bool showRuntimeColumn);
     QVariant evaluate(QObject *scope, const QString &expression);
     QObject *draftEntry(QObject *table, const QString &task);
     QQuickItem *comboBox(QObject *table, const QString &textRole);
+    QQuickItem *textField(QObject *scope, const QString &placeholder);
+    QObject *taskSettingsPopup(QObject *table);
     QList<QQuickItem *> itemsByType(QQuickItem *root, const QString &typeName);
 
     std::unique_ptr<FakeModelInstaller> m_modelInstaller;
@@ -368,6 +383,13 @@ std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable()
 // window it stands in, so the test measures the row as it is drawn.
 std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable(QQuickItem *host)
 {
+    return loadTable(host, true);
+}
+
+// The table as the host shows it: the setup wizard hides the runtime column,
+// the settings window shows it.
+std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable(QQuickItem *host, bool showRuntimeColumn)
+{
     m_warnings.clear();
 
     const QString tablePath = QDir(m_qmlRoot).filePath(QStringLiteral("Common/TaskModelsTable.qml"));
@@ -380,12 +402,17 @@ std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable(QQuickItem *host)
     std::unique_ptr<QObject> object(table.create());
     if (!object)
         m_warnings.append(table.errorString());
-    else if (host) {
-        if (auto *item = qobject_cast<QQuickItem *>(object.get())) {
-            item->setParentItem(host);
-            item->setWidth(host->width());
-            item->setHeight(host->height());
+    else {
+        object->setProperty("showRuntimeColumn", showRuntimeColumn);
+        if (host) {
+            if (auto *item = qobject_cast<QQuickItem *>(object.get())) {
+                item->setParentItem(host);
+                item->setWidth(host->width());
+                item->setHeight(host->height());
+            }
         }
+        // The draft takes the runtimes of the host it stands in.
+        evaluate(object.get(), QStringLiteral("syncDraft()"));
     }
     return object;
 }
@@ -418,6 +445,36 @@ QQuickItem *TestTaskModelsTableQml::comboBox(QObject *table, const QString &text
     for (QQuickItem *combo : combos) {
         if (combo->property("textRole").toString() == textRole)
             return combo;
+    }
+    return nullptr;
+}
+
+// The text field with the given placeholder: the fields of the table and of
+// the gear popup tell each other apart by what they stand for.
+QQuickItem *TestTaskModelsTableQml::textField(QObject *scope, const QString &placeholder)
+{
+    auto *root = qobject_cast<QQuickItem *>(scope);
+    if (!root)
+        return nullptr;
+    const QList<QQuickItem *> fields = itemsByType(root, QStringLiteral("TextField"));
+    for (QQuickItem *field : fields) {
+        if (field->property("placeholderText").toString() == placeholder)
+            return field;
+    }
+    return nullptr;
+}
+
+// The popup of the gear: the one popup of the table that knows a task.
+QObject *TestTaskModelsTableQml::taskSettingsPopup(QObject *table)
+{
+    const QList<QObject *> children = table->findChildren<QObject *>();
+    for (QObject *child : children) {
+        const QString name = QString::fromLatin1(child->metaObject()->className());
+        if (!name.startsWith(QStringLiteral("Popup")) && !name.startsWith(QStringLiteral("QQuickPopup")))
+            continue;
+        // The popup of the gear is the one that knows a task.
+        if (child->property("task").isValid())
+            return child;
     }
     return nullptr;
 }
@@ -481,14 +538,52 @@ void TestTaskModelsTableQml::theTableShowsARuntimeColumnPerTask()
     }
 }
 
-// The switch of the row writes the mode of that task.
+// The switch of the row writes the mode of that task into the draft: the
+// settings take it when the window is saved, so the user can still cancel it
+// away.
 void TestTaskModelsTableQml::theRuntimeColumnSwitchesTheTask()
 {
+    m_settings->setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("external"));
+
     const std::unique_ptr<QObject> table = loadTable();
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QSignalSpy editedSpy(table.get(), SIGNAL(edited()));
     evaluate(table.get(), QStringLiteral("setRuntimeModeForTask('decision','managed')"));
     QCoreApplication::processEvents();
-    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
+
+    QObject *entry = draftEntry(table.get(), QStringLiteral("decision"));
+    QVERIFY(entry);
+    QCOMPARE(entry->property("runtimeMode").toString(), QStringLiteral("managed"));
+    QCOMPARE(entry->property("runtimeModeEdited").toBool(), true);
+    QCOMPARE(editedSpy.count(), 1);
+
+    // The settings keep the saved mode until the window is saved.
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("external"));
+}
+
+// The split of the tasks follows the draft: the counter of the host and the
+// rows on screen must agree.
+void TestTaskModelsTableQml::theSplitFollowsTheDraft()
+{
+    for (const QString &role : connectionRoleIds())
+        m_settings->setRuntimeModeForRole(role, QStringLiteral("managed"));
+
+    const std::unique_ptr<QObject> table = loadTable();
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(evaluate(table.get(), QStringLiteral("managedCount")).toInt(), 4);
+    QCOMPARE(evaluate(table.get(), QStringLiteral("externalCount")).toInt(), 0);
+    QCOMPARE(evaluate(table.get(), QStringLiteral("externalTaskSummary")).toString(), QString());
+
+    evaluate(table.get(), QStringLiteral("setRuntimeModeForTask('decision','external')"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(evaluate(table.get(), QStringLiteral("managedCount")).toInt(), 3);
+    QCOMPARE(evaluate(table.get(), QStringLiteral("externalCount")).toInt(), 1);
+    QCOMPARE(evaluate(table.get(), QStringLiteral("externalTaskSummary")).toString(), QStringLiteral("Verification"));
 }
 
 void TestTaskModelsTableQml::anUnsavedModelNameSurvivesTheSync()
@@ -535,14 +630,42 @@ void TestTaskModelsTableQml::theCancelPathThrowsTheEditAway()
 }
 
 // The tabs of the gear popup are written together: the launch tab answers
-// whether it wrote anything, and the request tab is written either way.
-void TestTaskModelsTableQml::theSaveTabsWritesBothTabs()
+// whether it wrote anything, the request tab is written either way, and the
+// connection tab writes the alias and the endpoint of its task.
+void TestTaskModelsTableQml::theSaveTabsWritesEveryTab()
 {
     m_launchProfiles->resetSaves();
     m_profiles->resetSaves();
 
-    const std::unique_ptr<QObject> table = loadTable();
+    // An external task shows the connection tab of the gear popup.
+    m_settings->setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("external"));
+
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(host);
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    // The gear popup of the decision task: its connection tab holds the
+    // alias and the endpoint of that task.
+    evaluate(table.get(), QStringLiteral("openTaskSettings('decision')"));
+    QCoreApplication::processEvents();
+    QTest::qWait(20);
+
+    QObject *popup = taskSettingsPopup(table.get());
+    QVERIFY(popup);
+    QQuickItem *content = qobject_cast<QQuickItem *>(popup->property("contentItem").value<QObject *>());
+    QVERIFY(content);
+    QQuickItem *alias = textField(content, QStringLiteral("the model id"));
+    QVERIFY(alias);
+    alias->setProperty("text", QString());
+    alias->forceActiveFocus();
+    typeText(&window, QStringLiteral("typed-alias"));
     QCoreApplication::processEvents();
 
     QVariant result;
@@ -550,6 +673,9 @@ void TestTaskModelsTableQml::theSaveTabsWritesBothTabs()
     QCOMPARE(result.toBool(), true);
     QCOMPARE(m_launchProfiles->saves(), 1);
     QCOMPARE(m_profiles->saves(), 1);
+
+    // The connection tab wrote the alias of its task.
+    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("decision")), QStringLiteral("typed-alias"));
 }
 
 void TestTaskModelsTableQml::theSaveTabsAsksBeforeWritingTheLaunchDraft()
@@ -644,8 +770,9 @@ void TestTaskModelsTableQml::theQuantizationPopupIsAsWideAsItsWidestEntry()
 }
 
 // The same table stands in the hardware step of the setup wizard, whose
-// window is narrower than the «Models» window: the row must stay inside it,
-// and the field of a quantization must keep its width there too.
+// window is narrower than the «Models» window and which hides the runtime
+// column: the row must stay inside it, and the field of a quantization must
+// keep its width there too.
 void TestTaskModelsTableQml::theColumnsFitTheNarrowWindowOfTheWizard()
 {
     useManagedTasks();
@@ -657,7 +784,7 @@ void TestTaskModelsTableQml::theColumnsFitTheNarrowWindowOfTheWizard()
     QQuickItem *host = new QQuickItem(window.contentItem());
     host->setSize(QSizeF(720, 600));
 
-    const std::unique_ptr<QObject> table = loadTable(host);
+    const std::unique_ptr<QObject> table = loadTable(host, false);
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QTest::qWait(20);
 
@@ -669,6 +796,38 @@ void TestTaskModelsTableQml::theColumnsFitTheNarrowWindowOfTheWizard()
 
     // The row stays inside the window: nothing is pushed out of sight.
     QVERIFY(quant->property("x").toDouble() + quant->property("width").toDouble() <= host->width());
+}
+
+// The settings window shows the runtime column, so it is another table: its
+// row must fit the window of the settings as well.
+void TestTaskModelsTableQml::theColumnsFitTheSettingsWindow()
+{
+    useManagedTasks();
+
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    QQuickItem *quant = comboBox(table.get(), QStringLiteral("id"));
+    QVERIFY(quant);
+
+    QCOMPARE(quant->property("width").toDouble(), static_cast<double>(table->property("quantColumnWidth").toInt()));
+    QVERIFY(quant->property("x").toDouble() + quant->property("width").toDouble() <= host->width());
+
+    // The switch of the runtime stands as high as the controls next to it.
+    auto *root = qobject_cast<QQuickItem *>(table.get());
+    QVERIFY(root);
+    const QList<QQuickItem *> switches = itemsByType(root, QStringLiteral("SegmentedControl"));
+    QCOMPARE(switches.size(), 4);
+    for (QQuickItem *control : switches)
+        QCOMPARE(control->property("height").toDouble(), 28.0);
 }
 
 // The gear opens the settings of its own task: it stands next to the fields
