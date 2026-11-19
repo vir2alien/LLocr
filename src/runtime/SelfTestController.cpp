@@ -6,6 +6,7 @@
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
 #include "core/ConnectionConfig.h"
+#include "core/ConnectionRole.h"
 #include "core/OcrResult.h"
 #include "models/OcrModel.h"
 #include "runtime/RuntimeController.h"
@@ -23,7 +24,8 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
     auto promise = std::make_shared<QFutureInterface<SelfTestResult>>();
     promise->reportStarted();
 
-    if (m_settings.managedRoles().isEmpty()) {
+    const QString roleName = m_runtime.selfTestRole();
+    if (roleName.isEmpty()) {
         SelfTestResult r;
         r.error = tr("Self-test is available only when a task uses the managed runtime");
         promise->reportResult(std::move(r));
@@ -31,7 +33,7 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
         return promise->future();
     }
 
-    m_runtime.ensureConnectionReady(this, [this, promise](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, connectionRoleFromName(roleName), [this, promise](const ResolvedConnection &conn) {
         if (conn.baseUrl.isEmpty()) {
             SelfTestResult r;
             r.error = conn.error.isEmpty() ? tr("Server not available") : conn.error;
@@ -102,7 +104,7 @@ void SelfTestController::runSelfTestQml()
 {
     if (m_selftestRunning)
         return;
-    if (m_settings.managedRoles().isEmpty()) {
+    if (m_runtime.selfTestRole().isEmpty()) {
         m_selftestOk = false;
         m_selftestMessage = tr("Self-test is available only when a task uses the managed runtime");
         m_selftestFailure = QString::fromLatin1(checkFailureKey(CheckFailure::Unknown));

@@ -103,6 +103,10 @@ public:
     // when it is started by hand.
     Q_INVOKABLE bool hasManagedTasks() const;
     Q_INVOKABLE QString firstManagedRole() const;
+    // The task the self-test probes: a managed one, so the check reaches the
+    // local runtime instead of an external endpoint. Empty when no task is
+    // managed.
+    Q_INVOKABLE QString selfTestRole() const;
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved);

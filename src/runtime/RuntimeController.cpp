@@ -332,8 +332,20 @@ QString RuntimeController::firstManagedRole() const
     return roles.isEmpty() ? QString() : roles.first();
 }
 
-// The models of the managed tasks: every one of them that is set must be on
-// disk, and the server needs at least one of them to run.
+QString RuntimeController::selfTestRole() const
+{
+    if (!hasManagedTasks())
+        return QString();
+    // The self-test's own request is a recognition request, so the
+    // recognition task is the one to probe whenever it is managed.
+    if (modeForRole(ConnectionRole::BlockRecognition) == ConnectionMode::Managed)
+        return connectionRoleName(ConnectionRole::BlockRecognition);
+    return firstManagedRole();
+}
+
+// A managed task without a model of its own reuses the running server's
+// model, so the rule is: every model that is set must be on disk, and one
+// managed task must have a model.
 bool RuntimeController::managedModelPathValid() const
 {
     bool anyModel = false;
@@ -1098,7 +1110,9 @@ void RuntimeController::restartServer()
     // Restart brings back the server the role it was serving: the banner's
     // dirty comparison is per started role, so a block-recognition restart
     // here would silently move a decision server onto the OCR model.
-    const ConnectionRole role = m_hasStartedConfig ? m_startedRole : ConnectionRole::BlockRecognition;
+    if (!m_hasStartedConfig && !hasManagedTasks())
+        return;
+    const ConnectionRole role = m_hasStartedConfig ? m_startedRole : connectionRoleFromName(firstManagedRole());
     if (m_server && m_server->state() != RuntimeState::Stopped) {
         setBusyState(AppBusyState::StoppingRuntime);
         setStatusMessage(tr("Stopping…"));
@@ -1130,7 +1144,7 @@ QString RuntimeController::launchCommandPreview()
     const RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     ProbeResult probe;
     RuntimeLocator::cachedProbe(program, paths.cacheDir(), probe);
-    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings, m_launchProfiles);
+    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings, m_launchProfiles, connectionRoleFromName(firstManagedRole()));
     cfg.program = program;
     return cfg.toDisplayCommand(probe.ok ? probe.capabilities : ServerCapabilities{});
 }

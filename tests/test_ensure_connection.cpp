@@ -1411,6 +1411,8 @@ private slots:
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
         RuntimeController runtime(store, launchProfiles);
+        // The recognition task is managed, so the self-test probes it.
+        QCOMPARE(runtime.selfTestRole(), QStringLiteral("blockRecognition"));
 
         // Request-profile store for the self-test request; test binaries embed
         // no resources, so the profile is injected.
@@ -1850,14 +1852,16 @@ private slots:
         QTemporaryDir dir;
         SettingsStore settings;
         LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
-        settings.setRuntimeModeForRole(QStringLiteral("layout"), QStringLiteral("managed"));
-        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
-        settings.setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("external"));
+        // The decision task is written first: the canonical order decides
+        // which task starts the server, not the order the tasks were set in.
+        settings.setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("managed"));
+        settings.setRuntimeModeForRole(QStringLiteral("layout"), QStringLiteral("external"));
         settings.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
 
         RuntimeController runtime(settings, launchProfiles);
         QCOMPARE(runtime.hasManagedTasks(), true);
-        QCOMPARE(runtime.firstManagedRole(), QStringLiteral("layout"));
+        QCOMPARE(runtime.firstManagedRole(), QStringLiteral("blockRecognition"));
     }
 
     void switchingTheModeDropsTheResolvedConnection()
@@ -1899,12 +1903,15 @@ private slots:
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
         RuntimeController runtime(store, launchProfiles);
 
+        // The endpoint is set before the resolve: a later change of it would
+        // drop the cache on its own, and the mode switch would prove nothing.
+        store.setBaseUrl(QStringLiteral("http://external.example:9000"));
+
         int done = 0;
         runtime.ensureConnectionReady([&done](const ResolvedConnection &) { ++done; });
         QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
 
         store.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
-        store.setBaseUrl(QStringLiteral("http://external.example:9000"));
 
         ResolvedConnection conn;
         bool called = false;
@@ -1917,6 +1924,148 @@ private slots:
         QCOMPARE(conn.baseUrl, QStringLiteral("http://external.example:9000"));
 
         runtime.stopServer();
+    }
+
+    // The self-test checks the managed runtime: in a mixed setup it must
+    // reach the local server, not the endpoint of the task that happens to
+    // come first.
+    void theSelfTestProbesTheManagedTask()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile layoutModel(dir.filePath(QStringLiteral("layout-Q4_K_M.gguf")));
+        QVERIFY(layoutModel.open(QIODevice::WriteOnly));
+        layoutModel.write("layout");
+        layoutModel.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLayoutLaunchModelPath(dir.filePath(QStringLiteral("layout-Q4_K_M.gguf")));
+        // The recognition task talks to an endpoint that is not there: a
+        // self-test that reached it could not pass.
+        store.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        store.setBaseUrl(QStringLiteral("http://127.0.0.1:59999"));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+        // The recognition task is external, so the self-test probes the first
+        // managed task instead.
+        QCOMPARE(runtime.selfTestRole(), QStringLiteral("layout"));
+
+        ModelProfiles::Profile selfTestProfile;
+        selfTestProfile.id = QStringLiteral("unlimited-ocr");
+        ModelProfiles::Role selfTestRole;
+        selfTestRole.request = {RequestParameter{QStringLiteral("temperature"), 1, RequestValueKind::Number, 0.0, QString(), {}},
+                                RequestParameter{QStringLiteral("max_tokens"), 2, RequestValueKind::Number, 1024.0, QString(), {}},
+                                RequestParameter{QStringLiteral("stream"), 3, RequestValueKind::Boolean, false, QString(), {}}};
+        selfTestProfile.roles.insert(QStringLiteral("blockRecognition"), selfTestRole);
+        RequestProfileStore profiles(store);
+        profiles.setModelProfiles({selfTestProfile});
+        SelfTestController selfTest(store, runtime, profiles);
+        SelfTestResult result;
+        int done = 0;
+        QFutureWatcher<SelfTestResult> watch;
+        connect(&watch, &QFutureWatcher<SelfTestResult>::finished, this, [&]() {
+            result = watch.result();
+            ++done;
+        });
+        watch.setFuture(selfTest.runSelfTest());
+
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+        QVERIFY2(result.ok, qPrintable(result.error));
+        QCOMPARE(result.text, QStringLiteral("SELFTEST_OK"));
+
+        runtime.stopServer();
+    }
+
+    // The command the preview shows is the command the manual start runs:
+    // the first managed task's model, not the default role's.
+    void theLaunchPreviewShowsTheManagedTaskCommand()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString layoutModel = dir.filePath(QStringLiteral("layout-Q4_K_M.gguf"));
+        QFile layoutFile(layoutModel);
+        QVERIFY(layoutFile.open(QIODevice::WriteOnly));
+        layoutFile.write("layout");
+        layoutFile.close();
+        const QString checkModel = dir.filePath(QStringLiteral("check-Q4_K_M.gguf"));
+        QFile checkFile(checkModel);
+        QVERIFY(checkFile.open(QIODevice::WriteOnly));
+        checkFile.write("check");
+        checkFile.close();
+
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setConnectionMode(QStringLiteral("managed"));
+        settings.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        settings.setLayoutLaunchModelPath(layoutModel);
+        settings.setCheckLaunchModelPath(checkModel);
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        settings.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        settings.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+
+        RuntimeController runtime(settings, launchProfiles);
+        const QString preview = runtime.launchCommandPreview();
+        QVERIFY2(preview.contains(QStringLiteral("layout-Q4_K_M.gguf")), qPrintable(preview));
+        QVERIFY2(!preview.contains(QStringLiteral("check-Q4_K_M.gguf")), qPrintable(preview));
+    }
+
+    // A restart without a running server serves the first managed task: the
+    // block-recognition role may be external, and an external task has no
+    // local server to start.
+    void theRestartServesTheFirstManagedTask()
+    {
+        QTemporaryDir dir;
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        runtime.restartServer();
+        // The layout task has no model: the refusal names it, and that is how
+        // the test tells the roles apart.
+        QVERIFY2(runtime.statusMessage().contains(QStringLiteral("Layout model"), Qt::CaseInsensitive), qPrintable(runtime.statusMessage()));
+
+        runtime.stopServer();
+    }
+
+    // A managed task needs the local runtime: in a mixed setup the missing
+    // server binary is the managed task's business alone.
+    void aManagedTaskWithoutTheServerPathIsNotValid()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString modelPath = dir.filePath(QStringLiteral("layout-Q4_K_M.gguf"));
+        QFile model(modelPath);
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setLayoutLaunchModelPath(modelPath);
+        store.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+        QVERIFY(runtime.hasManagedTasks());
+        QVERIFY(!runtime.serverPathValid());
+        QVERIFY(!runtime.configValid());
     }
 };
 
