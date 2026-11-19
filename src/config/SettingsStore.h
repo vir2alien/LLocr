@@ -334,6 +334,17 @@ public:
     QString requestProfileIdForRole(const QString &role) const;
     Q_INVOKABLE QString modelNameForRole(const QString &role) const;
     Q_INVOKABLE void setModelNameForRole(const QString &role, const QString &name);
+
+    // The runtime of one task: managed (the local llama-server) or external
+    // (its own endpoint). A task without a stored mode follows the global
+    // one, which stays the default for the new tasks and for the wizard.
+    Q_INVOKABLE QString runtimeModeForRole(const QString &role) const;
+    Q_INVOKABLE void setRuntimeModeForRole(const QString &role, const QString &mode);
+    Q_INVOKABLE void setRuntimeModeForAllRoles(const QString &mode);
+    // The tasks that chose a mode of their own, in the canonical order.
+    Q_INVOKABLE QStringList managedRoles() const;
+    Q_INVOKABLE QStringList externalRoles() const;
+    Q_INVOKABLE bool isManagedRole(const QString &role) const;
     QStringList taskRoles() const;
 
     // The Hugging Face token of the model downloads. The getter serves the
@@ -368,6 +379,7 @@ signals:
     void windowHeightChanged();
     void windowStateChanged();
     void connectionModeChanged();
+    void taskRuntimeModesChanged();
     void lastExternalBaseUrlChanged();
     void setupVersionChanged();
     void setupDismissedChanged();
@@ -467,6 +479,11 @@ private:
     static QString taskKeyName(const QString &role);
     static QString taskBaseUrlKey(const QString &role);
     static QString taskSecretId(const QString &role);
+    static QString taskRuntimeModeKey(const QString &role);
+
+    // Copies the stored global mode into the tasks that have none yet: the
+    // choice of an old install becomes the choice of every task.
+    void migrateRuntimeModes();
 
     bool m_lastKeyPersisted = true;
 

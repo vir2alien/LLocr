@@ -681,9 +681,9 @@ private slots:
 
         // Properties excluded from reset by design:
         //  - windowX/Y/Width/Height/State: UI state, intentionally not reset;
-        //  - connectionMode / lastExternalBaseUrl: covered implicitly through
-        //    setConnectionMode()'s restore path (baseUrl is reset, but its
-        //    final value when coming from Managed is the restored endpoint).
+        //  - connectionMode / lastExternalBaseUrl: the mode switch does not
+        //    stash the shared URL any more, so the reset of the base URL is
+        //    not overwritten by a restored endpoint.
         //  The secrets (apiKey, hfToken) are not writable properties at all:
         //  they live in the OS store (ADR 227), which the reset does not touch.
         //
@@ -906,6 +906,88 @@ private slots:
 
         QCOMPARE(store.runtimeChannel(), QStringLiteral("beta"));
         QCOMPARE(store.installedTag(), QStringLiteral("v1.0.0"));
+    }
+
+    // The runtime belongs to the task: every task reads its own mode, and
+    // the tasks that chose one are listed in the canonical order.
+    void theRuntimeModeIsReadPerTask()
+    {
+        SettingsStore store;
+        store.setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
+        store.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("fix")), QStringLiteral("external"));
+        QCOMPARE(store.managedRoles(), QStringList({QStringLiteral("decision")}));
+        QCOMPARE(store.externalRoles(), QStringList({QStringLiteral("fix")}));
+    }
+
+    // The global mode is the default of the tasks: a task without a mode of
+    // its own follows it.
+    void theGlobalModeBecomesThePerTaskMode()
+    {
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("managed"));
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("blockRecognition")), QStringLiteral("managed"));
+    }
+
+    // The migration runs once: the choice a task made survives the changes of
+    // the global mode.
+    void theMigrationIsIdempotent()
+    {
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("managed"));
+        store.setRuntimeModeForRole(QStringLiteral("layout"), QStringLiteral("external"));
+        store.setConnectionMode(QStringLiteral("managed"));
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("external"));
+    }
+
+    // The block recognition task keeps the check prefix of its settings
+    // group: its mode lives under tasks/check/runtimeMode.
+    void theBlockRecognitionTaskKeepsTheCheckPrefix()
+    {
+        QSettings raw;
+        raw.setValue(QLatin1String(SettingsStore::kSettingsSchemaVersion), SettingsStore::kCurrentSettingsSchemaVersion);
+        raw.setValue(QStringLiteral("provider/mode"), QStringLiteral("managed"));
+        raw.setValue(QStringLiteral("tasks/check/runtimeMode"), QStringLiteral("external"));
+        raw.sync();
+
+        SettingsStore store;
+        // The key of the task's own group wins over the global default.
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("blockRecognition")), QStringLiteral("external"));
+        // The other tasks follow the global one.
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
+    }
+
+    void allTheTasksGetTheModeAtOnce()
+    {
+        SettingsStore store;
+        store.setRuntimeModeForAllRoles(QStringLiteral("managed"));
+        for (const QString &role : connectionRoleIds())
+            QCOMPARE(store.runtimeModeForRole(role), QStringLiteral("managed"));
+    }
+
+    // The per-task modes are part of the runtime: the reset of the runtime
+    // takes them with it.
+    void theRuntimeModeResetGoesWithTheRuntime()
+    {
+        SettingsStore store;
+        store.setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
+        store.resetRuntimeDefaults();
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("external"));
+    }
+
+    // The shared URL is always visible: the mode switch does not hide it any
+    // more.
+    void theSharedUrlSurvivesTheDefaultMode()
+    {
+        SettingsStore store;
+        store.setBaseUrl(QStringLiteral("http://my-server:8080"));
+        store.setConnectionMode(QStringLiteral("managed"));
+        QCOMPARE(store.baseUrl(), QStringLiteral("http://my-server:8080"));
+        store.setConnectionMode(QStringLiteral("external"));
+        QCOMPARE(store.baseUrl(), QStringLiteral("http://my-server:8080"));
     }
 };
 
