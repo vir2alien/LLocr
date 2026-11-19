@@ -29,6 +29,7 @@
 - Path comparisons normalize `/` vs `\` (`QDir::fromNativeSeparators` + `QDir::cleanPath`).
 - Full gate before the final commit: build + full `ctest --test-dir build/win-msvc2022` + `scripts/check.sh --format-only` (clang-format, no Qt needed) + qmllint.
 - Do not re-configure the build tree from scratch; reuse `build/win-msvc2022`.
+- Do NOT bump `SettingsStore::kCurrentSettingsSchemaVersion`: the constructor wipes the settings file when the version differs, and `provider/mode` is the source the per-task fallback reads. The new key needs no bump — an existing install keeps its global mode and its tasks follow it.
 
 ## File Map
 
