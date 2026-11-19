@@ -126,6 +126,12 @@ QStringList RequestJournal::format(const Record &record)
         excerpt.replace(QLatin1Char('\n'), QStringLiteral(" "));
         out.append(QStringLiteral("    reply: ") + excerpt);
     }
+    // One record occupies one block of the mirror: a line break inside the
+    // text would make the mirror count a line the journal never held.
+    for (QString &line : out) {
+        line.replace(QLatin1Char('\r'), QLatin1Char(' '));
+        line.replace(QLatin1Char('\n'), QLatin1Char(' '));
+    }
     return out;
 }
 

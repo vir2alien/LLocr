@@ -45,6 +45,19 @@ private slots:
         QCOMPARE(plain(doc), QStringLiteral("d\ne"));
     }
 
+    // The owner dropped more lines than the mirror held: the mirror is stale,
+    // and a new line must still start its own block.
+    void dropsMoreLinesThanTheDocumentHolds()
+    {
+        QTextDocument doc;
+        LogDocumentSync sync;
+        sync.attach(&doc);
+
+        sync.apply({QStringLiteral("a"), QStringLiteral("b")}, 0, QString());
+        sync.apply({QStringLiteral("c")}, 5, QString());
+        QCOMPARE(plain(doc), QStringLiteral("c"));
+    }
+
     // A clear empties the mirror with no dropped counter; the window must not
     // keep the stale lines.
     void clearEmptiesTheDocument()

@@ -34,9 +34,17 @@ void LogDocumentSync::apply(const QStringList &lines, int dropped, const QString
         cur.movePosition(QTextCursor::Start);
         if (m_hasHeader && !cur.movePosition(QTextCursor::NextBlock))
             return;
+        int removed = 0;
         for (int moved = 0; moved < dropped; ++moved) {
             if (!cur.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor))
                 break;
+            ++removed;
+        }
+        if (removed < dropped) {
+            // The owner dropped more lines than the mirror held: what is left
+            // in the document is stale, so the mirror takes the owner's state.
+            rebuild(*doc, lines, header);
+            return;
         }
         cur.removeSelectedText();
         m_inDoc = qMax(0, m_inDoc - dropped);

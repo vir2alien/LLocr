@@ -115,6 +115,22 @@ private slots:
         QCOMPARE(text, log.journalLog());
     }
 
+    // A record is one block of the journal's mirror: a line break inside the
+    // text would make the mirror drop a line the journal still holds.
+    void aRecordNeverSpansTwoLines()
+    {
+        RequestJournal::Record record;
+        record.at = QDateTime::currentDateTime();
+        record.endpoint = QStringLiteral("http://example.test/v1/chat/completions");
+        record.error = QStringLiteral("the server said no\nand then fell silent");
+        record.excerpt = QStringLiteral("the answer\nspans two lines");
+
+        const QStringList lines = RequestJournal::format(record);
+        QVERIFY(!lines.isEmpty());
+        for (const QString &line : lines)
+            QVERIFY2(!line.contains(QLatin1Char('\n')), qPrintable(line));
+    }
+
     // "Copy log" takes both halves of the window: the server's own output and
     // the journal, separated by an empty line.
     void theCopyHoldsBothSources()
