@@ -108,8 +108,10 @@
       store.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
       QCOMPARE(store.runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
       QCOMPARE(store.runtimeModeForRole(QStringLiteral("fix")), QStringLiteral("external"));
+      // The two lists partition the four tasks by their effective mode.
       QCOMPARE(store.managedRoles(), QStringList({QStringLiteral("decision")}));
-      QCOMPARE(store.externalRoles(), QStringList({QStringLiteral("fix")}));
+      QCOMPARE(store.externalRoles(),
+               QStringList({QStringLiteral("layout"), QStringLiteral("blockRecognition"), QStringLiteral("fix")}));
   }
 
   void theGlobalModeBecomesThePerTaskMode()
@@ -118,27 +120,48 @@
       store.setConnectionMode(QStringLiteral("managed"));
       QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("managed"));
       QCOMPARE(store.runtimeModeForRole(QStringLiteral("blockRecognition")), QStringLiteral("managed"));
+      QCOMPARE(store.managedRoles().size(), 4);
+      QCOMPARE(store.externalRoles().size(), 0);
   }
 
-  void theMigrationIsIdempotent()
+  void theChoiceOfATaskSurvivesTheChangeOfTheGlobalMode()
   {
       SettingsStore store;
       store.setConnectionMode(QStringLiteral("managed"));
-      QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("managed"));
-      store.setRuntimeModeForRole(QStringLiteral("layout"), QStringLiteral("external"));
-      store.setConnectionMode(QStringLiteral("managed"));
+      store.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+      store.setConnectionMode(QStringLiteral("external"));
+      // The task chose for itself: the global mode does not touch it.
+      QCOMPARE(store.runtimeModeForRole(QStringLiteral("fix")), QStringLiteral("external"));
+      // The task that follows the global mode follows it.
       QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("external"));
+  }
+
+  void theOldInstallKeepsItsMode()
+  {
+      // The file of an old install: the global mode and no task of its own.
+      QSettings raw;
+      raw.setValue(QLatin1String(SettingsStore::kSettingsSchemaVersion), SettingsStore::kCurrentSettingsSchemaVersion);
+      raw.setValue(QStringLiteral("provider/mode"), QStringLiteral("managed"));
+      raw.sync();
+
+      SettingsStore store;
+      for (const QString &role : connectionRoleIds())
+          QCOMPARE(store.runtimeModeForRole(role), QStringLiteral("managed"));
   }
 
   void theBlockRecognitionTaskKeepsTheCheckPrefix()
   {
-      SettingsStore store;
-      store.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("managed"));
       QSettings raw;
-      raw.setValue(QStringLiteral("llocr_test/test_settings/tasks/check/runtimeMode"), QStringLiteral("managed"));
+      raw.setValue(QLatin1String(SettingsStore::kSettingsSchemaVersion), SettingsStore::kCurrentSettingsSchemaVersion);
+      raw.setValue(QStringLiteral("provider/mode"), QStringLiteral("managed"));
+      raw.setValue(QStringLiteral("tasks/check/runtimeMode"), QStringLiteral("external"));
       raw.sync();
-      SettingsStore other;
-      QCOMPARE(other.runtimeModeForRole(QStringLiteral("blockRecognition")), QStringLiteral("managed"));
+
+      SettingsStore store;
+      // The key of the task's own group wins over the global default.
+      QCOMPARE(store.runtimeModeForRole(QStringLiteral("blockRecognition")), QStringLiteral("external"));
+      // The other tasks follow the global one.
+      QCOMPARE(store.runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
   }
 
   void allTheTasksGetTheModeAtOnce()
@@ -147,6 +170,7 @@
       store.setRuntimeModeForAllRoles(QStringLiteral("managed"));
       for (const QString &role : connectionRoleIds())
           QCOMPARE(store.runtimeModeForRole(role), QStringLiteral("managed"));
+      QCOMPARE(store.managedRoles().size(), 4);
   }
 
   void theRuntimeModeResetGoesWithTheRuntime()
@@ -165,10 +189,19 @@
       QCOMPARE(store.baseUrl(), QStringLiteral("http://my-server:8080"));
       store.setConnectionMode(QStringLiteral("external"));
       QCOMPARE(store.baseUrl(), QStringLiteral("http://my-server:8080"));
+      // The mode switch does not stash the URL any more.
+      QVERIFY(!store.contains(QStringLiteral("provider/lastExternalBaseUrl")));
   }
   ```
 
-  The settings file name in the raw check follows the app's identity: `QSettings` is created with organization `llocr_test` and application `test_settings` (see `initTestCase`), so the raw path is `<org>/<app>/<key>`. If the raw check is fragile across platforms, drop it and assert the prefix through `runtimeModeForRole` only — the prefix itself is pinned by the `taskKeyName` helper and covered by `theRuntimeModeIsReadPerTask`.
+  The raw `QSettings` writes in the two tests read the same file the store
+  reads: `SettingsStore::makeSettings()` returns a plain `QSettings()` with
+  the app's identity, and the test class sets organization `llocr_test` and
+  application `test_settings` in `initTestCase`. The **key** is what matters
+  there — `tasks/check/runtimeMode`, not a file path.
+
+  Every test clears the settings file first (`cleanup()` does it), so the
+  tests do not depend on their order.
 
 - [ ] **Step 2: Run the test, verify FAIL**
 
@@ -216,22 +249,9 @@
         return QStringLiteral("tasks/") + taskKeyName(role) + QStringLiteral("/runtimeMode");
     }
     ```
-  - `runtimeModeForRole` — reads the key; when it is missing, the global mode is the task's mode and is written out, so the choice becomes explicit and the migration runs once:
-    ```cpp
-    QString SettingsStore::runtimeModeForRole(const QString &role) const
-    {
-        const QString key = taskRuntimeModeKey(role);
-        const QString stored = m_settings.value(key).toString();
-        if (stored == QLatin1String(kModeManaged) || stored == QLatin1String(kModeExternal))
-            return stored;
-        const QString mode = connectionMode();
-        m_settings.setValue(key, mode);
-        return mode;
-    }
-    ```
-    A `const` method that writes: `m_settings` is a member, so writing through it in a const method needs `mutable` — instead declare the method non-const, or make `m_settings` `mutable`. The simplest correct form: keep `runtimeModeForRole` **non-const** and add a `const` sibling `runtimeModeForRoleOrDefault` if a const caller needs it. `RuntimeController` holds a non-const `SettingsStore &`, so the non-const form is usable everywhere it matters; `Q_INVOKABLE` methods in this class are non-const already (`baseUrlForRole` is const — keep that one const and do the write in a separate `migrateRuntimeModes()` called from the constructor).
-
-    **Chosen form (used by the code below):** `runtimeModeForRole` stays `const` and does **not** write; the migration happens once, eagerly, in the constructor:
+  - `runtimeModeForRole` — the **effective** mode of a task: its own key when
+    it has one, the global mode otherwise. The key is an explicit choice, so
+    a task without a key follows the global:
     ```cpp
     QString SettingsStore::runtimeModeForRole(const QString &role) const
     {
@@ -240,23 +260,39 @@
             return stored;
         return connectionMode();
     }
-
-    void SettingsStore::migrateRuntimeModes()
+    ```
+    The reader writes nothing: the migration of an old install is exactly this
+    fallback — the tasks of an old install have no key, so they follow the
+    global mode the user chose for the app as a whole. The fallback is
+    idempotent by construction and cannot overwrite a choice made later.
+  - `managedRoles()` / `externalRoles()` — the tasks by their **effective**
+    mode, so the two lists always partition the four tasks:
+    ```cpp
+    QStringList SettingsStore::managedRoles() const
     {
-        bool changed = false;
+        QStringList out;
         for (const ConnectionRole role : connectionRoles) {
             const QString name = connectionRoleName(role);
-            const QString key = taskRuntimeModeKey(name);
-            if (m_settings.contains(key))
-                continue;
-            m_settings.setValue(key, connectionMode());
-            changed = true;
+            if (runtimeModeForRole(name) == QLatin1String(kModeManaged))
+                out << name;
         }
-        if (changed)
-            m_settings.sync();
+        return out;
+    }
+
+    QStringList SettingsStore::externalRoles() const
+    {
+        QStringList out;
+        for (const ConnectionRole role : connectionRoles) {
+            const QString name = connectionRoleName(role);
+            if (runtimeModeForRole(name) == QLatin1String(kModeExternal))
+                out << name;
+        }
+        return out;
     }
     ```
-    Call `migrateRuntimeModes()` at the end of the `SettingsStore` constructor. The idempotence test passes because the second `setConnectionMode("managed")` does not touch the stored per-task key.
+    A task whose stored value is neither `managed` nor `external` (a
+    hand-edited file) falls back to the global mode and therefore lands in one
+    of the two lists — the partition never breaks.
 
   - `setRuntimeModeForRole`:
     ```cpp
@@ -296,30 +332,6 @@
         emit taskRuntimeModesChanged();
     }
     ```
-  - `managedRoles` / `externalRoles`:
-    ```cpp
-    QStringList SettingsStore::managedRoles() const
-    {
-        QStringList out;
-        for (const ConnectionRole role : connectionRoles) {
-            const QString name = connectionRoleName(role);
-            if (runtimeModeForRole(name) == QLatin1String(kModeManaged))
-                out << name;
-        }
-        return out;
-    }
-
-    QStringList SettingsStore::externalRoles() const
-    {
-        QStringList out;
-        for (const ConnectionRole role : connectionRoles) {
-            const QString name = connectionRoleName(role);
-            if (runtimeModeForRole(name) == QLatin1String(kModeExternal))
-                out << name;
-        }
-        return out;
-    }
-    ```
   - `isManagedRole`:
     ```cpp
     bool SettingsStore::isManagedRole(const QString &role) const
@@ -327,7 +339,7 @@
         return runtimeModeForRole(role) == QLatin1String(kModeManaged);
     }
     ```
-  - `setConnectionMode` — drop the URL stash/restore dance; the shared URL is always visible now:
+  - `setConnectionMode` — drop the URL stash/restore dance; the shared URL is always visible now. The global mode changes the tasks that follow it and **only** those: a task with its own key keeps its choice, because the key is an explicit choice:
     ```cpp
     void SettingsStore::setConnectionMode(const QString &mode)
     {
@@ -339,6 +351,16 @@
             return;
         m_settings.setValue(kConnectionMode, mode);
         emit connectionModeChanged();
+        // The tasks without a key of their own follow the global mode, and
+        // their effective mode changed with it.
+        bool followersChanged = false;
+        for (const ConnectionRole role : connectionRoles) {
+            const QString name = connectionRoleName(role);
+            if (m_settings.value(taskRuntimeModeKey(name)).toString().isEmpty())
+                followersChanged = true;
+        }
+        if (followersChanged)
+            emit taskRuntimeModesChanged();
     }
     ```
     `provider/lastExternalBaseUrl` stays in the settings file (old installs have it) but is no longer written or read.
