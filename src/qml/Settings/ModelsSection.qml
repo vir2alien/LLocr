@@ -18,13 +18,36 @@ Item {
     // that is the "Runtime" section.
     signal runtimeSectionRequested()
 
-    readonly property bool externalMode: Settings.connectionMode === "external"
+    // The split of the tasks: how many run on the local server and how many
+    // send their data to an external API.
+    property int managedCount: 0
+    property int externalCount: 0
+    property string externalTaskSummary: ""
+
+    // The counts follow the settings: the modes are written when the window
+    // is saved, and the table shows them right away.
+    function refreshRuntimeSummary() {
+        root.managedCount = Settings.managedRoles().length
+        root.externalCount = Settings.externalRoles().length
+        const titles = []
+        for (const role of Settings.externalRoles())
+            titles.push(RoleProfiles.title(role))
+        root.externalTaskSummary = titles.join(", ")
+    }
+
+    Connections {
+        target: Settings
+        function onTaskRuntimeModesChanged() { root.refreshRuntimeSummary() }
+    }
+
+    Component.onCompleted: root.refreshRuntimeSummary()
 
     function loadValues() {
         ModelInstaller.refreshInstalled()
         ModelInstaller.reloadPresets()
         ModelInstaller.rescanRegistry()
         taskTable.syncDraft()
+        root.refreshRuntimeSummary()
     }
 
     // False when the picks were not written: a launch parameter asked the
@@ -33,13 +56,11 @@ Item {
     function saveValues() {
         if (!taskTable.saveTabs())
             return false
-        if (root.externalMode) {
-            taskTable.applyExternalDraft()
-            return true
-        }
+        taskTable.applyRuntimeModes()
 
         const missing = ModelInstaller.applyTaskChoices(taskTable.buildChoices())
         taskTable.markDraftSaved()
+        root.refreshRuntimeSummary()
         if (missing.length === 0)
             return true
 
@@ -70,12 +91,33 @@ Item {
             width: parent.width
             spacing: Theme.spacing
 
+            LLOLabel {
+                Layout.fillWidth: true
+                font.pixelSize: Theme.footnoteSize
+                color: Theme.helpColor
+                text: qsTr("Local: %1 · External API: %2").arg(root.managedCount).arg(root.externalCount)
+            }
+
             TaskModelsTable {
                 id: taskTable
                 Layout.fillWidth: true
-                externalMode: root.externalMode
                 onEdited: root.edited()
                 onRuntimeSectionRequested: root.runtimeSectionRequested()
+            }
+
+            LLOLabel {
+                Layout.fillWidth: true
+                visible: root.externalCount > 0
+                wrapMode: Text.WordWrap
+                font.pixelSize: Theme.footnoteSize
+                color: Theme.helpColor
+                text: qsTr("External API will receive the data of these tasks: %1.").arg(root.externalTaskSummary)
+            }
+
+            LLOButton {
+                text: qsTr("Configure runtimes")
+                flat: true
+                onClicked: root.runtimeSectionRequested()
             }
 
             ColumnLayout {

@@ -21,6 +21,7 @@
 #include <QtTest>
 
 #include "config/SettingsStore.h"
+#include "core/ConnectionRole.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -217,6 +218,8 @@ private slots:
     void initTestCase();
     void theTableLoadsWithoutWarnings();
     void theTaskTextsKeepTheirTranslationContext();
+    void theTableShowsARuntimeColumnPerTask();
+    void theRuntimeColumnSwitchesTheTask();
     void anUnsavedModelNameSurvivesTheSync();
     void theCancelPathThrowsTheEditAway();
     void theSaveTabsWritesBothTabs();
@@ -228,8 +231,9 @@ private slots:
 
 private:
     void registerModuleTypes();
+    void useManagedTasks();
     std::unique_ptr<QObject> loadTable();
-    std::unique_ptr<QObject> loadTable(bool externalMode, QQuickItem *host);
+    std::unique_ptr<QObject> loadTable(QQuickItem *host);
     QVariant evaluate(QObject *scope, const QString &expression);
     QObject *draftEntry(QObject *table, const QString &task);
     QQuickItem *comboBox(QObject *table, const QString &textRole);
@@ -357,12 +361,12 @@ QObject *TestTaskModelsTableQml::draftEntry(QObject *table, const QString &task)
 
 std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable()
 {
-    return loadTable(true, nullptr);
+    return loadTable(nullptr);
 }
 
 // The table in a host of its own: the host gives the table the width of the
 // window it stands in, so the test measures the row as it is drawn.
-std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable(bool externalMode, QQuickItem *host)
+std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable(QQuickItem *host)
 {
     m_warnings.clear();
 
@@ -376,14 +380,11 @@ std::unique_ptr<QObject> TestTaskModelsTableQml::loadTable(bool externalMode, QQ
     std::unique_ptr<QObject> object(table.create());
     if (!object)
         m_warnings.append(table.errorString());
-    else {
-        object->setProperty("externalMode", externalMode);
-        if (host) {
-            if (auto *item = qobject_cast<QQuickItem *>(object.get())) {
-                item->setParentItem(host);
-                item->setWidth(host->width());
-                item->setHeight(host->height());
-            }
+    else if (host) {
+        if (auto *item = qobject_cast<QQuickItem *>(object.get())) {
+            item->setParentItem(host);
+            item->setWidth(host->width());
+            item->setHeight(host->height());
         }
     }
     return object;
@@ -465,6 +466,29 @@ void TestTaskModelsTableQml::theTaskTextsKeepTheirTranslationContext()
 
     QCOMPARE(title.toString(), QStringLiteral("Verification [RoleProfiles]"));
     QCOMPARE(hint.toString().contains(QStringLiteral("[RoleProfiles]")), true);
+}
+
+// Every task has a row of its own and a runtime of its own: the table asks
+// the settings for the mode of each task.
+void TestTaskModelsTableQml::theTableShowsARuntimeColumnPerTask()
+{
+    const std::unique_ptr<QObject> table = loadTable();
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCOMPARE(evaluate(table.get(), QStringLiteral("draft.length")).toInt(), 4);
+    for (const QString &role : connectionRoleIds()) {
+        const QString mode = evaluate(table.get(), QStringLiteral("runtimeModeForTask('%1')").arg(role)).toString();
+        QVERIFY2(!mode.isEmpty(), qPrintable(QStringLiteral("no runtime mode for %1").arg(role)));
+    }
+}
+
+// The switch of the row writes the mode of that task.
+void TestTaskModelsTableQml::theRuntimeColumnSwitchesTheTask()
+{
+    const std::unique_ptr<QObject> table = loadTable();
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    evaluate(table.get(), QStringLiteral("setRuntimeModeForTask('decision','managed')"));
+    QCoreApplication::processEvents();
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
 }
 
 void TestTaskModelsTableQml::anUnsavedModelNameSurvivesTheSync()
@@ -552,6 +576,8 @@ void TestTaskModelsTableQml::theSaveTabsAsksBeforeWritingTheLaunchDraft()
 // take the room of the rest of the row (ADR 317).
 void TestTaskModelsTableQml::theQuantizationFieldFitsTheQuantization()
 {
+    useManagedTasks();
+
     QQuickWindow window;
     window.resize(1040, 600);
     window.show();
@@ -559,7 +585,7 @@ void TestTaskModelsTableQml::theQuantizationFieldFitsTheQuantization()
     QQuickItem *host = new QQuickItem(window.contentItem());
     host->setSize(QSizeF(1040, 600));
 
-    const std::unique_ptr<QObject> table = loadTable(false, host);
+    const std::unique_ptr<QObject> table = loadTable(host);
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
     // The layout is applied in the polish: let it happen before the test
     // measures the row.
@@ -588,6 +614,8 @@ void TestTaskModelsTableQml::theQuantizationFieldFitsTheQuantization()
 // 360 cut the longest line in half (ADR 317).
 void TestTaskModelsTableQml::theQuantizationPopupIsAsWideAsItsWidestEntry()
 {
+    useManagedTasks();
+
     QQuickWindow window;
     window.resize(1040, 600);
     window.show();
@@ -595,7 +623,7 @@ void TestTaskModelsTableQml::theQuantizationPopupIsAsWideAsItsWidestEntry()
     QQuickItem *host = new QQuickItem(window.contentItem());
     host->setSize(QSizeF(1040, 600));
 
-    const std::unique_ptr<QObject> table = loadTable(false, host);
+    const std::unique_ptr<QObject> table = loadTable(host);
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QTest::qWait(20);
 
@@ -620,6 +648,8 @@ void TestTaskModelsTableQml::theQuantizationPopupIsAsWideAsItsWidestEntry()
 // and the field of a quantization must keep its width there too.
 void TestTaskModelsTableQml::theColumnsFitTheNarrowWindowOfTheWizard()
 {
+    useManagedTasks();
+
     QQuickWindow window;
     window.resize(760, 600);
     window.show();
@@ -627,7 +657,7 @@ void TestTaskModelsTableQml::theColumnsFitTheNarrowWindowOfTheWizard()
     QQuickItem *host = new QQuickItem(window.contentItem());
     host->setSize(QSizeF(720, 600));
 
-    const std::unique_ptr<QObject> table = loadTable(false, host);
+    const std::unique_ptr<QObject> table = loadTable(host);
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QTest::qWait(20);
 
@@ -645,6 +675,8 @@ void TestTaskModelsTableQml::theColumnsFitTheNarrowWindowOfTheWizard()
 // of that task, and the free space of the row lies to the right of it.
 void TestTaskModelsTableQml::theGearStandsNextToTheFields()
 {
+    useManagedTasks();
+
     QQuickWindow window;
     window.resize(1040, 600);
     window.show();
@@ -652,7 +684,7 @@ void TestTaskModelsTableQml::theGearStandsNextToTheFields()
     QQuickItem *host = new QQuickItem(window.contentItem());
     host->setSize(QSizeF(1040, 600));
 
-    const std::unique_ptr<QObject> table = loadTable(false, host);
+    const std::unique_ptr<QObject> table = loadTable(host);
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QTest::qWait(20);
 
@@ -672,6 +704,15 @@ void TestTaskModelsTableQml::theGearStandsNextToTheFields()
     // The free space is to the right of the gear, not between it and the
     // fields it belongs to.
     QVERIFY(host->width() - (gear->property("x").toDouble() + gear->property("width").toDouble()) > 100);
+}
+
+// The rows follow the runtime of each task: a managed task shows the
+// quantization column, an external one the alias. The width measurements
+// need the managed table.
+void TestTaskModelsTableQml::useManagedTasks()
+{
+    for (const QString &role : connectionRoleIds())
+        m_settings->setRuntimeModeForRole(role, QStringLiteral("managed"));
 }
 
 int main(int argc, char *argv[])

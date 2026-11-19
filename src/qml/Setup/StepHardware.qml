@@ -162,8 +162,10 @@ Item {
         TaskModelsTable {
             id: taskTable
             Layout.fillWidth: true
-            externalMode: false
             showGear: true
+            // The wizard has no runtime of its own: it picks the local model
+            // of every task, and the runtime is chosen in the settings.
+            showRuntimeColumn: false
             // The wizard has no runtime section to show: the button that
             // asks for one would lead nowhere.
             runtimeSectionAvailable: false

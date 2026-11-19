@@ -1875,6 +1875,21 @@
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
+    <message>
+        <location filename="../../src/qml/Settings/ModelsSection.qml" line="+98"/>
+        <source>Local: %1 · External API: %2</source>
+        <translation>Локально: %1 · Внешний API: %2</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>External API will receive the data of these tasks: %1.</source>
+        <translation>Внешний API получат данные задач: %1.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Configure runtimes</source>
+        <translation>Настроить рантаймы</translation>
+    </message>
 </context>
 <context>
     <name>OcrModel</name>
@@ -4325,6 +4340,29 @@
     </message>
 </context>
 <context>
+    <name>TaskConnectionTab</name>
+    <message>
+        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="+73"/>
+        <source>Model alias</source>
+        <translation>Псевдоним модели</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>the model id</source>
+        <translation>идентификатор модели</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>An empty endpoint and an empty key take the shared server from Settings → Runtime.</source>
+        <translation>Пустой эндпоинт и пустой ключ берут общий сервер из Настроек → Среда выполнения.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Endpoint and key</source>
+        <translation>Эндпоинт и ключ</translation>
+    </message>
+</context>
+<context>
     <name>TaskEndpointForm</name>
     <message>
         <location filename="../../src/qml/Settings/TaskEndpointForm.qml" line="+65"/>
@@ -4393,6 +4431,26 @@
         <location line="-20"/>
         <source>Close</source>
         <translation>Закрыть</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+327"/>
+        <source>Runtime</source>
+        <translation>Рантайм</translation>
+    </message>
+    <message>
+        <location line="+53"/>
+        <source>Managed</source>
+        <translation>Управляемый</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>External</source>
+        <translation>Внешний</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+303"/>
+        <source>Connection</source>
+        <translation>Подключение</translation>
     </message>
 </context>
 <context>

@@ -16,7 +16,9 @@ ApplicationWindow {
     title: qsTr("Settings")
     width: 1040
     height: 700
-    minimumWidth: 880
+    // The task table of the models section has a column for every task and
+    // for its runtime: the window must be wide enough to hold the whole row.
+    minimumWidth: 1000
     minimumHeight: 560
     modality: Qt.NonModal
 
