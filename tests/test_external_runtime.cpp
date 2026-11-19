@@ -230,9 +230,11 @@ private slots:
         QVERIFY(second.result().notes.text().contains(QStringLiteral("thinking")));
     }
 
-    // The log window shows the client's own trace in external mode and the
-    // server process's output in managed mode (ADR 228).
-    void theLogWindowShowsTheJournalInExternalMode()
+    // The log window shows both sources at once: the client's own trace
+    // (ADR 228) and the server process's output. The global mode does not
+    // choose between them any more — the journal is the client's trace
+    // whatever the runtime is.
+    void theLogWindowShowsBothSources()
     {
         SettingsStore settings;
         settings.setMode(ConnectionMode::External);
@@ -250,15 +252,18 @@ private slots:
         record.excerpt = QStringLiteral("OK");
         RequestJournal::instance().record(record);
 
-        QCOMPARE(log.lineCount(), 1);
-        const QString trace = log.serverLog();
+        QCOMPARE(log.journalLineCount(), 1);
+        const QString trace = log.journalLog();
         QVERIFY(trace.contains(QStringLiteral("d3-mini-oQ8e")));
         QVERIFY(trace.contains(QStringLiteral("HTTP 200")));
         QVERIFY(trace.contains(QStringLiteral("reply: OK")));
 
-        // The managed runtime shows the server process's output instead.
+        // The server process has not run: its own output stays empty.
+        QVERIFY(log.serverLog().isEmpty());
+
+        // The managed runtime keeps the journal and adds the server's output.
         settings.setMode(ConnectionMode::Managed);
-        QCOMPARE(log.lineCount(), 0);
+        QCOMPARE(log.journalLineCount(), 1);
         QVERIFY(log.serverLog().isEmpty());
     }
 };

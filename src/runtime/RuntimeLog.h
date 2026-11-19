@@ -23,12 +23,17 @@ class RuntimeLog : public QObject
     // singletons get their create() factories (stage 4).
 
     Q_PROPERTY(int lineCount READ lineCount NOTIFY serverLogChanged)
+    Q_PROPERTY(int journalLineCount READ journalLineCount NOTIFY serverLogChanged)
 
 public:
     explicit RuntimeLog(SettingsStore &settings, QObject *parent = nullptr);
 
-    QString serverLog() const;
+    // The server's own output. It exists only while the server runs, and it
+    // never stands for the journal: the window shows both.
+    Q_INVOKABLE QString serverLog() const;
+    Q_INVOKABLE QString journalLog() const;
     int lineCount() const;
+    Q_INVOKABLE int journalLineCount() const;
 
     Q_INVOKABLE QString serverLogPath() const;
     Q_INVOKABLE QString serverLogDir() const;
@@ -36,6 +41,7 @@ public:
     Q_INVOKABLE void clearServerLog();
     Q_INVOKABLE void openServerLogFolder();
     Q_INVOKABLE void attachLogView(QQuickTextDocument *view);
+    Q_INVOKABLE void attachJournalView(QQuickTextDocument *view);
     // The log window reports its visibility: while hidden the mirror stops
     // absorbing flushes, and showing it catches the document up in one
     // rebuild. The ring buffer and the log file run regardless.
@@ -49,10 +55,8 @@ signals:
 private:
     static constexpr int kMaxLines = 2000;
 
-    // The external runtime writes no log file of its own: the view shows the
-    // client's request journal instead of the server process's output.
-    bool externalMode() const;
     void flushToView();
+    void flushJournalToView();
 
     SettingsStore &m_settings;
     LlamaServerProcess *m_server = nullptr;
@@ -61,6 +65,7 @@ private:
     int m_pendingDropped = 0;
     bool m_viewVisible = false;
     LogDocumentSync m_sync;
+    LogDocumentSync m_journalSync;
 };
 
 }  // namespace llocr

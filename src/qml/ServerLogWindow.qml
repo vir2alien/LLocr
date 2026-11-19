@@ -9,14 +9,18 @@ import "Common"
 
 ApplicationWindow {
     id: root
-    // The managed runtime owns a server process whose output is the log; the
-    // external runtime writes nothing the app can read, so the window shows
-    // the client's own request journal.
-    readonly property bool externalMode: Settings.connectionMode !== "managed"
-    title: externalMode ? qsTr("Request log") : qsTr("llama-server log")
-    width: 640
-    height: 420
+    // The two sources of the runtime log: the server process writes the first
+    // one, the client's request journal writes the second. Both are shown, in
+    // every mode — the journal holds the requests to the local server and to
+    // the external endpoints alike.
+    title: qsTr("Runtime log")
+    width: 720
+    height: 560
     modality: Qt.NonModal
+
+    // A method call in a binding is evaluated once and never again, so the
+    // button follows the signal the log view sends instead of the path itself.
+    property bool serverLogFileExists: false
 
     function bringToFront() {
         if (visibility === Window.Minimized)
@@ -26,11 +30,24 @@ ApplicationWindow {
         requestActivate()
     }
 
+    Component.onCompleted: {
+        root.serverLogFileExists = RuntimeLog.serverLogPath().length > 0
+    }
+
     onVisibleChanged: {
         RuntimeLog.setLogViewVisible(visible)
         if (visible) {
             logScroll.autoScroll = true
             logScroll.scrollToBottom()
+            journalScroll.autoScroll = true
+            journalScroll.scrollToBottom()
+        }
+    }
+
+    Connections {
+        target: RuntimeLog
+        function onServerLogChanged() {
+            root.serverLogFileExists = RuntimeLog.serverLogPath().length > 0
         }
     }
 
@@ -67,7 +84,7 @@ ApplicationWindow {
                 onClicked: RuntimeLog.copyServerLog()
             }
             LLOButton {
-                visible: !root.externalMode
+                visible: root.serverLogFileExists
                 text: qsTr("Open directory")
                 onClicked: RuntimeLog.openServerLogFolder()
             }
@@ -80,75 +97,176 @@ ApplicationWindow {
                 text: qsTr("%n line(s)", "", RuntimeLog.lineCount)
                 color: Theme.textMuted
             }
+            LLOLabel {
+                text: qsTr("%n request(s)", "", RuntimeLog.journalLineCount)
+                color: Theme.textMuted
+            }
         }
     }
 
-    Rectangle {
+    ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
-        color: Theme.surfaceSunken
-        border.color: Theme.border
-        border.width: 1
-        radius: Theme.controlRadius
-    }
+        spacing: Theme.spacing
 
-    Flickable {
-        id: logScroll
-        anchors.fill: parent
-        anchors.margins: 10
-        clip: true
-        contentWidth: logArea.contentWidth
-        contentHeight: logArea.contentHeight
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredHeight: 1
+            spacing: Theme.spacingSmall
 
-        property bool autoScroll: true
+            LLOLabel {
+                text: qsTr("Server output")
+                color: Theme.textMuted
+            }
 
-        function isAtBottom() {
-            return contentHeight - height - contentY < 24
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: Theme.surfaceSunken
+                border.color: Theme.border
+                border.width: 1
+                radius: Theme.controlRadius
+
+                Flickable {
+                    id: logScroll
+                    anchors.fill: parent
+                    clip: true
+                    contentWidth: logArea.contentWidth
+                    contentHeight: logArea.contentHeight
+
+                    property bool autoScroll: true
+
+                    function isAtBottom() {
+                        return contentHeight - height - contentY < 24
+                    }
+
+                    function scrollToBottom() {
+                        Qt.callLater(function () {
+                            logScroll.contentY =
+                                Math.max(0, logScroll.contentHeight - logScroll.height)
+                        })
+                    }
+
+                    onContentYChanged: {
+                        if (dragging || moving)
+                            autoScroll = isAtBottom()
+                    }
+
+                    onContentHeightChanged: {
+                        if (autoScroll)
+                            scrollToBottom()
+                    }
+
+                    onHeightChanged: {
+                        if (autoScroll)
+                            scrollToBottom()
+                    }
+
+                    TextArea.flickable: TextArea {
+                        id: logArea
+                        readOnly: true
+                        wrapMode: TextEdit.NoWrap
+                        font.family: Theme.monoFamily
+                        font.pixelSize: Theme.captionSize
+                        font.preferShaping: false
+                        color: Theme.textPrimary
+                        selectByMouse: true
+
+                        Component.onCompleted: RuntimeLog.attachLogView(textDocument)
+                    }
+
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
+                }
+
+                LLOLabel {
+                    anchors.centerIn: parent
+                    visible: RuntimeLog.lineCount === 0
+                    text: qsTr("No log output yet.")
+                    color: Theme.textMuted
+                }
+            }
         }
 
-        function scrollToBottom() {
-            Qt.callLater(function () {
-                logScroll.contentY =
-                    Math.max(0, logScroll.contentHeight - logScroll.height)
-            })
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredHeight: 1
+            spacing: Theme.spacingSmall
+
+            LLOLabel {
+                text: qsTr("Request journal")
+                color: Theme.textMuted
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: Theme.surfaceSunken
+                border.color: Theme.border
+                border.width: 1
+                radius: Theme.controlRadius
+
+                Flickable {
+                    id: journalScroll
+                    anchors.fill: parent
+                    clip: true
+                    contentWidth: journalArea.contentWidth
+                    contentHeight: journalArea.contentHeight
+
+                    property bool autoScroll: true
+
+                    function isAtBottom() {
+                        return contentHeight - height - contentY < 24
+                    }
+
+                    function scrollToBottom() {
+                        Qt.callLater(function () {
+                            journalScroll.contentY =
+                                Math.max(0, journalScroll.contentHeight - journalScroll.height)
+                        })
+                    }
+
+                    onContentYChanged: {
+                        if (dragging || moving)
+                            autoScroll = isAtBottom()
+                    }
+
+                    onContentHeightChanged: {
+                        if (autoScroll)
+                            scrollToBottom()
+                    }
+
+                    onHeightChanged: {
+                        if (autoScroll)
+                            scrollToBottom()
+                    }
+
+                    TextArea.flickable: TextArea {
+                        id: journalArea
+                        readOnly: true
+                        wrapMode: TextEdit.NoWrap
+                        font.family: Theme.monoFamily
+                        font.pixelSize: Theme.captionSize
+                        font.preferShaping: false
+                        color: Theme.textPrimary
+                        selectByMouse: true
+
+                        Component.onCompleted: RuntimeLog.attachJournalView(textDocument)
+                    }
+
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
+                }
+
+                LLOLabel {
+                    anchors.centerIn: parent
+                    visible: RuntimeLog.journalLineCount === 0
+                    text: qsTr("No requests yet.")
+                    color: Theme.textMuted
+                }
+            }
         }
-
-        onContentYChanged: {
-            if (dragging || moving)
-                autoScroll = isAtBottom()
-        }
-
-        onContentHeightChanged: {
-            if (autoScroll)
-                scrollToBottom()
-        }
-
-        onHeightChanged: {
-            if (autoScroll)
-                scrollToBottom()
-        }
-
-        TextArea.flickable: TextArea {
-            id: logArea
-            readOnly: true
-            wrapMode: TextEdit.NoWrap
-            font.family: "monospace"
-            font.pixelSize: Theme.captionSize
-            font.preferShaping: false
-            color: Theme.textPrimary
-            selectByMouse: true
-
-            Component.onCompleted: RuntimeLog.attachLogView(textDocument)
-        }
-
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-        ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
-    }
-
-    LLOLabel {
-        anchors.centerIn: parent
-        visible: RuntimeLog.lineCount === 0
-        text: root.externalMode ? qsTr("No requests yet.") : qsTr("No log output yet.")
-        color: Theme.textMuted
     }
 }

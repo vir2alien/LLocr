@@ -19,14 +19,9 @@ RuntimeLog::RuntimeLog(SettingsStore &settings, QObject *parent) : QObject(paren
     m_flushTimer.setSingleShot(true);
     m_flushTimer.setInterval(200);
     connect(&m_flushTimer, &QTimer::timeout, this, [this]() { flushToView(); });
-    // The external runtime has no process to read a log from: its trace is
-    // the client's own journal, and it grows with every request.
-    connect(&RequestJournal::instance(), &RequestJournal::changed, this, [this]() { flushToView(); });
-}
-
-bool RuntimeLog::externalMode() const
-{
-    return m_settings.mode() == ConnectionMode::External;
+    // The journal holds the requests the client sent, to the local server and
+    // to the external endpoints alike.
+    connect(&RequestJournal::instance(), &RequestJournal::changed, this, [this]() { flushJournalToView(); });
 }
 
 void RuntimeLog::setServer(LlamaServerProcess *server)
@@ -65,22 +60,26 @@ void RuntimeLog::setServer(LlamaServerProcess *server)
 
 QString RuntimeLog::serverLog() const
 {
-    if (externalMode())
-        return RequestJournal::instance().lines().join(QLatin1Char('\n'));
     return m_lines.join(QLatin1Char('\n'));
+}
+
+QString RuntimeLog::journalLog() const
+{
+    return RequestJournal::instance().lines().join(QLatin1Char('\n'));
 }
 
 int RuntimeLog::lineCount() const
 {
-    if (externalMode())
-        return RequestJournal::instance().count();
     return m_lines.size();
+}
+
+int RuntimeLog::journalLineCount() const
+{
+    return RequestJournal::instance().count();
 }
 
 QString RuntimeLog::serverLogPath() const
 {
-    if (externalMode())
-        return QString();  // the client's journal lives in memory, not in a file
     return m_server ? m_server->logFilePath() : QString();
 }
 
@@ -97,22 +96,22 @@ QString RuntimeLog::serverLogDir() const
 
 void RuntimeLog::copyServerLog()
 {
-    QGuiApplication::clipboard()->setText(serverLog());
+    const QString server = serverLog();
+    const QString journal = journalLog();
+    const QString text = server.isEmpty() ? journal : (journal.isEmpty() ? server : server + QLatin1String("\n\n") + journal);
+    QGuiApplication::clipboard()->setText(text);
 }
 
 void RuntimeLog::clearServerLog()
 {
-    if (externalMode()) {
-        RequestJournal::instance().clear();
-        return;
-    }
+    RequestJournal::instance().clear();
     if (m_server) {
-        // The empty-line marker from clearLog() resets the mirror synchronously.
         m_server->clearLog();
+        m_lines.clear();
+        m_pendingDropped = 0;
+        flushToView();
         return;
     }
-    // No live process to emit the marker (stopped or external runtime) —
-    // reset the mirror directly or the window would keep the stale lines.
     m_lines.clear();
     m_pendingDropped = 0;
     m_flushTimer.stop();
@@ -132,6 +131,12 @@ void RuntimeLog::attachLogView(QQuickTextDocument *view)
     flushToView();
 }
 
+void RuntimeLog::attachJournalView(QQuickTextDocument *view)
+{
+    m_journalSync.attach(view ? view->textDocument() : nullptr);
+    flushJournalToView();
+}
+
 void RuntimeLog::setLogViewVisible(bool visible)
 {
     if (m_viewVisible == visible)
@@ -139,19 +144,25 @@ void RuntimeLog::setLogViewVisible(bool visible)
     m_viewVisible = visible;
     if (visible) {
         m_sync.setPaused(false);
+        m_journalSync.setPaused(false);
         flushToView();
+        flushJournalToView();
         return;
     }
     m_sync.setPaused(true);
+    m_journalSync.setPaused(true);
 }
 
 void RuntimeLog::flushToView()
 {
-    if (externalMode())
-        m_sync.apply(RequestJournal::instance().lines(), 0, QString());
-    else
-        m_sync.apply(m_lines, m_pendingDropped, QString());
+    m_sync.apply(m_lines, m_pendingDropped, QString());
     m_pendingDropped = 0;
+    emit serverLogChanged();
+}
+
+void RuntimeLog::flushJournalToView()
+{
+    m_journalSync.apply(RequestJournal::instance().lines(), 0, QString());
     emit serverLogChanged();
 }
 

@@ -1115,6 +1115,16 @@ target_link_libraries(test_log_document_sync PRIVATE
 )
 add_test(NAME test_log_document_sync COMMAND test_log_document_sync)
 
+# ---- The log window: the server output and the request journal -------------
+qt_add_executable(test_runtime_log test_runtime_log.cpp)
+
+target_link_libraries(test_runtime_log PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    llocr_runtime
+)
+add_test(NAME test_runtime_log COMMAND test_runtime_log)
+
 get_property(_llocr_all_tests DIRECTORY PROPERTY TESTS)
 foreach(_llocr_test IN LISTS _llocr_all_tests)
     get_property(_llocr_timeout TEST ${_llocr_test} PROPERTY TIMEOUT)
