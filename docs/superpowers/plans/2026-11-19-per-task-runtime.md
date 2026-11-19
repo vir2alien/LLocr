@@ -34,7 +34,6 @@
 
 **Created:**
 - `src/qml/Settings/TaskConnectionTab.qml` — the "Connection" tab of the task popup: endpoint, API key, model alias for one task. Replaces the per-task rows that leave the Runtime section.
-- `src/qml/Common/TaskRuntimeSelector.qml` — the per-row runtime switch («Управляемый | Внешний»). One control, two labels, used by the task table.
 
 **Modified:**
 - `src/config/SettingsStore.h` / `.cpp` — the per-task runtime mode key, its API, the migration, the reset.
@@ -920,7 +919,6 @@
 ### Task 4: The task table — a runtime column and a Connection tab
 
 **Files:**
-- Create: `src/qml/Common/TaskRuntimeSelector.qml`
 - Create: `src/qml/Settings/TaskConnectionTab.qml`
 - Modify: `src/qml/Common/TaskModelsTable.qml`
 - Modify: `src/qml/Settings/ModelsSection.qml`
@@ -929,14 +927,6 @@
 **Interfaces:**
 - Consumes: `Settings.runtimeModeForRole(role)`, `Settings.setRuntimeModeForRole(role, mode)`, `Settings.managedRoles()`, `Settings.externalRoles()`, `Settings.taskRoles` (all from Task 1), `Settings.modelNameForRole`, `Settings.baseUrlForRole`, `Settings.setBaseUrlForRole`, `Settings.apiKeySetForRole`, `Settings.setApiKeyForRole` (existing).
 - Produces:
-  ```qml
-  // Common/TaskRuntimeSelector.qml
-  Item {
-      property string task: ""
-      property string mode: "managed"     // the draft's mode for the task
-      signal modeChanged(string mode)
-  }
-  ```
   ```qml
   // Settings/TaskConnectionTab.qml
   Item {
@@ -1002,80 +992,52 @@
   Run: `ctest --test-dir build/win-msvc2022 -R test_task_models_table_qml --output-on-failure`.
   Expected: FAIL — `runtimeModeForTask` does not exist.
 
-- [ ] **Step 3: Create `src/qml/Common/TaskRuntimeSelector.qml`**
+- [ ] **Step 3: The runtime column uses the existing `SegmentedControl`**
 
-  The per-row switch: two labels, one of them pressed.
+  The app already has a switch of this kind — `src/qml/Common/SegmentedControl.qml`
+  draws a row of exclusive segments, is driven from the outside (`currentIndex`
+  bound, `activated(index)` reported) and is keyboard-navigable. The runtime
+  column is exactly that: two segments, «Управляемый» and «Внешний». No new
+  component is needed.
+
+  In the table's row:
 
   ```qml
-  pragma ComponentBehavior: Bound
-
-  import QtQuick
-  import QtQuick.Controls
-  import QtQuick.Layouts
-
-  import LLocr
-  import ".."
-
-  // The runtime of one task: the managed server or an external endpoint.
-  // The two labels are a switch, not a dropdown: the choice is one bit and
-  // both of its names belong on the screen.
-  Item {
-      id: root
-
-      property string mode: "managed"
-
-      signal activated(string mode)
-
-      implicitHeight: row.implicitHeight
-      implicitWidth: row.implicitWidth
-
-      RowLayout {
-          id: row
-
-          anchors.fill: parent
-          spacing: Theme.spacingSmall
-
-          Repeater {
-              model: [
-                  { key: "managed", title: qsTr("Управляемый") },
-                  { key: "external", title: qsTr("Внешний") }
-              ]
-
-              delegate: Rectangle {
-                  id: option
-
-                  required property var modelData
-
-                  readonly property bool selected: root.mode === option.modelData.key
-
-                  Layout.preferredHeight: Theme.controlHeight
-                  Layout.preferredWidth: optionText.implicitWidth + Theme.spacing * 2
-                  radius: Theme.controlRadius
-                  color: option.selected ? Theme.surfaceSunken : "transparent"
-                  border.color: option.selected ? Theme.accent : Theme.border
-                  border.width: 1
-
-                  LLOLabel {
-                      id: optionText
-
-                      anchors.centerIn: parent
-                      font.pixelSize: Theme.bodySmallSize
-                      color: option.selected ? Theme.textPrimary : Theme.textSecondary
-                      text: option.modelData.title
-                  }
-
-                  MouseArea {
-                      anchors.fill: parent
-                      cursorShape: Qt.PointingHandCursor
-                      onClicked: root.activated(option.modelData.key)
-                  }
-              }
-          }
+  SegmentedControl {
+      Layout.preferredWidth: table.runtimeColumnWidth
+      options: [
+          { label: qsTr("Управляемый") },
+          { label: qsTr("Внешний") }
+      ]
+      currentIndex: taskRow.entry.runtimeMode === "external" ? 1 : 0
+      onActivated: (index) => {
+          const mode = index === 1 ? "external" : "managed"
+          taskRow.entry.runtimeMode = mode
+          taskRow.entry.runtimeModeEdited = true
+          table.edited()
       }
   }
   ```
 
-  Sizes and fonts come from `Theme.*` (rule 6). The import of the theme is `import ".."` — check how the sibling components in `Common/` import the theme (read `Common/LLOButton.qml` and copy its import lines).
+  `SegmentedControl` never writes `currentIndex` itself, so the binding to the
+  draft entry survives the click and the Cancel path restores the saved mode.
+
+  The column width follows the existing columns' pattern:
+
+  ```qml
+  readonly property int runtimeColumnWidth: 200
+  ```
+
+  and the header row gets the label:
+
+  ```qml
+  LLOLabel {
+      Layout.preferredWidth: table.runtimeColumnWidth
+      font.pixelSize: Theme.footnoteSize
+      color: Theme.textMuted
+      text: qsTr("Рантайм")
+  }
+  ```
 
 - [ ] **Step 4: Create `src/qml/Settings/TaskConnectionTab.qml`**
 
@@ -1200,13 +1162,17 @@
     ```qml
     readonly property int runtimeColumnWidth: 200
     ```
-    The header row gets an `LLOLabel` with `text: qsTr("Рантайм")` at that width, and each row gets the selector:
+    The header row gets an `LLOLabel` with `text: qsTr("Рантайм")` at that width, and each row gets the `SegmentedControl` (see Step 3):
     ```qml
-    TaskRuntimeSelector {
+    SegmentedControl {
         Layout.preferredWidth: table.runtimeColumnWidth
-        mode: taskRow.entry.runtimeMode
-        onActivated: (mode) => {
-            taskRow.entry.runtimeMode = mode
+        options: [
+            { label: qsTr("Управляемый") },
+            { label: qsTr("Внешний") }
+        ]
+        currentIndex: taskRow.entry.runtimeMode === "external" ? 1 : 0
+        onActivated: (index) => {
+            taskRow.entry.runtimeMode = index === 1 ? "external" : "managed"
             taskRow.entry.runtimeModeEdited = true
             table.edited()
         }
@@ -1395,7 +1361,7 @@
 - [ ] **Step 8: Commit**
 
   ```bash
-  git add src/qml/Common/TaskRuntimeSelector.qml src/qml/Settings/TaskConnectionTab.qml src/qml/Common/TaskModelsTable.qml src/qml/Settings/ModelsSection.qml tests/test_task_models_table_qml.cpp
+  git add src/qml/Settings/TaskConnectionTab.qml src/qml/Common/TaskModelsTable.qml src/qml/Settings/ModelsSection.qml tests/test_task_models_table_qml.cpp
   git commit -m "feat(ui): the task table picks a runtime per task"
   ```
 
@@ -1761,7 +1727,7 @@
 - [ ] **Step 3: Run the full gate**
 
   Run: `scripts/check.sh` (configure → build → ctest → clang-format → qmllint).
-  Expected: everything green. The qmllint pass is the one that catches the new QML files: `TaskRuntimeSelector.qml` and `TaskConnectionTab.qml` must satisfy `.qmllint.ini`.
+  Expected: everything green. The qmllint pass is the one that catches the new QML file: `TaskConnectionTab.qml` must satisfy `.qmllint.ini`.
 
 - [ ] **Step 4: Commit any fixes the gate found**
 
