@@ -8,7 +8,6 @@
 #include "core/ConnectionConfig.h"
 #include "core/OcrResult.h"
 #include "models/OcrModel.h"
-#include "runtime/ConnectionMode.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/SelfTestController.h"
 
@@ -24,9 +23,9 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
     auto promise = std::make_shared<QFutureInterface<SelfTestResult>>();
     promise->reportStarted();
 
-    if (RuntimeController::modeFromSettings(m_settings) == ConnectionMode::External) {
+    if (m_settings.managedRoles().isEmpty()) {
         SelfTestResult r;
-        r.error = tr("Self-test is available only in Managed mode");
+        r.error = tr("Self-test is available only when a task uses the managed runtime");
         promise->reportResult(std::move(r));
         promise->reportFinished();
         return promise->future();
@@ -103,9 +102,9 @@ void SelfTestController::runSelfTestQml()
 {
     if (m_selftestRunning)
         return;
-    if (RuntimeController::modeFromSettings(m_settings) == ConnectionMode::External) {
+    if (m_settings.managedRoles().isEmpty()) {
         m_selftestOk = false;
-        m_selftestMessage = tr("Self-test is available only in Managed mode");
+        m_selftestMessage = tr("Self-test is available only when a task uses the managed runtime");
         m_selftestFailure = QString::fromLatin1(checkFailureKey(CheckFailure::Unknown));
         emit selftestFinished();
         return;

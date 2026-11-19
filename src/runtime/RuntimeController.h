@@ -99,6 +99,10 @@ public:
     // availability). The verdicts ride taskModelsChanged; the actions bind
     // them through the controller's availability flags.
     Q_INVOKABLE bool taskModelAvailable(const QString &task) const;
+    // Whether a task uses the local runtime, and which task starts the server
+    // when it is started by hand.
+    Q_INVOKABLE bool hasManagedTasks() const;
+    Q_INVOKABLE QString firstManagedRole() const;
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved);
@@ -118,6 +122,8 @@ public:
     void retranslate();
 
     static ConnectionMode modeFromSettings(const SettingsStore &settings);
+    // The mode of one task: managed or external.
+    static ConnectionMode modeForRole(const SettingsStore &settings, ConnectionRole role);
 
 private:
     struct PendingResolve;
@@ -140,6 +146,8 @@ private slots:
 private:
     QString roleModelPath(ConnectionRole role) const;
     QString roleMmprojPath(ConnectionRole role) const;
+    ConnectionMode modeForRole(ConnectionRole role) const;
+    bool managedModelPathValid() const;
     bool taskModelAvailable(ConnectionRole role) const;
     bool serverRunsRole(ConnectionRole role) const;
     QString roleConfigError(ConnectionRole role, CheckFailure *failure = nullptr) const;

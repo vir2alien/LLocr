@@ -271,10 +271,11 @@ void RuntimeController::recomputeConfigValid()
 {
     const QString program = m_settings.serverPath().trimmed();
     const bool serverOk = !program.isEmpty() && QFileInfo(program).isFile();
-    const QString model = m_settings.checkLaunchModelPath().trimmed();
-    const bool modelOk = !model.isEmpty() && QFileInfo(model).isFile();
+    const bool modelOk = managedModelPathValid();
 
-    const bool valid = serverOk && (modeFromSettings(m_settings) == ConnectionMode::External || modelOk);
+    // Without a managed task the local runtime is not used at all: neither the
+    // binary nor a model file is needed then.
+    const bool valid = !hasManagedTasks() || (serverOk && modelOk);
 
     const bool changed = valid != m_configValid || serverOk != m_serverPathValid || modelOk != m_modelPathValid;
     m_configValid = valid;
@@ -308,6 +309,45 @@ void RuntimeController::invalidateResolvedCache()
 ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings)
 {
     return settings.mode();
+}
+
+ConnectionMode RuntimeController::modeForRole(const SettingsStore &settings, ConnectionRole role)
+{
+    return settings.isManagedRole(connectionRoleName(role)) ? ConnectionMode::Managed : ConnectionMode::External;
+}
+
+ConnectionMode RuntimeController::modeForRole(ConnectionRole role) const
+{
+    return modeForRole(m_settings, role);
+}
+
+bool RuntimeController::hasManagedTasks() const
+{
+    return !m_settings.managedRoles().isEmpty();
+}
+
+QString RuntimeController::firstManagedRole() const
+{
+    const QStringList roles = m_settings.managedRoles();
+    return roles.isEmpty() ? QString() : roles.first();
+}
+
+// The models of the managed tasks: every one of them that is set must be on
+// disk, and the server needs at least one of them to run.
+bool RuntimeController::managedModelPathValid() const
+{
+    bool anyModel = false;
+    for (const ConnectionRole role : connectionRoles) {
+        if (modeForRole(role) != ConnectionMode::Managed)
+            continue;
+        const QString model = m_settings.launchModelPathForRole(connectionRoleName(role)).trimmed();
+        if (model.isEmpty())
+            continue;
+        if (!QFileInfo(model).isFile())
+            return false;
+        anyModel = true;
+    }
+    return anyModel;
 }
 
 QString RuntimeController::roleModelPath(ConnectionRole role) const
@@ -351,6 +391,11 @@ QString RuntimeController::roleConfigError(ConnectionRole role, CheckFailure *fa
             *failure = kind;
     };
 
+    // An external task has no local server to look for: the check of the
+    // server path below is the managed task's business alone.
+    if (modeForRole(role) != ConnectionMode::Managed)
+        return QString();
+
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty()) {
         note(CheckFailure::RuntimeMissing);
@@ -360,8 +405,6 @@ QString RuntimeController::roleConfigError(ConnectionRole role, CheckFailure *fa
         note(CheckFailure::RuntimeMissing);
         return tr("File not found: %1").arg(program);
     }
-    if (modeFromSettings(m_settings) != ConnectionMode::Managed)
-        return QString();
 
     const QString model = roleModelPath(role);
     if (const QString buildError = modelBuildError(role); !buildError.isEmpty())
@@ -445,7 +488,7 @@ bool RuntimeController::canRecognize(bool documentLoaded) const
 {
     if (!documentLoaded)
         return false;
-    if (modeFromSettings(m_settings) == ConnectionMode::External)
+    if (!hasManagedTasks())
         return true;
     if (m_state == RuntimeState::Ready)
         return true;
@@ -459,7 +502,7 @@ bool RuntimeController::taskModelAvailable(const QString &task) const
 
 bool RuntimeController::taskModelAvailable(ConnectionRole role) const
 {
-    if (modeFromSettings(m_settings) == ConnectionMode::Managed)
+    if (modeForRole(role) == ConnectionMode::Managed)
         return QFileInfo::exists(m_settings.launchModelPathForRole(connectionRoleName(role)));
     return !m_settings.modelNameForRole(connectionRoleName(role)).trimmed().isEmpty();
 }
@@ -554,7 +597,7 @@ void RuntimeController::ensureConnectionReady(ConnectionRole role, const std::fu
 
 void RuntimeController::ensureConnectionReady(QObject *context, ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved)
 {
-    if (modeFromSettings(m_settings) == ConnectionMode::External) {
+    if (modeForRole(role) == ConnectionMode::External) {
         resolveExternalReady(context, role, onResolved);
         return;
     }
@@ -894,7 +937,10 @@ QString RuntimeController::translateServerLine(const QString &line)
 
 QString RuntimeController::startServer()
 {
-    return startServer(ConnectionRole::BlockRecognition);
+    const QString role = firstManagedRole();
+    if (role.isEmpty())
+        return tr("No task uses the managed runtime");
+    return startServer(connectionRoleFromName(role));
 }
 
 QString RuntimeController::startServer(ConnectionRole role)
@@ -926,7 +972,7 @@ QString RuntimeController::startServer(ConnectionRole role)
                           .arg(launchHost),
                       CheckFailure::Unknown);
 
-    if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
+    if (modeForRole(role) == ConnectionMode::Managed) {
         CheckFailure configFailure = CheckFailure::Unknown;
         const QString roleError = roleConfigError(role, &configFailure);
         if (!roleError.isEmpty()) {
@@ -1076,7 +1122,7 @@ void RuntimeController::restartServer()
 
 QString RuntimeController::launchCommandPreview()
 {
-    if (modeFromSettings(m_settings) == ConnectionMode::External)
+    if (!hasManagedTasks())
         return QString();
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty())
@@ -1164,7 +1210,7 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, con
 
 void RuntimeController::cancelPendingStart()
 {
-    if (modeFromSettings(m_settings) != ConnectionMode::Managed)
+    if (!hasManagedTasks())
         return;
     if (!m_resolveInProgress && m_deferredResolves.empty())
         return;

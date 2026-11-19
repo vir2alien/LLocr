@@ -16,6 +16,7 @@
 #include "config/RequestProfileStore.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/ConnectionRole.h"
 #include "runtime/InstalledState.h"
 #include "runtime/LaunchProfileStore.h"
 #include "runtime/RuntimeController.h"
@@ -1533,6 +1534,10 @@ private slots:
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
         store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("gone.gguf")));
+        // The manual start serves the first managed task (the layout one), the
+        // recognition gate asks for the block-recognition one: both name the
+        // same stale path.
+        store.setLayoutLaunchModelPath(dir.filePath(QStringLiteral("gone.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1789,6 +1794,128 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(restarted == 1, 15000);
         QCOMPARE(runtime.state(), RuntimeState::Ready);
         QVERIFY(!runtime.launchConfigDirty());
+        runtime.stopServer();
+    }
+
+    // The runtime mode is read per task: the task's own choice decides the
+    // path it takes, and the global mode is only the default for the tasks
+    // that have no choice of their own.
+    void theTaskModeDecidesThePath()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        settings.setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
+        settings.setBaseUrl(QStringLiteral("http://shared:8080"));
+        settings.setModelNameForRole(QStringLiteral("blockRecognition"), QStringLiteral("ocr-model"));
+        settings.setDecisionModelName(QStringLiteral("decision-model"));
+
+        RuntimeController runtime(settings, launchProfiles);
+        QCOMPARE(runtime.taskModelAvailable(QStringLiteral("blockRecognition")), true);
+        QCOMPARE(runtime.taskModelAvailable(QStringLiteral("decision")), false);
+    }
+
+    void anExternalTaskDoesNotNeedTheLocalServer()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        settings.setModelNameForRole(QStringLiteral("blockRecognition"), QStringLiteral("ocr-model"));
+        // No server path at all: a managed task would be refused here.
+        settings.setServerPath(QString());
+
+        RuntimeController runtime(settings, launchProfiles);
+        QCOMPARE(runtime.taskModelAvailable(QStringLiteral("blockRecognition")), true);
+        QCOMPARE(runtime.configValid(), true);
+    }
+
+    void withoutAManagedTaskThereIsNoServerToStart()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        for (const QString &role : connectionRoleIds())
+            settings.setRuntimeModeForRole(role, QStringLiteral("external"));
+
+        RuntimeController runtime(settings, launchProfiles);
+        QCOMPARE(runtime.hasManagedTasks(), false);
+        QCOMPARE(runtime.firstManagedRole(), QString());
+        QVERIFY(runtime.launchCommandPreview().isEmpty());
+    }
+
+    void theFirstManagedRoleIsTheOneThatStartsTheServer()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setRuntimeModeForRole(QStringLiteral("layout"), QStringLiteral("managed"));
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        settings.setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("external"));
+        settings.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+
+        RuntimeController runtime(settings, launchProfiles);
+        QCOMPARE(runtime.hasManagedTasks(), true);
+        QCOMPARE(runtime.firstManagedRole(), QStringLiteral("layout"));
+    }
+
+    void switchingTheModeDropsTheResolvedConnection()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        settings.setBaseUrl(QStringLiteral("http://shared:8080"));
+        settings.setModelNameForRole(QStringLiteral("blockRecognition"), QStringLiteral("ocr-model"));
+
+        RuntimeController runtime(settings, launchProfiles);
+        QSignalSpy changedSpy(&settings, &SettingsStore::taskRuntimeModesChanged);
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("managed"));
+        QVERIFY(!changedSpy.isEmpty());
+        // The managed task now needs a model on disk.
+        QCOMPARE(runtime.taskModelAvailable(QStringLiteral("blockRecognition")), false);
+    }
+
+    // The cached connection of a task that changed its mode is dropped: the
+    // task must not keep answering from the endpoint of its old mode.
+    void theModeSwitchDropsTheCachedConnection()
+    {
+        QTemporaryDir dir;
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        int done = 0;
+        runtime.ensureConnectionReady([&done](const ResolvedConnection &) { ++done; });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+
+        store.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        store.setBaseUrl(QStringLiteral("http://external.example:9000"));
+
+        ResolvedConnection conn;
+        bool called = false;
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
+            conn = c;
+            called = true;
+        });
+        QVERIFY(!called);  // not served from the invalidated cache
+        QTRY_VERIFY_WITH_TIMEOUT(called, 15000);
+        QCOMPARE(conn.baseUrl, QStringLiteral("http://external.example:9000"));
+
         runtime.stopServer();
     }
 };
