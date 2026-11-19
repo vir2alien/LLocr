@@ -85,6 +85,16 @@ private:
     // Must precede any SettingsStore created by the tests (see the header).
     TestSettingsIsolation m_settingsIsolation;
 
+    // The settings file is shared by the whole test process. A test that
+    // reads the default state clears it first, so the order of the tests
+    // does not matter.
+    void clearSettings()
+    {
+        QSettings settings;
+        settings.clear();
+        settings.sync();
+    }
+
 private slots:
     void initTestCase()
     {
@@ -909,44 +919,67 @@ private slots:
     }
 
     // The runtime belongs to the task: every task reads its own mode, and
-    // the tasks that chose one are listed in the canonical order.
+    // the two lists partition the four tasks by their effective mode.
     void theRuntimeModeIsReadPerTask()
     {
+        clearSettings();
         SettingsStore store;
         store.setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
         store.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
         QCOMPARE(store.runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
         QCOMPARE(store.runtimeModeForRole(QStringLiteral("fix")), QStringLiteral("external"));
+        // The two lists partition the four tasks by their effective mode.
         QCOMPARE(store.managedRoles(), QStringList({QStringLiteral("decision")}));
-        QCOMPARE(store.externalRoles(), QStringList({QStringLiteral("fix")}));
+        QCOMPARE(store.externalRoles(), QStringList({QStringLiteral("layout"), QStringLiteral("blockRecognition"), QStringLiteral("fix")}));
     }
 
     // The global mode is the default of the tasks: a task without a mode of
     // its own follows it.
     void theGlobalModeBecomesThePerTaskMode()
     {
+        clearSettings();
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("managed"));
         QCOMPARE(store.runtimeModeForRole(QStringLiteral("blockRecognition")), QStringLiteral("managed"));
+        QCOMPARE(store.managedRoles().size(), 4);
+        QCOMPARE(store.externalRoles().size(), 0);
     }
 
-    // The migration runs once: the choice a task made survives the changes of
-    // the global mode.
-    void theMigrationIsIdempotent()
+    // The key of a task is an explicit choice: the global mode does not
+    // touch it.
+    void theChoiceOfATaskSurvivesTheChangeOfTheGlobalMode()
     {
+        clearSettings();
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
-        QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("managed"));
-        store.setRuntimeModeForRole(QStringLiteral("layout"), QStringLiteral("external"));
-        store.setConnectionMode(QStringLiteral("managed"));
+        store.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+        store.setConnectionMode(QStringLiteral("external"));
+        // The task chose for itself: the global mode does not touch it.
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("fix")), QStringLiteral("external"));
+        // The task that follows the global mode follows it.
         QCOMPARE(store.runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("external"));
+    }
+
+    // The file of an old install: the global mode and no task of its own.
+    void theOldInstallKeepsItsMode()
+    {
+        clearSettings();
+        QSettings raw;
+        raw.setValue(QLatin1String(SettingsStore::kSettingsSchemaVersion), SettingsStore::kCurrentSettingsSchemaVersion);
+        raw.setValue(QStringLiteral("provider/mode"), QStringLiteral("managed"));
+        raw.sync();
+
+        SettingsStore store;
+        for (const QString &role : connectionRoleIds())
+            QCOMPARE(store.runtimeModeForRole(role), QStringLiteral("managed"));
     }
 
     // The block recognition task keeps the check prefix of its settings
     // group: its mode lives under tasks/check/runtimeMode.
     void theBlockRecognitionTaskKeepsTheCheckPrefix()
     {
+        clearSettings();
         QSettings raw;
         raw.setValue(QLatin1String(SettingsStore::kSettingsSchemaVersion), SettingsStore::kCurrentSettingsSchemaVersion);
         raw.setValue(QStringLiteral("provider/mode"), QStringLiteral("managed"));
@@ -962,32 +995,70 @@ private slots:
 
     void allTheTasksGetTheModeAtOnce()
     {
+        clearSettings();
         SettingsStore store;
         store.setRuntimeModeForAllRoles(QStringLiteral("managed"));
         for (const QString &role : connectionRoleIds())
             QCOMPARE(store.runtimeModeForRole(role), QStringLiteral("managed"));
+        QCOMPARE(store.managedRoles().size(), 4);
     }
 
     // The per-task modes are part of the runtime: the reset of the runtime
     // takes them with it.
     void theRuntimeModeResetGoesWithTheRuntime()
     {
+        clearSettings();
         SettingsStore store;
         store.setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
         store.resetRuntimeDefaults();
         QCOMPARE(store.runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("external"));
+        // The key is gone: the task follows the global mode again.
+        QVERIFY(!store.contains(QStringLiteral("tasks/decision/runtimeMode")));
     }
 
     // The shared URL is always visible: the mode switch does not hide it any
     // more.
     void theSharedUrlSurvivesTheDefaultMode()
     {
+        clearSettings();
         SettingsStore store;
         store.setBaseUrl(QStringLiteral("http://my-server:8080"));
         store.setConnectionMode(QStringLiteral("managed"));
         QCOMPARE(store.baseUrl(), QStringLiteral("http://my-server:8080"));
         store.setConnectionMode(QStringLiteral("external"));
         QCOMPARE(store.baseUrl(), QStringLiteral("http://my-server:8080"));
+        // The mode switch does not stash the URL any more.
+        QVERIFY(!store.contains(QStringLiteral("provider/lastExternalBaseUrl")));
+    }
+
+    // A hand-edited file can hold a value that is neither managed nor
+    // external: the task falls back to the global mode and stays in one of
+    // the two lists.
+    void anUnknownStoredModeFallsBackToTheGlobalMode()
+    {
+        clearSettings();
+        QSettings raw;
+        raw.setValue(QLatin1String(SettingsStore::kSettingsSchemaVersion), SettingsStore::kCurrentSettingsSchemaVersion);
+        raw.setValue(QStringLiteral("provider/mode"), QStringLiteral("managed"));
+        raw.setValue(QStringLiteral("tasks/decision/runtimeMode"), QStringLiteral("nonsense"));
+        raw.sync();
+
+        SettingsStore store;
+        QCOMPARE(store.runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
+        QCOMPARE(store.managedRoles().size(), 4);
+        QCOMPARE(store.externalRoles().size(), 0);
+    }
+
+    // A task that does not exist has no mode to write.
+    void anUnknownTaskHasNoMode()
+    {
+        clearSettings();
+        SettingsStore store;
+        QTest::ignoreMessage(QtWarningMsg, "Ignoring unknown task bogus");
+        store.setRuntimeModeForRole(QStringLiteral("bogus"), QStringLiteral("managed"));
+        QVERIFY(!store.contains(QStringLiteral("tasks/bogus/runtimeMode")));
+        QCOMPARE(store.managedRoles().size(), 0);
+        QCOMPARE(store.externalRoles().size(), 4);
     }
 };
 

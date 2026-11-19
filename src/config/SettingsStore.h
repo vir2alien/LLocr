@@ -341,7 +341,8 @@ public:
     Q_INVOKABLE QString runtimeModeForRole(const QString &role) const;
     Q_INVOKABLE void setRuntimeModeForRole(const QString &role, const QString &mode);
     Q_INVOKABLE void setRuntimeModeForAllRoles(const QString &mode);
-    // The tasks that chose a mode of their own, in the canonical order.
+    // The tasks by their effective mode, in the canonical order: the two
+    // lists partition the four tasks.
     Q_INVOKABLE QStringList managedRoles() const;
     Q_INVOKABLE QStringList externalRoles() const;
     Q_INVOKABLE bool isManagedRole(const QString &role) const;
@@ -480,10 +481,7 @@ private:
     static QString taskBaseUrlKey(const QString &role);
     static QString taskSecretId(const QString &role);
     static QString taskRuntimeModeKey(const QString &role);
-
-    // Copies the stored global mode into the tasks that have none yet: the
-    // choice of an old install becomes the choice of every task.
-    void migrateRuntimeModes();
+    static bool isRuntimeMode(const QString &mode);
 
     bool m_lastKeyPersisted = true;
 

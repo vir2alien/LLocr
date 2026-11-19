@@ -161,28 +161,6 @@ SettingsStore::SettingsStore(QObject *parent) : QObject(parent)
     m_lastKeyPersisted = SecretStore::isAvailable();
     if (m_settings.value(kSettingsSchemaVersion).toInt() != kCurrentSettingsSchemaVersion)
         resetToDefaults();
-    migrateRuntimeModes();
-}
-
-// The global mode is the source of the migration: the tasks of an old
-// install get the mode the user chose for the app as a whole. A file
-// without a stored mode has no choice to spread — its tasks follow the
-// default.
-void SettingsStore::migrateRuntimeModes()
-{
-    if (!m_settings.contains(kConnectionMode))
-        return;
-    const QString mode = connectionMode();
-    bool changed = false;
-    for (const ConnectionRole role : connectionRoles) {
-        const QString key = taskRuntimeModeKey(connectionRoleName(role));
-        if (m_settings.contains(key))
-            continue;
-        m_settings.setValue(key, mode);
-        changed = true;
-    }
-    if (changed)
-        m_settings.sync();
 }
 
 void SettingsStore::setSecretNamespace(const QString &prefix)
@@ -213,6 +191,11 @@ QString SettingsStore::taskBaseUrlKey(const QString &role)
 QString SettingsStore::taskRuntimeModeKey(const QString &role)
 {
     return QStringLiteral("tasks/") + taskKeyName(role) + QStringLiteral("/runtimeMode");
+}
+
+bool SettingsStore::isRuntimeMode(const QString &mode)
+{
+    return mode == QLatin1String(kModeManaged) || mode == QLatin1String(kModeExternal);
 }
 
 QString SettingsStore::taskSecretId(const QString &role)
@@ -310,6 +293,9 @@ void SettingsStore::resetToDefaults()
             continue;
         QMetaObject::invokeMethod(this, signal.constData(), Qt::DirectConnection);
     }
+    // The per-task runtime modes are not in the table: the reset took them
+    // with it, and the tasks follow the global mode again.
+    emit taskRuntimeModesChanged();
 }
 
 void SettingsStore::resetGroup(const std::function<bool(const QString &)> &matches)
@@ -355,14 +341,14 @@ void SettingsStore::resetRuntimeDefaults()
                key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/fix/modelName");
     });
     // The per-task runtime modes are not in the defaults table: they go with
-    // the runtime and are removed one by one.
+    // the runtime and are removed one by one. Without a key of their own the
+    // tasks follow the global mode again.
     for (const ConnectionRole role : connectionRoles)
         m_settings.remove(taskRuntimeModeKey(connectionRoleName(role)));
     // The keys live in the system secret store, not in the settings: a reset
     // of the settings does not throw them away (ADR 297).
     m_settings.remove(QString::fromLatin1(kApiKey));
     clearTaskEndpoints();
-    migrateRuntimeModes();
     emit secretsChanged();
     emit taskRuntimeModesChanged();
 }
@@ -808,62 +794,66 @@ void SettingsStore::setMode(ConnectionMode mode)
 
 void SettingsStore::setConnectionMode(const QString &mode)
 {
-    if (mode != QLatin1String(kModeExternal) && mode != QLatin1String(kModeManaged)) {
+    if (!isRuntimeMode(mode)) {
         qWarning("Ignoring invalid connection mode %s", qPrintable(mode));
         return;
     }
-    const QString previous = connectionMode();
-    if (previous == mode)
+    if (connectionMode() == mode)
         return;
     m_settings.setValue(kConnectionMode, mode);
-    // The tasks that still follow the old default follow the new one; the
-    // ones the user chose for themselves keep their choice.
-    bool tasksChanged = false;
-    for (const ConnectionRole role : connectionRoles) {
-        const QString key = taskRuntimeModeKey(connectionRoleName(role));
-        const QString stored = m_settings.value(key).toString();
-        if (!stored.isEmpty() && stored != previous)
-            continue;
-        if (stored == mode)
-            continue;
-        m_settings.setValue(key, mode);
-        tasksChanged = true;
-    }
     emit connectionModeChanged();
-    if (tasksChanged)
+    // The tasks without a key of their own follow the global mode, and their
+    // effective mode changed with it.
+    bool followersChanged = false;
+    for (const ConnectionRole role : connectionRoles) {
+        const QString name = connectionRoleName(role);
+        if (!isRuntimeMode(m_settings.value(taskRuntimeModeKey(name)).toString()))
+            followersChanged = true;
+    }
+    if (followersChanged)
         emit taskRuntimeModesChanged();
 }
 
+// The effective mode of a task: its own key when it has one, the global mode
+// otherwise. The key is an explicit choice, so a task without a key follows
+// the global — that is the whole migration of an old install, and it cannot
+// overwrite a choice made later.
 QString SettingsStore::runtimeModeForRole(const QString &role) const
 {
     const QString stored = m_settings.value(taskRuntimeModeKey(role)).toString();
-    if (stored == QLatin1String(kModeManaged) || stored == QLatin1String(kModeExternal))
+    if (isRuntimeMode(stored))
         return stored;
     return connectionMode();
 }
 
 void SettingsStore::setRuntimeModeForRole(const QString &role, const QString &mode)
 {
-    if (mode != QLatin1String(kModeManaged) && mode != QLatin1String(kModeExternal)) {
+    if (!isRuntimeMode(mode)) {
         qWarning("Ignoring invalid runtime mode %s", qPrintable(mode));
+        return;
+    }
+    if (!connectionRoleIds().contains(role)) {
+        qWarning("Ignoring unknown task %s", qPrintable(role));
         return;
     }
     const QString key = taskRuntimeModeKey(role);
     if (m_settings.value(key).toString() == mode)
         return;
     m_settings.setValue(key, mode);
+    m_settings.sync();
     emit taskRuntimeModesChanged();
 }
 
 void SettingsStore::setRuntimeModeForAllRoles(const QString &mode)
 {
-    if (mode != QLatin1String(kModeManaged) && mode != QLatin1String(kModeExternal)) {
+    if (!isRuntimeMode(mode)) {
         qWarning("Ignoring invalid runtime mode %s", qPrintable(mode));
         return;
     }
     bool changed = false;
     for (const ConnectionRole role : connectionRoles) {
-        const QString key = taskRuntimeModeKey(connectionRoleName(role));
+        const QString name = connectionRoleName(role);
+        const QString key = taskRuntimeModeKey(name);
         if (m_settings.value(key).toString() == mode)
             continue;
         m_settings.setValue(key, mode);
@@ -880,7 +870,7 @@ QStringList SettingsStore::managedRoles() const
     QStringList out;
     for (const ConnectionRole role : connectionRoles) {
         const QString name = connectionRoleName(role);
-        if (m_settings.value(taskRuntimeModeKey(name)).toString() == QLatin1String(kModeManaged))
+        if (runtimeModeForRole(name) == QLatin1String(kModeManaged))
             out << name;
     }
     return out;
@@ -891,7 +881,7 @@ QStringList SettingsStore::externalRoles() const
     QStringList out;
     for (const ConnectionRole role : connectionRoles) {
         const QString name = connectionRoleName(role);
-        if (m_settings.value(taskRuntimeModeKey(name)).toString() == QLatin1String(kModeExternal))
+        if (runtimeModeForRole(name) == QLatin1String(kModeExternal))
             out << name;
     }
     return out;
