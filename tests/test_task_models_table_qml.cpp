@@ -242,6 +242,11 @@ private slots:
     void theColumnsFitTheSettingsWindow();
     void theRuntimeSwitchHasNoEmptyStripInsideIt();
     void theGearStandsNextToTheFields();
+    void theAliasSurvivesTheClosingOfThePopup();
+    void theAliasSurvivesTheReopeningOfThePopup();
+    void theAliasOfOneTaskSurvivesTheGearOfAnotherTask();
+    void theCancelPathThrowsTheAliasAway();
+    void theClickOutsideTheGearReachesTheButtonBelow();
 
 private:
     void registerModuleTypes();
@@ -255,6 +260,8 @@ private:
     QQuickItem *textField(QObject *scope, const QString &placeholder);
     QObject *taskSettingsPopup(QObject *table);
     QList<QQuickItem *> itemsByType(QQuickItem *root, const QString &typeName);
+    bool typeAliasInTheGear(QObject *table, QQuickWindow *window, const QString &task, const QString &alias);
+    QQuickItem *aliasFieldInTheGear(QObject *table, const QString &task);
 
     std::unique_ptr<FakeModelInstaller> m_modelInstaller;
     std::unique_ptr<FakeRuntime> m_runtime;
@@ -925,6 +932,77 @@ void TestTaskModelsTableQml::theGearStandsNextToTheFields()
     QVERIFY(host->width() - (gear->property("x").toDouble() + gear->property("width").toDouble()) > 100);
 }
 
+// The Cancel of the window throws the typed alias away: the draft belongs to
+// the window, and the window's Cancel is the way to drop a draft.
+void TestTaskModelsTableQml::theCancelPathThrowsTheAliasAway()
+{
+    m_settings->setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+    m_settings->setModelNameForRole(QStringLiteral("fix"), QStringLiteral("saved-alias"));
+
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    QVERIFY(typeAliasInTheGear(table.get(), &window, QStringLiteral("fix"), QStringLiteral("typed-alias")));
+    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("fix")), QStringLiteral("saved-alias"));
+
+    evaluate(table.get(), QStringLiteral("resetDraft()"));
+    QCoreApplication::processEvents();
+
+    // The settings never moved, and the draft is the saved one again.
+    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("fix")), QStringLiteral("saved-alias"));
+    QQuickItem *field = aliasFieldInTheGear(table.get(), QStringLiteral("fix"));
+    QVERIFY(field);
+    QCOMPARE(field->property("text").toString(), QStringLiteral("saved-alias"));
+}
+
+// The gear popup must not swallow the click that hits the window under it:// the Save of the window is the way the alias is written, and a click that
+// only closes the popup leaves the user with nothing saved.
+void TestTaskModelsTableQml::theClickOutsideTheGearReachesTheButtonBelow()
+{
+    m_settings->setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    // A button in the corner of the window, outside the popup.
+    QQmlComponent buttonComponent(m_engine.get(), QUrl::fromLocalFile(m_qmlRoot + QStringLiteral("/Common/LLOButton.qml")));
+    QObject *button = buttonComponent.create();
+    QVERIFY(button);
+    auto *buttonItem = qobject_cast<QQuickItem *>(button);
+    QVERIFY(buttonItem);
+    buttonItem->setParentItem(host);
+    buttonItem->setPosition(QPointF(10, 10));
+    buttonItem->setSize(QSizeF(120, 30));
+    QSignalSpy spy(button, SIGNAL(clicked()));
+
+    // The gear of the external task is open: the popup stands in the middle
+    // of the window, the button is in the corner.
+    evaluate(table.get(), QStringLiteral("openTaskSettings('fix')"));
+    QCoreApplication::processEvents();
+    QTest::qWait(20);
+
+    QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, QPoint(40, 20));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(spy.count(), 1);
+}
+
 // The rows follow the runtime of each task: a managed task shows the
 // quantization column, an external one the alias. The width measurements
 // need the managed table.
@@ -932,6 +1010,125 @@ void TestTaskModelsTableQml::useManagedTasks()
 {
     for (const QString &role : connectionRoleIds())
         m_settings->setRuntimeModeForRole(role, QStringLiteral("managed"));
+}
+
+// Opens the gear of a task and types an alias into its connection tab.
+bool TestTaskModelsTableQml::typeAliasInTheGear(QObject *table, QQuickWindow *window, const QString &task, const QString &alias)
+{
+    QQuickItem *field = aliasFieldInTheGear(table, task);
+    if (!field)
+        return false;
+    field->setProperty("text", QString());
+    field->forceActiveFocus();
+    typeText(window, alias);
+    QCoreApplication::processEvents();
+    return true;
+}
+
+// Opens the gear of a task and returns the field of its alias.
+QQuickItem *TestTaskModelsTableQml::aliasFieldInTheGear(QObject *table, const QString &task)
+{
+    evaluate(table, QStringLiteral("openTaskSettings('%1')").arg(task));
+    QCoreApplication::processEvents();
+    QTest::qWait(20);
+
+    QObject *popup = taskSettingsPopup(table);
+    if (!popup)
+        return nullptr;
+    QQuickItem *content = qobject_cast<QQuickItem *>(popup->property("contentItem").value<QObject *>());
+    if (!content)
+        return nullptr;
+    return textField(content, QStringLiteral("the model id"));
+}
+
+// The alias of an external task is written when the window is saved: closing
+// the gear popup is not a cancel, the typed alias must still be there.
+void TestTaskModelsTableQml::theAliasSurvivesTheClosingOfThePopup()
+{
+    m_settings->setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+    m_settings->setModelNameForRole(QStringLiteral("fix"), QString());
+
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    QVERIFY(typeAliasInTheGear(table.get(), &window, QStringLiteral("fix"), QStringLiteral("typed-alias")));
+
+    QObject *popup = taskSettingsPopup(table.get());
+    QVERIFY(popup);
+    QVERIFY(QMetaObject::invokeMethod(popup, "close"));
+    QCoreApplication::processEvents();
+
+    QVariant result;
+    QVERIFY(QMetaObject::invokeMethod(table.get(), "saveTabs", Q_RETURN_ARG(QVariant, result)));
+    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("fix")), QStringLiteral("typed-alias"));
+}
+
+// The gear popup is a draft of the window: reopening it must show what the
+// user typed, not the empty field of the settings.
+void TestTaskModelsTableQml::theAliasSurvivesTheReopeningOfThePopup()
+{
+    m_settings->setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+    m_settings->setModelNameForRole(QStringLiteral("fix"), QString());
+
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    QVERIFY(typeAliasInTheGear(table.get(), &window, QStringLiteral("fix"), QStringLiteral("typed-alias")));
+
+    QObject *popup = taskSettingsPopup(table.get());
+    QVERIFY(popup);
+    QVERIFY(QMetaObject::invokeMethod(popup, "close"));
+    QCoreApplication::processEvents();
+
+    // The gear opens again: the typed alias is still the draft.
+    QQuickItem *field = aliasFieldInTheGear(table.get(), QStringLiteral("fix"));
+    QVERIFY(field);
+    QCOMPARE(field->property("text").toString(), QStringLiteral("typed-alias"));
+}
+
+// Every task has an alias of its own: the gear of one task must not throw
+// the alias of another one away.
+void TestTaskModelsTableQml::theAliasOfOneTaskSurvivesTheGearOfAnotherTask()
+{
+    m_settings->setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+    m_settings->setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("external"));
+    m_settings->setModelNameForRole(QStringLiteral("fix"), QString());
+    m_settings->setModelNameForRole(QStringLiteral("decision"), QString());
+
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    QVERIFY(typeAliasInTheGear(table.get(), &window, QStringLiteral("fix"), QStringLiteral("fix-alias")));
+    QVERIFY(typeAliasInTheGear(table.get(), &window, QStringLiteral("decision"), QStringLiteral("decision-alias")));
+
+    QVariant result;
+    QVERIFY(QMetaObject::invokeMethod(table.get(), "saveTabs", Q_RETURN_ARG(QVariant, result)));
+    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("fix")), QStringLiteral("fix-alias"));
+    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("decision")), QStringLiteral("decision-alias"));
 }
 
 int main(int argc, char *argv[])

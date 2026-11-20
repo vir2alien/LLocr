@@ -556,7 +556,9 @@ appendix at the end of this file.
   «External server» tab of the runtime settings; the «Models» window shows it
   read-only. (Amended by ADR 318: the one place is the «Подключение» tab of
   the task's gear popup, and which task runs externally is the task's own
-  choice.)
+  choice.) (Amended 2026-11-20: the edit is a draft of the window (ADR 297),
+  not of the popup — closing the gear popup and opening the gear of another
+  task keep it, and the window's Save writes it.)
 - **228.** The external server keeps no process log, so the client keeps the
   trace: `RequestJournal` (in `llocr_core`) writes one record per HTTP call —
   address, model, request/response sizes, HTTP status, timing, response head —

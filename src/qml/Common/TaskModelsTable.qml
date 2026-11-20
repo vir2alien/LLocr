@@ -73,6 +73,10 @@ Item {
             property string key: ""
             property string quantId: ""
             property string modelName: ""
+            // The connection of an external task: the alias of the model on
+            // the other server, the endpoint of that server and its key.
+            property string endpoint: ""
+            property string apiKey: ""
             // The runtime of the task: managed (the local llama-server) or
             // external (its own endpoint).
             property string runtimeMode: "managed"
@@ -81,6 +85,8 @@ Item {
             property bool keyEdited: false
             property bool quantEdited: false
             property bool nameEdited: false
+            property bool endpointEdited: false
+            property bool apiKeyEdited: false
             property bool runtimeModeEdited: false
         }
     }
@@ -177,8 +183,11 @@ Item {
             const existing = table.draftEntry(task)
             const entry = existing ? existing : draftEntryComponent.createObject(table)
             entry.task = task
-            if (!existing)
+            if (!existing) {
                 entry.runtimeMode = table.savedRuntimeMode(task)
+                entry.modelName = Settings.modelNameForRole(task)
+                entry.endpoint = Settings.baseUrlForRole(task)
+            }
             list.push(entry)
         }
         table.draft = list
@@ -201,6 +210,8 @@ Item {
                 entry.quantId = table.draftQuantId(task, entry.key)
             if (!entry.nameEdited)
                 entry.modelName = Settings.modelNameForRole(task)
+            if (!entry.endpointEdited)
+                entry.endpoint = Settings.baseUrlForRole(task)
         }
     }
 
@@ -208,7 +219,6 @@ Item {
     // button of the models window).
     function resetDraft() {
         table.ensureDraft()
-        connectionTab.resetValues()
         for (const task of table.taskIds) {
             const entry = table.draftEntry(task)
             if (!entry)
@@ -216,12 +226,17 @@ Item {
             entry.keyEdited = false
             entry.quantEdited = false
             entry.nameEdited = false
+            entry.endpointEdited = false
+            entry.apiKeyEdited = false
             entry.runtimeModeEdited = false
             entry.runtimeMode = table.savedRuntimeMode(task)
             entry.key = RoleProfiles.requestProfileId(task)
             entry.quantId = table.draftQuantId(task, entry.key)
             entry.modelName = Settings.modelNameForRole(task)
+            entry.endpoint = Settings.baseUrlForRole(task)
+            entry.apiKey = ""
         }
+        connectionTab.resetValues()
     }
 
     // The picks are in the settings now: the next sync may refresh them from
@@ -234,6 +249,8 @@ Item {
             entry.keyEdited = false
             entry.quantEdited = false
             entry.nameEdited = false
+            entry.endpointEdited = false
+            entry.apiKeyEdited = false
             entry.runtimeModeEdited = false
         }
     }
@@ -276,12 +293,30 @@ Item {
         Settings.forceSave()
     }
 
+    // The connection of every task: the alias, the endpoint and the key the
+    // user typed in the gear popup. The drafts belong to the window, so the
+    // window's Save writes them and its Cancel throws them away.
+    function applyConnectionDrafts() {
+        for (const task of table.taskIds) {
+            const entry = table.draftEntry(task)
+            if (!entry)
+                continue
+            if (entry.nameEdited)
+                Settings.setModelNameForRole(task, entry.modelName)
+            if (entry.endpointEdited)
+                Settings.setBaseUrlForRole(task, entry.endpoint)
+            if (entry.apiKeyEdited)
+                Settings.setApiKeyForRole(task, entry.apiKey)
+        }
+    }
+
     // All three tabs are written, and the answer tells the host whether they
     // were: a tab that asks the user a question first has written nothing.
     function saveTabs() {
         const launchSaved = launchTab.saveValues()
         const requestSaved = requestTab.saveValues()
         connectionTab.saveValues()
+        table.applyConnectionDrafts()
         for (const task of table.taskIds) {
             const entry = table.draftEntry(task)
             if (entry)
@@ -761,6 +796,7 @@ Item {
                 TaskConnectionTab {
                     id: connectionTab
                     task: taskSettingsPopup.task
+                    hostTable: table
                     onEdited: table.edited()
                 }
             }
