@@ -1191,8 +1191,8 @@ void TestSettingsWindowQml::theCloseConfirmDialogSaysWhatItsButtonsDo()
 
     QObject *dialog = evaluate(window.get(), QStringLiteral("closeConfirmDialog")).value<QObject *>();
     QVERIFY2(dialog, qPrintable(m_warnings.join(QStringLiteral("; "))));
-    QCOMPARE(evaluate(dialog, QStringLiteral("footer.cancelText")).toString(), QStringLiteral("Continue"));
-    QCOMPARE(evaluate(dialog, QStringLiteral("footer.acceptText")).toString(), QStringLiteral("Don't save"));
+    QCOMPARE(evaluate(dialog, QStringLiteral("footer.cancelText")).toString(), QStringLiteral("Go back"));
+    QCOMPARE(evaluate(dialog, QStringLiteral("footer.acceptText")).toString(), QStringLiteral("Close"));
 }
 
 void TestSettingsWindowQml::theValuesAreReadOncePerSession()

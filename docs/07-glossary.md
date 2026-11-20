@@ -2103,7 +2103,7 @@ appendix at the end of this file.
   action with the accent on the right, the order of the window footers). The
   dialog wears the theme as well (`Theme.surface`, `Theme.dialogRadius`,
   `Theme.border`), so the pair does not stand on a light box in the dark
-  theme. The button of a dialog says what it does («Не сохранять»,
+  theme. The button of a dialog says what it does («Вернуться», «Закрыть»,
   «Сбросить», «Продолжить») and never «Да» or «OK».
 - **321.** The columns of the task table have a width of their own. The name
   of a model gets exactly the room it needs and no more (260 px, 140 px at

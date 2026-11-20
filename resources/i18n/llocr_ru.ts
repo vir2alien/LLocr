@@ -3990,14 +3990,14 @@
         <translation>Есть несохранённые изменения. Они будут потеряны, и запустится мастер настройки.</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <source>Don&apos;t save</source>
-        <translation>Не сохранять</translation>
+        <location filename="../../src/qml/Settings/SettingsWindow.qml" line="328"/>
+        <source>Close</source>
+        <translation>Закрыть</translation>
     </message>
     <message>
         <location filename="../../src/qml/Settings/SettingsWindow.qml" line="327"/>
-        <source>Continue</source>
-        <translation>Продолжить</translation>
+        <source>Go back</source>
+        <translation>Вернуться</translation>
     </message>
 </context>
 <context>

@@ -324,8 +324,8 @@ ApplicationWindow {
             // The button names what it does (ADR 316): "Cancel" would say
             // nothing and would collide with the "Cancel" of the window's
             // footer, which drops the changes instead of keeping them.
-            cancelText: qsTr("Continue")
-            acceptText: qsTr("Don't save")
+            cancelText: qsTr("Go back")
+            acceptText: qsTr("Close")
             onAccepted: closeConfirmDialog.accept()
             onRejected: closeConfirmDialog.reject()
         }
