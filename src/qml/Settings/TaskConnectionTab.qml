@@ -16,9 +16,6 @@ ColumnLayout {
 
     // The user changed a value of the connection.
     signal edited()
-    // The form's own close button: the tab has no popup of its own, the
-    // popup of the task closes.
-    signal closeRequested()
 
     spacing: Theme.spacingSmall
 
@@ -105,6 +102,5 @@ ColumnLayout {
             root.keyEdited = keyIsEdited
             root.edited()
         }
-        onCloseRequested: root.closeRequested()
     }
 }

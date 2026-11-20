@@ -24,7 +24,6 @@ ColumnLayout {
     property bool localReveal: false
 
     signal edited(string endpoint, string key, bool keyEdited)
-    signal closeRequested()
 
     spacing: Theme.spacingSmall
 
@@ -56,26 +55,6 @@ ColumnLayout {
             font.bold: true
             color: Theme.textPrimary
             elide: Text.ElideRight
-        }
-        ToolButton {
-            implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
-            implicitHeight: topPadding + bottomPadding + contentItem.implicitHeight
-            onClicked: form.closeRequested()
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Close")
-
-            contentItem: Item {
-                implicitWidth: closeIcon.size
-                implicitHeight: closeIcon.size
-
-                Icon {
-                    id: closeIcon
-                    anchors.centerIn: parent
-                    name: "x"
-                    size: Theme.iconSizeMedium
-                    color: Theme.textSecondary
-                }
-            }
         }
     }
 

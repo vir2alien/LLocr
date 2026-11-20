@@ -44,7 +44,10 @@ Item {
     // the model name must not push the quantization out of sight, and the
     // gear must stand next to the fields it belongs to (ADR 321).
     readonly property int taskColumnWidth: 140
-    readonly property int runtimeColumnWidth: 200
+    // The runtime column takes the width of the toggle itself: a switch
+    // stretched to a fixed width would keep an empty strip inside its frame,
+    // with the selected segment's edge floating in it.
+    readonly property int runtimeColumnWidth: Math.ceil(runtimeToggleProbe.implicitWidth)
     readonly property int quantColumnWidth: 150
     readonly property int nameColumnWidth: 150
     readonly property int gearColumnWidth: 36
@@ -336,6 +339,21 @@ Item {
         font: Theme.button
     }
 
+    // The segments of the runtime toggle: the switch of the row and the probe
+    // that measures it carry the same ones.
+    readonly property var runtimeOptions: [
+        { label: qsTr("Managed") },
+        { label: qsTr("External") }
+    ]
+
+    // The toggle of the row, measured once: the column and its header take
+    // its width, whatever the labels measure in the current language.
+    SegmentedControl {
+        id: runtimeToggleProbe
+        visible: false
+        options: table.runtimeOptions
+    }
+
     // The entries exist before the rows are built: the rows are the entries.
     Component.onCompleted: {
         table.ensureDraft()
@@ -411,10 +429,7 @@ Item {
                     Layout.minimumWidth: table.runtimeColumnWidth
                     implicitHeight: Theme.controlHeight
                     visible: table.showRuntimeColumn
-                    options: [
-                        { label: qsTr("Managed") },
-                        { label: qsTr("External") }
-                    ]
+                    options: table.runtimeOptions
                     currentIndex: taskRow.external ? 1 : 0
                     onActivated: (index) => {
                         taskRow.entry.runtimeMode = index === 1 ? "external" : "managed"
@@ -747,7 +762,6 @@ Item {
                     id: connectionTab
                     task: taskSettingsPopup.task
                     onEdited: table.edited()
-                    onCloseRequested: taskSettingsPopup.close()
                 }
             }
         }

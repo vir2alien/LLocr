@@ -240,6 +240,7 @@ private slots:
     void theQuantizationPopupIsAsWideAsItsWidestEntry();
     void theColumnsFitTheNarrowWindowOfTheWizard();
     void theColumnsFitTheSettingsWindow();
+    void theRuntimeSwitchHasNoEmptyStripInsideIt();
     void theGearStandsNextToTheFields();
 
 private:
@@ -848,9 +849,45 @@ void TestTaskModelsTableQml::theColumnsFitTheSettingsWindow()
     auto *root = qobject_cast<QQuickItem *>(table.get());
     QVERIFY(root);
     const QList<QQuickItem *> switches = itemsByType(root, QStringLiteral("SegmentedControl"));
-    QCOMPARE(switches.size(), 4);
-    for (QQuickItem *control : switches)
+    // The probe that measures the switch is invisible and is not a row.
+    int visibleSwitches = 0;
+    for (QQuickItem *control : switches) {
+        if (!control->isVisible())
+            continue;
+        ++visibleSwitches;
         QCOMPARE(control->property("height").toDouble(), 28.0);
+    }
+    QCOMPARE(visibleSwitches, 4);
+}
+
+// The switch of the runtime is as wide as its segments: a switch wider than
+// its content keeps an empty strip inside its frame, with the selected
+// segment's edge floating in it.
+void TestTaskModelsTableQml::theRuntimeSwitchHasNoEmptyStripInsideIt()
+{
+    useManagedTasks();
+
+    QQuickWindow window;
+    window.resize(1040, 600);
+    window.show();
+
+    QQuickItem *host = new QQuickItem(window.contentItem());
+    host->setSize(QSizeF(1040, 600));
+
+    const std::unique_ptr<QObject> table = loadTable(host);
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QTest::qWait(20);
+
+    auto *root = qobject_cast<QQuickItem *>(table.get());
+    QVERIFY(root);
+    int checked = 0;
+    for (QQuickItem *control : itemsByType(root, QStringLiteral("SegmentedControl"))) {
+        if (!control->isVisible())
+            continue;
+        ++checked;
+        QVERIFY2(control->width() <= control->implicitWidth() + 1.0, "the switch is wider than its segments: an empty strip shows inside its frame");
+    }
+    QCOMPARE(checked, 4);
 }
 
 // The gear opens the settings of its own task: it stands next to the fields

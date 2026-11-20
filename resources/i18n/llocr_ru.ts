@@ -4372,7 +4372,7 @@
     <message>
         <location filename="../../src/qml/Settings/TaskEndpointForm.qml" line="+65"/>
         <source>Close</source>
-        <translation>Закрыть</translation>
+        <translation type="vanished">Закрыть</translation>
     </message>
     <message>
         <location line="+18"/>

@@ -67,6 +67,7 @@ private slots:
     void theKeyGoesToTheSecretStore();
     void theStoredKeyIsNeverShownBack();
     void theTaskEndpointWarnsAboutPlaintextKey();
+    void theTabHasNoCloseButton();
 
 private:
     void registerModuleTypes();
@@ -459,6 +460,19 @@ void TestTaskConnectionTabQml::theTaskEndpointWarnsAboutPlaintextKey()
     typeText(m_window.get(), QStringLiteral("http://localhost:8080"));
     QCoreApplication::processEvents();
     QCOMPARE(warning->property("visible").toBool(), false);
+}
+
+// The tab carries no close button of its own: the popup that holds it has
+// one, and a second one in the tab only asks where to close.
+void TestTaskConnectionTabQml::theTabHasNoCloseButton()
+{
+    const std::unique_ptr<QObject> tab = loadTab(m_task);
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    auto *root = qobject_cast<QQuickItem *>(tab.get());
+    QVERIFY(root);
+    QVERIFY2(itemsByType(root, QStringLiteral("ToolButton")).isEmpty(), "the connection tab must not carry a close button");
 }
 
 int main(int argc, char *argv[])
