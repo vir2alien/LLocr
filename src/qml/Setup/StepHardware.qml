@@ -163,8 +163,9 @@ Item {
             id: taskTable
             Layout.fillWidth: true
             showGear: true
-            // The wizard has no runtime of its own: it picks the local model
-            // of every task, and the runtime is chosen in the settings.
+            // The narrow window of the wizard has no room for the runtime
+            // column: the rows follow the runtime the wizard chose for
+            // every task.
             showRuntimeColumn: false
             // The wizard has no runtime section to show: the button that
             // asks for one would lead nowhere.

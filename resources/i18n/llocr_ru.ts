@@ -1101,14 +1101,27 @@
         <translation>Запустить сервер</translation>
     </message>
     <message>
-        <location line="+39"/>
         <source>Server log — click to open. %1</source>
-        <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
+        <translation type="vanished">Журнал сервера — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location line="-1"/>
         <source>Request log — click to open. %1</source>
-        <translation>Журнал запросов — нажмите, чтобы открыть. %1</translation>
+        <translation type="vanished">Журнал запросов — нажмите, чтобы открыть. %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Footer.qml" line="103"/>
+        <source>Start the managed llama-server with the model of the %1 task.</source>
+        <translation>Запустить локальный llama-server с моделью задачи «%1».</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Footer.qml" line="390"/>
+        <source>Runtime log — click to open. %1</source>
+        <translation>Журнал работы — нажмите, чтобы открыть. %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/MainWindow/Footer.qml" line="118"/>
+        <source>Mixed</source>
+        <translation>Смешанный</translation>
     </message>
     <message>
         <location line="-291"/>
@@ -1126,9 +1139,8 @@
         <translation>Локальный сервер настроен не полностью — откройте Настройки → Рантайм.</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Start the managed llama-server with the selected model.</source>
-        <translation>Запустить локальный llama-server с выбранной моделью.</translation>
+        <translation type="vanished">Запустить локальный llama-server с выбранной моделью.</translation>
     </message>
     <message>
         <location line="+14"/>
@@ -4325,23 +4337,6 @@
         <location line="+1"/>
         <source>Point to an existing OpenAI-compatible endpoint.</source>
         <translation>Укажите существующий OpenAI-совместимый endpoint.</translation>
-    </message>
-</context>
-<context>
-    <name>TaskConnectionRow</name>
-    <message>
-        <source>The key will be sent in plain text (http outside the local machine).</source>
-        <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/Settings/TaskConnectionRow.qml" line="+102"/>
-        <source>the model id</source>
-        <translation>идентификатор модели</translation>
-    </message>
-    <message>
-        <location line="+14"/>
-        <source>Endpoint and key</source>
-        <translation>Эндпоинт и ключ</translation>
     </message>
 </context>
 <context>

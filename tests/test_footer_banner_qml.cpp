@@ -17,6 +17,7 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQmlError>
+#include <QQmlExpression>
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
@@ -151,30 +152,65 @@ public:
     BusyState busyState() const { return Idle; }
     QString statusMessage() const { return QString(); }
     bool lockedOut() const { return false; }
-    bool configValid() const { return false; }
+    bool configValid() const { return m_configValid; }
     bool launchConfigDirty() const { return false; }
     bool orphanDetected() const { return false; }
     QString orphanInfo() const { return QString(); }
+
+    // The task the manual start would serve: the first managed one.
+    Q_INVOKABLE QString firstManagedRole() const { return m_firstManagedRole; }
 
     Q_INVOKABLE void startServer() {}
     Q_INVOKABLE void stopServer() {}
     Q_INVOKABLE void restartServer() {}
     Q_INVOKABLE void terminateOrphan() {}
 
+    void setConfigValid(bool valid) { m_configValid = valid; }
+    void setFirstManagedRole(const QString &role) { m_firstManagedRole = role; }
+
 signals:
     void stateChanged();
+
+private:
+    bool m_configValid = false;
+    QString m_firstManagedRole = QStringLiteral("blockRecognition");
 };
 
+// The runtime of every task: the mode the settings keep for it. The footer
+// asks the settings which tasks are managed and which are external.
 class FakeSettings : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(QString connectionMode READ connectionMode NOTIFY connectionModeChanged)
 
 public:
-    QString connectionMode() const { return QStringLiteral("managed"); }
+    Q_INVOKABLE QString runtimeModeForRole(const QString &role) const { return m_modes.value(role, QStringLiteral("managed")); }
+
+    Q_INVOKABLE void setRuntimeModeForRole(const QString &role, const QString &mode)
+    {
+        if (m_modes.value(role) == mode)
+            return;
+        m_modes[role] = mode;
+        emit taskRuntimeModesChanged();
+    }
+
+    Q_INVOKABLE QStringList managedRoles() const { return rolesWith(QStringLiteral("managed")); }
+    Q_INVOKABLE QStringList externalRoles() const { return rolesWith(QStringLiteral("external")); }
 
 signals:
-    void connectionModeChanged();
+    void taskRuntimeModesChanged();
+
+private:
+    QStringList rolesWith(const QString &mode) const
+    {
+        QStringList out;
+        for (const QString &role : {QStringLiteral("layout"), QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("fix")}) {
+            if (runtimeModeForRole(role) == mode)
+                out << role;
+        }
+        return out;
+    }
+
+    QHash<QString, QString> m_modes;
 };
 
 class FakeTaskStatus : public QObject
@@ -201,10 +237,14 @@ private slots:
     void theBannerCloses();
     void theBannerReturnsWithANewProblem();
     void theProblemLogStaysReachable();
+    void theBadgeSaysWhenTheRuntimesAreMixed();
+    void theStartTooltipNamesTheTaskItServes();
 
 private:
     std::unique_ptr<QObject> loadFooter();
     QQuickItem *item(const char *objectName) const;
+    QObject *toolTipOf(const QObject *button) const;
+    QVariant evaluate(QObject *scope, const QString &expression);
     void click(QQuickItem *button);
     qreal spacing() const;
 
@@ -249,6 +289,11 @@ void TestFooterBannerQml::initTestCase()
     const QUrl themeUrl = QUrl::fromLocalFile(m_qmlRoot + QStringLiteral("/Theme.qml"));
     qmlRegisterSingletonType(themeUrl, "LLocr", 1, 0, "Theme");
 
+    // The footer names the task the server serves, and the names live in the
+    // RoleProfiles singleton.
+    const QUrl roleProfilesUrl = QUrl::fromLocalFile(m_qmlRoot + QStringLiteral("/RoleProfiles.qml"));
+    qmlRegisterSingletonType(roleProfilesUrl, "LLocr", 1, 0, "RoleProfiles");
+
     m_engine = std::make_unique<QQmlEngine>();
     connect(m_engine.get(), &QQmlEngine::warnings, this, [this](const QList<QQmlError> &reported) {
         for (const QQmlError &error : reported)
@@ -292,6 +337,30 @@ std::unique_ptr<QObject> TestFooterBannerQml::loadFooter()
 QQuickItem *TestFooterBannerQml::item(const char *objectName) const
 {
     return m_footer ? m_footer->findChild<QQuickItem *>(QString::fromLatin1(objectName)) : nullptr;
+}
+
+QObject *TestFooterBannerQml::toolTipOf(const QObject *button) const
+{
+    if (!button)
+        return nullptr;
+    for (QObject *child : button->findChildren<QObject *>()) {
+        if (QString::fromLatin1(child->metaObject()->className()).contains(QStringLiteral("ToolTip")))
+            return child;
+    }
+    return nullptr;
+}
+
+QVariant TestFooterBannerQml::evaluate(QObject *scope, const QString &expression)
+{
+    QQmlContext *context = m_engine->contextForObject(scope);
+    if (!context)
+        return {};
+    QQmlExpression expr(context, scope, expression);
+    if (expr.hasError()) {
+        m_warnings.append(expr.error().toString());
+        return {};
+    }
+    return expr.evaluate();
 }
 
 void TestFooterBannerQml::click(QQuickItem *button)
@@ -430,6 +499,47 @@ void TestFooterBannerQml::theProblemLogStaysReachable()
     m_log->clear();
     QTest::qWait(20);
     QVERIFY2(!entry->isVisible(), "an empty log needs no way in");
+}
+
+// The tasks do not have to agree on the runtime: some run on the local
+// server, some send their data to an external endpoint. The badge must say
+// so instead of picking one of the two.
+void TestFooterBannerQml::theBadgeSaysWhenTheRuntimesAreMixed()
+{
+    const std::unique_ptr<QObject> footer = loadFooter();
+    QVERIFY2(footer, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    m_settingsDouble->setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
+    m_settingsDouble->setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(footer->property("anyManagedTask").toBool(), true);
+    QCOMPARE(footer->property("anyExternalTask").toBool(), true);
+    QCOMPARE(evaluate(footer.get(), QStringLiteral("stateText()")).toString(), QStringLiteral("Mixed"));
+}
+
+// The Start button names the task whose model the server will serve: a user
+// with only the OCR model must see which task the server is asked for.
+void TestFooterBannerQml::theStartTooltipNamesTheTaskItServes()
+{
+    m_runtime->setConfigValid(true);
+    m_runtime->setFirstManagedRole(QStringLiteral("layout"));
+
+    const std::unique_ptr<QObject> footer = loadFooter();
+    QVERIFY2(footer, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QObject *button = nullptr;
+    for (QObject *child : footer->findChildren<QObject *>()) {
+        if (child->property("text").toString() == QLatin1String("Start server") && child->metaObject()->indexOfSignal("clicked()") >= 0)
+            button = child;
+    }
+    QVERIFY2(button, "the footer has no Start button");
+
+    QObject *tip = toolTipOf(button);
+    QVERIFY2(tip, "the Start button has no tooltip");
+    const QString text = tip->property("text").toString();
+    QVERIFY2(text.contains(QStringLiteral("Markup")), qPrintable(QStringLiteral("the tooltip does not name the task: %1").arg(text)));
 }
 
 QTEST_MAIN(TestFooterBannerQml)

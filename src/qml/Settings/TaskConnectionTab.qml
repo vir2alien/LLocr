@@ -26,7 +26,6 @@ ColumnLayout {
     // itself by the taller of them.
     readonly property real contentHeight: root.implicitHeight
 
-    property bool revealed: false
     property string aliasDraft: ""
     property string endpointDraft: ""
     property string keyDraft: ""
@@ -100,7 +99,6 @@ ColumnLayout {
 
         Layout.fillWidth: true
         taskTitle: qsTr("Endpoint and key")
-        revealed: root.revealed
         onEdited: (endpoint, key, keyIsEdited) => {
             root.endpointDraft = endpoint
             root.keyDraft = key

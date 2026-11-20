@@ -337,6 +337,8 @@ private slots:
     void theWizardHasNoOutputStep();
     void theFailedCheckExplainsWhatWentWrong();
     void thePassedCheckSaysOnlyThatItPassed();
+    void theWizardTableFollowsTheTaskModes();
+    void theChoiceReachesEveryTask();
 
 private:
     void registerModuleTypes();
@@ -573,6 +575,9 @@ void TestSetupWizardQml::theHardwareStepPicksTheQuantThatFitsTheMemory()
     m_modelInstaller->addRow(QStringLiteral("mineru"), QStringLiteral("MinerU"), {QStringLiteral("q8_0"), QStringLiteral("q4_k_m")});
     m_modelInstaller->setDefaultChoices(QVariantList{
         QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("mineru")}, {QStringLiteral("quantId"), QStringLiteral("q4_k_m")}}});
+    // The welcome step's choice wrote the runtime of every task before the
+    // hardware step showed its rows.
+    m_settings->setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("managed"));
 
     const std::unique_ptr<QObject> step = loadFile(QStringLiteral("Setup/StepHardware.qml"));
     QVERIFY2(step, qPrintable(m_warnings.join(QStringLiteral("; "))));
@@ -598,6 +603,9 @@ void TestSetupWizardQml::aConfiguredTaskKeepsItsOwnPick()
     m_modelInstaller->setDefaultChoices(QVariantList{
         QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("mineru")}, {QStringLiteral("quantId"), QStringLiteral("q4_k_m")}}});
     m_settings->setLaunchModelPathForRole(QStringLiteral("blockRecognition"), QStringLiteral("/models/mineru.gguf"));
+    // The welcome step's choice wrote the runtime of every task before the
+    // hardware step showed its rows.
+    m_settings->setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("managed"));
 
     const std::unique_ptr<QObject> step = loadFile(QStringLiteral("Setup/StepHardware.qml"));
     QVERIFY2(step, qPrintable(m_warnings.join(QStringLiteral("; "))));
@@ -796,6 +804,69 @@ void TestSetupWizardQml::thePassedCheckSaysOnlyThatItPassed()
         const QString text = child->property("text").toString();
         QVERIFY2(!text.contains(QStringLiteral("im_end")), qPrintable(QStringLiteral("the service output is on the screen: %1").arg(text)));
     }
+}
+
+// The wizard's table follows the per-task modes: a task that sends its data
+// to an external server has no local model, even though the wizard hides the
+// runtime column.
+void TestSetupWizardQml::theWizardTableFollowsTheTaskModes()
+{
+    m_modelInstaller->addRow(QStringLiteral("mineru"), QStringLiteral("MinerU"), {QStringLiteral("q8_0"), QStringLiteral("q4_k_m")});
+    m_modelInstaller->setDefaultChoices(QVariantList{
+        QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("mineru")}, {QStringLiteral("quantId"), QStringLiteral("q4_k_m")}}});
+    m_settings->setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("managed"));
+    m_settings->setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+
+    const std::unique_ptr<QObject> step = loadFile(QStringLiteral("Setup/StepHardware.qml"));
+    QVERIFY2(step, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    step->setProperty("visible", false);
+    step->setProperty("visible", true);
+    QCoreApplication::processEvents();
+
+    QObject *table = findByTypeName(step.get(), QStringLiteral("TaskModelsTable"));
+    QVERIFY2(table, qPrintable(QStringLiteral("the hardware step has no task table: %1").arg(typeNamesUnder(step.get()))));
+
+    const QVariant entry = evaluate(table, QStringLiteral("draftEntry('fix')"));
+    QVERIFY(entry.isValid());
+    QCOMPARE(entry.value<QObject *>()->property("runtimeMode").toString(), QStringLiteral("external"));
+
+    // The external task has a quantization in the draft as well — its model
+    // lives on the other server — and it still must not be downloaded.
+    entry.value<QObject *>()->setProperty("quantId", QStringLiteral("q4_k_m"));
+
+    const QVariantList choices = evaluate(table, QStringLiteral("buildChoices()")).toList();
+    QStringList tasks;
+    for (const QVariant &choice : choices)
+        tasks << choice.toMap().value(QStringLiteral("task")).toString();
+    QVERIFY2(tasks.contains(QStringLiteral("blockRecognition")), qPrintable(QStringLiteral("the managed task is not among the choices: %1").arg(tasks.join(QStringLiteral(", ")))));
+    QVERIFY2(!tasks.contains(QStringLiteral("fix")), "the external task must not be downloaded");
+}
+
+// The wizard's choice is the runtime of every task: a task that has a
+// choice of its own follows the wizard too.
+void TestSetupWizardQml::theChoiceReachesEveryTask()
+{
+    // A task with a saved choice of its own.
+    m_settings->setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
+
+    const std::unique_ptr<QObject> step = loadFile(QStringLiteral("Setup/StepWelcome.qml"));
+    QVERIFY2(step, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    step->setProperty("choice", 1);
+    QCoreApplication::processEvents();
+
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("external"));
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("blockRecognition")), QStringLiteral("external"));
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("external"));
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("fix")), QStringLiteral("external"));
+
+    // The managed choice reaches every task as well.
+    step->setProperty("choice", 0);
+    QCoreApplication::processEvents();
+
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("layout")), QStringLiteral("managed"));
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("blockRecognition")), QStringLiteral("managed"));
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("managed"));
+    QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("fix")), QStringLiteral("managed"));
 }
 
 int main(int argc, char *argv[])

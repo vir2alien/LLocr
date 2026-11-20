@@ -15,8 +15,16 @@ Item {
     property int choice: -1
     property bool complete: choice >= 0
 
+    // The choice is the runtime of every task: the wizard picks the runtime
+    // of the whole app, and the per-task modes follow it. The reset of the
+    // choice (-1, the wizard opens again) writes nothing.
+    onChoiceChanged: {
+        if (root.choice >= 0)
+            root.applyChoice()
+    }
+
     function applyChoice() {
-        Settings.connectionMode = (root.choice === 1) ? "external" : "managed"
+        Settings.setRuntimeModeForAllRoles((root.choice === 1) ? "external" : "managed")
     }
 
     implicitHeight: contentColumn.implicitHeight + 40
@@ -69,7 +77,6 @@ Item {
                     hoverEnabled: true
                     onClicked: {
                         root.choice = choiceCard.index
-                        root.applyChoice()
                     }
                 }
 

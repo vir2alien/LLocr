@@ -21,6 +21,30 @@ Item {
 
     readonly property bool serverActive: Runtime.state === Runtime.Starting || Runtime.state === Runtime.Ready
 
+    // The tasks that run on the local server and the tasks that send their
+    // data to an external endpoint. The settings answer with methods, and a
+    // method call in a binding is evaluated once — the badge asks again when
+    // the modes change.
+    property bool anyManagedTask: false
+    property bool anyExternalTask: false
+    // The task whose model the manual start would serve: the first managed
+    // one.
+    property string servedTaskTitle: ""
+
+    function refreshRuntimeModes() {
+        root.anyManagedTask = Settings.managedRoles().length > 0
+        root.anyExternalTask = Settings.externalRoles().length > 0
+        const role = Runtime.firstManagedRole()
+        root.servedTaskTitle = role.length ? RoleProfiles.title(role) : ""
+    }
+
+    Component.onCompleted: root.refreshRuntimeModes()
+
+    Connections {
+        target: Settings
+        function onTaskRuntimeModesChanged() { root.refreshRuntimeModes() }
+    }
+
     readonly property string currentDiagnostic: {
         if (Controller.currentPageWarning.length > 0)
             return qsTr("Blank replacement — this page could not be decoded. %1")
@@ -76,7 +100,8 @@ Item {
         if (!Runtime.configValid)
             return qsTr("Managed server is not fully configured — open "
                         + "Settings → Runtime.")
-        return qsTr("Start the managed llama-server with the selected model.")
+        return qsTr("Start the managed llama-server with the model of the %1 task.")
+                   .arg(root.servedTaskTitle)
     }
 
     function dotColor(state) {
@@ -89,7 +114,9 @@ Item {
     }
 
     function stateText() {
-        if (Settings.connectionMode === "external")
+        if (root.anyManagedTask && root.anyExternalTask)
+            return qsTr("Mixed")
+        if (!root.anyManagedTask)
             return qsTr("External")
         const why = Runtime.statusMessage
         switch (Runtime.state) {
@@ -320,7 +347,7 @@ Item {
                 LLOButton {
                     id: runtimeToggleButton
                     Layout.minimumWidth: implicitWidth
-                    visible: Settings.connectionMode === "managed"
+                    visible: root.anyManagedTask
                     hoverEnabled: true
                     font: Theme.buttonSmall
                     text: root.serverActive ? qsTr("Stop server") : qsTr("Start server")
@@ -360,9 +387,7 @@ Item {
 
                     ToolTip {
                         visible: runtimeBadge.containsMouse
-                        text: (Settings.connectionMode === "external"
-                               ? qsTr("Request log — click to open. %1")
-                               : qsTr("Server log — click to open. %1")).arg(root.stateText())
+                        text: qsTr("Runtime log — click to open. %1").arg(root.stateText())
                         delay: 600
                         font.pixelSize: Theme.captionSize
                     }

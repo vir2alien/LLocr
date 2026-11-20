@@ -26,10 +26,8 @@ Item {
 
     property bool showGear: true
 
-    // The host that shows no runtime of its own (the setup wizard) shows the
-    // local models of every task: the runtime of a task is chosen in the
-    // settings, and the narrow window of the wizard has no room for the
-    // column.
+    // The narrow window of the wizard has no room for the runtime column:
+    // the rows there follow the runtime the wizard chose for every task.
     property bool showRuntimeColumn: true
 
     // The host can show the runtime settings; the setup wizard cannot, and
@@ -102,10 +100,10 @@ Item {
         return table.savedRuntimeMode(task)
     }
 
-    // The runtime a task is saved with: the host that shows no runtime of
-    // its own picks the local models of every task.
+    // The runtime a task is saved with: the mode of the task in the
+    // settings.
     function savedRuntimeMode(task) {
-        return table.showRuntimeColumn ? Settings.runtimeModeForRole(task) : "managed"
+        return Settings.runtimeModeForRole(task)
     }
 
     // The split of the tasks in the draft: how many run on the local server
