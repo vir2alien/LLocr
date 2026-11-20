@@ -590,6 +590,7 @@ private slots:
     void theResetWritesAtOnceAndKeepsTheWindowClean();
     void theWizardRequestClosesTheWindowAndAsksForTheWizard();
     void theWizardAsksBeforeItDropsTheChanges();
+    void theCloseConfirmDialogSaysWhatItsButtonsDo();
     void theValuesAreReadOncePerSession();
     void theFailedSaveKeepsTheRuntimeModes();
 
@@ -1176,6 +1177,22 @@ void TestSettingsWindowQml::theWizardAsksBeforeItDropsTheChanges()
     QVERIFY(QMetaObject::invokeMethod(window.get(), "close"));
     QCoreApplication::processEvents();
     QCOMPARE(wizardSpy.count(), 0);
+}
+
+// The two buttons of the confirmation say what they do (ADR 316): one goes
+// back to the editing, the other drops the changes and closes the window.
+// "Cancel" would say nothing, and it would collide with the "Cancel" of the
+// window's footer, which does the opposite.
+void TestSettingsWindowQml::theCloseConfirmDialogSaysWhatItsButtonsDo()
+{
+    const std::unique_ptr<QObject> window = loadWindow();
+    QVERIFY2(window, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QObject *dialog = evaluate(window.get(), QStringLiteral("closeConfirmDialog")).value<QObject *>();
+    QVERIFY2(dialog, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCOMPARE(evaluate(dialog, QStringLiteral("footer.cancelText")).toString(), QStringLiteral("Continue"));
+    QCOMPARE(evaluate(dialog, QStringLiteral("footer.acceptText")).toString(), QStringLiteral("Don't save"));
 }
 
 void TestSettingsWindowQml::theValuesAreReadOncePerSession()

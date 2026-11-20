@@ -3994,6 +3994,11 @@
         <source>Don&apos;t save</source>
         <translation>Не сохранять</translation>
     </message>
+    <message>
+        <location filename="../../src/qml/Settings/SettingsWindow.qml" line="327"/>
+        <source>Continue</source>
+        <translation>Продолжить</translation>
+    </message>
 </context>
 <context>
     <name>SetupWizard</name>
