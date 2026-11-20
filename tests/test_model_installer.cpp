@@ -1555,6 +1555,9 @@ private slots:
         QVERIFY(q8 >= 0);
         QVERIFY(mi.setActiveModel(q8, QStringLiteral("blockRecognition")).isEmpty());
         QVERIFY(mi.setActiveModel(q8, QStringLiteral("fix")).isEmpty());
+        // The tasks run on this machine: the file on this disk is theirs.
+        s->settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("managed"));
+        s->settings.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("managed"));
 
         row = rowOfEntry(QStringLiteral("org__repo_Q8_0"));
         QVERIFY(row >= 0);
@@ -1568,6 +1571,46 @@ private slots:
         QVERIFY(QFile::exists(mmproj));
 
         QVERIFY(!mi.removeInstalledEntry(QStringLiteral("no_such_entry")).isEmpty());
+    }
+
+    // A task that runs externally has its model on the other server: the file
+    // on this disk is not its, and the list of the files must say so
+    // (ADR 318).
+    void anExternalTaskDoesNotUseTheFileOnDisk()
+    {
+        std::unique_ptr<Setup> s = makeMultiQuantSetup();
+        QVERIFY(s != nullptr);
+        ModelInstaller &mi = *s->installer;
+
+        auto *files = qobject_cast<InstalledFilesModel *>(mi.installedFiles());
+        QVERIFY(files);
+
+        const int q8 = registryIndexOfQuant(mi, QStringLiteral("Q8_0"));
+        QVERIFY(q8 >= 0);
+        QVERIFY(mi.setActiveModel(q8, QStringLiteral("fix")).isEmpty());
+        s->settings.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("managed"));
+
+        auto usageOfQ8 = [files]() {
+            for (int i = 0; i < files->rowCount(); ++i) {
+                if (files->data(files->index(i, 0), InstalledFilesModel::EntryIdRole).toString() == QLatin1String("org__repo_Q8_0"))
+                    return files->data(files->index(i, 0), InstalledFilesModel::UsageCountRole).toInt();
+            }
+            return -1;
+        };
+        QCOMPARE(usageOfQ8(), 1);
+
+        // The task runs on the other server: the file is nobody's.
+        s->settings.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+        QCOMPARE(usageOfQ8(), 0);
+
+        // The draft of the window wins over the saved mode: the rows and the
+        // list must not contradict each other.
+        s->settings.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("managed"));
+        QCOMPARE(usageOfQ8(), 1);
+        mi.setDraftRuntimeModes({{QStringLiteral("fix"), QStringLiteral("external")}});
+        QCOMPARE(usageOfQ8(), 0);
+        mi.setDraftRuntimeModes({});
+        QCOMPARE(usageOfQ8(), 1);
     }
 };
 

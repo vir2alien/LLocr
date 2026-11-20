@@ -655,7 +655,11 @@ appendix at the end of this file.
   choice applied. The design asked for exactly that («Выбор визарда применяется
   сразу ко всем четырём задачам»); the ADR records that it overwrites a
   per-task mix the user had set — a mixed setup is made in the per-task
-  settings, not in the wizard.
+  settings, not in the wizard. (Amended 2026-11-20: a task that runs
+  externally has its model on the other server, so the file on this disk is
+  not its — the list of the downloaded models counts only the tasks that run
+  locally, and it follows the draft of the window, so the list and the task
+  rows cannot contradict each other.)
 - **319.** One managed server, several tasks. The managed tasks share the local
   llama-server, which switches its model when the task changes
   (`serverRunsRole`/`beginRoleSwitch`) — the mechanism is unchanged, but in a

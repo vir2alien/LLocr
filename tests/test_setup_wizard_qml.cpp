@@ -130,6 +130,7 @@ public:
     Q_INVOKABLE void refreshInstalled() {}
     Q_INVOKABLE void reloadPresets() {}
     Q_INVOKABLE void rescanRegistry() {}
+    Q_INVOKABLE void setDraftRuntimeModes(const QVariantMap &modes) { Q_UNUSED(modes) }
     Q_INVOKABLE void queueTaskInstalls(const QVariantList &choices) { Q_UNUSED(choices) }
 
     void setDefaultChoices(const QVariantList &choices) { m_defaultChoices = choices; }

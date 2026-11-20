@@ -144,7 +144,19 @@ Item {
             return
         entry.runtimeMode = mode
         entry.runtimeModeEdited = true
+        table.publishRuntimeModes()
         table.edited()
+    }
+
+    // The usage count of the files on disk follows the draft: a task that
+    // runs externally has its model on the other server, and the file on this
+    // disk is not its. The list and the task rows must not contradict each
+    // other (ADR 318).
+    function publishRuntimeModes() {
+        const modes = {}
+        for (const task of table.taskIds)
+            modes[task] = table.runtimeModeForTask(task)
+        ModelInstaller.setDraftRuntimeModes(modes)
     }
 
     // Draft quant id for a task's profile: the row's own default — the active
@@ -213,6 +225,7 @@ Item {
             if (!entry.endpointEdited)
                 entry.endpoint = Settings.baseUrlForRole(task)
         }
+        table.publishRuntimeModes()
     }
 
     // Throws the unsaved edits away and takes the saved values (the Cancel
@@ -237,6 +250,7 @@ Item {
             entry.apiKey = ""
         }
         connectionTab.resetValues()
+        table.publishRuntimeModes()
     }
 
     // The picks are in the settings now: the next sync may refresh them from
@@ -392,6 +406,7 @@ Item {
     // The entries exist before the rows are built: the rows are the entries.
     Component.onCompleted: {
         table.ensureDraft()
+        table.publishRuntimeModes()
     }
 
     ColumnLayout {

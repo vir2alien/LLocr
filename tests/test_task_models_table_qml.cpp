@@ -121,8 +121,15 @@ signals:
     void installedChanged();
     void presetsChanged();
 
+public:
+    // The runtime modes of the draft: the table publishes them, so the list
+    // of the files on disk counts the tasks that run locally.
+    Q_INVOKABLE void setDraftRuntimeModes(const QVariantMap &modes) { m_draftModes = modes; }
+    QVariantMap draftModes() const { return m_draftModes; }
+
 private:
     FakeQuantModel *m_models = new FakeQuantModel(this);
+    QVariantMap m_draftModes;
 };
 
 // A stand-in for the Runtime singleton: the gear popup's launch tab asks it
@@ -246,6 +253,7 @@ private slots:
     void theAliasSurvivesTheReopeningOfThePopup();
     void theAliasOfOneTaskSurvivesTheGearOfAnotherTask();
     void theCancelPathThrowsTheAliasAway();
+    void theDraftRuntimeModesReachTheInstaller();
     void theClickOutsideTheGearReachesTheButtonBelow();
 
 private:
@@ -961,6 +969,29 @@ void TestTaskModelsTableQml::theCancelPathThrowsTheAliasAway()
     QQuickItem *field = aliasFieldInTheGear(table.get(), QStringLiteral("fix"));
     QVERIFY(field);
     QCOMPARE(field->property("text").toString(), QStringLiteral("saved-alias"));
+}
+
+// The runtime of every task reaches the installer: the list of the files on
+// disk counts the tasks that run locally, and it must not contradict the
+// rows (ADR 318).
+void TestTaskModelsTableQml::theDraftRuntimeModesReachTheInstaller()
+{
+    useManagedTasks();
+
+    const std::unique_ptr<QObject> table = loadTable();
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QVariantMap modes = m_modelInstaller->draftModes();
+    QCOMPARE(modes.size(), 4);
+    QCOMPARE(modes.value(QStringLiteral("fix")).toString(), QStringLiteral("managed"));
+
+    evaluate(table.get(), QStringLiteral("setRuntimeModeForTask('fix','external')"));
+    QCoreApplication::processEvents();
+
+    modes = m_modelInstaller->draftModes();
+    QCOMPARE(modes.value(QStringLiteral("fix")).toString(), QStringLiteral("external"));
+    QCOMPARE(modes.value(QStringLiteral("decision")).toString(), QStringLiteral("managed"));
 }
 
 // The gear popup must not swallow the click that hits the window under it:// the Save of the window is the way the alias is written, and a click that

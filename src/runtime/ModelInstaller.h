@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
+#include <QVariantMap>
 
 #include "config/RuntimePaths.h"
 #include "runtime/InstalledState.h"
@@ -108,6 +109,11 @@ public:
     // Open the containing folder of one installed file row (entryId as in
     // removeInstalledEntry). Empty return = opened; otherwise the error.
     Q_INVOKABLE QString openInstalledEntryFolder(const QString &entryId);
+    // The runtime mode of every task in the window's draft: the usage count
+    // follows the draft, so the list of the files and the task rows agree
+    // (ADR 318). An empty map means there is no draft — the saved modes
+    // count then.
+    Q_INVOKABLE void setDraftRuntimeModes(const QVariantMap &modes);
     int activeTaskCount(const ModelEntry &entry) const;
     QString removalBlockerFor(const ModelEntry &entry) const;
 
@@ -153,6 +159,11 @@ private:
 
     void reloadPresetsInternal();
 
+    // A task that runs externally has its model on the other server: the
+    // local file is not its. The draft of the window wins over the saved
+    // mode — the task rows show the draft (ADR 318).
+    bool taskRunsLocally(const QString &task) const;
+
     void reportStaleSelections(const ReconcileResult &report);
 
     void syncProfileToActiveModel();
@@ -179,6 +190,8 @@ private:
     QList<ModelPreset> m_presetsFix;
     QList<ModelEntry> m_installed;
     InstalledFilesModel *m_installedFiles = nullptr;
+    // The runtime modes of the tasks in the window's draft (task id → mode).
+    QVariantMap m_draftRuntimeModes;
     ModelQuantModel *m_allModels = nullptr;
     ModelQuantModel *m_checkModels = nullptr;
     ModelQuantModel *m_decisionModels = nullptr;

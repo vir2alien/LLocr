@@ -218,6 +218,7 @@ public:
     QObject *quantModels() const { return m_models; }
 
     Q_INVOKABLE void reloadPresets() {}
+    Q_INVOKABLE void setDraftRuntimeModes(const QVariantMap &modes) { Q_UNUSED(modes) }
     Q_INVOKABLE QString setActiveModel(int index, const QString &task = QStringLiteral("blockRecognition"))
     {
         Q_UNUSED(index)

@@ -44,6 +44,9 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     connect(&m_settings, &SettingsStore::decisionLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::layoutLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::fixLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
+    // The runtime of a task decides whether the file on this disk is its
+    // (ADR 318): the disk block's counts follow it.
+    connect(&m_settings, &SettingsStore::taskRuntimeModesChanged, this, &ModelInstaller::publishInstalled);
     // The removal guard refuses files of a Ready server, so the disk block's
     // delete buttons follow the runtime state too.
     connect(&m_runtime, &RuntimeController::stateChanged, this, [this] { m_installedFiles->refresh(); });
@@ -316,10 +319,30 @@ int ModelInstaller::activeTaskCount(const ModelEntry &entry) const
         return 0;
     int count = 0;
     for (const ConnectionRole role : connectionRoles) {
-        if (entry.modelPath == m_settings.launchModelPathForRole(connectionRoleName(role)))
+        const QString name = connectionRoleName(role);
+        // A task that runs externally has its model on the other server: the
+        // file on this disk is not its.
+        if (!taskRunsLocally(name))
+            continue;
+        if (entry.modelPath == m_settings.launchModelPathForRole(name))
             ++count;
     }
     return count;
+}
+
+bool ModelInstaller::taskRunsLocally(const QString &task) const
+{
+    if (m_draftRuntimeModes.contains(task))
+        return m_draftRuntimeModes.value(task).toString() != QLatin1String(SettingsStore::kModeExternal);
+    return m_settings.isManagedRole(task);
+}
+
+void ModelInstaller::setDraftRuntimeModes(const QVariantMap &modes)
+{
+    if (m_draftRuntimeModes == modes)
+        return;
+    m_draftRuntimeModes = modes;
+    publishInstalled();
 }
 
 bool ModelInstaller::isActiveForAnyTask(const ModelEntry &entry) const
