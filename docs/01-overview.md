@@ -35,10 +35,10 @@ LLocr provides a convenient interface to:
 1. The user starts a local LLM runner (Ollama / LM Studio / llama.cpp server),
    **installs a managed llama.cpp runtime**, or points at a hosted
    OpenAI-compatible API.
-2. In **Settings** (or the first-run **Setup wizard**), they pick a **connection
-   mode** — `External` (connect to an existing server) or `Managed` (the app
-   launches its own llama.cpp server) — and configure the endpoint URL, model
-   name, API key and (optionally) generation/parser options.
+2. In the first-run **Setup wizard** they pick the runtime — the app manages
+   llama.cpp itself (`Managed`) or points at an existing server (`External`) —
+   and the choice applies to all four tasks. Later, in **Settings → Models**,
+   every task can name its own runtime, endpoint URL, model name and API key.
                                                                   ✅ done (tabbed Settings)
 3. They load one or more images or a PDF.                        ✅ done (multi-image + PDF)
 4. They start recognition.                                       ✅ done (single page + "recognize all")
@@ -46,7 +46,7 @@ LLocr provides a convenient interface to:
    is a layout-token one).                                       ✅ done (text panel + bbox overlay)
 6. They save the result in the desired format.                   ✅ (TXT/MD/HTML; DOCX via Pandoc; PDF)
 
-## Local runtime & models (managed mode)
+## Local runtime & models (the managed runtime)
 Besides connecting to an existing OpenAI-compatible server (`External`),
 LLocr can **own the whole runtime** (`Managed` mode):
 
@@ -65,7 +65,7 @@ LLocr can **own the whole runtime** (`Managed` mode):
   from `lfs.oid`), picks a managed model from the **preset catalog**, imports a
   custom catalog, or points at a local `.gguf`. Presets bundle a pre-verified
   `model + mmproj + parser + prompt + ctx-size` pair.
-- **Recognition:** in `Managed` mode LLocr automatically starts `llama-server`
+- **Recognition:** for a managed task LLocr automatically starts `llama-server`
   on localhost, waits for `/health`, queries `/v1/models`, and resolves the
   connection — recognition and manual Start/Stop/Restart go through the single
   `RuntimeController` facade.
@@ -100,19 +100,24 @@ downloaded models and the keys in the system store.
   furniture, the tables as HTML and the PDF options.
 - **Verification** — the reasoning budget of the two tasks and the block types
   to check.
-- **Runtime** — the connection mode and, in `External` mode, the endpoint base
-  URL, the API key (optional) and the request timeout; in `Managed` mode the
-  `llama-server` binary path + probe, Start/Stop/Restart, **Show log**, and the
-  **stage-D installer** (release + backend pickers, «Download and install» with
-  progress, «Check for updates», «Clean up unused builds»).
-- **Models** — the task table with the model and its quantization per task;
-  the row's gear opens the **Launch** (the launch-parameter profile) and
-  **Request** (the request profile — model name, temperature, max tokens, the
-  **DRY sampling parameters**) settings of that task, the download queue
+- **Runtime** — both runtimes, always visible: the managed one (the
+  `llama-server` binary path + probe, the installed builds, Start/Stop/Restart,
+  **Show log**, and the
+  **stage-D installer** — release + backend pickers, «Download and install» with
+  progress, «Check for updates», «Clean up unused builds») and the shared
+  external server (the endpoint base URL, the API key — optional — and the
+  request timeout).
+- **Models** — the task table with the runtime, the model and its quantization
+  per task; the row's gear opens the **Launch** (the launch-parameter profile)
+  and **Request** (the request profile — model name, temperature, max tokens, the
+  **DRY sampling parameters**) settings of that task, or the **Connection**
+  (endpoint, key, model alias) of an external one; the download queue
   and the model files on disk.
 
-The recognition **mode** (`External` / `Managed`) is chosen by the first-run
-wizard; existing profiles stay `External` by default (ADR 26/31).
+The runtime of a task (`External` / `Managed`) is the task's own choice
+(`tasks/<role>/runtimeMode`, ADR 318): the first-run wizard writes it for all
+four tasks, and the task table's «Runtime» switch changes it afterwards;
+existing profiles stay `External` by default (ADR 26/31).
 
 > The recognition **prompt** is owned by the selected **OCR model adapter**
 > (`OcrModel::promptVariants()`; for MinerU it is the card's trained task

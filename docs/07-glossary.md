@@ -93,10 +93,11 @@
 - **Recognized marker** — per-page indicator showing whether a page has been
   OCR'd yet; edited pages and pages with duplicate boxes carry additional
   markers.
-- **Connection mode** — `External` (connect to an existing OpenAI-compatible
-  server; the app launches nothing) or `Managed` (the app starts and owns a
-  local `llama-server`). Chosen by the first-run wizard; existing profiles
-  default to `External`.
+- **Connection mode** — the runtime of a **task**: `External` (the task talks to
+  an OpenAI-compatible server the app neither owns nor starts) or `Managed`
+  (the task runs on the local `llama-server` the app starts and owns). The
+  choice is per task (`tasks/<role>/runtimeMode`, ADR 318); the global
+  `provider/mode` is only the default for a task without a key of its own.
 - **ResolvedConnection** — the ready-to-use connection returned by
   `RuntimeController::ensureConnectionReady()`: `baseUrl` + `apiKey` +
   `modelId` + the two timeouts (ADR 148). In `External` it mirrors settings;
@@ -333,7 +334,7 @@ appendix at the end of this file.
   OpenAI-compatible server; the app launches nothing) and `Managed` (the app
   starts and owns a local `llama-server`); the transport stays decoupled from
   process management (`LlamaClient` + `OcrModel`, no `QProcess` in the
-  transport).
+  transport). The choice between them belongs to a task (ADR 318).
 - **27.** The managed server is llama.cpp only (`llama-server`, minimum build
   b4000) — one predictable CLI; Ollama/LM Studio have their own managers, and
   older builds drift too much.
@@ -553,12 +554,16 @@ appendix at the end of this file.
   (`tasks/<role>/baseUrl`), its own API key and its own model alias; an empty
   field means the shared value. The alias is edited in one place — the
   «External server» tab of the runtime settings; the «Models» window shows it
-  read-only.
+  read-only. (Amended by ADR 318: the one place is the «Подключение» tab of
+  the task's gear popup, and which task runs externally is the task's own
+  choice.)
 - **228.** The external server keeps no process log, so the client keeps the
   trace: `RequestJournal` (in `llocr_core`) writes one record per HTTP call —
   address, model, request/response sizes, HTTP status, timing, response head —
   and the log window shows it in external mode. The trace lives in memory only
   (the page is the user's document) and never contains the API key.
+  (Amended by ADR 320: the log window shows the journal in **every** mode —
+  the server's output and the journal are two sources side by side.)
 - **231.** External-server wire rules (merges ADRs 229, 230): the request body
   always names the model (`ConnectionConfig::modelId` — role alias for
   external, server `--alias` for managed), so servers that require `model` no
@@ -630,6 +635,49 @@ appendix at the end of this file.
   is one — so every way into the installer (the card, the wizard) behaves the
   same. The switch is the one of the list of the installed builds (ADR 60): a
   settings-only commit, no download, no probe.
+- **318.** The runtime belongs to the task, not to the app. The key
+  `tasks/<role>/runtimeMode` (`managed` | `external`) is the runtime of one
+  task: the local llama-server or its own external endpoint. The global
+  `provider/mode` is no longer a choice of the user — it is a **constant
+  default**: the Runtime section carries no switch, the wizard does not write
+  it, and on a fresh install it stays at its default (`external`). It remains
+  the fallback for a task without a key of its own and the source of the
+  migration; a task whose key is removed — only «reset runtime defaults» does
+  that — falls back to the global. The switch lives in the task table: every
+  row carries its own «Runtime» switch, and the endpoint, the key and the
+  alias of a task moved into the task's own settings — the «Подключение»
+  (Connection) tab of its gear popup. The wizard's choice is committed **at
+  click time**, not at the end of the wizard: choosing a card writes the mode
+  of all four tasks at once, and a «Skip» pressed afterwards leaves that
+  choice applied. The design asked for exactly that («Выбор визарда применяется
+  сразу ко всем четырём задачам»); the ADR records that it overwrites a
+  per-task mix the user had set — a mixed setup is made in the per-task
+  settings, not in the wizard.
+- **319.** One managed server, several tasks. The managed tasks share the local
+  llama-server, which switches its model when the task changes
+  (`serverRunsRole`/`beginRoleSwitch`) — the mechanism is unchanged, but in a
+  mixed setup it is exercised more often. The server is started by hand for
+  the **first managed task** in the canonical order (`layout`,
+  `blockRecognition`, `decision`, `fix`); with no managed task there is no
+  server at all: the manual start is refused, the Start/Stop button is hidden,
+  and the configuration needs neither a binary nor a model file. The
+  configuration is valid when **every managed model that is set** is on disk
+  and **at least one** managed task has a model — not when every managed task
+  has one: a managed task without a model of its own reuses the running
+  server's model, so the global gate does not punish it. The per-task truth is
+  carried by `taskModelAvailable(role)` and `roleConfigError(role)`, which
+  still refuse per task ("Layout model is not selected", "Decision model is
+  not selected", …). The self-test probes a **managed** task: the recognition
+  task when it is managed, otherwise the first managed task
+  (`RuntimeController::selfTestRole()`).
+- **320.** The log window has two sources. The server's output and the request
+  journal are separate things and both are shown: the server's output on top,
+  the request journal below. The journal records every request the client
+  made — to the local server and to the external endpoints alike; the old
+  rule (the global mode picks one source) is gone, because in a mixed setup
+  both are live. Clearing the log clears both sources, copying takes both,
+  and the path of the log file no longer depends on the mode — the «Open
+  directory» button follows the file itself.
 
 ### Models & tasks
 
@@ -1379,12 +1427,17 @@ appendix at the end of this file.
   runtime" notice, in Managed it offers the download sources; Start/Stop/
   Restart/Show-log live in the footer, not in the settings window; installed
   builds get a per-row "Open folder" (`RuntimeInstaller::openBuildFolder()`).
+  (Superseded by ADR 318: the mode is chosen per task, and the Runtime
+  section carries no switch at all.)
 - **81.** The setup wizard is a self-contained linear flow (intro +
-  language/theme, work-mode cards writing `provider/mode`, mode-dependent
-  steps, output, check-and-launch with self-test, mode-reflecting summary),
+  language/theme, work-mode cards writing the runtime of all four tasks,
+  mode-dependent steps, output, check-and-launch with self-test,
+  mode-reflecting summary),
   not a launcher for settings windows; steps render by visibility because the
   step set differs per mode, the footer shows "Step N of M", and the wizard is
-  reachable from the settings menu.
+  reachable from the settings menu. (Amended by ADR 318: the cards write
+  `tasks/<role>/runtimeMode` for the four tasks, not the global
+  `provider/mode`.)
 - **82.** Embedded lists (`ModelInstalledList`/`ModelPresetList`/
   `RuntimeBuildsList`) publish `implicitHeight = min(count, maxVisibleRows) *
   rowHeight` and consumers bind to it instead of hand-copied formulas; the
@@ -1644,7 +1697,9 @@ appendix at the end of this file.
   неиспользуемые сборки» sits in the «Управление llama.cpp» section header
   (the «Установлено: …» caption is gone), the install row is one line
   (Backend/Release/check/download), fonts follow the other windows, window
-  700×640. (The reveal switch's placement is amended by ADR 283.)
+  700×640. (The reveal switch's placement is amended by ADR 283; the mode
+  switch itself is gone with ADR 318 — the section carries both runtime
+  cards.)
 - **283.** A key is removed by emptying the field: the mask is the field's
   text (not a placeholder), an untouched field keeps the key while an emptied
   one clears it on save (`SettingsStore::setApiKey("")` → `clearApiKey`, same
@@ -2004,7 +2059,10 @@ appendix at the end of this file.
   store is a badge with a «Retry», not a footnote: the store that answers
   with an error and the store without a key are two different answers
   (ADR 233). The channel of the managed runtime stays where it was — the
-  layout changed, the choice did not.
+  layout changed, the choice did not. (Amended by ADR 318: the **tasks**
+  card left the section — the endpoint, the key and the alias of a task live
+  in the task's own settings — and both cards stand side by side, because
+  there is no mode any more to switch between.)
 - **315.** The update card says one thing at a time. The candidate is one
   row — the tag, the date and the size of the download, with a chip that
   names the state («Available», «Up to date», «Ignored»); the banner that

@@ -26,7 +26,7 @@ inside an MSVC x64 prompt; Qt DLLs must be on `PATH` before `ctest`.
 `--disable-gpu --no-sandbox --single-process`; on some machines its GPU
 initialization aborts (environmental, not a regression).
 
-### The 77 targets, by domain
+### The 79 targets, by domain
 
 | Domain | Targets |
 | --- | --- |
@@ -37,14 +37,16 @@ initialization aborts (environmental, not a regression).
 | Document, pages, layout, orientation | `test_page_status`, `test_layout`, `test_project_store`, `test_document_model`, `test_page_document`, `test_block_placement`, `test_page_rotation`, `test_page_orientation`, `test_djvu_document`* , `test_app_import` |
 | Editor (the WYSIWYG page, the pull, the wrapper) | `test_editor_page`, `test_editor_pull`, `test_editor_qml` |
 | Import, settings, profiles | `test_settings_store`, `test_request_profile`, `test_request_budget`, `test_launch_profile`, `test_launch_config` |
-| QML (launch tab, task table, wizard, switch) | `test_launch_tab_qml`, `test_task_models_table_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
+| QML (the launch tab, the wizard, the switch) | `test_launch_tab_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
+| QML (the task table and its popups) | `test_task_models_table_qml`, `test_task_connection_tab_qml` |
+| QML (the runtime log window) | `test_server_log_window_qml` |
 | QML (the settings window) | `test_settings_nav_qml`, `test_settings_window_qml` |
 | QML (the three panel menus) | `test_panel_menus_qml` |
 | QML (the footer's diagnostic banner) | `test_footer_banner_qml` |
 | QML (the block panel's header) | `test_block_panel_qml` |
 | UI (the icon set) | `test_ui_icons` |
 | UI (the icon-and-caption button) | `test_icon_tool_button_qml` |
-| Runtime installer, lifetime | `test_runtime_installer`, `test_runtime_lifetime` |
+| Runtime installer, lifetime, log | `test_runtime_installer`, `test_runtime_lifetime`, `test_runtime_log` |
 | The check of the shared server | `test_connection_probe` |
 | Export and rendering | `test_exporter`, `test_export_renderer`, `test_candidate_renderer` |
 | Transport and managed server | `test_http_client`, `test_capabilities`, `test_runtime_locator`, `test_server_process`, `test_ensure_connection` |
@@ -52,7 +54,19 @@ initialization aborts (environmental, not a regression).
 | Core (client, transitions, diff, latex) | `test_llama_client`, `test_box_transitions`, `test_text_diff`, `test_latex_text`, `test_log_document_sync` |
 
 \* `test_djvu_document` (and the DjVu part of `test_app_import`) is built
-only when DjVuLibre was found at configure time.
+only when DjVuLibre was found at configure time — it is not among the 79.
+
+The per-task runtime (ADR 318) is covered by three new targets —
+`test_runtime_log` (the two sources of the log), `test_server_log_window_qml`
+(the split window) and `test_task_connection_tab_qml` (the «Подключение» tab
+of a task) — and by the existing ones: `test_settings_store` (the key, the
+migration, the reset), `test_ensure_connection` (the per-task resolve),
+`test_task_models_table_qml` (the «Runtime» column of a row),
+`test_setup_wizard_qml` (the wizard's choice for all four tasks),
+`test_footer_banner_qml` (the «Mixed» badge), `test_runtime_tab_external_qml`
+and `test_launch_tab_qml` (the Runtime section without a switch),
+`test_settings_window_qml`, `test_log_document_sync` and
+`test_external_runtime`.
 
 Committed fixtures: `tests/fixtures/djvu/` (synthetic DjVu documents, with
 the generator), `tests/fixtures/exporter-preview/` (fake KaTeX bundle),

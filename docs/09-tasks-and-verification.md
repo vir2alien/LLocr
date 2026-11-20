@@ -19,10 +19,33 @@ QML. The list lives once in `src/core/ConnectionRole.h` (ADR 215, 252).
 | `decision` | Проверка | Binary verdict "the text matches the image" — the visual diff |
 | `fix` | Исправление блока | A universal model confirms / corrects / refuses the candidate |
 
-One managed llama-server serves all tasks; the model is (re)loaded on a task
-switch (`RuntimeController::serverRunsRole`). Recognition and verification
-are mutually exclusive at the `AppController` level, so a switch can never
-kill a running job.
+Each of the four tasks names **its own runtime** (ADR 318): the key
+`tasks/<role>/runtimeMode` says whether the task runs on the local
+llama-server (`managed`) or on its own external endpoint (`external`). The
+managed tasks share **one** llama-server, and the model is (re)loaded on a
+task switch (`RuntimeController::serverRunsRole`). Recognition and
+verification are mutually exclusive at the `AppController` level, so a switch
+can never kill a running job.
+
+What a task needs follows from its runtime, and the two verdicts are per task:
+
+| The task's runtime | What the task needs | Who says so |
+|---|---|---|
+| `managed` | its model on disk (the file of the task's launch profile) | `taskModelAvailable(role)` |
+| `external` | its model alias — the name the server knows the model under | `taskModelAvailable(role)` |
+
+`roleConfigError(role)` asks the same question in words: an external task is
+asked for no local server at all, and a managed task without a model of its
+own is refused with «Layout model is not selected» / «Decision model is not
+selected» / … — per task. The **global** gate is softer: the configuration is
+valid when every managed model **that is set** is on disk and at least one
+managed task has a model (ADR 319) — a managed task without a model of its own
+reuses the running server's model. With no managed task at all there is no
+server: the Start/Stop button is hidden and the manual start is refused.
+
+The **self-test** probes a managed task: the recognition task when it is
+managed, otherwise the first managed task in the canonical order
+(`RuntimeController::selfTestRole()`); with no managed task it refuses.
 
 The `pageOcr` / `rawPageOcr` single-pass page tasks were cut (ADR 252) — a
 page's text is assembled from block recognition, after either manual markup
@@ -232,7 +255,8 @@ diff tinting (`core/TextDiff.h`), approve/revoke, hand edit.
 
 Availability: buttons requiring a task's model go inactive when the model is
 not selected/downloaded (managed: file missing; external: alias empty) —
-computed by `AvailabilityPresenter` (ADR 213/214).
+computed by `AvailabilityPresenter` (ADR 213/214) from the task's own runtime
+(ADR 318).
 
 The auto pipeline chains the five stages (markup → recognition → decision →
 fix → decision of the corrected); see `docs/11-auto-pipeline.md`.
@@ -240,12 +264,16 @@ fix → decision of the corrected); see `docs/11-auto-pipeline.md`.
 ## 10. Settings
 
 - Per-task model/quant selection lives in the one «Модели» window (ADR 168):
-  rows `task | model ▾ | quant ▾ | ⚙`, Launch/Request tabs behind ⚙, a
-  files-on-disk block with guarded delete.
+  rows `task | runtime ▾ | model ▾ | quant ▾ | ⚙`; the gear opens the
+  **Launch** (launch-parameter profile) and **Request** tabs of a managed
+  task, and the **Connection** tab (endpoint, key, model alias) of an
+  external one; a files-on-disk block with guarded delete.
 - Settings keys: `tasks/<task>/{modelPath, mmprojPath, draftPath,
-  requestProfileId, modelName}` — blockRecognition's launch files keep the
-  legacy `check/` prefix (ADR 146). There is no settings migration: a schema
-  mismatch resets the settings once (ADR 253).
+  requestProfileId, modelName, runtimeMode}` — blockRecognition's launch
+  files keep the legacy `check/` prefix (ADR 146). The runtime mode is the
+  task's own choice (ADR 318); the global `provider/mode` is only its
+  default. There is no settings migration: a schema mismatch resets the
+  settings once (ADR 253).
 - `check/` keeps the behavior keys: `showConfidence`, and the reasoning
   budgets `check/fixReasoningBudgetTokens` / `check/readReasoningBudgetTokens`
   (ADR 268, edited in Настройки → Проверка together with the block-type
@@ -263,6 +291,7 @@ fix → decision of the corrected); see `docs/11-auto-pipeline.md`.
 | Model profiles, `roles` schema | `src/core/ModelProfiles.{h,cpp}`, `resources/profiles/models/*.json` |
 | Shared request texts | `resources/profiles/requests/fix-requests.json`, `read-requests.json` |
 | Per-task settings dispatch | `src/config/SettingsStore.{h,cpp}` |
+| The runtime of a task | `src/config/SettingsStore.{h,cpp}` (`tasks/<role>/runtimeMode`), `src/runtime/RuntimeController.{h,cpp}` (`modeForRole`, `hasManagedTasks`, `selfTestRole`) |
 | Request/launch profile stores | `src/config/RequestProfileStore.{h,cpp}`, `src/runtime/LaunchProfileStore.{h,cpp}` |
 | Server start, model reload per task | `src/runtime/RuntimeController.cpp`, `src/runtime/ServerLaunchConfig.cpp` |
 | Models window, install queue | `src/runtime/ModelInstaller.{h,cpp}`, `src/runtime/ModelQuantModel.cpp`, `src/runtime/ModelInstallTransaction.cpp` |

@@ -58,9 +58,9 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   visible: its state speaks for the block in the frame (green — read, red —
   unreadable), it explains itself in the reader's words, and the run ends with
   its tally («Прочитано блоков: переписано — N, подтверждено — M, не прочитано
-  — K», ADR 261). In Managed mode the
-  server switches between the tasks' models automatically (ADR 74), in
-  External mode the request just starts (ADR 91).
+  — K», ADR 261). For a managed task the
+  server switches between the tasks' models automatically (ADR 74); an
+  external task's request just starts (ADR 91).
   The serial check queue (task list, progress, stop) lives in the role
   queues (ADR 286): **`DecisionQueue`** runs the visual-diff decision,
   **`RecheckQueue`** the block-recognition re-run and **`RemedyQueue`** the
@@ -120,19 +120,17 @@ runs alone in the main window.
 |             | 19); **check the page orientation** (`recognition/orientationCheck`, default on — the two-stage pixel check of the page, ADR 242) and **turn a sideways page after markup automatically** (`recognition/orientationAutoTurn`, default on — the markup pass turns the page when the rotation tokens vote one way, ADR 246; off leaves the one-click suggestion); PDF export: orientation (`export/pdfLandscape`), margins in mm   |
 |             | (`export/pdfMarginMm`, 0–50, default 15)                             |
 | Verification | the thinking budget of the two tasks — during the fix and during the read — as four levels (off / low / medium / high = 0 / 512 / 1024 / 1536 tokens, `check/fixReasoningBudgetTokens`, `check/readReasoningBudgetTokens`); **show the model confidence** (`check/showConfidence` — the decision model's probability in percent next to a verified block, in the color of the block's frame; a debugging aid for the decision model); **block types to check** — the three groups (main content, captions/footnotes/references, service) as cards with a per-group counter; the lists are not stretched over the card's height, so the rows keep one spacing in every group; the math types are one item, «Formulas» (`type = "formula"` — it covers `equation`, `formula` and `equation_block`, all of them one style, `BlockStyle::Equation`); the user's choice kept in `profiles/verifyPrompts.json` (a legacy `equation` key follows the merged item) |
-| Runtime     | connection mode (`External` / `Managed`) as a segmented toggle —      |
-|             | applies immediately; the mode is explained in one line under it;       |
-|             | External: two blocks of their own (ADR 314) — the **shared server**    |
-|             | (endpoint base URL + API key, the **check** of the server and its      |
-|             | answer, the note where the key lives and the refusal of the store      |
-|             | as a badge with a «Retry») and the **tasks** (one row per task         |
-|             | with the model name in the row; the endpoint and the key of a task     |
-|             | live in the popup behind its gear — ADR 226); an empty task field      |
-|             | takes the shared value; one «Show» checkbox in the shared server       |
-|             | block reveals every key of the tab at once; a stored key is shown      |
-|             | as a mask in the field itself and is removed by clearing that          |
-|             | field — there is no «Delete» button;                                   |
-|             | Managed: two blocks of their own — the **llama.cpp builds** (the       |
+| Runtime     | no mode switch any more (ADR 318) — both runtime cards stand side      |
+|             | by side; the **shared external server** (endpoint base URL + API key,  |
+|             | the **check** of the server and its answer, the note where the key     |
+|             | lives and the refusal of the store as a badge with a «Retry») is the |
+|             | default of every external task — a task with an endpoint of its own   |
+|             | overrides it; the task's own endpoint, key and alias live in the      |
+|             | **«Подключение»** tab of its gear popup (ADR 226); one «Show»         |
+|             | checkbox in the shared server block reveals every key of the tab at   |
+|             | once; a stored key is shown as a mask in the field itself and is      |
+|             | removed by clearing that field — there is no «Delete» button;        |
+|             | the **managed** card: the **llama.cpp builds** (the       |
 |             | installed-builds list, «Clean up unused builds» in the header and      |
 |             | the platform line) and the **updates** (ADR 315: the candidate row     |
 |             | with the tag, the date and the size, the chip of the state, the        |
@@ -141,11 +139,14 @@ runs alone in the main window.
 |             | timeouts are a collapsed block at the bottom whose header says what    |
 |             | they are («connect 5 s · answer 5 min») and whose fields are narrow    |
 | Models      | the **task table** — one row per task (layout, block recognition,     |
-|             | decision, fix) with the model and its quantization; the gear of the    |
+|             | decision, fix) with the runtime, the model and its quantization; the  |
+|             | gear of the                                                        |
 |             | row opens that task's **Launch** (launch-parameter profile, ADR 57)    |
-|             | and **Request** (the request profile, ADR 56/59) settings in a popup; |
-|             | in the external mode the row shows the model name — read-only, it  |
-|             | is edited in Settings → Runtime (ADR 226) — instead of the       |
+|             | and **Request** (the request profile, ADR 56/59) settings in a popup,  |
+|             | or the **«Подключение»** tab (endpoint, key, alias) of an external    |
+|             | task;                                                              |
+|             | an external task's row shows the model name — read-only, it  |
+|             | is edited in the task's «Подключение» tab (ADR 226) — instead of the   |
 |             | quantization; under the table — the **downloaded model files on disk** |
 |             | with their size, the tasks that use them and a guarded delete. The    |
 |             | section follows its content, the files list scrolls (ADR 284)         |
@@ -182,8 +183,10 @@ Credential Manager, the Linux Secret Service (ADR 227). The settings file
 keeps only the endpoints and the aliases. A stored key is never shown back:
 the field carries a mask and takes a new one.
 
-> The recognition **mode** (`External` / `Managed`) is chosen by the first-run
-> wizard; existing profiles stay `External` (ADR 26/31). The **Launch** tab in
+> The runtime of a **task** (`External` / `Managed`) is the task's own choice
+> (`tasks/<role>/runtimeMode`, ADR 318): the first-run wizard writes it for all
+> four tasks, and the task table's «Runtime» switch changes it afterwards;
+> existing profiles stay `External` (ADR 26/31). The **Launch** tab in
 > the model windows edits the llama-server launch-parameter profiles; the
 > first-run wizard's **Launch** step (port, ctx-size, n-gpu-layers,
 > `autoStart`, command preview + self-test) covers the same profile on a clean
@@ -474,23 +477,30 @@ The managed-runtime layer (`src/runtime/`) lets LLocr start, own and stop a
 local **`llama-server`** process (the former local-runtime plan, stages A–H,
 complete; the decisions are recorded as ADRs in `docs/07-glossary.md`).
 
-- **Connection mode** (`External` / `Managed`) is chosen by the first-run wizard
-  (ADR 31). In `External` nothing is launched; the app talks to an existing
-  OpenAI-compatible endpoint. In `Managed` LLocr starts the server itself. ✅
+- **The runtime of a task** (`External` / `Managed`) is the task's own choice
+  (`tasks/<role>/runtimeMode`, ADR 318): the first-run wizard writes it for all
+  four tasks at once, and the task table's «Runtime» switch changes it per
+  task afterwards. In `External` nothing is launched; the task talks to an
+  existing OpenAI-compatible endpoint. In `Managed` LLocr starts the server
+  itself — the managed tasks share one llama-server. ✅
 - **`RuntimeController`** (QML singleton `Runtime`, created in `main.cpp`, ADR 36)
   is the facade: `ensureConnectionReady()`, `cancelPendingStart()`,
   Start/Stop/Restart, probe/auto-detect, `estimateModelMemory()`, and QML state
   (`state`, `busyState`, `statusMessage`, `loadProgressPercent`, `configValid`,
-  `lockedOut`). ✅
+  `lockedOut`). The runtime is read per task (`modeForRole(role)`);
+  `hasManagedTasks()`, `firstManagedRole()` and `selfTestRole()` answer what
+  the server is for (ADR 318/319). ✅
 - **`SelfTestController`** (QML singleton `SelfTest`) — wizard “Check”:
   `runSelfTest()`/`runSelfTestQml()`, `selftest*` state; a separate consumer of
-  `ensureConnectionReady()` (review 3.4 extraction). ✅
-- **`RuntimeLog`** (QML singleton `RuntimeLog`) — live server-log view
-  (`serverLog` + copy/clear/open), fed by the facade on each (re)spawn. In
-  **External** mode there is no server process to read, so the window shows the
-  client's own request journal instead (`core/RequestJournal`: the endpoint,
+  `ensureConnectionReady()` (review 3.4 extraction). It probes a **managed**
+  task — the recognition task when it is managed, otherwise the first managed
+  task (`selfTestRole()`) — and refuses when no task is managed. ✅
+- **`RuntimeLog`** (QML singleton `RuntimeLog`) — the live log view, with **two
+  sources**: the server's output (`serverLog`) on top and the client's own
+  request journal below (`journalLog`: the endpoint,
   the model, the sizes, the status, the duration and the head of the reply —
-  in memory, without the API key, ADR 228). ✅
+  in memory, without the API key, ADR 228). Both are shown in every mode —
+  in a mixed setup both are live — and clearing/copying takes both (ADR 320). ✅
 - **Process**: `LlamaServerProcess` (QProcess, argv-only, ring buffer + rotating
   file log, health polling, crash-restart ≤3×/5 min, terminate→kill) with a
   `ProcessGuard` (Job Object on Windows, `PDEATHSIG` on Linux, best-effort
@@ -577,12 +587,14 @@ On a clean profile (`setupVersion == 0 && !setupDismissed`) `Main.qml` triggers
 
 1. **Intro** — what the app does; Next.
 2. **Welcome** — “Local server (recommended)” vs “I already have a server/api”;
-   the choice picks the steps: the external mode has no hardware and no check
-   step.
+   the choice picks the steps: the external choice has no hardware and no check
+   step. The choice is written for all four tasks at once, at click time
+   (ADR 318).
 3. **Hardware** (managed only) — the detected hardware, the runtime backend and
    the task table with the model and the quantization of every task; what is
    still missing is downloaded by the check step.
-4. **External** (external mode only) — the endpoint, the API key (optional) and
+4. **External** (only after the external choice) — the endpoint, the API key
+   (optional) and
    the timeout of the user's own server.
 5. **Check** (managed only) — downloads what is missing (the runtime and the
    models) and runs an end-to-end check: the server starts, the model loads, one
@@ -610,14 +622,17 @@ Once the runtime is wired, the main window surfaces its state:
   | `Starting` | yellow | server starting, model loading (progress)  |
   | `Ready`    | green  | server up, model loaded, recognition ok    |
   | `Failed`   | red    | startup/probe failed (§7.5 message)         |
-  | External   | grey   | mode is External (no managed server)       |
+  | External   | grey   | every task is external (no managed server)  |
+  | Mixed      | —      | some tasks are managed, some are external   |
 
   Clicking the badge opens the shared **`ServerLogWindow`**. (The former
   "opens Settings → Runtime" empty-state shortcut was removed with the settings
   rework — ADR 70; the wizard and Settings cover the unconfigured case.) ✅
-- **`Footer.qml` Start/Stop toggle** — next to the indicator, visible only in
-  Managed mode. When the config is valid (`configValid`: binary + model exist)
-  it starts the managed llama-server with the selected model — the same
+- **`Footer.qml` Start/Stop toggle** — next to the indicator, visible only when
+  at least one task is managed. When the config is valid (`configValid`: the
+  binary and the managed models are on disk)
+  it starts the managed llama-server with the model of the first managed task —
+  the same
   `Runtime.startServer()` as the Start button in Settings → Runtime — so the
   server can be warmed up right after app launch without opening Settings.
   While the server is `Starting`/`Ready` the button turns into **Stop**
@@ -636,7 +651,8 @@ Once the runtime is wired, the main window surfaces its state:
 - **Error surfacing** — `Failed` messages follow the §7.5 matrix. ✅
 - **Settings → Runtime** carries Start/Stop/Restart, probe status, Show log,
   and the stage-D installer; the **Models** section carries the task table with
-  the model and the quantization of every task, the download queue and the model
+  the runtime, the model and the quantization of every task, the download queue
+  and the model
   files on disk. ✅
 
 ## 4.20 Project file (`.llocr`)

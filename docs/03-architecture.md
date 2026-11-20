@@ -128,6 +128,7 @@ class RuntimeController : public QObject {   // src/runtime/RuntimeController.h
     // Callback-based resolve (review 3.3): External invokes synchronously;
     // Managed start → /health → /v1/models → alias, then onResolved() runs.
     // Concurrent callers register their callback and share one in-flight resolve.
+    // The runtime of the task is read per task: modeForRole(role) (ADR 318).
     void ensureConnectionReady(std::function<void(const ResolvedConnection &)> onResolved);
     void cancelPendingStart();   // Stop during StartingRuntime
 };
@@ -136,7 +137,30 @@ class RuntimeController : public QObject {   // src/runtime/RuntimeController.h
 The wizard “Check” button (self-test: start → health → `/v1/models` → one OCR
 request) is exposed via the dedicated `SelfTestController` singleton
 (`SelfTest`), which consumes `ensureConnectionReady()`; the live server log
-window binds to the `RuntimeLog` singleton.
+window binds to the `RuntimeLog` singleton — the window carries two sources,
+the server's output and the request journal (ADR 320).
+
+**The runtime belongs to the task** (ADR 318). The key
+`tasks/<role>/runtimeMode` (`managed` | `external`) is the runtime of one task:
+the local llama-server or its own external endpoint. The three layers split it
+that way:
+
+- **the config layer owns the key and the migration** —
+  `SettingsStore::runtimeModeForRole` / `setRuntimeModeForRole` /
+  `setRuntimeModeForAllRoles` / `managedRoles` / `externalRoles` /
+  `isManagedRole`, and the `taskRuntimeModesChanged` signal. The global
+  `provider/mode` survives as the default for a task without a key of its own
+  and as the source of the migration; the UI never reads it.
+- **the runtime layer reads the mode per task** —
+  `RuntimeController::modeForRole(role)` feeds the decision points (resolve,
+  availability, the config error, `canRecognize`, `configValid`, the launch
+  preview, the pending start). `hasManagedTasks()` answers whether a server is
+  needed at all, `firstManagedRole()` names the task a manual start serves,
+  and `selfTestRole()` names the managed task the self-test probes.
+- **the UI asks the settings for a task's mode** — the task table carries a
+  «Runtime» switch per row, the settings window asks
+  `Settings.runtimeModeForRole(task)`, and the wizard writes the mode of all
+  four tasks at once.
 
 ARM-coordination principle: *all* async work that decides “is a connection
 ready, and what is it” is owned by `RuntimeController` (ADR 26/32/37). The
@@ -161,6 +185,11 @@ resolved connection and the store.
   adapter (`OcrModel::create`, default `mineru`). The recognition
   **prompt** comes from the selected adapter's `promptVariants()` — the
   authority moved from `AppController`/presets to the model adapter (ADR 58).
+- The runtime of a task is the key `tasks/<role>/runtimeMode` (`managed` |
+  `external`): it belongs to the task, and the global `provider/mode` is only
+  its default (ADR 318). A task without a key of its own follows the global
+  one — that is what carries an old install over: nothing is migrated, and
+  the first explicit choice of a task wins from then on.
 - `parserId` selects the response-parsing strategy via `ParserFactory`
   (`auto` | `raw` | the layout markup parser `mineru-layout`; key
   `parser/id`; default **`auto`**, which resolves to the
@@ -168,7 +197,7 @@ resolved connection and the store.
   through `ParserOptions` (`keepHeadersAndPageNumbers`, `tablesAsHtml`, `bboxRange`,
   `modelId`) and `IOutputParser::rebuildText()` re-renders a page's Markdown
   after its structured fragments change.
-- In `Managed` mode the *connection* is **computed**, not configured: the
+- For a **managed** task the *connection* is **computed**, not configured: the
   managed server's `baseUrl` (loopback + chosen port), `modelId` (the `--alias`)
   come from `ensureConnectionReady()` (ADR 32). `model/name` is not overwritten.
 
@@ -180,7 +209,10 @@ A dedicated `src/runtime/` layer sits between the backend and the OS:
   Managed: start → `/health` → `/v1/models` → alias), `cancelPendingStart()`,
   server lifecycle (start/stop/restart), `estimateModelMemory()` (H.2), and
   exposes `state`/`busyState`/`statusMessage`/`loadProgressPercent`/`configValid`/
-  `lockedOut` to QML. Self-test (`SelfTest` singleton) and the server-log live
+  `lockedOut` to QML. The runtime of a task is read per task
+  (`modeForRole(role)`); `hasManagedTasks()`, `firstManagedRole()` and
+  `selfTestRole()` answer what the server is for (ADR 318/319). Self-test
+  (`SelfTest` singleton) and the server-log live
   view (`RuntimeLog` singleton) were extracted into their own QML singletons
   (review 3.4).
 - **RuntimeLocator** — probe (`--version`/`--help`, tolerant version parse),
@@ -303,7 +335,8 @@ in `docs/04-components.md`, the decisions as ADRs in `docs/07-glossary.md`).
   cropped image blocks (`image://ocr/crop/N`).
 - **SettingsStore** — persists settings (connection/model incl. DRY params/parser
   via `QSettings`, grouped keys `provider/*`, `model/*`, `output/*`, `runtime/*`,
-  `launch/*`, `hf/*`) plus UI state (`ui/*`: theme mode, language, window
+  `launch/*`, `hf/*`, and the per-task keys `tasks/<role>/*` — the runtime mode
+  among them, ADR 318) plus UI state (`ui/*`: theme mode, language, window
   geometry). Exposed to QML as the `Settings` singleton; also read directly by
   `AppController`, the `ModelRequestController` subclasses, `RuntimeController`,
   and `UiController`.
@@ -326,8 +359,8 @@ UI (file selection)
   → AppController (stores pages in DocumentModel)
     → per-task controller (a ModelRequestController subclass) or the
       role queue (RecheckQueue for block recognition, ADR 286)
-        → RuntimeController::ensureConnectionReady()   [External: immediate;
-            Managed: start → /health → /v1/models → alias]
+        → RuntimeController::ensureConnectionReady()   [the task's own runtime:
+            External: immediate; Managed: start → /health → /v1/models → alias]
         → OcrModel::create(modelId, role) from the task's model profile
         → ResolvedConnection → ConnectionConfig + OcrRequest
       → DocumentModel (decode image / render PDF page → QImage)

@@ -1,19 +1,23 @@
 # 10. External runtime: per-task endpoints and secrets
 
-How the external mode is wired: one shared server plus a per-task row with
-its own endpoint, API key and model alias, and the keys in the OS secret
-store. The decision records are ADR 226–235 in `docs/07-glossary.md`.
+How the external runtime is wired: the runtime of a **task**, not a mode of
+the app (ADR 318). An external task talks to an OpenAI-compatible server the
+app does not own; it carries its own endpoint, API key and model alias, and
+the keys live in the OS secret store. The decision records are ADR 226–235
+and 318–320 in `docs/07-glossary.md`.
 
 ## 1. Connections
 
-In external mode the app talks to OpenAI-compatible servers it does not own
-and does not start. The model mirrors the managed runtime (ADR 226): the same
-four tasks (`core/ConnectionRole.h` — `layout`, `blockRecognition`,
-`decision`, `fix`), and every task carries its own endpoint, its own API key
-and its own model alias.
+An external task talks to an OpenAI-compatible server the app neither owns nor
+starts. Which task runs externally is the task's own choice
+(`tasks/<role>/runtimeMode`, ADR 318): the same four tasks
+(`core/ConnectionRole.h` — `layout`, `blockRecognition`, `decision`, `fix`)
+each name their runtime, and the external one carries its own endpoint, its
+own API key and its own model alias (ADR 226).
 
 | What | Where | Fallback |
 |------|-------|----------|
+| Task runtime | `tasks/<role>/runtimeMode` (`managed` / `external`) | the global `provider/mode` |
 | Shared base URL | `provider/baseUrl` (`SettingsStore`) | — |
 | Task endpoint | `tasks/<role>/baseUrl` | empty → the shared URL |
 | Model alias | `model/name`, `tasks/<role>/modelName` | — |
@@ -33,16 +37,25 @@ it in the base URL itself.
 
 ### Where it is configured
 
-**Settings → Runtime → External** (`src/qml/Settings/RuntimeTabExternal.qml`):
-two blocks of their own (ADR 314). The **shared server** block carries the
-base URL, the API key, the **check** of the server and the answer of the
-secret store; the **tasks** block carries one row per task with the model
-name in the row and the endpoint and the key behind its gear
-(`Settings/TaskEndpointForm.qml`). The first-run wizard's External step
-(`Setup/StepExternal.qml`) shows the shared server only, in a compact mode;
-the tasks live in the settings. The **Models** window shows the same
-four tasks in external mode, but its alias cell is read-only there — the alias
-belongs to the connection and is edited in one place (ADR 226).
+**Settings → Runtime** (`src/qml/Settings/RuntimeTabExternal.qml`) carries
+the **shared server** block: the base URL, the API key, the **check** of the
+server and the answer of the secret store. That block is the default of every
+external task — a task with an endpoint of its own overrides it. The section
+carries no mode switch any more (ADR 318): the managed card and this one
+stand side by side.
+
+The connection of a task lives with the task. The **Models** window
+(`src/qml/Common/TaskModelsTable.qml`) carries a **«Runtime»** switch per row
+(managed | external), and the gear of the row opens the **«Подключение»**
+(Connection) tab (`src/qml/Settings/TaskConnectionTab.qml`) with the task's
+endpoint, its key and its model alias (`Settings/TaskEndpointForm.qml`). The
+per-task rows the Runtime section used to carry are gone
+(`src/qml/Settings/TaskConnectionRow.qml` was deleted). The alias cell of the
+table is read-only — the alias belongs to the connection and is edited in that
+one place (ADR 226).
+
+The first-run wizard's External step (`Setup/StepExternal.qml`) shows the
+shared server only; the tasks live in the settings.
 
 The **check** asks the server whether it answers: `runtime/ConnectionProbe`
 (QML singleton `ConnectionProbe`) sends `GET <base URL>/v1/models` and reports
@@ -153,9 +166,11 @@ reaches the UI, never an empty field.
 - **The client keeps its own request journal** (`core/RequestJournal`,
   ADR 228): one record per HTTP call — endpoint, model, request and response
   sizes, HTTP status, duration and the head of the reply (capped excerpt).
-  The log window shows it in external mode, where there is no server process
-  to read output from. The journal lives in memory (the last 500 records —
-  a page is the user's document) and the API key never enters it.
+  The log window shows **both** sources — the server's output on top, the
+  journal below (ADR 320) — in every mode: the journal holds the requests to
+  the local server and to the external endpoints alike. The journal lives in
+  memory (the last 500 records — a page is the user's document) and the API
+  key never enters it.
 
 ## 4. Appendix: model repositories for external use
 
@@ -196,10 +211,17 @@ the alias the server knows the model under — e.g. `http://127.0.0.1:8000/v1`):
 - **ADR 283** — the key field is the key's editor and its delete button: the
   mask is the field's text, an empty field removes the key, one "Show"
   switch per table.
+- **ADR 318** — the runtime belongs to the task: `tasks/<role>/runtimeMode`
+  is the runtime of one task, the shared server card is the default of every
+  external task, and the task's own endpoint, key and alias live in the
+  «Подключение» tab of its gear popup.
+- **ADR 320** — the log window has two sources: the server's output and the
+  request journal are both shown, in every mode.
 
 ## 6. Links
 
-- Glossary and decision record: `docs/07-glossary.md` (ADR 226–235, 283).
+- Glossary and decision record: `docs/07-glossary.md` (ADR 226–235, 283,
+  318, 320).
 - The fix task's models: `docs/16-model-qwen3.5.md`.
 - The decision model: `docs/17-model-minicpm-jev.md`.
 - Russian mirror: `docs/10-external-runtime.ru.md`.

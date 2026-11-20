@@ -28,7 +28,7 @@ Windows: дерево пресета `dev-win` (`build/win-msvc2022`, Ninja), с
 `--disable-gpu --no-sandbox --single-process`; на некоторых машинах его
 GPU-инициализация прерывается (особенность среды, не регрессия).
 
-### 77 цели, по доменам
+### 79 целей, по доменам
 
 | Домен | Цели |
 | --- | --- |
@@ -39,14 +39,16 @@ GPU-инициализация прерывается (особенность с
 | Документ, страницы, разметка, ориентация | `test_page_status`, `test_layout`, `test_project_store`, `test_document_model`, `test_page_document`, `test_block_placement`, `test_page_rotation`, `test_page_orientation`, `test_djvu_document`* , `test_app_import` |
 | Редактор (WYSIWYG-страница, pull, обёртка) | `test_editor_page`, `test_editor_pull`, `test_editor_qml` |
 | Импорт, настройки, профили | `test_settings_store`, `test_request_profile`, `test_request_budget`, `test_launch_profile`, `test_launch_config` |
-| QML (вкладка запуска, таблица задач, мастер, переключатель) | `test_launch_tab_qml`, `test_task_models_table_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
+| QML (вкладка запуска, мастер, переключатель) | `test_launch_tab_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
+| QML (таблица задач и её попапы) | `test_task_models_table_qml`, `test_task_connection_tab_qml` |
+| QML (окно логов рантайма) | `test_server_log_window_qml` |
 | QML (окно настроек) | `test_settings_nav_qml`, `test_settings_window_qml` |
 | QML (три меню панелей) | `test_panel_menus_qml` |
 | QML (баннер диагностики в футере) | `test_footer_banner_qml` |
 | QML (шапка панели блока) | `test_block_panel_qml` |
 | UI (набор иконок) | `test_ui_icons` |
 | UI (кнопка с иконкой и подписью) | `test_icon_tool_button_qml` |
-| Установщик рантайма, жизненный цикл | `test_runtime_installer`, `test_runtime_lifetime` |
+| Установщик рантайма, жизненный цикл, журнал | `test_runtime_installer`, `test_runtime_lifetime`, `test_runtime_log` |
 | Проверка общего сервера | `test_connection_probe` |
 | Экспорт и рендеринг | `test_exporter`, `test_export_renderer`, `test_candidate_renderer` |
 | Транспорт и управляемый сервер | `test_http_client`, `test_capabilities`, `test_runtime_locator`, `test_server_process`, `test_ensure_connection` |
@@ -54,7 +56,18 @@ GPU-инициализация прерывается (особенность с
 | Core (клиент, переходы, diff, latex) | `test_llama_client`, `test_box_transitions`, `test_text_diff`, `test_latex_text`, `test_log_document_sync` |
 
 \* `test_djvu_document` (и DjVu-часть `test_app_import`) собирается только
-тогда, когда DjVuLibre найден на этапе конфигурации.
+тогда, когда DjVuLibre найден на этапе конфигурации — среди 79 его нет.
+
+Per-task рантайм (ADR 318) покрыт тремя новыми целями —
+`test_runtime_log` (два источника лога), `test_server_log_window_qml`
+(окно со сплитом) и `test_task_connection_tab_qml` (вкладка «Подключение»
+задачи) — и существующими: `test_settings_store` (ключ, перенос, сброс),
+`test_ensure_connection` (per-task разрешение), `test_task_models_table_qml`
+(колонка «Рантайм» строки), `test_setup_wizard_qml` (выбор мастера для всех
+четырёх задач), `test_footer_banner_qml` (бейдж «Смешанный»),
+`test_runtime_tab_external_qml` и `test_launch_tab_qml` (раздел «Рантайм» без
+переключателя), `test_settings_window_qml`, `test_log_document_sync` и
+`test_external_runtime`.
 
 Зафиксированные в репозитории фикстуры: `tests/fixtures/djvu/`
 (синтетические DjVu-документы, вместе с генератором),

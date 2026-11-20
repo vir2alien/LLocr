@@ -135,6 +135,7 @@ class RuntimeController : public QObject {   // src/runtime/RuntimeController.h
     // Callback-based resolve (review 3.3): External invokes synchronously;
     // Managed start → /health → /v1/models → alias, then onResolved() runs.
     // Concurrent callers register their callback and share one in-flight resolve.
+    // The runtime of the task is read per task: modeForRole(role) (ADR 318).
     void ensureConnectionReady(std::function<void(const ResolvedConnection &)> onResolved);
     void cancelPendingStart();   // Stop during StartingRuntime
 };
@@ -143,7 +144,31 @@ class RuntimeController : public QObject {   // src/runtime/RuntimeController.h
 Кнопка «Check» мастера (самопроверка: запуск → health → `/v1/models` → один
 OCR-запрос) выведена через отдельный синглтон `SelfTestController`
 (`SelfTest`), который потребляет `ensureConnectionReady()`; окно живого
-журнала сервера привязано к синглтону `RuntimeLog`.
+журнала сервера привязано к синглтону `RuntimeLog` — в окне два источника,
+вывод сервера и журнал запросов (ADR 320).
+
+**Рантайм принадлежит задаче** (ADR 318). Ключ
+`tasks/<role>/runtimeMode` (`managed` | `external`) — это рантайм одной
+задачи: локальный llama-server или её собственный внешний эндпоинт. Три
+слоя делят его так:
+
+- **слой конфигурации владеет ключом и переносом** —
+  `SettingsStore::runtimeModeForRole` / `setRuntimeModeForRole` /
+  `setRuntimeModeForAllRoles` / `managedRoles` / `externalRoles` /
+  `isManagedRole` и сигнал `taskRuntimeModesChanged`. Глобальный
+  `provider/mode` остаётся значением по умолчанию для задачи без
+  собственного ключа и источником переноса; UI его не читает.
+- **слой рантайма читает режим по задаче** —
+  `RuntimeController::modeForRole(role)` кормит точки решения (разрешение,
+  доступность, ошибка конфигурации, `canRecognize`, `configValid`, предпросмотр
+  команды запуска, отложенный старт). `hasManagedTasks()` отвечает, нужен ли
+  сервер вовсе, `firstManagedRole()` называет задачу, которую обслуживает
+  ручной старт, а `selfTestRole()` — управляемую задачу, которую бьёт
+  самопроверка.
+- **UI спрашивает у настроек режим задачи** — в таблице задач у каждой строки
+  свой переключатель «Рантайм», окно настроек спрашивает
+  `Settings.runtimeModeForRole(task)`, а мастер пишет режим всех четырёх
+  задач разом.
 
 Принцип координации ARM: *вся* асинхронная работа, решающая «готово ли
 подключение и что это за подключение», принадлежит `RuntimeController`
@@ -169,6 +194,11 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
   по умолчанию `mineru`). **Промпт** распознавания берётся из
   `promptVariants()` выбранного адаптера — власть переехала от
   `AppController`/пресетов к адаптеру модели (ADR 58).
+- Рантайм задачи — это ключ `tasks/<role>/runtimeMode` (`managed` |
+  `external`): он принадлежит задаче, а глобальный `provider/mode` — только
+  его умолчание (ADR 318). Задача без собственного ключа следует глобальному —
+  это и переносит старую установку: ничего не мигрируется, и первый явный
+  выбор задачи побеждает с тех пор навсегда.
 - `parserId` выбирает стратегию разбора ответа через `ParserFactory`
   (`auto` | `raw` | парсер layout-разметки `mineru-layout`; ключ
   `parser/id`; по умолчанию **`auto`**, что разрешается в
@@ -176,7 +206,7 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
   `ParserOptions` (`keepHeadersAndPageNumbers`, `tablesAsHtml`, `bboxRange`,
   `modelId`), а `IOutputParser::rebuildText()` заново собирает Markdown
   страницы после изменения её структурированных фрагментов.
-- В режиме `Managed` *подключение* **вычисляется**, а не настраивается:
+- Для **управляемой** задачи *подключение* **вычисляется**, а не настраивается:
   `baseUrl` управляемого сервера (loopback + выбранный порт) и `modelId`
   (это `--alias`) приходят из `ensureConnectionReady()` (ADR 32).
   `model/name` не перезаписывается.
@@ -190,7 +220,10 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
   `cancelPendingStart()`, жизненным циклом сервера
   (запуск/остановка/перезапуск), `estimateModelMemory()` (H.2) и выставляет
   QML `state`/`busyState`/`statusMessage`/`loadProgressPercent`/`configValid`/
-  `lockedOut`. Самопроверка (синглтон `SelfTest`) и живой просмотр журнала
+  `lockedOut`. Рантайм задачи читается по задаче (`modeForRole(role)`);
+  `hasManagedTasks()`, `firstManagedRole()` и `selfTestRole()` отвечают, для
+  чего нужен сервер (ADR 318/319). Самопроверка (синглтон `SelfTest`) и живой
+  просмотр журнала
   сервера (синглтон `RuntimeLog`) вынесены в собственные QML-синглтоны
   (review 3.4).
 - **RuntimeLocator** — проба (`--version`/`--help`, устойчивый разбор версии),
@@ -326,7 +359,8 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
   и кропы блоков-изображений (`image://ocr/crop/N`).
 - **SettingsStore** — сохраняет настройки (подключение/модель, включая
   параметры DRY, парсер — через `QSettings`, сгруппированные ключи
-  `provider/*`, `model/*`, `output/*`, `runtime/*`, `launch/*`, `hf/*`) плюс
+  `provider/*`, `model/*`, `output/*`, `runtime/*`, `launch/*`, `hf/*` и
+  per-task ключи `tasks/<role>/*` — среди них режим рантайма, ADR 318) плюс
   состояние интерфейса (`ui/*`: режим темы, язык, геометрия окна). Выставлена
   в QML как синглтон `Settings`; также читается напрямую `AppController`,
   подклассами `ModelRequestController`, `RuntimeController` и
@@ -351,8 +385,8 @@ UI (file selection)
   → AppController (stores pages in DocumentModel)
     → per-task controller (a ModelRequestController subclass) or the
       role queue (RecheckQueue for block recognition, ADR 286)
-        → RuntimeController::ensureConnectionReady()   [External: immediate;
-            Managed: start → /health → /v1/models → alias]
+        → RuntimeController::ensureConnectionReady()   [the task's own runtime:
+            External: immediate; Managed: start → /health → /v1/models → alias]
         → OcrModel::create(modelId, role) from the task's model profile
         → ResolvedConnection → ConnectionConfig + OcrRequest
       → DocumentModel (decode image / render PDF page → QImage)
