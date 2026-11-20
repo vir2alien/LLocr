@@ -264,10 +264,12 @@ fix → decision of the corrected); see `docs/11-auto-pipeline.md`.
 ## 10. Settings
 
 - Per-task model/quant selection lives in the one «Модели» window (ADR 168):
-  rows `task | runtime ▾ | model ▾ | quant ▾ | ⚙`; the gear opens the
-  **Launch** (launch-parameter profile) and **Request** tabs of a managed
-  task, and the **Connection** tab (endpoint, key, model alias) of an
-  external one; a files-on-disk block with guarded delete.
+  rows `task | runtime ⟨Managed | External⟩ | model ▾ | quant ▾ | ⚙` — the
+  runtime column is a two-option segmented toggle, not a dropdown; the gear
+  opens the **Launch** (launch-parameter profile) and **Request** tabs of a
+  managed task, and the **Connection** (endpoint, key, model alias) and
+  **Request** tabs of an external one; a files-on-disk block with guarded
+  delete.
 - Settings keys: `tasks/<task>/{modelPath, mmprojPath, draftPath,
   requestProfileId, modelName, runtimeMode}` — blockRecognition's launch
   files keep the legacy `check/` prefix (ADR 146). The runtime mode is the

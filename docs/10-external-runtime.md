@@ -45,8 +45,8 @@ carries no mode switch any more (ADR 318): the managed card and this one
 stand side by side.
 
 The connection of a task lives with the task. The **Models** window
-(`src/qml/Common/TaskModelsTable.qml`) carries a **«Runtime»** switch per row
-(managed | external), and the gear of the row opens the **«Подключение»**
+(`src/qml/Common/TaskModelsTable.qml`) carries a **«Runtime»** segmented toggle
+per row (managed | external), and the gear of the row opens the **«Подключение»**
 (Connection) tab (`src/qml/Settings/TaskConnectionTab.qml`) with the task's
 endpoint, its key and its model alias (`Settings/TaskEndpointForm.qml`). The
 per-task rows the Runtime section used to carry are gone

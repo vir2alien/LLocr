@@ -158,7 +158,7 @@ that way:
   needed at all, `firstManagedRole()` names the task a manual start serves,
   and `selfTestRole()` names the managed task the self-test probes.
 - **the UI asks the settings for a task's mode** — the task table carries a
-  «Runtime» switch per row, the settings window asks
+  «Runtime» segmented toggle per row, the settings window asks
   `Settings.runtimeModeForRole(task)`, and the wizard writes the mode of all
   four tasks at once.
 

@@ -699,7 +699,7 @@ void TestTaskModelsTableQml::theSaveTabsAsksBeforeWritingTheLaunchDraft()
 
 // The columns of the table have their own width: the name of a quantization
 // and its marker must fit into the field, and the name of a model must not
-// take the room of the rest of the row (ADR 317).
+// take the room of the rest of the row (ADR 321).
 void TestTaskModelsTableQml::theQuantizationFieldFitsTheQuantization()
 {
     useManagedTasks();
@@ -737,7 +737,7 @@ void TestTaskModelsTableQml::theQuantizationFieldFitsTheQuantization()
 
 // The dropdown of a quantization is as wide as its widest entry: the numbers
 // behind a quantization are the reason to open it, and the fixed width of
-// 360 cut the longest line in half (ADR 317).
+// 360 cut the longest line in half (ADR 321).
 void TestTaskModelsTableQml::theQuantizationPopupIsAsWideAsItsWidestEntry()
 {
     useManagedTasks();

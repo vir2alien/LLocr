@@ -331,8 +331,16 @@ void TestTaskConnectionTabQml::theCancelPathThrowsTheDraftsAway()
     typeText(m_window.get(), QStringLiteral("http://typed.example"));
     QCoreApplication::processEvents();
 
+    QQuickItem *key = keyField(tab.get());
+    QVERIFY(key);
+    key->setProperty("text", QString());
+    key->forceActiveFocus();
+    typeText(m_window.get(), QStringLiteral("typed-key"));
+    QCoreApplication::processEvents();
+
     QCOMPARE(evaluate(tab.get(), QStringLiteral("aliasDraft")).toString(), QStringLiteral("typed-alias"));
     QCOMPARE(evaluate(tab.get(), QStringLiteral("endpointDraft")).toString(), QStringLiteral("http://typed.example"));
+    QCOMPARE(evaluate(tab.get(), QStringLiteral("keyDraft")).toString(), QStringLiteral("typed-key"));
 
     QVariant result;
     QVERIFY(QMetaObject::invokeMethod(tab.get(), "resetValues", Q_RETURN_ARG(QVariant, result)));
@@ -344,8 +352,10 @@ void TestTaskConnectionTabQml::theCancelPathThrowsTheDraftsAway()
     QCOMPARE(evaluate(tab.get(), QStringLiteral("keyDraft")).toString(), QString());
     QCOMPARE(alias->property("text").toString(), QStringLiteral("saved-alias"));
     QCOMPARE(endpoint->property("text").toString(), QStringLiteral("http://saved.example"));
+    QCOMPARE(key->property("text").toString(), QString());
     QCOMPARE(m_settings->modelNameForRole(m_task), QStringLiteral("saved-alias"));
     QCOMPARE(m_settings->baseUrlForRole(m_task), QStringLiteral("http://saved.example"));
+    QCOMPARE(m_settings->apiKeySetForRole(m_task), false);
 }
 
 // The endpoint of the task goes through the settings of the task.

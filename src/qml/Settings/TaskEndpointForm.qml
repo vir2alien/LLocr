@@ -92,7 +92,12 @@ ColumnLayout {
         font.pixelSize: Theme.bodySmallSize
         selectByMouse: true
         placeholderText: Settings.baseUrl
-        onTextEdited: form.edited(text, form.keyDraft, form.keyEdited)
+        onTextEdited: {
+            // The draft follows the field: a stale copy would come back when
+            // the key is typed and would take the typed endpoint with it.
+            form.endpointDraft = text
+            form.edited(text, form.keyDraft, form.keyEdited)
+        }
     }
 
     LLOLabel {

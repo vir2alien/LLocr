@@ -643,10 +643,11 @@ appendix at the end of this file.
   it, and on a fresh install it stays at its default (`external`). It remains
   the fallback for a task without a key of its own and the source of the
   migration; a task whose key is removed — only «reset runtime defaults» does
-  that — falls back to the global. The switch lives in the task table: every
-  row carries its own «Runtime» switch, and the endpoint, the key and the
-  alias of a task moved into the task's own settings — the «Подключение»
-  (Connection) tab of its gear popup. The wizard's choice is committed **at
+  that — falls back to the global. The segmented toggle lives in the task
+  table: every row carries its own «Runtime» segmented toggle, and the
+  endpoint, the key and the alias of a task moved into the task's own
+  settings — the «Подключение» (Connection) tab of its gear popup. The
+  wizard's choice is committed **at
   click time**, not at the end of the wizard: choosing a card writes the mode
   of all four tasks at once, and a «Skip» pressed afterwards leaves that
   choice applied. The design asked for exactly that («Выбор визарда применяется
@@ -2098,7 +2099,7 @@ appendix at the end of this file.
   `Theme.border`), so the pair does not stand on a light box in the dark
   theme. The button of a dialog says what it does («Не сохранять»,
   «Сбросить», «Продолжить») and never «Да» or «OK».
-- **317.** The columns of the task table have a width of their own. The name
+- **321.** The columns of the task table have a width of their own. The name
   of a model gets exactly the room it needs and no more (260 px, 140 px at
   the least), the field of a quantization is wide enough for the longest id
   together with its marker (150 px), and the free space of the row goes to
@@ -2111,7 +2112,9 @@ appendix at the end of this file.
   (`FontMetrics`) and never grows past the window that holds it. The same
   table stands in two windows — the «Models» window (1040 px) and the setup
   wizard (760 px) — and in the narrow one the columns shrink to their
-  minimum.
+  minimum. It was numbered 317 until now — that number belonged to the
+  installer entry («the installer never downloads a build that is on disk
+  already»), so the old references stay traceable.
 
 ### Security & secrets
 

@@ -185,7 +185,8 @@ the field carries a mask and takes a new one.
 
 > The runtime of a **task** (`External` / `Managed`) is the task's own choice
 > (`tasks/<role>/runtimeMode`, ADR 318): the first-run wizard writes it for all
-> four tasks, and the task table's «Runtime» switch changes it afterwards;
+> four tasks, and the task table's «Runtime» segmented toggle changes it
+> afterwards;
 > existing profiles stay `External` (ADR 26/31). The **Launch** tab in
 > the model windows edits the llama-server launch-parameter profiles; the
 > first-run wizard's **Launch** step (port, ctx-size, n-gpu-layers,
@@ -479,8 +480,8 @@ complete; the decisions are recorded as ADRs in `docs/07-glossary.md`).
 
 - **The runtime of a task** (`External` / `Managed`) is the task's own choice
   (`tasks/<role>/runtimeMode`, ADR 318): the first-run wizard writes it for all
-  four tasks at once, and the task table's «Runtime» switch changes it per
-  task afterwards. In `External` nothing is launched; the task talks to an
+  four tasks at once, and the task table's «Runtime» segmented toggle changes
+  it per task afterwards. In `External` nothing is launched; the task talks to an
   existing OpenAI-compatible endpoint. In `Managed` LLocr starts the server
   itself — the managed tasks share one llama-server. ✅
 - **`RuntimeController`** (QML singleton `Runtime`, created in `main.cpp`, ADR 36)

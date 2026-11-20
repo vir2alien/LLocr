@@ -42,7 +42,7 @@ Item {
     // have the width their content needs, the model name takes the room that
     // is left and no more, and the free space goes to the right of the gear —
     // the model name must not push the quantization out of sight, and the
-    // gear must stand next to the fields it belongs to (ADR 317).
+    // gear must stand next to the fields it belongs to (ADR 321).
     readonly property int taskColumnWidth: 140
     readonly property int runtimeColumnWidth: 200
     readonly property int quantColumnWidth: 150

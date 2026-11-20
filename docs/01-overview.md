@@ -116,7 +116,8 @@ downloaded models and the keys in the system store.
 
 The runtime of a task (`External` / `Managed`) is the task's own choice
 (`tasks/<role>/runtimeMode`, ADR 318): the first-run wizard writes it for all
-four tasks, and the task table's «Runtime» switch changes it afterwards;
+four tasks, and the task table's «Runtime» segmented toggle changes it
+afterwards;
 existing profiles stay `External` by default (ADR 26/31).
 
 > The recognition **prompt** is owned by the selected **OCR model adapter**

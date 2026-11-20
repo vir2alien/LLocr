@@ -183,7 +183,10 @@ class FakeSettings : public QObject
     Q_OBJECT
 
 public:
-    Q_INVOKABLE QString runtimeModeForRole(const QString &role) const { return m_modes.value(role, QStringLiteral("managed")); }
+    // A task without a key of its own follows the global mode, and the global
+    // mode of a fresh install is «external» — the fake must not answer
+    // «managed» for a task nobody chose.
+    Q_INVOKABLE QString runtimeModeForRole(const QString &role) const { return m_modes.value(role, m_globalMode); }
 
     Q_INVOKABLE void setRuntimeModeForRole(const QString &role, const QString &mode)
     {
@@ -195,6 +198,16 @@ public:
 
     Q_INVOKABLE QStringList managedRoles() const { return rolesWith(QStringLiteral("managed")); }
     Q_INVOKABLE QStringList externalRoles() const { return rolesWith(QStringLiteral("external")); }
+
+    // The store's reset of the runtime defaults: every task follows the
+    // global mode again.
+    Q_INVOKABLE void clearModes()
+    {
+        if (m_modes.isEmpty())
+            return;
+        m_modes.clear();
+        emit taskRuntimeModesChanged();
+    }
 
 signals:
     void taskRuntimeModesChanged();
@@ -211,6 +224,7 @@ private:
     }
 
     QHash<QString, QString> m_modes;
+    QString m_globalMode = QStringLiteral("external");
 };
 
 class FakeTaskStatus : public QObject
@@ -239,6 +253,7 @@ private slots:
     void theProblemLogStaysReachable();
     void theBadgeSaysWhenTheRuntimesAreMixed();
     void theStartTooltipNamesTheTaskItServes();
+    void theBadgeSaysExternalAndTheStartButtonIsGoneWithoutAManagedTask();
 
 private:
     std::unique_ptr<QObject> loadFooter();
@@ -540,6 +555,29 @@ void TestFooterBannerQml::theStartTooltipNamesTheTaskItServes()
     QVERIFY2(tip, "the Start button has no tooltip");
     const QString text = tip->property("text").toString();
     QVERIFY2(text.contains(QStringLiteral("Markup")), qPrintable(QStringLiteral("the tooltip does not name the task: %1").arg(text)));
+}
+
+// Without a managed task there is no server to start: the badge says
+// «External» and the Start button is gone. A fresh install has no task with
+// a mode of its own, and every task follows the global one — «external».
+void TestFooterBannerQml::theBadgeSaysExternalAndTheStartButtonIsGoneWithoutAManagedTask()
+{
+    m_settingsDouble->clearModes();
+
+    const std::unique_ptr<QObject> footer = loadFooter();
+    QVERIFY2(footer, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(footer->property("anyManagedTask").toBool(), false);
+    QCOMPARE(evaluate(footer.get(), QStringLiteral("stateText()")).toString(), QStringLiteral("External"));
+
+    QQuickItem *button = nullptr;
+    for (QObject *child : footer->findChildren<QObject *>()) {
+        if (child->property("text").toString() == QLatin1String("Start server") && child->metaObject()->indexOfSignal("clicked()") >= 0)
+            button = qobject_cast<QQuickItem *>(child);
+    }
+    QVERIFY2(button, "the footer has no Start button");
+    QVERIFY2(!button->isVisible(), "without a managed task the Start button must be hidden");
 }
 
 QTEST_MAIN(TestFooterBannerQml)

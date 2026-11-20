@@ -28,9 +28,7 @@ int countModels(const QByteArray &body)
 
 }  // namespace
 
-ConnectionProbe::ConnectionProbe(SettingsStore &settings, QObject *parent) : QObject(parent), m_settings(settings)
-{
-}
+ConnectionProbe::ConnectionProbe(SettingsStore &settings, QObject *parent) : QObject(parent), m_settings(settings) {}
 
 void ConnectionProbe::probe(const QString &baseUrl, const QString &apiKey)
 {

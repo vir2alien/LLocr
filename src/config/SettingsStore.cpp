@@ -504,11 +504,16 @@ QString SettingsStore::secretError() const
 QString SettingsStore::secretStatus() const
 {
     switch (SecretStore::lastStatus()) {
-    case SecretStore::Status::Ok: return QStringLiteral("ok");
-    case SecretStore::Status::NotFound: return QStringLiteral("notFound");
-    case SecretStore::Status::Refused: return QStringLiteral("refused");
-    case SecretStore::Status::Unavailable: return QStringLiteral("unavailable");
-    case SecretStore::Status::Failed: return QStringLiteral("failed");
+    case SecretStore::Status::Ok:
+        return QStringLiteral("ok");
+    case SecretStore::Status::NotFound:
+        return QStringLiteral("notFound");
+    case SecretStore::Status::Refused:
+        return QStringLiteral("refused");
+    case SecretStore::Status::Unavailable:
+        return QStringLiteral("unavailable");
+    case SecretStore::Status::Failed:
+        return QStringLiteral("failed");
     }
     return QStringLiteral("ok");
 }
