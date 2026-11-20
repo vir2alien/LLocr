@@ -863,8 +863,8 @@ void TestSettingsWindowQml::theOutputParserKeepsItsOwnWidth()
 
 // The runtime management and the downloaded models are cards of their own,
 // with the headers the block titles of the verification section carry. The
-// runtime section keeps its blocks apart: the builds, the updates, the
-// shared server and the tasks.
+// runtime section keeps its blocks apart: the builds, the updates and the
+// shared server.
 void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
 {
     const std::unique_ptr<QObject> window = loadWindow();
@@ -879,7 +879,11 @@ void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
     QVERIFY2(hasLabelWithText(runtime, QStringLiteral("llama.cpp builds")), "the builds card has no header");
     QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Updates")), "the updates card has no header");
     QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Shared server")), "the shared server card has no header");
-    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Tasks")), "the tasks card has no header");
+    // The per-task card is gone: the tasks are configured in the table of the
+    // models section, and the shared server says so.
+    QVERIFY2(!hasLabelWithText(runtime, QStringLiteral("Tasks")), "the tasks card is still there");
+    QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Only the external tasks use this address. A different server can be set in the task's settings.")),
+             "the shared server card says nothing about the external tasks");
     QVERIFY2(hasLabelWithText(runtime, QStringLiteral("Timeouts")), "the timeouts block has no header");
     QVERIFY2(!hasLabelWithText(runtime, QStringLiteral("Install llama.cpp")), "the old runtime header is still there");
     // The divider between the connection settings and the blocks is gone: the

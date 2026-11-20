@@ -1,11 +1,9 @@
-// The external server tab: the shared server and the task rows, and what
-// they write.
+// The external server tab: the shared server and what it writes.
 //
-// The tab is the one place where an external connection is configured: the
-// shared server plus a row per task (ADR 226). The rows edit the settings
-// through the C++ side, and the test checks the round trip — the values the
-// user types reach `SettingsStore`, and the values it holds come back into the
-// fields.
+// The tab is the shared server of the external runtime (ADR 226): the
+// per-task endpoints and keys live in the gear popup of the task table
+// (ADR 311). The test checks the round trip — the values the user types
+// reach `SettingsStore`, and the values it holds come back into the fields.
 
 #include <QCoreApplication>
 #include <QDir>
@@ -48,24 +46,18 @@ private slots:
     void initTestCase();
     void cleanupTestCase();
     void theTabLoadsWithoutWarnings();
-    void theFourTasksHaveARow();
-    void theCompactModeHidesTheTasks();
-    void theTaskEndpointAndAliasAreSaved();
-    void theSavedValuesComeBackIntoTheFields();
+    void theTabHasNoTaskRows();
     void theHttpRemoteEndpointWarnsAboutPlaintextKey();
-    void theTaskRowWarnsAboutPlaintextKeyOnItsOwnEndpoint();
     void theStoredKeyIsShownAsAMaskAndNeverAsText();
     void clearingTheFieldRemovesTheStoredKey();
     void aTypedKeyReplacesTheStoredOne();
-    void theHeaderSwitchRevealsEveryKey();
+    void theHeaderSwitchRevealsTheSharedKey();
     void theMaskIsNeverMixedWithTheTypedKey();
 
 private:
     void registerModuleTypes();
     std::unique_ptr<QObject> loadTab();
     QVariant evaluate(QObject *scope, const QString &expression);
-    QObject *rowAt(QObject *tab, int index);
-    QObject *rowForTask(QObject *tab, const QString &task);
     QObject *sharedKeyField(QObject *tab);
 
     std::unique_ptr<FakeUiController> m_uiController;
@@ -187,22 +179,9 @@ std::unique_ptr<QObject> TestRuntimeTabExternalQml::loadTab()
     return object;
 }
 
-QObject *TestRuntimeTabExternalQml::rowAt(QObject *tab, int index)
+QObject *TestRuntimeTabExternalQml::sharedKeyField(QObject *tab)
 {
-    return evaluate(tab, QStringLiteral("taskRows.itemAt(%1)").arg(index)).value<QObject *>();
-}
-
-// The rows follow the C++ task list, so a test looks a row up by its task
-// rather than by its position.
-QObject *TestRuntimeTabExternalQml::rowForTask(QObject *tab, const QString &task)
-{
-    const int count = evaluate(tab, QStringLiteral("taskRows.count")).toInt();
-    for (int i = 0; i < count; ++i) {
-        QObject *row = rowAt(tab, i);
-        if (row && row->property("task").toString() == task)
-            return row;
-    }
-    return nullptr;
+    return evaluate(tab, QStringLiteral("sharedKey")).value<QObject *>();
 }
 
 void TestRuntimeTabExternalQml::theTabLoadsWithoutWarnings()
@@ -213,73 +192,21 @@ void TestRuntimeTabExternalQml::theTabLoadsWithoutWarnings()
     QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 }
 
-void TestRuntimeTabExternalQml::theFourTasksHaveARow()
+// The per-task rows moved to the gear popup of the task table (ADR 311):
+// the tab is the shared server alone.
+void TestRuntimeTabExternalQml::theTabHasNoTaskRows()
 {
     const std::unique_ptr<QObject> tab = loadTab();
     QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
 
-    // The rows are the tasks the C++ lists (ADR 215): the tab keeps no copy
-    // of the list.
-    const QVariantList ids = evaluate(tab.get(), QStringLiteral("taskIds")).toList();
-    QCOMPARE(ids.size(), 4);
-    QCOMPARE(evaluate(tab.get(), QStringLiteral("taskRows.count")).toInt(), 4);
+    QVERIFY(!tab->property("taskIds").isValid());
+    QVERIFY(!tab->property("compact").isValid());
 
-    for (int i = 0; i < ids.size(); ++i) {
-        QObject *row = rowAt(tab.get(), i);
-        QVERIFY2(row, qPrintable(ids.at(i).toString()));
-        QCOMPARE(row->property("task").toString(), ids.at(i).toString());
+    for (QObject *child : tab->findChildren<QObject *>()) {
+        const QString name = QString::fromLatin1(child->metaObject()->className());
+        QVERIFY2(!name.startsWith(QStringLiteral("TaskConnectionRow")), qPrintable(name));
     }
-}
-
-void TestRuntimeTabExternalQml::theCompactModeHidesTheTasks()
-{
-    const std::unique_ptr<QObject> tab = loadTab();
-    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
-    QCoreApplication::processEvents();
-
-    // The wizard's external step shows the shared server only.
-    tab->setProperty("compact", true);
-    QCoreApplication::processEvents();
-    QCOMPARE(evaluate(tab.get(), QStringLiteral("taskRows.count")).toInt(), 0);
-}
-
-void TestRuntimeTabExternalQml::theTaskEndpointAndAliasAreSaved()
-{
-    const std::unique_ptr<QObject> tab = loadTab();
-    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
-    QCoreApplication::processEvents();
-
-    QObject *row = rowForTask(tab.get(), QStringLiteral("blockRecognition"));
-    QVERIFY(row);
-    QCOMPARE(row->property("task").toString(), QStringLiteral("blockRecognition"));
-    row->setProperty("endpointText", QStringLiteral("http://own:9000"));
-    row->setProperty("aliasText", QStringLiteral("own-model"));
-
-    evaluate(tab.get(), QStringLiteral("saveValues()"));
-    QCoreApplication::processEvents();
-
-    QCOMPARE(m_settings->baseUrlForRole(QStringLiteral("blockRecognition")), QStringLiteral("http://own:9000"));
-    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("blockRecognition")), QStringLiteral("own-model"));
-}
-
-void TestRuntimeTabExternalQml::theSavedValuesComeBackIntoTheFields()
-{
-    m_settings->setBaseUrlForRole(QStringLiteral("decision"), QStringLiteral("http://decision:9000"));
-    m_settings->setModelNameForRole(QStringLiteral("decision"), QStringLiteral("decision-model"));
-
-    const std::unique_ptr<QObject> tab = loadTab();
-    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
-    QCoreApplication::processEvents();
-
-    evaluate(tab.get(), QStringLiteral("loadValues()"));
-    QCoreApplication::processEvents();
-
-    QObject *row = rowForTask(tab.get(), QStringLiteral("decision"));
-    QVERIFY(row);
-    QCOMPARE(row->property("task").toString(), QStringLiteral("decision"));
-    QCOMPARE(row->property("endpointText").toString(), QStringLiteral("http://decision:9000"));
-    QCOMPARE(row->property("aliasText").toString(), QStringLiteral("decision-model"));
 }
 
 // An http endpoint outside the loopback hosts would carry the key as clear
@@ -308,50 +235,6 @@ void TestRuntimeTabExternalQml::theHttpRemoteEndpointWarnsAboutPlaintextKey()
         QCoreApplication::processEvents();
         QCOMPARE(evaluate(tab.get(), QStringLiteral("plaintextKeyWarning.visible")).toBool(), endpoint.second);
     }
-}
-
-// The per-task row carries the same warning over its own endpoint (ADR 226):
-// its field decides, not the shared one, and the shared field stays quiet
-// while only the row's endpoint would leak the key.
-void TestRuntimeTabExternalQml::theTaskRowWarnsAboutPlaintextKeyOnItsOwnEndpoint()
-{
-    const std::unique_ptr<QObject> tab = loadTab();
-    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
-    QCoreApplication::processEvents();
-
-    // A remote http shared endpoint lights the tab's warning; the row with an
-    // empty endpoint (the shared value) does not speak for it.
-    evaluate(tab.get(), QStringLiteral("baseUrlField.text = 'http://10.0.0.9:8080'"));
-    QCoreApplication::processEvents();
-    QCOMPARE(evaluate(tab.get(), QStringLiteral("plaintextKeyWarning.visible")).toBool(), true);
-
-    QObject *row = rowForTask(tab.get(), QStringLiteral("fix"));
-    QVERIFY(row);
-    QCOMPARE(row->property("plaintextKeyWarningVisible").toBool(), false);
-
-    const QList<QPair<QString, bool>> cases = {
-        {QStringLiteral(""), false},
-        {QStringLiteral("http://localhost:8080"), false},
-        {QStringLiteral("http://127.0.0.1:8080"), false},
-        {QStringLiteral("http://[::1]:8080"), false},
-        {QStringLiteral("HTTPS://LOCALHOST:8080"), false},
-        {QStringLiteral("https://api.example.com/v1"), false},
-        {QStringLiteral("example.com:8080"), false},
-        {QStringLiteral("http://192.168.1.5:8080"), true},
-        {QStringLiteral("http://user:pass@10.0.0.9"), true},
-        {QStringLiteral("HTTP://EXAMPLE.ORG:8080"), true},
-    };
-    for (const auto &endpoint : cases) {
-        row->setProperty("endpointText", endpoint.first);
-        QCoreApplication::processEvents();
-        QCOMPARE(row->property("plaintextKeyWarningVisible").toBool(), endpoint.second);
-    }
-}
-
-// The shared key field of the tab.
-QObject *TestRuntimeTabExternalQml::sharedKeyField(QObject *tab)
-{
-    return evaluate(tab, QStringLiteral("sharedKey")).value<QObject *>();
 }
 
 // A stored key is never shown back (ADR 227): the field carries the mask
@@ -422,9 +305,8 @@ void TestRuntimeTabExternalQml::aTypedKeyReplacesTheStoredOne()
     QCOMPARE(m_settings->apiKey(), QStringLiteral("new-key"));
 }
 
-// The switch stands in the table header and governs every key of the tab —
-// the shared one and the one of each task.
-void TestRuntimeTabExternalQml::theHeaderSwitchRevealsEveryKey()
+// The switch stands in the table header and governs the key of the tab.
+void TestRuntimeTabExternalQml::theHeaderSwitchRevealsTheSharedKey()
 {
     const std::unique_ptr<QObject> tab = loadTab();
     QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
@@ -438,10 +320,6 @@ void TestRuntimeTabExternalQml::theHeaderSwitchRevealsEveryKey()
     QObject *shared = sharedKeyField(tab.get());
     QVERIFY(shared);
     QCOMPARE(shared->property("revealed").toBool(), true);
-
-    QObject *row = rowForTask(tab.get(), QStringLiteral("blockRecognition"));
-    QVERIFY(row);
-    QCOMPARE(row->property("revealed").toBool(), true);
 }
 
 // The mask is the field's text, so it can be erased — but it must never mix

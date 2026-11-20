@@ -10,6 +10,9 @@
 // The test loads the shipped LaunchTab.qml and watches the engine's warnings:
 // the tab must stay silent, and with an estimate in place it must show the
 // sentence.
+//
+// The tab belongs to one task: the runtime of that task says whether the
+// parameters of the local server are shown at all.
 
 #include <QAbstractItemModel>
 #include <QDir>
@@ -130,6 +133,7 @@ private slots:
     void theSaveAsksBeforeWritingASecretLikeValue();
     void theConfirmedDraftSavesWithoutAskingAgain();
     void theNewValueAsksAgain();
+    void theLaunchTabFollowsTheTaskMode();
 
 private:
     std::unique_ptr<QObject> loadTab();
@@ -226,8 +230,6 @@ QVariant TestLaunchTabQml::saveTab(QObject *tab)
 
 void TestLaunchTabQml::estimateLabelStaysSilentWithoutAnEstimate()
 {
-    m_settings->setConnectionMode(QStringLiteral("managed"));
-
     const std::unique_ptr<QObject> tab = loadTab();
     QVERIFY(tab);
     QCoreApplication::processEvents();
@@ -237,7 +239,6 @@ void TestLaunchTabQml::estimateLabelStaysSilentWithoutAnEstimate()
 
 void TestLaunchTabQml::estimateLabelStaysSilentWithAnEstimate()
 {
-    m_settings->setConnectionMode(QStringLiteral("managed"));
     m_runtime->setEstimate(fullEstimate());
 
     const std::unique_ptr<QObject> tab = loadTab();
@@ -250,7 +251,6 @@ void TestLaunchTabQml::estimateLabelStaysSilentWithAnEstimate()
 
 void TestLaunchTabQml::estimateSentenceCarriesTheVisionTerm()
 {
-    m_settings->setConnectionMode(QStringLiteral("managed"));
     m_runtime->setEstimate(fullEstimate());
 
     const std::unique_ptr<QObject> tab = loadTab();
@@ -268,7 +268,6 @@ void TestLaunchTabQml::estimateSentenceCarriesTheVisionTerm()
 
 void TestLaunchTabQml::estimateSentenceWithoutTheVisionTerm()
 {
-    m_settings->setConnectionMode(QStringLiteral("managed"));
     QVariantMap estimate = fullEstimate();
     estimate.insert(QStringLiteral("visionLabel"), QString());
     m_runtime->setEstimate(estimate);
@@ -287,7 +286,6 @@ void TestLaunchTabQml::estimateSentenceWithoutTheVisionTerm()
 
 void TestLaunchTabQml::theSaveWritesTheDraft()
 {
-    m_settings->setConnectionMode(QStringLiteral("managed"));
     m_launchProfiles->setSecretLike(false);
     m_launchProfiles->resetSaves();
 
@@ -300,7 +298,6 @@ void TestLaunchTabQml::theSaveWritesTheDraft()
 
 void TestLaunchTabQml::theSaveAsksBeforeWritingASecretLikeValue()
 {
-    m_settings->setConnectionMode(QStringLiteral("managed"));
     m_launchProfiles->setSecretLike(true);
     m_launchProfiles->resetSaves();
 
@@ -318,7 +315,6 @@ void TestLaunchTabQml::theSaveAsksBeforeWritingASecretLikeValue()
 // never finish.
 void TestLaunchTabQml::theConfirmedDraftSavesWithoutAskingAgain()
 {
-    m_settings->setConnectionMode(QStringLiteral("managed"));
     m_launchProfiles->setSecretLike(true);
     m_launchProfiles->resetSaves();
 
@@ -346,7 +342,6 @@ void TestLaunchTabQml::theConfirmedDraftSavesWithoutAskingAgain()
 // A new value in the draft is a new fact: the question comes back for it.
 void TestLaunchTabQml::theNewValueAsksAgain()
 {
-    m_settings->setConnectionMode(QStringLiteral("managed"));
     m_launchProfiles->setSecretLike(true);
     m_launchProfiles->resetSaves();
 
@@ -377,6 +372,25 @@ void TestLaunchTabQml::theNewValueAsksAgain()
     // The question comes back: the new value is a new fact.
     QCOMPARE(saveTab(tab.get()).toBool(), false);
     QCOMPARE(m_launchProfiles->saves(), 1);
+}
+
+// The tab follows the runtime of the task it belongs to: an external task
+// has no local model, so the tab must show the external note instead of the
+// parameters of the local server.
+void TestLaunchTabQml::theLaunchTabFollowsTheTaskMode()
+{
+    const std::unique_ptr<QObject> tab = loadTab();
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    tab->setProperty("role", QStringLiteral("decision"));
+    tab->setProperty("mode", QStringLiteral("external"));
+    QCoreApplication::processEvents();
+    QCOMPARE(tab->property("externalMode").toBool(), true);
+
+    tab->setProperty("mode", QStringLiteral("managed"));
+    QCoreApplication::processEvents();
+    QCOMPARE(tab->property("externalMode").toBool(), false);
 }
 
 QTEST_MAIN(TestLaunchTabQml)

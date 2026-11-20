@@ -7,9 +7,9 @@ import QtQuick.Layouts
 import LLocr
 import "../Common"
 
-// The external server: one shared connection and, per task, its own
-// endpoint, key and model alias (ADR 226). An empty task field means the
-// shared value.
+// The external server: the one shared connection of the external tasks
+// (ADR 226). A task with an endpoint of its own overrides it; the tasks
+// are configured in the gear popup of the task table.
 ColumnLayout {
     id: extRoot
 
@@ -21,31 +21,13 @@ ColumnLayout {
     // user's, so it must not mark the settings window dirty.
     property bool loading: false
 
-    // The wizard's external step shows the shared server only: the tasks are
-    // configured in the settings.
-    property bool compact: false
-
     readonly property alias baseUrlText: baseUrlField.text
 
-    // The rows follow the C++ task list (ADR 215): the order is the order the
-    // task table shows, and the tab keeps no copy of it.
-    readonly property var taskIds: Settings.taskRoles
-
-    readonly property int titleWidth: 140
-
-    // One switch for every key of the tab: the shared key and the key of
-    // each task. It stands in the shared server block, where the key it
-    // governs is; the wizard's compact mode has no task table, so the switch
-    // stands next to the only key it has.
+    // One switch for the key of the tab: it stands in the shared server
+    // block, where the key it governs is.
     property bool revealKeys: false
 
     property bool sharedKeyPresent: false
-
-    // The rows reload and save themselves when the token moves: a Repeater's
-    // item is a plain item for the linter, so the tab cannot call the row's
-    // methods by name.
-    property int reloadToken: 0
-    property int commitToken: 0
 
     function loadValues() {
         extRoot.loading = true
@@ -53,7 +35,6 @@ ColumnLayout {
         sharedKeyPresent = Settings.apiKeySet
         sharedKey.load()
         Settings.refreshSecretState()
-        reloadToken++
         extRoot.loading = false
         // The answer of the last check belongs to the address of that time.
         ConnectionProbe.reset()
@@ -62,7 +43,6 @@ ColumnLayout {
     function saveValues() {
         Settings.baseUrl = baseUrlField.text
         sharedKey.save()
-        commitToken++
     }
 
     // Where the key lives, said plainly.
@@ -154,6 +134,14 @@ ColumnLayout {
                     enabled: !ConnectionProbe.running
                     onClicked: extRoot.checkServer()
                 }
+            }
+
+            LLOLabel {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: Theme.footnoteSize
+                color: Theme.helpColor
+                text: qsTr("Only the external tasks use this address. A different server can be set in the task's settings.")
             }
 
             RowLayout {
@@ -296,65 +284,6 @@ ColumnLayout {
                 font.pixelSize: Theme.footnoteSize
                 color: Theme.helpColor
                 text: qsTr("The system store did not answer: %1").arg(Settings.secretError)
-            }
-        }
-    }
-
-    // The tasks are a card of their own: the shared server above them is one
-    // thing, the models below it are another.
-    Rectangle {
-        id: tasksCard
-
-        visible: !extRoot.compact
-        Layout.fillWidth: true
-        implicitHeight: tasksColumn.implicitHeight + Theme.spacing * 2
-        color: Theme.surfaceAlt
-        border.color: Theme.border
-        border.width: 1
-        radius: Theme.controlRadius + 2
-
-        ColumnLayout {
-            id: tasksColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: Theme.spacing
-            spacing: Theme.spacingSmall
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacing
-
-                LLOLabel {
-                    text: qsTr("Tasks")
-                    font.pixelSize: Theme.bodySize
-                    font.bold: true
-                    color: Theme.textPrimary
-                }
-                Item { Layout.fillWidth: true }
-                LLOLabel {
-                    text: qsTr("An empty field takes the shared value")
-                    font.pixelSize: Theme.footnoteSize
-                    color: Theme.helpColor
-                }
-            }
-
-            Repeater {
-                id: taskRows
-                model: extRoot.compact ? [] : extRoot.taskIds
-                delegate: TaskConnectionRow {
-                    required property var modelData
-
-                    task: modelData
-                    // The row is as wide as the block it stands in: the
-                    // repeater's items are the rows of the block.
-                    Layout.fillWidth: true
-                    titleWidth: extRoot.titleWidth
-                    revealed: extRoot.revealKeys
-                    reloadToken: extRoot.reloadToken
-                    commitToken: extRoot.commitToken
-                    onEdited: extRoot.edited()
-                }
             }
         }
     }

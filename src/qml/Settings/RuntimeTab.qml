@@ -20,8 +20,6 @@ ColumnLayout {
 
     Layout.maximumHeight: Number.POSITIVE_INFINITY
 
-    readonly property bool externalMode: Settings.connectionMode === "external"
-
     function loadValues() {
         runtimeLayout.loading = true
         connectionTimeoutField.text = Settings.connectionTimeoutMs
@@ -54,48 +52,16 @@ ColumnLayout {
         return qsTr("%1 min").arg(Math.round(value / 60000))
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: Theme.spacing
-
-        LLOLabel {
-            text: qsTr("Connection mode")
-            font: Theme.body
-        }
-        SegmentedControl {
-            currentIndex: Settings.connectionMode === "managed" ? 1 : 0
-            options: [
-                { label: qsTr("External") },
-                { label: qsTr("Managed") }
-            ]
-            onActivated: (idx) => {
-                Settings.connectionMode = (idx === 1) ? "managed" : "external"
-                runtimeLayout.edited()
-            }
-        }
-        Item { Layout.fillWidth: true }
-    }
-
-    LLOLabel {
-        Layout.fillWidth: true
-        wrapMode: Text.WordWrap
-        font.pixelSize: Theme.bodySmallSize
-        color: Theme.helpColor
-        text: runtimeLayout.externalMode
-              ? qsTr("The models run on your own server with an OpenAI-compatible API.")
-              : qsTr("The app downloads and runs llama.cpp on this machine.")
-    }
-
+    // The runtime of a task is chosen in Settings → Models, so both cards
+    // stand here: the local llama.cpp and the shared external server.
     RuntimeTabExternal {
         id: rtExternal
-        visible: runtimeLayout.externalMode
         Layout.fillWidth: true
         onEdited: runtimeLayout.edited()
     }
 
     RuntimeTabInternal {
         id: rtInternal
-        visible: !runtimeLayout.externalMode
         Layout.fillWidth: true
         onEdited: runtimeLayout.edited()
     }

@@ -66,6 +66,7 @@ private slots:
     void theEndpointGoesThroughTheSettings();
     void theKeyGoesToTheSecretStore();
     void theStoredKeyIsNeverShownBack();
+    void theTaskEndpointWarnsAboutPlaintextKey();
 
 private:
     void registerModuleTypes();
@@ -74,6 +75,7 @@ private:
     QList<QQuickItem *> itemsByType(QQuickItem *root, const QString &typeName);
     QQuickItem *textField(QObject *tab, const QString &placeholder);
     QQuickItem *keyField(QObject *tab);
+    QQuickItem *labelWithText(QObject *tab, const QString &text);
 
     std::unique_ptr<FakeUiController> m_uiController;
     std::unique_ptr<SettingsStore> m_settings;
@@ -249,6 +251,21 @@ QQuickItem *TestTaskConnectionTabQml::keyField(QObject *tab)
     return nullptr;
 }
 
+// The label with the given text: the fields of the tab tell each other
+// apart by what they stand for, and so do the labels.
+QQuickItem *TestTaskConnectionTabQml::labelWithText(QObject *tab, const QString &text)
+{
+    auto *root = qobject_cast<QQuickItem *>(tab);
+    if (!root)
+        return nullptr;
+    const QList<QQuickItem *> labels = itemsByType(root, QStringLiteral("LLOLabel"));
+    for (QQuickItem *label : labels) {
+        if (label->property("text").toString() == text)
+            return label;
+    }
+    return nullptr;
+}
+
 void TestTaskConnectionTabQml::theTabLoadsWithoutWarnings()
 {
     const std::unique_ptr<QObject> tab = loadTab(m_task);
@@ -404,6 +421,34 @@ void TestTaskConnectionTabQml::theStoredKeyIsNeverShownBack()
     const QList<QQuickItem *> cells = itemsByType(root, QStringLiteral("SecretKeyField"));
     QCOMPARE(cells.size(), 1);
     QCOMPARE(shown, cells.first()->property("maskText").toString());
+}
+
+// The key of a task goes out in plain text over an http endpoint outside
+// the loopback: the warning must follow what the user types.
+void TestTaskConnectionTabQml::theTaskEndpointWarnsAboutPlaintextKey()
+{
+    const std::unique_ptr<QObject> tab = loadTab(m_task);
+    QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCoreApplication::processEvents();
+
+    QQuickItem *endpoint = textField(tab.get(), m_settings->baseUrl());
+    QVERIFY(endpoint);
+    QQuickItem *warning = labelWithText(tab.get(), QStringLiteral("The key will be sent in plain text (http outside the local machine)."));
+    QVERIFY(warning);
+    QCOMPARE(warning->property("visible").toBool(), false);
+
+    endpoint->setProperty("text", QString());
+    endpoint->forceActiveFocus();
+    typeText(m_window.get(), QStringLiteral("http://192.168.1.5:8080"));
+    QCoreApplication::processEvents();
+    QCOMPARE(warning->property("visible").toBool(), true);
+
+    // A local endpoint is quiet again.
+    endpoint->setProperty("text", QString());
+    endpoint->forceActiveFocus();
+    typeText(m_window.get(), QStringLiteral("http://localhost:8080"));
+    QCoreApplication::processEvents();
+    QCOMPARE(warning->property("visible").toBool(), false);
 }
 
 int main(int argc, char *argv[])

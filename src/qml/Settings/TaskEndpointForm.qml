@@ -97,7 +97,7 @@ ColumnLayout {
 
     LLOLabel {
         Layout.fillWidth: true
-        visible: Settings.isPlaintextKeyEndpoint(form.endpointDraft)
+        visible: Settings.isPlaintextKeyEndpoint(endpointField.text)
         wrapMode: Text.WordWrap
         font.pixelSize: Theme.footnoteSize
         color: Theme.accentAttention

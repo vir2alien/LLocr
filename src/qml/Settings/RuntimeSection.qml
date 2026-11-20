@@ -6,8 +6,8 @@ import QtQuick.Controls
 import LLocr
 
 // The runtime section mixes a draft (the timeouts, the endpoint) with live
-// writes (the connection mode, the backend, the release): the live ones are
-// restored from the snapshot when the window is cancelled.
+// writes (the backend, the release): the live ones are restored from the
+// snapshot when the window is cancelled.
 Item {
     id: root
 
@@ -17,7 +17,6 @@ Item {
 
     function takeApplySnapshot() {
         root.applySnapshot = {
-            connectionMode: Settings.connectionMode,
             backend: RuntimeInstaller.backend,
             selectedRelease: RuntimeInstaller.selectedRelease
         }
@@ -26,7 +25,6 @@ Item {
     function restoreApplySnapshot() {
         if (!root.applySnapshot)
             return
-        Settings.connectionMode = root.applySnapshot.connectionMode
         RuntimeInstaller.backend = root.applySnapshot.backend
         RuntimeInstaller.selectedRelease = root.applySnapshot.selectedRelease
     }

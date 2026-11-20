@@ -3312,7 +3312,7 @@
     <message>
         <location filename="../../src/qml/Settings/RuntimeTab.qml" line="+62"/>
         <source>Connection mode</source>
-        <translation>Режим подключения</translation>
+        <translation type="vanished">Режим подключения</translation>
     </message>
     <message>
         <source>External runtime settings</source>
@@ -3336,22 +3336,22 @@
     <message>
         <location line="+14"/>
         <source>External</source>
-        <translation>Внешний</translation>
+        <translation type="vanished">Внешний</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Managed</source>
-        <translation>Управляемый</translation>
+        <translation type="vanished">Управляемый</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>The models run on your own server with an OpenAI-compatible API.</source>
-        <translation>Модели выполняются на вашем сервере с OpenAI-совместимым API.</translation>
+        <translation type="vanished">Модели выполняются на вашем сервере с OpenAI-совместимым API.</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>The app downloads and runs llama.cpp on this machine.</source>
-        <translation>Приложение само скачивает и запускает llama.cpp на этой машине.</translation>
+        <translation type="vanished">Приложение само скачивает и запускает llama.cpp на этой машине.</translation>
     </message>
     <message>
         <location line="+50"/>
@@ -3472,12 +3472,17 @@
     <message>
         <location line="+45"/>
         <source>Tasks</source>
-        <translation>Задачи</translation>
+        <translation type="vanished">Задачи</translation>
     </message>
     <message>
         <location line="+7"/>
         <source>An empty field takes the shared value</source>
-        <translation>Пустое поле берёт общее значение</translation>
+        <translation type="vanished">Пустое поле берёт общее значение</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+144"/>
+        <source>Only the external tasks use this address. A different server can be set in the task&apos;s settings.</source>
+        <translation>Этот адрес используют только внешние задачи. Другой сервер можно указать в параметрах задачи.</translation>
     </message>
     <message>
         <location line="-137"/>

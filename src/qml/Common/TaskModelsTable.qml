@@ -732,6 +732,7 @@ Item {
                 LaunchTab {
                     id: launchTab
                     role: taskSettingsPopup.task
+                    mode: taskSettingsPopup.taskMode
                     hostTable: table
                     runtimeSectionAvailable: table.runtimeSectionAvailable
                     onEdited: table.edited()

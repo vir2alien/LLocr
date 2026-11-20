@@ -11,6 +11,12 @@ Item {
     id: root
 
     property string role: "blockRecognition"
+
+    // The runtime of the task this tab belongs to: an external task has no
+    // local model, so the tab shows the external server instead of the
+    // parameters of the local one.
+    property string mode: "managed"
+
     // The table that hosts this tab: it relays the request for the runtime
     // settings up to the window.
     property var hostTable: null
@@ -26,7 +32,7 @@ Item {
     // The user changed a launch parameter.
     signal edited()
 
-    readonly property bool externalMode: Settings.connectionMode === "external"
+    readonly property bool externalMode: root.mode === "external"
 
     readonly property var profiles: LaunchProfiles
 
