@@ -252,6 +252,7 @@ private slots:
     void theBannerReturnsWithANewProblem();
     void theProblemLogStaysReachable();
     void theBadgeSaysWhenTheRuntimesAreMixed();
+    void theMixedBadgeTooltipCarriesTheSplit();
     void theStartTooltipNamesTheTaskItServes();
     void theBadgeSaysExternalAndTheStartButtonIsGoneWithoutAManagedTask();
 
@@ -531,6 +532,36 @@ void TestFooterBannerQml::theBadgeSaysWhenTheRuntimesAreMixed()
     QCOMPARE(footer->property("anyManagedTask").toBool(), true);
     QCOMPARE(footer->property("anyExternalTask").toBool(), true);
     QCOMPARE(evaluate(footer.get(), QStringLiteral("stateText()")).toString(), QStringLiteral("Mixed"));
+}
+
+// The label of the badge stays short, but its tooltip says how many tasks
+// run on the local server and how many send their data to an external
+// endpoint: the user must be able to see the split without opening the
+// settings.
+void TestFooterBannerQml::theMixedBadgeTooltipCarriesTheSplit()
+{
+    const std::unique_ptr<QObject> footer = loadFooter();
+    QVERIFY2(footer, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    m_settingsDouble->setRuntimeModeForRole(QStringLiteral("decision"), QStringLiteral("managed"));
+    m_settingsDouble->setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("external"));
+    QCoreApplication::processEvents();
+
+    QCOMPARE(footer->property("managedTaskCount").toInt(), 1);
+    QCOMPARE(footer->property("externalTaskCount").toInt(), 3);
+
+    QObject *badgeTip = nullptr;
+    for (QObject *child : footer->findChildren<QObject *>()) {
+        if (!QString::fromLatin1(child->metaObject()->className()).contains(QStringLiteral("ToolTip")))
+            continue;
+        if (child->property("text").toString().contains(QStringLiteral("Runtime log")))
+            badgeTip = child;
+    }
+    QVERIFY2(badgeTip, "the runtime badge has no tooltip");
+    const QString text = badgeTip->property("text").toString();
+    QVERIFY2(text.contains(QStringLiteral("Mixed")), qPrintable(text));
+    QVERIFY2(text.contains(QStringLiteral("Local: 1")), qPrintable(text));
+    QVERIFY2(text.contains(QStringLiteral("External API: 3")), qPrintable(text));
 }
 
 // The Start button names the task whose model the server will serve: a user

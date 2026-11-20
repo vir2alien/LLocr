@@ -230,6 +230,7 @@ private slots:
     void theTaskTextsKeepTheirTranslationContext();
     void theTableShowsARuntimeColumnPerTask();
     void theRuntimeColumnSwitchesTheTask();
+    void theExternalRowSaysWhereTheAliasLives();
     void theSplitFollowsTheDraft();
     void anUnsavedModelNameSurvivesTheSync();
     void theCancelPathThrowsTheEditAway();
@@ -561,6 +562,28 @@ void TestTaskModelsTableQml::theRuntimeColumnSwitchesTheTask()
 
     // The settings keep the saved mode until the window is saved.
     QCOMPARE(m_settings->runtimeModeForRole(QStringLiteral("decision")), QStringLiteral("external"));
+}
+
+// The alias of an external task is shown read-only, and the field says what
+// it is and where it is edited: an empty cell is a puzzle.
+void TestTaskModelsTableQml::theExternalRowSaysWhereTheAliasLives()
+{
+    for (const QString &role : connectionRoleIds())
+        m_settings->setRuntimeModeForRole(role, QStringLiteral("external"));
+
+    const std::unique_ptr<QObject> table = loadTable();
+    QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QQuickItem *alias = nullptr;
+    const QList<QQuickItem *> fields = itemsByType(qobject_cast<QQuickItem *>(table.get()), QStringLiteral("TextField"));
+    for (QQuickItem *field : fields) {
+        if (field->property("placeholderText").toString().startsWith(QStringLiteral("Model alias")))
+            alias = field;
+    }
+    QVERIFY2(alias, "the external row has no alias field");
+    QCOMPARE(alias->property("readOnly").toBool(), true);
+    const QString placeholder = alias->property("placeholderText").toString();
+    QVERIFY2(placeholder.contains(QStringLiteral("Connection tab")), qPrintable(placeholder));
 }
 
 // The split of the tasks follows the draft: the counter of the host and the

@@ -1124,6 +1124,11 @@
         <translation>Смешанный</translation>
     </message>
     <message>
+        <location filename="../../src/qml/MainWindow/Footer.qml" line="148"/>
+        <source>%1 — Local: %2 · External API: %3</source>
+        <translation>%1 — Локально: %2 · Внешний API: %3</translation>
+    </message>
+    <message>
         <location line="-291"/>
         <source>The local runtime is owned by another LLocr instance.</source>
         <translation>Локальный рантайм занят другим экземпляром LLocr.</translation>
@@ -4451,6 +4456,11 @@
         <location filename="../../src/qml/Common/TaskModelsTable.qml" line="721"/>
         <source>Connection</source>
         <translation>Подключение</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="580"/>
+        <source>Model alias — set it in the gear popup's Connection tab</source>
+        <translation>Алиас модели — задаётся во вкладке «Подключение» попапа за шестерёнкой</translation>
     </message>
 </context>
 <context>

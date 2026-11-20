@@ -27,13 +27,21 @@ Item {
     // the modes change.
     property bool anyManagedTask: false
     property bool anyExternalTask: false
+    // The split of the tasks: how many run on the local server and how many
+    // send their data to an external endpoint.
+    property int managedTaskCount: 0
+    property int externalTaskCount: 0
     // The task whose model the manual start would serve: the first managed
     // one.
     property string servedTaskTitle: ""
 
     function refreshRuntimeModes() {
-        root.anyManagedTask = Settings.managedRoles().length > 0
-        root.anyExternalTask = Settings.externalRoles().length > 0
+        const managed = Settings.managedRoles()
+        const external = Settings.externalRoles()
+        root.managedTaskCount = managed.length
+        root.externalTaskCount = external.length
+        root.anyManagedTask = managed.length > 0
+        root.anyExternalTask = external.length > 0
         const role = Runtime.firstManagedRole()
         root.servedTaskTitle = role.length ? RoleProfiles.title(role) : ""
     }
@@ -131,6 +139,15 @@ Item {
                                                   : qsTr("Runtime: failed")
         default: return qsTr("Runtime: unknown")
         }
+    }
+
+    // The label of the badge stays short; the split belongs to the tooltip,
+    // which already carries the state.
+    function stateDetail() {
+        if (root.anyManagedTask && root.anyExternalTask)
+            return qsTr("%1 — Local: %2 · External API: %3").arg(root.stateText())
+                     .arg(root.managedTaskCount).arg(root.externalTaskCount)
+        return root.stateText()
     }
 
     readonly property bool launchDirty: Runtime.launchConfigDirty
@@ -387,7 +404,7 @@ Item {
 
                     ToolTip {
                         visible: runtimeBadge.containsMouse
-                        text: qsTr("Runtime log — click to open. %1").arg(root.stateText())
+                        text: qsTr("Runtime log — click to open. %1").arg(root.stateDetail())
                         delay: 600
                         font.pixelSize: Theme.captionSize
                     }

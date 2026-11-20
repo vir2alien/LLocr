@@ -215,13 +215,17 @@ the alias the server knows the model under — e.g. `http://127.0.0.1:8000/v1`):
   is the runtime of one task, the shared server card is the default of every
   external task, and the task's own endpoint, key and alias live in the
   «Подключение» tab of its gear popup.
+- **ADR 319** — one managed server, several tasks: the managed tasks share the
+  local llama-server, which switches its model when the task changes; the
+  server is started by hand for the first managed task, and with no managed
+  task there is no server at all.
 - **ADR 320** — the log window has two sources: the server's output and the
   request journal are both shown, in every mode.
 
 ## 6. Links
 
 - Glossary and decision record: `docs/07-glossary.md` (ADR 226–235, 283,
-  318, 320).
+  318–320).
 - The fix task's models: `docs/16-model-qwen3.5.md`.
 - The decision model: `docs/17-model-minicpm-jev.md`.
 - Russian mirror: `docs/10-external-runtime.ru.md`.

@@ -54,14 +54,14 @@ ColumnLayout {
 
     // The runtime of a task is chosen in Settings → Models, so both cards
     // stand here: the local llama.cpp and the shared external server.
-    RuntimeTabExternal {
-        id: rtExternal
+    RuntimeTabInternal {
+        id: rtInternal
         Layout.fillWidth: true
         onEdited: runtimeLayout.edited()
     }
 
-    RuntimeTabInternal {
-        id: rtInternal
+    RuntimeTabExternal {
+        id: rtExternal
         Layout.fillWidth: true
         onEdited: runtimeLayout.edited()
     }

@@ -894,6 +894,22 @@ void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
     QVERIFY(runtimeTab);
     QVERIFY2(!hasHairlineChild(runtimeTab), "the runtime section still has a hairline divider");
 
+    // The managed card stands first: the local runtime is the app's own, the
+    // shared server is the default of the external tasks.
+    int managedCard = -1;
+    int sharedCard = -1;
+    const QList<QQuickItem *> cards = runtimeTab->childItems();
+    for (int i = 0; i < cards.size(); ++i) {
+        const QString name = QString::fromLatin1(cards[i]->metaObject()->className());
+        if (name.startsWith(QStringLiteral("RuntimeTabInternal")))
+            managedCard = i;
+        else if (name.startsWith(QStringLiteral("RuntimeTabExternal")))
+            sharedCard = i;
+    }
+    QVERIFY2(managedCard >= 0, "the runtime tab has no managed card");
+    QVERIFY2(sharedCard >= 0, "the runtime tab has no shared server card");
+    QVERIFY2(managedCard < sharedCard, "the managed card must stand above the shared server card");
+
     QVERIFY(QMetaObject::invokeMethod(window.get(), "showSection", Q_ARG(QVariant, QStringLiteral("models"))));
     QCoreApplication::processEvents();
     QObject *models = evaluate(window.get(), QStringLiteral("modelsSection")).value<QObject *>();

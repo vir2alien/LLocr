@@ -577,6 +577,7 @@ Item {
                     implicitHeight: Theme.controlHeight
                     font.pixelSize: Theme.bodySmallSize
                     text: taskRow.entry.modelName || ""
+                    placeholderText: qsTr("Model alias — set it in the gear popup's Connection tab")
                     // The alias belongs to the connection: it is edited in
                     // the Connection tab of the gear popup, where the
                     // endpoint and the key live (ADR 226). Here it is shown.
