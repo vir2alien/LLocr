@@ -156,10 +156,11 @@ role may override them (`readSystemPrompt`/`readBlockPrompts`) — the Qwen3-VL
 family does, because it reads the shared wording as correction-verification
 (ADR 267).
 
-Which blocks the read takes is the scope's decision (ADR 311): a page the check
-has not finished gives every text block, a checked page gives only the blocks
-the decision model rejected — the very set the fixer takes. A page is checked
-when every block the decision stage could ask about carries a verdict.
+Which blocks the read takes is the scope's decision (ADR 311, ADR 322): a page
+without verdicts gives every text block; a page the check has answered anything
+on gives only the blocks the decision model rejected — the very set the fixer
+takes, so the count on the button reads as the «Исправить» count wherever the
+check has spoken.
 
 ## 6. The decision task (visual diff, ADR 235/254)
 
@@ -228,10 +229,11 @@ the thumbnail selection (empty selection = whole document).
 - «Исправить» carries the `scopedPendingFixCount` badge (ADR 188) and runs
   the fix task over the problem blocks of the whole scope.
 - «Распознать точно» runs the read task over the blocks of the selected pages
-  (ADR 260/266): on a page the check has not finished — every text block; on a
-  checked page — only the blocks the decision model rejected, the set the fixer
-  takes (ADR 311). User-owned blocks never enter the queue; the count rides
-  the button (ADR 264) and is the number of requests the run makes.
+  (ADR 260/266): on a page without verdicts — every text block; on a page the
+  check has answered anything on — only the blocks the decision model rejected,
+  the set the fixer takes (ADR 311, ADR 322). User-owned blocks never enter the
+  queue; the count rides the button (ADR 264) and is the number of requests the
+  run makes.
 - While a run is active, the started action's button becomes the stop
   control; the mapping is by flags/phases (ADR 171).
 

@@ -171,14 +171,14 @@ private slots:
 
         makeDocument(fixture.document(), {withText, withoutText, image});
 
-        QVERIFY(!fixture.workList().pageChecked(0));
+        QVERIFY(!fixture.workList().pageCheckStarted(0));
         const auto tasks = fixture.workList().readBlocks({0});
         QCOMPARE(tasks.size(), 2);
         QCOMPARE(tasks.at(0).box, 0);
         QCOMPARE(tasks.at(1).box, 1);
     }
 
-    // A page the check has finished: the reader takes only the blocks the
+    // A page the check has spoken on: the reader takes only the blocks the
     // decision model rejected — the set the fixer takes (ADR 311).
     void theReadOnACheckedPageTakesOnlyTheRejectedBlocks()
     {
@@ -190,15 +190,15 @@ private slots:
 
         makeDocument(fixture.document(), {mismatch, ok});
 
-        QVERIFY(fixture.workList().pageChecked(0));
+        QVERIFY(fixture.workList().pageCheckStarted(0));
         const auto tasks = fixture.workList().readBlocks({0});
         QCOMPARE(tasks.size(), 1);
         QCOMPARE(tasks.first().box, 0);
     }
 
-    // The check has not finished: the page is not a checked one, and the
-    // reader takes every text block, as before (ADR 311).
-    void aPartlyCheckedPageIsNotChecked()
+    // One unanswered block does not throw the page back to the unchecked
+    // rule: a verdict anywhere on it is the check's answer (ADR 322).
+    void aPageWithAVerdictIsReadLikeACheckedOne()
     {
         QueueFixture fixture(m_dir);
         BoundingBox mismatch = textBox(QStringLiteral("text"), QStringLiteral("wrong"));
@@ -207,9 +207,31 @@ private slots:
 
         makeDocument(fixture.document(), {mismatch, plain});
 
-        QVERIFY(!fixture.workList().pageChecked(0));
+        QVERIFY(fixture.workList().pageCheckStarted(0));
         const auto tasks = fixture.workList().readBlocks({0});
-        QCOMPARE(tasks.size(), 2);
+        QCOMPARE(tasks.size(), 1);
+        QCOMPARE(tasks.first().box, 0);
+    }
+
+    // The read's own confirmation drops the block's stale verdict (ADR 240):
+    // with other verdicts on the page the reader keeps the checked rule
+    // (ADR 322) instead of starting over from every text block.
+    void aReadConfirmedBlockKeepsThePageInTheCheckedRule()
+    {
+        QueueFixture fixture(m_dir);
+        BoundingBox confirmed = textBox(QStringLiteral("text"), QStringLiteral("read text"));
+        confirmed.fixStatus = BoxFixStatus::Read;
+        BoundingBox ok = textBox(QStringLiteral("text"), QStringLiteral("right"));
+        ok.checkStatus = BoxCheckStatus::Ok;
+        BoundingBox mismatch = textBox(QStringLiteral("text"), QStringLiteral("wrong"));
+        mismatch.checkStatus = BoxCheckStatus::Mismatch;
+
+        makeDocument(fixture.document(), {confirmed, ok, mismatch});
+
+        QVERIFY(fixture.workList().pageCheckStarted(0));
+        const auto tasks = fixture.workList().readBlocks({0});
+        QCOMPARE(tasks.size(), 1);
+        QCOMPARE(tasks.first().box, 2);
     }
 
     // A block the user owns never enters the reader's queue — on either

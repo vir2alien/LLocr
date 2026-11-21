@@ -239,9 +239,12 @@ ToolBar {
                     text: qsTr("Recognize blocks")
                     iconName: "scan-text"
                     stopMode: Controller.checkBusy && Controller.checkRecheckPhase
+                    // The scope keeps the button alive when the recognition
+                    // has nothing left to do but its results are there: the
+                    // redo is the way back to those blocks.
                     enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                             && Controller.scopeBlocksRecognitionSupported
-                             && Controller.blockRecognitionModelAvailable)
+                             && Controller.blockRecognitionModelAvailable
+                             && (Controller.scopeBlocksRecognitionSupported || Controller.scopeRecognitionHasResults))
                     ToolTip.visible: hovered
                     ToolTip.text: stopMode ? qsTr("Stop the block recognition")
                                            : qsTr("Recognize the marked blocks that still have no text")
@@ -272,8 +275,12 @@ ToolBar {
                     text: qsTr("Verify")
                     iconName: "circle-check"
                     stopMode: Controller.checkBusy && Controller.checkDecisionPhase
+                    // The scope keeps the button alive when the verification
+                    // has nothing left to do but its verdicts are there: the
+                    // redo is the way back to those blocks.
                     enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                             && Controller.scopeVerificationSupported && Controller.decisionModelAvailable)
+                             && Controller.decisionModelAvailable
+                             && (Controller.scopeVerificationSupported || Controller.scopeCheckHasResults))
                     ToolTip.visible: hovered
                     ToolTip.text: stopMode ? qsTr("Stop the verification")
                                            : qsTr("Verify the recognized blocks without fixing them")

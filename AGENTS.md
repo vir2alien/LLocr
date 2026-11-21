@@ -244,8 +244,8 @@
     the `full_block` protocol, ADR 192) runs as a separate action over the
     problem blocks; the read task («Распознать точно», `read_block`, ADR 259–267)
     re-transcribes a block from the image alone — the recognized text never
-    travels — and takes only the blocks the check rejected on a checked page
-    (ADR 311). Every block carries two text layers (`box.text` /
+    travels — and takes only the blocks the check rejected on a page the check
+    has answered on (ADR 311, ADR 322). Every block carries two text layers (`box.text` /
     `box.correctedText`, ADR 164); formulas carry their canonical form and a
     syntax verdict (`core/LatexText`, ADR 194–196); the frame carries the
     block state (ADR 238). Thresholds are measured, per model and block type

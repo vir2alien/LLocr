@@ -2838,13 +2838,16 @@ private slots:
         QCOMPARE(boxIndices(page.workList->refixableBlocks({0})), QList<int>({2, 6, 7, 8, 9, 10, 11}));
     }
 
-    // The read re-run continues where the reader stopped: the readable set
-    // minus the three reader outcomes (9, 10, 11); the redo takes them back.
+    // The read re-run continues where the reader stopped. The page carries
+    // verdicts, so the checked rule applies (ADR 322): the fixer's own set
+    // (2 the open mismatch, 8 the correction the decision rejected again)
+    // minus the reader outcomes — and the redo takes the answered ones
+    // (9, 10, 11) back.
     void theReadRerunContinuesWhereTheReaderStopped()
     {
         CollectorPage page(m_raster, *m_verification, *m_checkRequestProfiles, rerunCast());
-        QCOMPARE(boxIndices(page.workList->readBlocks({0})), QList<int>({0, 1, 2, 3, 6, 7, 8, 13, 14, 15}));
-        QCOMPARE(boxIndices(page.workList->readBlocks({0}, true)), QList<int>({0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14, 15}));
+        QCOMPARE(boxIndices(page.workList->readBlocks({0})), QList<int>({2, 8}));
+        QCOMPARE(boxIndices(page.workList->readBlocks({0}, true)), QList<int>({2, 8, 9, 10, 11}));
     }
 
     // A page the check has finished: the reader takes only the blocks the
@@ -2863,7 +2866,7 @@ private slots:
         handWritten.correctedText = QStringLiteral("user wrote");
 
         CollectorPage page(m_raster, *m_verification, *m_checkRequestProfiles, {mismatch, ok, approved, handWritten});
-        QVERIFY(page.workList->pageChecked(0));
+        QVERIFY(page.workList->pageCheckStarted(0));
         QCOMPARE(boxIndices(page.workList->readBlocks({0})), QList<int>({0}));
     }
 

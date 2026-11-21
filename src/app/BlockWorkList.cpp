@@ -119,11 +119,11 @@ QList<BlockWorkList::Task> BlockWorkList::readBlocks(const QList<int> &pages, bo
         if (!docPage.recognized || docPage.result.pages.isEmpty())
             continue;
         const OcrPage &ocrPage = docPage.result.pages.first();
-        // A checked page: only the blocks the decision model rejected — the
-        // set the fixer takes. An unchecked page: every text block, as before
-        // (ADR 311).
+        // A page the check has spoken on: only the blocks the decision model
+        // rejected — the set the fixer takes. A page it has never answered:
+        // every text block, as before (ADR 311, ADR 322).
         QList<int> candidates;
-        if (pageChecked(page)) {
+        if (pageCheckStarted(page)) {
             for (int i = 0; i < ocrPage.boxes.size(); ++i) {
                 if (BoxTransitions::needsFix(ocrPage.boxes.at(i)))
                     candidates.append(i);
@@ -156,14 +156,13 @@ QList<BlockWorkList::Task> BlockWorkList::readBlocks(const QList<int> &pages, bo
     return tasks;
 }
 
-bool BlockWorkList::pageChecked(int pageIndex) const
+bool BlockWorkList::pageCheckStarted(int pageIndex) const
 {
     if (!m_deps.document.isValidIndex(pageIndex))
         return false;
     const DocumentPage &docPage = m_deps.document.page(pageIndex);
     if (!docPage.recognized || docPage.result.pages.isEmpty())
         return false;
-    bool asked = false;
     for (const BoundingBox &box : std::as_const(docPage.result.pages.first().boxes)) {
         if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
             continue;
@@ -175,11 +174,10 @@ bool BlockWorkList::pageChecked(int pageIndex) const
             continue;
         if (BoxTransitions::effectiveText(box).isEmpty())
             continue;
-        asked = true;
-        if (!verdictGiven(box))
-            return false;
+        if (verdictGiven(box))
+            return true;
     }
-    return asked;
+    return false;
 }
 
 QList<BlockWorkList::Task> BlockWorkList::reRecognizableBlocks(const QList<int> &pages, const TypeFilter &filter) const

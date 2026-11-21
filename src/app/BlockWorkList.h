@@ -54,15 +54,18 @@ public:
     // formula's syntax was rejected (ADR 194).
     QList<Task> problemBlocks(const QList<int> &pages) const;
     // The blocks the reader takes over the scope (ADR 311): on a page the
-    // check has not finished — every text block, as before; on a checked page
-    // — only the blocks the decision model rejected, the same set the fixer
-    // takes. With includeAnswered the blocks the reader has already answered
-    // come back too — the shape of the fix's redo.
+    // check has never answered — every text block, as before; on a page the
+    // check has spoken on — only the blocks the decision model rejected, the
+    // same set the fixer takes (ADR 322). With includeAnswered the blocks the
+    // reader has already answered come back too — the shape of the fix's redo.
     QList<Task> readBlocks(const QList<int> &pages, bool includeAnswered = false) const;
-    // The page is checked when the decision stage answered every block it
-    // could ask about (ADR 311): a block the user owns is not its business,
-    // and a formula with broken LaTeX is never asked about.
-    bool pageChecked(int pageIndex) const;
+    // The check has started on the page: one verdict on a block the check
+    // could ask about answers it (ADR 322). A single lost verdict — a
+    // re-recognized block, a refused request, the read's own confirmation
+    // dropping a stale verdict (ADR 240) — must not throw the page back to
+    // the unchecked rule. A block the user owns is not the check's business,
+    // and a formula with broken LaTeX is never asked about (ADR 194).
+    bool pageCheckStarted(int pageIndex) const;
 
     // The re-run collectors: the same scans with the already-answered blocks
     // included, for a pass that overwrites (a re-run). A block the user

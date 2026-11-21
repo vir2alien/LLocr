@@ -2046,7 +2046,8 @@ appendix at the end of this file.
   wrote it or confirmed it by hand, on **either** layer — the layer in view
   says what the user reads, not what the user owns (`core/BoxTransitions.h`:
   `userOwned`). The block button of the mini-panel is the operator's own
-  decision and works as before.
+  decision and works as before. (Amended by ADR 322: the branch keys on the
+  check's first answer, not its last — see there.)
 - **314.** The runtime settings are blocks, not one list. The external mode
   carries the **shared server** (the base URL, the key, the check of the
   server and the answer of the secret store) and the **tasks** (the model
@@ -2121,6 +2122,26 @@ appendix at the end of this file.
   minimum. It was numbered 317 until now — that number belonged to the
   installer entry («the installer never downloads a build that is on disk
   already»), so the old references stay traceable.
+- **322.** The read follows the check's first answer, not its last. ADR 311
+  keyed the per-page branch on the fully-answered page — every block the
+  check could ask about carries a verdict — and any single lost verdict
+  threw the page back to «every text block»: a re-recognized block (the
+  verdicts it carried are erased), a request the server refused (the run
+  still finishes), the read's own confirmation dropping a stale verdict
+  (ADR 240). The count on «Распознать точно» jumped past the fixer's with
+  nothing on the screen to explain it, and the operator who has seen
+  «Проверка закончена» reads the big number as nonsense. Now the branch keys
+  on the check's **first** answer: one verdict on a block the check could
+  ask about (`BlockWorkList::pageCheckStarted`) puts the page under the
+  checked rule, and the read takes the rejected set — the very list the
+  «Исправить» badge counts, so the two numbers read as one whenever the
+  check has spoken. Only a page without verdicts keeps the every-text-block
+  rule. The verdict-less blocks of a stopped check wait for «Проверить»
+  (its «only where not done» collects them) — the reader is not their way
+  back. The same amendment unblocks the two scope buttons after their runs:
+  «Распознать блоки» and «Проверить» stay alive when the scope carries
+  their results (the rerun dialog of ADR 291 is the redo path), instead of
+  dying on «no work left».
 
 ### Security & secrets
 
