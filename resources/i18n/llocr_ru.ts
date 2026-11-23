@@ -4,7 +4,7 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+1483"/>
+        <location filename="../../src/app/AppController.cpp" line="+1482"/>
         <source>Nothing to check:</source>
         <translation>Проверять нечего:</translation>
     </message>
@@ -74,12 +74,12 @@
         <translation type="vanished">Изменённый фрагмент больше не найден в тексте документа.</translation>
     </message>
     <message>
-        <location line="+1232"/>
+        <location line="+1227"/>
         <source>Page %1 turned %2° clockwise.</source>
         <translation>Страница %1 повёрнута на %2° по часовой стрелке.</translation>
     </message>
     <message>
-        <location line="-2125"/>
+        <location line="-2119"/>
         <source>Page %1: the orientation is not clear, the page was left as it is.</source>
         <translation>Страница %1: ориентация не определяется, страница оставлена как есть.</translation>
     </message>
@@ -95,10 +95,10 @@
     </message>
     <message>
         <source>Page %1 straightened by %2°.</source>
-        <translation>Страница %1 выровнена на %2°.</translation>
+        <translation type="vanished">Страница %1 выровнена на %2°.</translation>
     </message>
     <message>
-        <location line="+1700"/>
+        <location line="+1699"/>
         <source>Page %1 lies on its side — turned by %2°, the markup runs again.</source>
         <translation>Страница %1 лежала боком — повёрнута на %2°, разметка запускается снова.</translation>
     </message>
@@ -205,11 +205,11 @@
     </message>
     <message>
         <source>The automatic pipeline is done.</source>
-        <translation>Автопайплайн завершён.</translation>
+        <translation type="vanished">Автопайплайн завершён.</translation>
     </message>
     <message>
         <source>The automatic pipeline was stopped.</source>
-        <translation>Автопайплайн остановлен.</translation>
+        <translation type="vanished">Автопайплайн остановлен.</translation>
     </message>
 </context>
 <context>
@@ -241,103 +241,103 @@
     <name>AutoPipelineStage</name>
     <message>
         <source>Markup</source>
-        <translation>Разметка</translation>
+        <translation type="vanished">Разметка</translation>
     </message>
     <message>
         <source>Nothing to mark up</source>
-        <translation>Нет страниц для разметки</translation>
+        <translation type="vanished">Нет страниц для разметки</translation>
     </message>
     <message>
         <source>No model for this task</source>
-        <translation>Нет модели для этой задачи</translation>
+        <translation type="vanished">Нет модели для этой задачи</translation>
     </message>
     <message>
         <source>The markup pass failed</source>
-        <translation>Разметка не удалась</translation>
+        <translation type="vanished">Разметка не удалась</translation>
     </message>
     <message>
         <source>Block recognition</source>
-        <translation>Распознавание блоков</translation>
+        <translation type="vanished">Распознавание блоков</translation>
     </message>
     <message>
         <source>Nothing to recognize</source>
-        <translation>Нечего распознавать</translation>
+        <translation type="vanished">Нечего распознавать</translation>
     </message>
     <message>
         <source>Nothing to check</source>
-        <translation>Нечего проверять</translation>
+        <translation type="vanished">Нечего проверять</translation>
     </message>
     <message>
         <source>Fix</source>
-        <translation>Исправление</translation>
+        <translation type="vanished">Исправление</translation>
     </message>
     <message>
         <source>Nothing to fix</source>
-        <translation>Нечего исправлять</translation>
+        <translation type="vanished">Нечего исправлять</translation>
     </message>
     <message>
         <source>Verification</source>
-        <translation>Проверка</translation>
+        <translation type="vanished">Проверка</translation>
     </message>
     <message>
         <source>Verification of the corrected blocks</source>
-        <translation>Проверка исправленных блоков</translation>
+        <translation type="vanished">Проверка исправленных блоков</translation>
     </message>
     <message>
         <source>The markup model does not support page markup</source>
-        <translation>Модель разметки не умеет размечать страницы</translation>
+        <translation type="vanished">Модель разметки не умеет размечать страницы</translation>
     </message>
     <message>
         <source>The block recognition did not start: the queue refused the work</source>
-        <translation>Распознавание блоков не началось: очередь не приняла работу</translation>
+        <translation type="vanished">Распознавание блоков не началось: очередь не приняла работу</translation>
     </message>
     <message>
         <source>The verification did not start: the queue refused the work</source>
-        <translation>Проверка не началась: очередь не приняла работу</translation>
+        <translation type="vanished">Проверка не началась: очередь не приняла работу</translation>
     </message>
     <message>
         <source>The fix did not start: the queue refused the work</source>
-        <translation>Исправление не началось: очередь не приняла работу</translation>
+        <translation type="vanished">Исправление не началось: очередь не приняла работу</translation>
     </message>
 </context>
 <context>
     <name>BlockEditPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+293"/>
+        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+363"/>
         <source>The document text differs from the block</source>
         <translation>Текст в документе отличается от блока</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+9"/>
         <source>Restore the block text</source>
         <translation>Вернуть текст блока</translation>
     </message>
     <message>
-        <location line="-222"/>
-        <location line="+59"/>
+        <location line="-246"/>
+        <location line="+58"/>
         <source>Verified</source>
-        <translation type="unfinished">Проверено</translation>
-    </message>
-    <message>
-        <location line="-53"/>
-        <location line="+54"/>
-        <source>Damaged</source>
-        <translation type="unfinished">Повреждено</translation>
+        <translation>Проверено</translation>
     </message>
     <message>
         <location line="-52"/>
         <location line="+53"/>
-        <source>Mismatch</source>
-        <translation type="unfinished">Не совпало</translation>
+        <source>Damaged</source>
+        <translation>Повреждено</translation>
     </message>
     <message>
         <location line="-51"/>
         <location line="+52"/>
+        <source>Mismatch</source>
+        <translation>Не совпало</translation>
+    </message>
+    <message>
+        <location line="-50"/>
+        <location line="+51"/>
         <source>Invalid syntax</source>
         <translation>Неверный синтаксис</translation>
     </message>
     <message>
-        <location line="-38"/>
+        <location line="-37"/>
         <source>Unclosed brace</source>
         <translation>Незакрытая скобка</translation>
     </message>
@@ -357,7 +357,12 @@
         <translation>Несовпадающая среда</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+2"/>
+        <source>Unbalanced</source>
+        <translation>Непарные</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>Unclosed math delimiter</source>
         <translation>Незакрытый математический разделитель</translation>
     </message>
@@ -377,9 +382,9 @@
         <translation>Блок кода внутри формулы</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+24"/>
         <source>Corrected</source>
-        <translation type="unfinished">Исправлено</translation>
+        <translation>Исправлено</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -387,92 +392,90 @@
         <translation>Распознано</translation>
     </message>
     <message>
-        <location line="-65"/>
-        <location line="+55"/>
-        <source>Approved</source>
-        <translation type="unfinished">Утверждён</translation>
+        <location line="+143"/>
+        <source>Revoke</source>
+        <translation>Отозвать</translation>
     </message>
     <message>
-        <location line="-53"/>
+        <location line="+0"/>
+        <source>Approve</source>
+        <translation>Утвердить</translation>
+    </message>
+    <message>
+        <location line="+67"/>
+        <source>Correction (AI)</source>
+        <translation>Исправление (AI)</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>No correction yet</source>
+        <translation>Исправлений пока нет</translation>
+    </message>
+    <message>
+        <location line="-282"/>
         <location line="+54"/>
+        <source>Approved</source>
+        <translation>Утверждено</translation>
+    </message>
+    <message>
+        <location line="-52"/>
+        <location line="+53"/>
         <source>Manually modified</source>
-        <translation type="unfinished">Ручная правка</translation>
+        <translation>Изменён вручную</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <source>Unbalanced left and <byte value="xd"/>ight</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+34"/>
+        <location line="+8"/>
         <source>Markup</source>
         <translation>Разметка</translation>
     </message>
     <message>
-        <location line="+101"/>
+        <location line="+195"/>
         <source>No correction required</source>
-        <translation type="unfinished">Не требует исправления</translation>
+        <translation>Не требует исправления</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="-81"/>
         <source>Read: the text matches the image</source>
-        <translation type="unfinished">Прочитано: текст совпадает с картинкой</translation>
+        <translation>Прочитано: текст совпадает с изображением</translation>
     </message>
     <message>
-        <location line="-118"/>
+        <location line="-124"/>
         <source>Could not read the block</source>
-        <translation type="unfinished">Не удалось прочитать блок</translation>
+        <translation>Не удалось прочитать блок</translation>
     </message>
     <message>
         <location line="+7"/>
         <location line="+1"/>
         <source>Read</source>
-        <translation type="unfinished">Прочитано</translation>
+        <translation>Прочитано</translation>
     </message>
     <message>
-        <location line="+208"/>
+        <location line="+130"/>
+        <source>OCR</source>
+        <translation>OCR</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Correction</source>
+        <translation>Исправление</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Comparison</source>
+        <translation>Сравнение</translation>
+    </message>
+    
+    <message>
+        <location line="+81"/>
         <source>Read text (AI)</source>
-        <translation type="unfinished">Прочитанный текст (AI)</translation>
+        <translation>Прочитанный текст (AI)</translation>
     </message>
+    
+    
     <message>
-        <location line="-87"/>
-        <source>Differences</source>
-        <translation type="unfinished">Различия</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Highlight what the correction changed</source>
-        <translation type="unfinished">Подсветить, что изменило исправление</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Reset correction</source>
-        <translation type="unfinished">Сбросить исправление</translation>
-    </message>
-    <message>
-        <location line="+38"/>
-        <source>Approve block</source>
-        <translation type="unfinished">Утвердить блок</translation>
-    </message>
-    <message>
-        <location line="-1"/>
-        <source>Approve correction</source>
-        <translation type="unfinished">Утвердить исправление</translation>
-    </message>
-    <message>
-        <location line="-1"/>
-        <source>Revoke approval</source>
-        <translation type="unfinished">Отозвать утверждение</translation>
-    </message>
-    <message>
-        <location line="+21"/>
+        <location line="-17"/>
         <source>Recognized text (OCR)</source>
-        <translation type="unfinished">Распознанный текст (OCR)</translation>
-    </message>
-    <message>
-        <location line="+20"/>
-        <source>Corrected text (AI)</source>
-        <translation type="unfinished">Исправленный текст (AI)</translation>
+        <translation>Распознанный текст (OCR)</translation>
     </message>
 </context>
 <context>
@@ -517,11 +520,12 @@
     <name>BlockNames</name>
     <message>
         <location filename="../../src/qml/BlockNames.qml" line="+10"/>
+        <location line="+33"/>
         <source>Text</source>
         <translation>Текст</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-32"/>
         <source>Headings</source>
         <translation>Заголовки</translation>
     </message>
@@ -547,11 +551,12 @@
     </message>
     <message>
         <location line="+1"/>
+        <location line="+47"/>
         <source>Code</source>
         <translation>Код</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-46"/>
         <source>Abstracts</source>
         <translation>Аннотации</translation>
     </message>
@@ -616,7 +621,172 @@
         <translation>Печати и штампы</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+15"/>
+        <source>Heading</source>
+        <translation>Заголовок</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Document title</source>
+        <translation>Название документа</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Paragraph heading</source>
+        <translation>Заголовок абзаца</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Abstract</source>
+        <translation>Аннотация</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Table</source>
+        <translation>Таблица</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Table title</source>
+        <translation>Название таблицы</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Table caption</source>
+        <translation>Подпись к таблице</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Table footnote</source>
+        <translation>Сноска к таблице</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Equation</source>
+        <translation>Уравнение</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Formula</source>
+        <translation>Формула</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Inline formula</source>
+        <translation>Формула в строке</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Formula number</source>
+        <translation>Номер формулы</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Image</source>
+        <translation>Изображение</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Chart</source>
+        <translation>Диаграмма</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Figure</source>
+        <translation>Рисунок</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Image caption</source>
+        <translation>Подпись к рисунку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Figure caption</source>
+        <translation>Подпись к рисунку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Image footnote</source>
+        <translation>Сноска к рисунку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Caption</source>
+        <translation>Подпись</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Code caption</source>
+        <translation>Подпись к коду</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Algorithm</source>
+        <translation>Алгоритм</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List</source>
+        <translation>Список</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List item</source>
+        <translation>Элемент списка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Index</source>
+        <translation>Указатель</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Transcription</source>
+        <translation>Транскрипция</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Aside</source>
+        <translation>Врезка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Reference text</source>
+        <translation>Текст ссылки</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Reference</source>
+        <translation>Ссылка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Key-value field</source>
+        <translation>Ключ и значение</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Running header</source>
+        <translation>Верхний колонтитул</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Running footer</source>
+        <translation>Нижний колонтитул</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Page number</source>
+        <translation>Номер страницы</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Seal</source>
+        <translation>Печать</translation>
+    </message>
+    <message>
+        <location line="+24"/>
         <source>Main content</source>
         <translation>Основное содержимое</translation>
     </message>
@@ -640,59 +810,51 @@
     </message>
 </context>
 <context>
-    <name>BlockVersionCard</name>
+    <name>BlockTextPanel</name>
     <message>
-        <source>Edit</source>
-        <translation type="vanished">Изм.</translation>
+        <location filename="../../src/qml/MainWindow/BlockTextPanel.qml" line="+94"/>
+        <source>· Check:</source>
+        <translation>· Проверка:</translation>
     </message>
     <message>
-        <source>Save</source>
-        <translation>Сохранить</translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/MainWindow/BlockVersionCard.qml" line="+118"/>
+        <location line="+36"/>
         <source>In the document</source>
-        <translation type="unfinished">Используется в документе</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Click to select</source>
-        <translation type="unfinished">Нажмите, чтобы выбрать</translation>
+        <translation>Используется в документе</translation>
     </message>
 </context>
 <context>
     <name>CandidateRenderer</name>
     <message>
         <source>The candidate renderer is busy.</source>
-        <translation>Рендерер кандидата занят.</translation>
+        <translation type="vanished">Рендерер кандидата занят.</translation>
     </message>
     <message>
         <source>The candidate render timed out.</source>
-        <translation>Истекло время отрисовки кандидата.</translation>
+        <translation type="vanished">Истекло время отрисовки кандидата.</translation>
     </message>
     <message>
         <source>Cannot load the candidate render page.</source>
-        <translation>Не удалось загрузить страницу отрисовки кандидата.</translation>
+        <translation type="vanished">Не удалось загрузить страницу отрисовки кандидата.</translation>
     </message>
     <message>
         <source>The candidate renderer process terminated.</source>
-        <translation>Процесс отрисовки кандидата завершился аварийно.</translation>
+        <translation type="vanished">Процесс отрисовки кандидата завершился аварийно.</translation>
     </message>
     <message>
         <source>The candidate render produced an empty page.</source>
-        <translation>Отрисовка кандидата дала пустую страницу.</translation>
+        <translation type="vanished">Отрисовка кандидата дала пустую страницу.</translation>
     </message>
     <message>
         <source>The candidate render could not create a temporary file.</source>
-        <translation>Не удалось создать временный файл для отрисовки кандидата.</translation>
+        <translation type="vanished">Не удалось создать временный файл для отрисовки кандидата.</translation>
     </message>
     <message>
         <source>PDF printing failed.</source>
-        <translation>Не удалось напечатать PDF.</translation>
+        <translation type="vanished">Не удалось напечатать PDF.</translation>
     </message>
     <message>
         <source>The candidate render could not be rasterized.</source>
-        <translation>Не удалось растрировать отрисовку кандидата.</translation>
+        <translation type="vanished">Не удалось растрировать отрисовку кандидата.</translation>
     </message>
 </context>
 <context>
@@ -992,11 +1154,11 @@
     </message>
     <message>
         <source>Stopped before the fix started.</source>
-        <translation>Остановлено до начала исправления.</translation>
+        <translation type="vanished">Остановлено до начала исправления.</translation>
     </message>
     <message>
         <source>Stopped before the read started.</source>
-        <translation>Остановлено до начала чтения.</translation>
+        <translation type="vanished">Остановлено до начала чтения.</translation>
     </message>
 </context>
 <context>
@@ -1026,11 +1188,11 @@
     </message>
     <message>
         <source>The model returned no corrected text: %1</source>
-        <translation>Модель не вернула исправленный текст: %1</translation>
+        <translation type="vanished">Модель не вернула исправленный текст: %1</translation>
     </message>
     <message>
         <source>The model returned no block text: %1</source>
-        <translation>Модель не вернула текст блока: %1</translation>
+        <translation type="vanished">Модель не вернула текст блока: %1</translation>
     </message>
     <message>
         <location line="-26"/>
@@ -1071,12 +1233,12 @@
 <context>
     <name>Footer</name>
     <message>
-        <location filename="../../src/qml/MainWindow/Footer.qml" line="+26"/>
+        <location filename="../../src/qml/MainWindow/Footer.qml" line="+58"/>
         <source>Blank replacement — this page could not be decoded. %1</source>
         <translation>Пустая страница вместо повреждённой — не удалось декодировать оригинал. %1</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+123"/>
         <source>Launch settings changed — restart the server to apply them.</source>
         <translation>Параметры запуска изменены — перезапустите сервер, чтобы они применились.</translation>
     </message>
@@ -1109,27 +1271,27 @@
         <translation type="vanished">Журнал запросов — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Footer.qml" line="103"/>
+        <location line="-259"/>
         <source>Start the managed llama-server with the model of the %1 task.</source>
         <translation>Запустить локальный llama-server с моделью задачи «%1».</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Footer.qml" line="390"/>
+        <location line="+296"/>
         <source>Runtime log — click to open. %1</source>
         <translation>Журнал работы — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Footer.qml" line="118"/>
+        <location line="-281"/>
         <source>Mixed</source>
         <translation>Смешанный</translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainWindow/Footer.qml" line="148"/>
+        <location line="+22"/>
         <source>%1 — Local: %2 · External API: %3</source>
         <translation>%1 — Локально: %2 · Внешний API: %3</translation>
     </message>
     <message>
-        <location line="-291"/>
+        <location line="-43"/>
         <source>The local runtime is owned by another LLocr instance.</source>
         <translation>Локальный рантайм занят другим экземпляром LLocr.</translation>
     </message>
@@ -1148,7 +1310,7 @@
         <translation type="vanished">Запустить локальный llama-server с выбранной моделью.</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+19"/>
         <source>External</source>
         <translation>Внешний</translation>
     </message>
@@ -1188,7 +1350,7 @@
         <translation>Рантайм: неизвестно</translation>
     </message>
     <message>
-        <location line="+71"/>
+        <location line="+80"/>
         <source>Stop it</source>
         <translation>Остановить</translation>
     </message>
@@ -1212,7 +1374,7 @@
         <translation>Скрыть сообщение</translation>
     </message>
     <message numerus="yes">
-        <location line="+170"/>
+        <location line="+168"/>
         <source>%n problem(s)</source>
         <translation>
             <numerusform>%n проблема</numerusform>
@@ -1226,12 +1388,12 @@
         <translation>Журнал проблем — нажмите, чтобы открыть</translation>
     </message>
     <message>
-        <location line="-93"/>
+        <location line="-91"/>
         <source>Stop</source>
         <translation>Стоп</translation>
     </message>
     <message>
-        <location line="+126"/>
+        <location line="+124"/>
         <source>Restart server?</source>
         <translation>Перезапустить сервер?</translation>
     </message>
@@ -1274,7 +1436,7 @@
         <translation>Стр:</translation>
     </message>
     <message>
-        <location line="+282"/>
+        <location line="+289"/>
         <source>Open project…</source>
         <translation>Открыть проект…</translation>
     </message>
@@ -1293,7 +1455,7 @@
         <translation type="vanished">Автоматические пайплайны появятся в следующем шаге</translation>
     </message>
     <message>
-        <location line="-232"/>
+        <location line="-239"/>
         <source>Mark up</source>
         <translation>Разметить</translation>
     </message>
@@ -1315,7 +1477,7 @@
         <translation type="vanished">Распознать выбранные страницы: блоки и их текст одним проходом</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+26"/>
         <source>Recognize the marked blocks that still have no text</source>
         <translation>Распознать размеченные блоки, у которых ещё нет текста</translation>
     </message>
@@ -1329,7 +1491,7 @@
         <translation>Проверить</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+27"/>
         <location line="+1"/>
         <source>Fix</source>
         <translation>Исправить</translation>
@@ -1351,12 +1513,12 @@
         <translation>Распознать текст большой ИИ-моделью</translation>
     </message>
     <message>
-        <location line="-242"/>
+        <location line="-249"/>
         <source>Export</source>
         <translation>Экспорт</translation>
     </message>
     <message>
-        <location line="+269"/>
+        <location line="+276"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
@@ -1365,12 +1527,12 @@
         <translation type="vanished">Проверка и исправление</translation>
     </message>
     <message>
-        <location line="-93"/>
+        <location line="-97"/>
         <source>Verification and AI correction</source>
         <translation>Проверки и AI-коррекция</translation>
     </message>
     <message>
-        <location line="-186"/>
+        <location line="-189"/>
         <source>Import</source>
         <translation>Импорт</translation>
     </message>
@@ -1381,7 +1543,7 @@
     </message>
     <message>
         <source>Pages</source>
-        <translation>Страницы</translation>
+        <translation type="vanished">Страницы</translation>
     </message>
     <message>
         <location line="+36"/>
@@ -1438,7 +1600,7 @@
         <translation>Распознать блоки</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+10"/>
         <source>Stop the block recognition</source>
         <translation>Остановить распознавание блоков</translation>
     </message>
@@ -1447,7 +1609,7 @@
         <translation type="vanished">Остановить распознавание</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+36"/>
         <source>Stop the verification</source>
         <translation>Остановить проверку</translation>
     </message>
@@ -1467,12 +1629,12 @@
         <translation>Остановить распознавание точно</translation>
     </message>
     <message>
-        <location line="-236"/>
+        <location line="-243"/>
         <source>Export the recognized text</source>
         <translation>Экспортировать распознанный текст</translation>
     </message>
     <message>
-        <location line="+387"/>
+        <location line="+394"/>
         <source>Mark up?</source>
         <translation>Разметить?</translation>
     </message>
@@ -1487,7 +1649,7 @@
         <translation>На выбранных страницах уже есть разметка и результаты. Переделать разметку (заменит блоки и все результаты) или разметить только страницы, где её ещё нет?</translation>
     </message>
     <message>
-        <location line="-297"/>
+        <location line="-304"/>
         <source>Stop the automatic pipeline</source>
         <translation>Остановить автопайплайн</translation>
     </message>
@@ -1497,7 +1659,7 @@
         <translation>Разметить, распознать, проверить и исправить %1 стр.</translation>
     </message>
     <message>
-        <location line="+313"/>
+        <location line="+320"/>
         <source>Automatic pipeline?</source>
         <translation>Автопайплайн?</translation>
     </message>
@@ -1646,7 +1808,7 @@
 <context>
     <name>LaunchTab</name>
     <message>
-        <location filename="../../src/qml/Settings/LaunchTab.qml" line="+203"/>
+        <location filename="../../src/qml/Settings/LaunchTab.qml" line="+209"/>
         <source>Save the value anyway?</source>
         <translation>Всё равно сохранить значение?</translation>
     </message>
@@ -1710,7 +1872,7 @@
     <name>LayoutController</name>
     <message>
         <source>The model returned no markup: the server&apos;s answer was empty.</source>
-        <translation>Модель не вернула разметку: ответ сервера пуст.</translation>
+        <translation type="vanished">Модель не вернула разметку: ответ сервера пуст.</translation>
     </message>
 </context>
 <context>
@@ -1841,7 +2003,7 @@
 <context>
     <name>ModelsSection</name>
     <message>
-        <location filename="../../src/qml/Settings/ModelsSection.qml" line="+267"/>
+        <location filename="../../src/qml/Settings/ModelsSection.qml" line="+293"/>
         <source>Models to download</source>
         <translation>Модели для скачивания</translation>
     </message>
@@ -1893,17 +2055,17 @@
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/ModelsSection.qml" line="82"/>
+        <location line="-287"/>
         <source>Local: %1 · External API: %2</source>
         <translation>Локально: %1 · Внешний API: %2</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/ModelsSection.qml" line="98"/>
+        <location line="+16"/>
         <source>External API will receive the data of these tasks: %1.</source>
         <translation>Внешний API получат данные задач: %1.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/ModelsSection.qml" line="102"/>
+        <location line="+4"/>
         <source>Configure runtimes</source>
         <translation>Настроить рантайм</translation>
     </message>
@@ -3313,7 +3475,7 @@
     <name>RuntimeController</name>
     <message>
         <source>The API key is in the system secret store, but the store did not give it: %1</source>
-        <translation>Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
+        <translation type="vanished">Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
     </message>
 </context>
 <context>
@@ -3327,7 +3489,6 @@
 <context>
     <name>RuntimeTab</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTab.qml" line="+62"/>
         <source>Connection mode</source>
         <translation type="vanished">Режим подключения</translation>
     </message>
@@ -3336,7 +3497,7 @@
         <translation type="vanished">Настройки внешнего рантайма</translation>
     </message>
     <message>
-        <location line="-19"/>
+        <location filename="../../src/qml/Settings/RuntimeTab.qml" line="+41"/>
         <source>connect %1 · answer %2</source>
         <translation>подключение %1 · ответ %2</translation>
     </message>
@@ -3351,22 +3512,18 @@
         <translation>%1 мин</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>External</source>
         <translation type="vanished">Внешний</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Managed</source>
         <translation type="vanished">Управляемый</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>The models run on your own server with an OpenAI-compatible API.</source>
         <translation type="vanished">Модели выполняются на вашем сервере с OpenAI-совместимым API.</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>The app downloads and runs llama.cpp on this machine.</source>
         <translation type="vanished">Приложение само скачивает и запускает llama.cpp на этой машине.</translation>
     </message>
@@ -3398,7 +3555,7 @@
 <context>
     <name>RuntimeTabExternal</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+74"/>
+        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+54"/>
         <source>The key is kept in %1 — not in the settings file.</source>
         <translation>Ключ хранится в %1 — не в файле настроек.</translation>
     </message>
@@ -3417,7 +3574,7 @@
         <translation type="vanished">Общий сервер — значение по умолчанию для всех задач</translation>
     </message>
     <message>
-        <location line="+225"/>
+        <location line="+233"/>
         <source>The system store did not answer: %1</source>
         <translation>Системное хранилище не ответило: %1</translation>
     </message>
@@ -3427,7 +3584,7 @@
         <translation>Базовый URL конечной точки</translation>
     </message>
     <message>
-        <location line="-106"/>
+        <location line="-114"/>
         <source>No system secret store</source>
         <translation>Нет системного хранилища</translation>
     </message>
@@ -3477,7 +3634,7 @@
         <translation>Проверить</translation>
     </message>
     <message>
-        <location line="+92"/>
+        <location line="+100"/>
         <source>The key will be sent in plain text (http outside the local machine).</source>
         <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
@@ -3487,22 +3644,20 @@
         <translation>Повторить</translation>
     </message>
     <message>
-        <location line="+45"/>
         <source>Tasks</source>
         <translation type="vanished">Задачи</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>An empty field takes the shared value</source>
         <translation type="vanished">Пустое поле берёт общее значение</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+144"/>
+        <location line="-128"/>
         <source>Only the external tasks use this address. A different server can be set in the task&apos;s settings.</source>
         <translation>Этот адрес используют только внешние задачи. Другой сервер можно указать в параметрах задачи.</translation>
     </message>
     <message>
-        <location line="-137"/>
+        <location line="+43"/>
         <source>API key</source>
         <translation>API-ключ</translation>
     </message>
@@ -3521,7 +3676,7 @@
     </message>
     <message>
         <source>Endpoint</source>
-        <translation>Эндпоинт</translation>
+        <translation type="vanished">Эндпоинт</translation>
     </message>
     <message>
         <source>Model alias</source>
@@ -3738,31 +3893,31 @@
     <name>SecretStore</name>
     <message>
         <source>The macOS Keychain is not available</source>
-        <translation>Связка ключей macOS недоступна</translation>
+        <translation type="vanished">Связка ключей macOS недоступна</translation>
     </message>
     <message>
         <source>The Keychain has no such key</source>
-        <translation>В связке ключей нет такого ключа</translation>
+        <translation type="vanished">В связке ключей нет такого ключа</translation>
     </message>
     <message>
         <source>The Keychain item is not a password</source>
-        <translation>Элемент связки ключей — не пароль</translation>
+        <translation type="vanished">Элемент связки ключей — не пароль</translation>
     </message>
     <message>
         <source>Keychain: the access was denied — the item “%1” belongs to an earlier build of the app. Answer the Keychain prompt with “Always Allow”, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
-        <translation>Связка ключей: доступ запрещён — элемент «%1» принадлежит прежней сборке приложения. Ответьте на запрос связки «Всегда разрешать» или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
+        <translation type="vanished">Связка ключей: доступ запрещён — элемент «%1» принадлежит прежней сборке приложения. Ответьте на запрос связки «Всегда разрешать» или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
     </message>
     <message>
         <source>Keychain: the access to the item “%1” needs the user&apos;s confirmation, and none was given. Allow it, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
-        <translation>Связка ключей: доступ к элементу «%1» требует подтверждения пользователя, и подтверждения не было. Разрешите доступ или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
+        <translation type="vanished">Связка ключей: доступ к элементу «%1» требует подтверждения пользователя, и подтверждения не было. Разрешите доступ или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
     </message>
     <message>
         <source>Keychain: the item “%1” is still there and cannot be replaced.</source>
-        <translation>Связка ключей: элемент «%1» всё ещё на месте, и заменить его не удалось.</translation>
+        <translation type="vanished">Связка ключей: элемент «%1» всё ещё на месте, и заменить его не удалось.</translation>
     </message>
     <message>
         <source>Keychain: %1</source>
-        <translation>Связка ключей: %1</translation>
+        <translation type="vanished">Связка ключей: %1</translation>
     </message>
     <message>
         <location filename="../../src/config/SecretStore.cpp" line="+60"/>
@@ -3777,47 +3932,47 @@
     </message>
     <message>
         <source>Credential Manager: error %1</source>
-        <translation>Диспетчер учётных данных: ошибка %1</translation>
+        <translation type="vanished">Диспетчер учётных данных: ошибка %1</translation>
     </message>
     <message>
         <source>Credential Manager: there is no such key</source>
-        <translation>Диспетчер учётных данных: нет такого ключа</translation>
+        <translation type="vanished">Диспетчер учётных данных: нет такого ключа</translation>
     </message>
     <message>
         <source>No secret service on the session bus</source>
-        <translation>Служба секретов недоступна в шине сессии</translation>
+        <translation type="vanished">Служба секретов недоступна в шине сессии</translation>
     </message>
     <message>
         <source>Secret Service: the session could not be opened</source>
-        <translation>Служба секретов: не удалось открыть сессию</translation>
+        <translation type="vanished">Служба секретов: не удалось открыть сессию</translation>
     </message>
     <message>
         <source>Secret Service: the search failed</source>
-        <translation>Служба секретов: поиск не удался</translation>
+        <translation type="vanished">Служба секретов: поиск не удался</translation>
     </message>
     <message>
         <source>Secret Service: there is no such key</source>
-        <translation>Служба секретов: нет такого ключа</translation>
+        <translation type="vanished">Служба секретов: нет такого ключа</translation>
     </message>
     <message>
         <source>Secret Service: the collection could not be unlocked</source>
-        <translation>Служба секретов: не удалось разблокировать коллекцию</translation>
+        <translation type="vanished">Служба секретов: не удалось разблокировать коллекцию</translation>
     </message>
     <message>
         <source>The keyring is locked — unlock it and try again</source>
-        <translation>Связка ключей заблокирована — разблокируйте её и повторите</translation>
+        <translation type="vanished">Связка ключей заблокирована — разблокируйте её и повторите</translation>
     </message>
     <message>
         <source>Secret Service: the key could not be read</source>
-        <translation>Служба секретов: не удалось прочитать ключ</translation>
+        <translation type="vanished">Служба секретов: не удалось прочитать ключ</translation>
     </message>
     <message>
         <source>Secret Service: the key could not be stored</source>
-        <translation>Служба секретов: не удалось сохранить ключ</translation>
+        <translation type="vanished">Служба секретов: не удалось сохранить ключ</translation>
     </message>
     <message>
         <source>Secret Service: the key could not be deleted</source>
-        <translation>Служба секретов: не удалось удалить ключ</translation>
+        <translation type="vanished">Служба секретов: не удалось удалить ключ</translation>
     </message>
 </context>
 <context>
@@ -3913,7 +4068,7 @@
         <translation>Настройки</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+18"/>
         <source>Interface</source>
         <translation>Интерфейс</translation>
     </message>
@@ -3950,12 +4105,11 @@
     <message>
         <location line="+5"/>
         <location line="+116"/>
-        <location line="+36"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location line="-144"/>
+        <location line="-108"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
@@ -3990,12 +4144,12 @@
         <translation>Есть несохранённые изменения. Они будут потеряны, и запустится мастер настройки.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/SettingsWindow.qml" line="328"/>
+        <location line="+9"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/SettingsWindow.qml" line="327"/>
+        <location line="-1"/>
         <source>Go back</source>
         <translation>Вернуться</translation>
     </message>
@@ -4303,7 +4457,7 @@
         <translation>Рекомендуемый рантайм</translation>
     </message>
     <message>
-        <location line="+73"/>
+        <location line="+76"/>
         <source>The launch parameters are written only after you confirm the value that looks like a secret. Answer the question and press Next again.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4324,7 +4478,7 @@
 <context>
     <name>StepWelcome</name>
     <message>
-        <location filename="../../src/qml/Setup/StepWelcome.qml" line="+32"/>
+        <location filename="../../src/qml/Setup/StepWelcome.qml" line="+40"/>
         <source>Choose how to work with the LLM.</source>
         <translation>Выберите способ работы с LLM.</translation>
     </message>
@@ -4352,22 +4506,22 @@
 <context>
     <name>TaskConnectionTab</name>
     <message>
-        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="71"/>
+        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="+118"/>
         <source>Model alias</source>
         <translation>Псевдоним модели</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="83"/>
+        <location line="+12"/>
         <source>the model id</source>
         <translation>идентификатор модели</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="95"/>
+        <location line="+13"/>
         <source>An empty endpoint and an empty key take the shared server from Settings → Runtime.</source>
         <translation>Пустой эндпоинт и пустой ключ берут общий сервер из Настроек → Рантайм.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Settings/TaskConnectionTab.qml" line="102"/>
+        <location line="+7"/>
         <source>Endpoint and key</source>
         <translation>Эндпоинт и ключ</translation>
     </message>
@@ -4375,17 +4529,16 @@
 <context>
     <name>TaskEndpointForm</name>
     <message>
-        <location filename="../../src/qml/Settings/TaskEndpointForm.qml" line="+65"/>
         <source>Close</source>
         <translation type="vanished">Закрыть</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location filename="../../src/qml/Settings/TaskEndpointForm.qml" line="+62"/>
         <source>Endpoint</source>
         <translation>Эндпоинт</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+26"/>
         <source>The key will be sent in plain text (http outside the local machine).</source>
         <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
@@ -4408,12 +4561,12 @@
 <context>
     <name>TaskModelsTable</name>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+278"/>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+434"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
     <message>
-        <location line="-47"/>
+        <location line="-70"/>
         <source>VRAM ≥ %1</source>
         <translation>VRAM ≥ %1</translation>
     </message>
@@ -4423,48 +4576,49 @@
         <translation>RAM ≥ %1 · VRAM ≥ %2 (частично) / %3 (полностью)</translation>
     </message>
     <message>
-        <location line="+269"/>
+        <location line="+300"/>
         <source>Launch and request settings</source>
         <translation>Запуск и запрос</translation>
     </message>
     <message>
-        <location line="+100"/>
+        <location line="+124"/>
         <source>Launch</source>
         <translation>Запуск</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="-1"/>
+        <location line="+1"/>
         <source>Request</source>
         <translation>Запрос</translation>
     </message>
     <message>
-        <location line="-20"/>
+        <location line="-22"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="362"/>
+        <location line="-336"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="417"/>
+        <location line="-34"/>
         <source>Managed</source>
         <translation>Управляемый</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="418"/>
+        <location line="+1"/>
         <source>External</source>
         <translation>Внешний</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="721"/>
+        <location line="+390"/>
         <source>Connection</source>
         <translation>Подключение</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="580"/>
-        <source>Model alias — set it in the gear popup's Connection tab</source>
+        <location line="-140"/>
+        <source>Model alias — set it in the gear popup&apos;s Connection tab</source>
         <translation>Алиас модели — задаётся во вкладке «Подключение» попапа за шестерёнкой</translation>
     </message>
 </context>
@@ -4531,19 +4685,6 @@
     <message>
         <location line="+15"/>
         <source>Reading %1 / %2</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>TestAppImport</name>
-    <message>
-        <location filename="../../tests/test_app_import.cpp" line="+1176"/>
-        <source>Broken page %1.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+31"/>
-        <source>Page %1 is blank.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4783,7 +4924,7 @@
     </message>
     <message>
         <source>Turn a sideways page after markup automatically</source>
-        <translation>Поворачивать боковую страницу после разметки автоматически</translation>
+        <translation type="vanished">Поворачивать боковую страницу после разметки автоматически</translation>
     </message>
     <message>
         <location line="+23"/>
@@ -4854,7 +4995,7 @@
 <context>
     <name>llocr::ConnectionProbe</name>
     <message>
-        <location filename="../../src/runtime/ConnectionProbe.cpp" line="+49"/>
+        <location filename="../../src/runtime/ConnectionProbe.cpp" line="+47"/>
         <source>No server address</source>
         <translation>Не указан адрес сервера</translation>
     </message>
@@ -4998,19 +5139,19 @@
 <context>
     <name>llocr::ModelInstaller</name>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="+281"/>
-        <location line="+131"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="+284"/>
+        <location line="+151"/>
         <location line="+99"/>
         <source>Invalid model selection</source>
         <translation>Неверный выбор модели</translation>
     </message>
     <message>
-        <location line="-227"/>
+        <location line="-247"/>
         <source>This model has no model file selected</source>
         <translation>У этой модели не выбран файл модели</translation>
     </message>
     <message>
-        <location line="+189"/>
+        <location line="+209"/>
         <source>Unable to remove model file: %1</source>
         <translation>Не удалось удалить файл модели: %1</translation>
     </message>
@@ -5035,12 +5176,12 @@
         <translation>Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-259"/>
         <source>The selected model is no longer on disk: %1 — pick another one in Settings → Models.</source>
         <translation>Выбранной модели больше нет на диске: %1 — выберите другую в Настройки → Модели.</translation>
     </message>
     <message>
-        <location line="+110"/>
+        <location line="+130"/>
         <location line="+34"/>
         <source>This quantization is not installed</source>
         <translation>Этот квант не установлен</translation>

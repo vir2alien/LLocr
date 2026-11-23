@@ -40,6 +40,7 @@ private slots:
     void theSwitchReportsTheChoiceWithoutWritingTheIndex();
     void theBindingToTheStoredValueSurvivesAClick();
     void anOptionMayCarryAnIcon();
+    void aSegmentMayBeSwitchedOff();
 
 private:
     std::unique_ptr<QObject> loadFile(const QString &relativePath);
@@ -261,6 +262,31 @@ void TestSegmentedControlQml::anOptionMayCarryAnIcon()
     QVERIFY(withIcon->width() > withoutIcon->width());
 
     QVERIFY(findByClassName(withIcon, QLatin1String("Icon")));
+}
+
+// A segment may be switched off: it stays in the row and says what is
+// missing, but a click on it is not a choice.
+void TestSegmentedControlQml::aSegmentMayBeSwitchedOff()
+{
+    const std::unique_ptr<QObject> control = loadFile(QStringLiteral("Common/SegmentedControl.qml"));
+    QVERIFY2(control, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    control->setProperty(
+        "options",
+        QVariantList{QVariantMap{{QStringLiteral("label"), QStringLiteral("Text")}}, QVariantMap{{QStringLiteral("label"), QStringLiteral("Correction")}, {QStringLiteral("enabled"), false}}});
+    QCoreApplication::processEvents();
+
+    // The row lays its segments out in the polish: let it happen before the
+    // test clicks a segment.
+    QTest::qWait(20);
+
+    QSignalSpy spy(control.get(), SIGNAL(activated(int)));
+    clickSegment(control.get(), 1);
+    QCOMPARE(spy.count(), 0);
+
+    clickSegment(control.get(), 0);
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(0).toInt(), 0);
 }
 
 QTEST_MAIN(TestSegmentedControlQml)

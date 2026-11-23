@@ -61,8 +61,6 @@ public:
     QVariantList selectedBlockRemovedRanges() const;
     QVariantList selectedBlockAddedRanges() const;
 
-    bool highlightDifferences() const { return m_highlightDifferences; }
-    void setHighlightDifferences(bool enabled);
     bool pageTextEditorFocused() const { return m_pageTextEditorFocused; }
     void setPageTextEditorFocused(bool focused);
 
@@ -88,10 +86,8 @@ public:
 signals:
     void selectedBoxChanged();
     void blockTextRangeChanged();
-    // The panel's diff view changed: a new block, a new correction or the
-    // highlight toggle.
+    // The panel's diff view changed: a new block or a new correction.
     void blockDiffChanged();
-    void highlightDifferencesChanged();
     void pageTextEditorFocusedChanged();
 
 private:
@@ -101,7 +97,6 @@ private:
 
     Deps m_deps;
     int m_selectedBox = -1;
-    bool m_highlightDifferences = true;
     bool m_pageTextEditorFocused = false;
     BlockTextHighlighter *m_blockHighlighter = nullptr;  ///< owned; created on first attach
 

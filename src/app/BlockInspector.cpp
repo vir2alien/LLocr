@@ -159,15 +159,6 @@ QVariantList BlockInspector::selectedBlockAddedRanges() const
     return ranges;
 }
 
-void BlockInspector::setHighlightDifferences(bool enabled)
-{
-    if (m_highlightDifferences == enabled)
-        return;
-    m_highlightDifferences = enabled;
-    emit highlightDifferencesChanged();
-    emit blockDiffChanged();
-}
-
 void BlockInspector::setPageTextEditorFocused(bool focused)
 {
     if (m_pageTextEditorFocused == focused)

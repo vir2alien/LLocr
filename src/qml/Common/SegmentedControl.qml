@@ -6,9 +6,11 @@ import LLocr
 
 // One switch for the whole app: a compact row of exclusive segments where
 // the active one is the filled one, so "what am I looking at" reads at a
-// glance. A segment may carry an icon next to its label. The segments are
-// drawn inset from the container, so the selection never pokes out of its
-// corners. The control is driven from the outside — it reports the choice
+// glance. A segment may carry an icon next to its label. A segment may be
+// switched off (the option says "enabled": false) — it stays visible and
+// says what is missing, but it cannot be chosen. The segments are drawn
+// inset from the container, so the selection never pokes out of its corners.
+// The control is driven from the outside — it reports the choice
 // (activated(index)) and never writes currentIndex itself, so a binding to a
 // stored setting survives the click.
 Rectangle {
@@ -33,7 +35,13 @@ Rectangle {
         const count = root.options.length
         if (count === 0)
             return
-        root.activated((root.currentIndex + delta + count) % count)
+        let index = root.currentIndex
+        for (let i = 0; i < count; ++i) {
+            index = (index + delta + count) % count
+            if (root.options[index].enabled !== false)
+                break
+        }
+        root.activated(index)
     }
 
     Row {
@@ -55,6 +63,10 @@ Rectangle {
                 readonly property string label: segment.modelData.label
                 readonly property string icon: segment.modelData.icon !== undefined
                                               ? segment.modelData.icon : ""
+                // A segment that cannot be chosen: it stays in the row and
+                // says what is missing.
+                readonly property bool available: segment.modelData.enabled !== undefined
+                                                  ? segment.modelData.enabled : true
 
                 width: content.width + root.optionPadding * 2
                 height: root.height - 4
@@ -68,7 +80,8 @@ Rectangle {
                     anchors.fill: parent
                     radius: Theme.controlRadius - 1
                     color: segment.selected ? Theme.selected
-                                           : (segmentHover.hovered ? Theme.selected : "transparent")
+                                           : (segment.available && segmentHover.hovered ? Theme.selected
+                                                                                 : "transparent")
                     border.color: segment.selected ? Theme.border : "transparent"
                     border.width: 1
                 }
@@ -85,7 +98,7 @@ Rectangle {
                         visible: segment.icon !== ""
                         name: segment.icon
                         size: root.optionIconSize
-                        color: Theme.textPrimary
+                        color: segment.available ? Theme.textPrimary : Theme.textMuted
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         Accessible.ignored: true
@@ -95,7 +108,7 @@ Rectangle {
                         id: segmentLabel
                         text: segment.label
                         font: Theme.body
-                        color: Theme.textPrimary
+                        color: segment.available ? Theme.textPrimary : Theme.textMuted
                         anchors.left: parent.left
                         anchors.leftMargin: segment.icon !== ""
                                             ? root.optionIconSize + Theme.spacingSmall : 0
@@ -105,17 +118,19 @@ Rectangle {
 
                 HoverHandler {
                     id: segmentHover
+                    enabled: segment.available
                     cursorShape: Qt.PointingHandCursor
                 }
 
                 TapHandler {
+                    enabled: segment.available
                     onTapped: root.activated(segment.index)
                 }
 
                 Keys.onLeftPressed: root.move(-1)
                 Keys.onRightPressed: root.move(1)
-                Keys.onSpacePressed: root.activated(segment.index)
-                Keys.onReturnPressed: root.activated(segment.index)
+                Keys.onSpacePressed: if (segment.available) root.activated(segment.index)
+                Keys.onReturnPressed: if (segment.available) root.activated(segment.index)
             }
         }
     }

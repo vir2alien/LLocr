@@ -104,8 +104,6 @@ class AppController : public QObject
     // fragments the fix dropped from the original and the ones it put in.
     Q_PROPERTY(QVariantList selectedBlockRemovedRanges READ selectedBlockRemovedRanges NOTIFY blockDiffChanged)
     Q_PROPERTY(QVariantList selectedBlockAddedRanges READ selectedBlockAddedRanges NOTIFY blockDiffChanged)
-    // The panel's diff view: the tinted ranges or the plain text.
-    Q_PROPERTY(bool highlightDifferences READ highlightDifferences WRITE setHighlightDifferences NOTIFY highlightDifferencesChanged)
     // The page text editor holds the keyboard: the approve hotkey must not
     // take the Return away from a text the user is typing in.
     Q_PROPERTY(bool pageTextEditorFocused READ pageTextEditorFocused WRITE setPageTextEditorFocused NOTIFY pageTextEditorFocusedChanged)
@@ -276,8 +274,6 @@ public:
     void setSelectedBoxIndex(int index) { m_inspector.setSelectedBoxIndex(index); }
     QVariantList selectedBlockRemovedRanges() const { return m_inspector.selectedBlockRemovedRanges(); }
     QVariantList selectedBlockAddedRanges() const { return m_inspector.selectedBlockAddedRanges(); }
-    bool highlightDifferences() const { return m_inspector.highlightDifferences(); }
-    void setHighlightDifferences(bool enabled);
     bool pageTextEditorFocused() const { return m_inspector.pageTextEditorFocused(); }
     void setPageTextEditorFocused(bool focused);
 
@@ -383,10 +379,8 @@ signals:
     void selectedBoxChanged();
     void blockTextRangeChanged();
     void blockDocumentDivergedChanged();
-    // The panel's diff view changed: a new block, a new correction or the
-    // highlight toggle.
+    // The panel's diff view changed: a new block or a new correction.
     void blockDiffChanged();
-    void highlightDifferencesChanged();
     void pageTextEditorFocusedChanged();
     void checkStateChanged();
     // The availability flags (actionsIdle and the page/all "supported"

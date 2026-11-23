@@ -1571,7 +1571,8 @@ appendix at the end of this file.
   blocks, «Утвердить»/«Сбросить исправление» actions with Ctrl/⌘+Return
   jumping to the next problem block, and a per-card «Изм.» hand edit.
 - **187.** The approval can be revoked: the confirm button reads «Отозвать
-  утверждение» and restores the verdict the approval replaced
+  утверждение» (ADR 323: the button of the panel reads «Утвердить» and
+  «Отозвать») and restores the verdict the approval replaced
   (`checkStatusBeforeApproval`/`correctedCheckStatusBeforeApproval`, optional
   `project.json` keys, schema version stays 2). A hand-written text is its own
   state `BoxCheckStatus::Edited` («Изменён вручную», no score), the edit exits
@@ -2142,6 +2143,54 @@ appendix at the end of this file.
   «Распознать блоки» and «Проверить» stay alive when the scope carries
   their results (the rerun dialog of ADR 291 is the redo path), instead of
   dying on «no work left».
+
+- **323.** The block panel reads like a text. The panel used to speak the
+  model's language: the header carried the raw label of the block
+  (`equation`, `image_caption`), the actions of the pipeline stood where a
+  state belongs, and two cards lay side by side — the operator had to read
+  the cards to learn what he was looking at. Now the panel is a **header of
+  state and a text block**. The header names the block in the interface
+  language (`BlockNames.labelName` — the label a model carries is translated
+  like any other word; an unknown label stays as it is, so nothing is lost)
+  and carries the block's state as a dot: gray — nobody judged it, red — a
+  mismatch, a damage or a broken formula, green — verified, approved or
+  written by hand (the language of the frame on the preview, ADR 238). The
+  switch has three segments — **OCR | Исправление | Сравнение** — and it
+  moves the document: the layer the operator reads is the layer the document
+  carries (ADR 164, ADR 185). The body is the panel of one text layer
+  (`MainWindow/BlockTextPanel.qml`, the card of a version before it): its
+  header names the layer, the verdict of the checking model and its
+  confidence, and the chip «В документе» marks the layer the document shows.
+  The comparison shows both layers, one above the other, and the tinting of
+  the diff belongs to it alone — a single layer is read clean. The
+  comparison is a state of the view, so the property that used to switch the
+  tinting is gone: `Controller.highlightDifferences` (with the setter and the
+  signal of `BlockInspector`) — the ranges themselves stay
+  (`selectedBlockRemovedRanges` / `selectedBlockAddedRanges`). The verdict
+  of a layer has one place — the header of its panel (ADR 239), and a human
+  state still has no score of its own (ADR 187). The switch says what it can
+  do: a block that carries the markup alone has nothing to switch between, so
+  the switch is gone; a block without a correction has no second variant, so
+  the segments «Исправление» and «Сравнение» stay in the row but say they
+  are not available (the switch of the app grew the per-segment switch-off
+  for it). A word that speaks about one layer stands with that layer: the
+  fixer's «не требует исправления» belongs to the recognized text, so it
+  stands in the header of the OCR panel and not in the header of the
+  module. The approve action has one word: «Утвердить» — and «Отозвать»
+  while the approval stands. The layer the panel shows does not change the
+  name: the panel approves the block, not a layer of it, and the name of
+  the layer would be a second name of the same action. «Сбросить исправление» is gone as well: a repeated fix and the
+  choice of the layer in the document make it needless. The switch moves to the
+  line below when the header row cannot hold it: the row is measured by the
+  natural width of everything it carries — the dot, the name of the block, the
+  state, the switch and the actions — and when the sum does not fit, the
+  switch stands on its own line and the row keeps the name and the actions.
+  (Amends ADR 307: the divergence notice and the action
+  that settles it stand **under the text of the block** — the header row carries
+  the name, the state, the switch and the actions, and it has no room for a
+  fourth pair of words; and a warning that speaks about the document stands
+  after the text it speaks about.)
+
 
 ### Security & secrets
 

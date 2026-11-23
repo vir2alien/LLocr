@@ -45,6 +45,9 @@ QtObject {
     readonly property color cardBorder: dark ? "#3f3f3f" : "#e2e8f0"
     readonly property color cardAccent: dark ? "#60a5fa" : "#3b82f6"
     readonly property color cardAccentBg: dark ? "#1c3450" : "#eff6ff"
+    // The header of a text panel: a soft strip over the card, so the layer's
+    // name reads apart from the text below it.
+    readonly property color panelHeaderBg: dark ? "#232323" : "#f6f7f9"
     // The diff tints: what the correction dropped from the original and what it
     // put in. A soft background, no strikethrough — a strike reads as a minus
     // sign inside a formula.

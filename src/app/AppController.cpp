@@ -138,7 +138,6 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_inspector, &BlockInspector::blockTextRangeChanged, this, &AppController::blockTextRangeChanged);
     connect(this, &AppController::resultChanged, this, &AppController::blockDocumentDivergedChanged);
     connect(&m_inspector, &BlockInspector::blockDiffChanged, this, &AppController::blockDiffChanged);
-    connect(&m_inspector, &BlockInspector::highlightDifferencesChanged, this, &AppController::highlightDifferencesChanged);
     connect(&m_inspector, &BlockInspector::pageTextEditorFocusedChanged, this, &AppController::pageTextEditorFocusedChanged);
 
     // The verification filter changes which blocks «Проверить» would pick up
@@ -2143,11 +2142,6 @@ int AppController::boxIndexForTextPosition(int position) const
 void AppController::attachBlockTextHighlighter(QObject *textDocument, const QColor &color)
 {
     m_inspector.attachBlockTextHighlighter(textDocument, color);
-}
-
-void AppController::setHighlightDifferences(bool enabled)
-{
-    m_inspector.setHighlightDifferences(enabled);
 }
 
 void AppController::setPageTextEditorFocused(bool focused)
