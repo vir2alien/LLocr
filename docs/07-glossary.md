@@ -575,7 +575,9 @@ appendix at the end of this file.
   and the external context window is read from `max_model_len` in
   `/v1/models` (one request per server, with that role's key) into
   `ResolvedConnection::contextSize`, the visual floor taken at 1024 tokens
-  because no image budget is published.
+  because no image budget is published. (Amended by ADR 332: only a reply cut
+  at the budget — `finish_reason` `length` — proves the ignore; a reply
+  stopped inside the thinking is an error, and the server is not marked.)
 - **236.** Release digest and download resilience (merges ADR 212): the «no
   digest, no install» rule stands, but the digest comes from the GitHub API
   asset `digest` field (`sha256:<hex>`, foreign algorithms and truncated hex
@@ -1172,7 +1174,9 @@ appendix at the end of this file.
   token, because with `--special` the stop strings are matched against the
   rendered reply; llama-server stops on the model's end-of-text token by
   itself. All four fix profiles (`qwen3.5-4b`, `qwen3.5-9b`, `gemma-4-12b`,
-  `gemma-4-e4b`) are cleaned.
+  `gemma-4-e4b`) are cleaned. (Amended by ADR 332: a request with thinking
+  sends no stop words — the thinking quotes the framed candidate — and the
+  marker's cut lives in the parser.)
 - **250.** The `minicpm-jev` launch profile keeps
   `--ctx-size 16384 --batch-size 2048 --ubatch-size 512` — with the earlier
   fixed 32768/8192/8192 llama.cpp pushed a 1344 MiB compute buffer to host and
@@ -1391,6 +1395,24 @@ appendix at the end of this file.
   `REVIEW`), and the qwen3.5-4b's own reader wording is gone — the family
   takes the shared one. Amends ADR 259 (the read reply contract); the fix
   protocol's own contract (OK / FIX / REVIEW) is untouched.
+- **332.** The fix reply is enforced at the line, not at the prefix. The
+  keyword owns the whole first line: `OK` and `REVIEW` stand alone on it
+  (trailing punctuation aside), `FIX` is the keyword plus its separator —
+  colon, space or the line break — with the corrected block after it. A
+  longer word (`FIXED`, which the prefix match parsed as a correction
+  `ED …`) and a justified `OK — …` are deviations that go to Review: the
+  reader's whole-line rule (ADR 331) applied to the fixer. The reply is cut
+  at the candidate frame before it reaches the gate, before the opening
+  marker — a model that echoes the request after its answer leaves neither
+  the frame nor the echoed candidate in the block; this is the parser's half
+  of the protocol marker. And a request with thinking carries no stop words:
+  the thinking legitimately quotes the framed candidate, and a stop match
+  inside the thinking stopped the reply before the answer (gemma-4-12b, the
+  footnote block of the OCR_TEST corpus answered nothing) while looking
+  exactly like the ignored budget of ADR 231 — the finish reason tells the
+  two apart, and only a reply cut at the budget (`finish_reason` `length`)
+  is the ignored one. (Amends ADRs 231 and 249; measured on llama.cpp b12559
+  with qwen3.5-4b and gemma-4-12b.)
 
 ### UI
 

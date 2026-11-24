@@ -93,8 +93,18 @@ QString VisionChatModel::missingAnswerReason(const QByteArray &responseData)
     }
 
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
-    if (!message.value(QStringLiteral("reasoning_content")).toString().isEmpty())
-        return StatusMessage::translate("VisionChatModel", "the model spent the token budget on reasoning and returned no answer").text();
+    if (!message.value(QStringLiteral("reasoning_content")).toString().isEmpty()) {
+        // Reasoning without an answer has two causes: the budget spent on the
+        // thinking (ADR 230), and a stop word that matched inside the thinking
+        // — the thinking quotes the framed candidate (ADR 332). The finish
+        // reason tells them apart; an unknown one stays neutral.
+        const QString finish = choices.first().toObject().value(QStringLiteral("finish_reason")).toString();
+        if (finish == QLatin1String("length"))
+            return StatusMessage::translate("VisionChatModel", "the model spent the token budget on reasoning and returned no answer").text();
+        if (finish == QLatin1String("stop"))
+            return StatusMessage::translate("VisionChatModel", "the reply was stopped inside the thinking: a stop word matched before the answer").text();
+        return StatusMessage::translate("VisionChatModel", "the reply carries reasoning and no answer").text();
+    }
     return StatusMessage::translate("VisionChatModel", "the reply carries an empty answer").text();
 }
 

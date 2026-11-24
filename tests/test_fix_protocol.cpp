@@ -96,6 +96,12 @@ private slots:
     // An explicit FIX without a payload is a refusal to judge, not an error.
     void emptyFixMeansReview();
     void okConfirmsWithoutText();
+    // The keyword owns the whole first line: an OK with a justification
+    // attached and a word that merely starts with a keyword are deviations.
+    void okOwnsTheWholeLine();
+    // "FIXED" is a word, not the keyword: the old prefix match turned it into
+    // a correction "ED ..." and stored that in the block.
+    void fixedKeywordIsADeviation();
     void reviewMarksWithoutText();
     // EMPTY is no longer a verdict: a reply outside OK / FIX / REVIEW is a
     // deviation and goes to human eyes.
@@ -121,6 +127,13 @@ private slots:
     void emptyCandidateStillTravelsFramed();
     // The reasoning budget rides the request and switches the thinking on.
     void reasoningBudgetTurnsTheThinkingOn();
+    // A thinking request carries no stop words: the thinking quotes the
+    // framed candidate, and a stop match inside the thinking stops the reply
+    // before the answer (ADR 332).
+    void thinkingRequestCarriesNoStopWords();
+    // The reply is cut at the candidate frame before it reaches the gate —
+    // before the opening marker, so an echoed framing leaves nothing behind.
+    void replyIsCutAtTheCandidateFrame();
     // The read protocol (ADR 266): the request carries the block prompt and
     // the image — the recognized text is not in it.
     void readRequestBodyCarriesNoSample();
@@ -173,10 +186,36 @@ void TestFixProtocol::emptyFixMeansReview()
 void TestFixProtocol::okConfirmsWithoutText()
 {
     ExposedFixModel model;
-    for (const QString &answer : {QStringLiteral("OK"), QStringLiteral("Ok"), QStringLiteral("OK — the block matches")}) {
+    for (const QString &answer : {QStringLiteral("OK"), QStringLiteral("Ok"), QStringLiteral("OK.")}) {
         const CheckResult result = model.parse(chatReply(answer));
         QCOMPARE(result.status, CheckStatus::Ok);
         QVERIFY(result.text.isEmpty());
+    }
+}
+
+void TestFixProtocol::okOwnsTheWholeLine()
+{
+    // The keyword owns the whole first line (ADR 332, the reader's rule of
+    // ADR 331 applied to the fixer): a keyword with an explanation attached
+    // is a deviation, and the block goes to human eyes instead of silently
+    // keeping the candidate.
+    ExposedFixModel model;
+    for (const QString &answer : {QStringLiteral("OK — the block matches"), QStringLiteral("OKAY"), QStringLiteral("REVIEW: the crop is blurred")}) {
+        const CheckResult result = model.parse(chatReply(answer));
+        QCOMPARE(result.status, CheckStatus::Review);
+        QVERIFY(result.text.isEmpty());
+        QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
+    }
+}
+
+void TestFixProtocol::fixedKeywordIsADeviation()
+{
+    ExposedFixModel model;
+    for (const QString &answer : {QStringLiteral("FIXED: k = 0,35 подтверждён."), QStringLiteral("Fixing the numbers below.")}) {
+        const CheckResult result = model.parse(chatReply(answer), QStringLiteral("k = 0,85 подтверждён."), QStringLiteral("text"));
+        QCOMPARE(result.status, CheckStatus::Review);
+        QVERIFY(result.text.isEmpty());
+        QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
     }
 }
 
@@ -345,6 +384,49 @@ void TestFixProtocol::reasoningBudgetTurnsTheThinkingOn()
     QCOMPARE(body.value("reasoning_budget_tokens").toDouble(), 0.0);
     QCOMPARE(body.value("chat_template_kwargs").toObject().value("enable_thinking").toBool(), false);
     QCOMPARE(body.value("max_tokens").toDouble(), 2048.0);
+}
+
+void TestFixProtocol::thinkingRequestCarriesNoStopWords()
+{
+    ExposedFixModel model;
+    CheckRequest request = fixRequest();
+    RequestParameter stop;
+    stop.name = QStringLiteral("stop");
+    stop.kind = RequestValueKind::StringList;
+    stop.value = QVariant(QStringList{QStringLiteral("</CANDIDATE>")});
+    request.parameters.append(stop);
+    RequestParameter budget;
+    budget.name = QLatin1String(kReasoningBudgetParameter);
+    budget.kind = RequestValueKind::Number;
+    budget.value = QVariant(512.0);
+    request.parameters.append(budget);
+
+    const QJsonObject thinking = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+    QCOMPARE(thinking.value("reasoning_budget_tokens").toDouble(), 512.0);
+    QVERIFY2(!thinking.contains(QStringLiteral("stop")), qPrintable(QJsonDocument(thinking).toJson()));
+
+    budget.value = QVariant(0.0);
+    request.parameters.replace(1, budget);
+    const QJsonObject plain = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+    QCOMPARE(plain.value("reasoning_budget_tokens").toDouble(), 0.0);
+    QCOMPARE(plain.value("stop").toArray().size(), 1);
+    QCOMPARE(plain.value("stop").toArray().first().toString(), QStringLiteral("</CANDIDATE>"));
+}
+
+void TestFixProtocol::replyIsCutAtTheCandidateFrame()
+{
+    ExposedFixModel model;
+    const CheckResult closing =
+        model.parse(chatReply(QStringLiteral("FIX\nk = 0,35 подтверждён.\n</CANDIDATE>\nThe model keeps talking.")), QStringLiteral("k = 0,85 подтверждён."), QStringLiteral("text"));
+    QCOMPARE(closing.status, CheckStatus::Fixed);
+    QCOMPARE(closing.text, QStringLiteral("k = 0,35 подтверждён."));
+
+    // The opening marker cuts first: an echo of the whole framing leaves
+    // neither the frame nor the echoed candidate in the block.
+    const CheckResult opening =
+        model.parse(chatReply(QStringLiteral("FIX\nThe candidate says\n<CANDIDATE>\nk = 0,85 подтверждён.\n</CANDIDATE>")), QStringLiteral("k = 0,85 подтверждён."), QStringLiteral("text"));
+    QCOMPARE(opening.status, CheckStatus::Fixed);
+    QCOMPARE(opening.text, QStringLiteral("The candidate says"));
 }
 
 void TestFixProtocol::readRequestBodyCarriesNoSample()

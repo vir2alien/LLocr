@@ -230,6 +230,41 @@ private slots:
         QVERIFY(second.result().notes.text().contains(QStringLiteral("thinking")));
     }
 
+    // A stop word that matched inside the thinking (the model quotes the
+    // framed candidate, ADR 332) stops the reply before the answer — but the
+    // budget is not the cause: the request is not retried without the
+    // thinking, and the server is not marked as ignoring the budget.
+    void stopInsideTheThinkingIsNotABudgetFailure()
+    {
+        QueueServer server;
+        server.replies << QByteArrayLiteral("{\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"reasoning_content\":\"the candidate is <CANDIDATE> ...\",\"content\":\"\"}}]}")
+                       << QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}");
+        QVERIFY(server.start());
+
+        ConnectionConfig config;
+        config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
+        config.modelId = QStringLiteral("gemma-4-12b");
+        config.responseTimeoutMs = 10000;
+
+        FixModel model;
+        const QFuture<CheckResult> future = model.check(fixRequest(), config);
+        QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
+
+        // One request: no retry, and the reason names the stop, not the budget.
+        QCOMPARE(server.requests.size(), 1);
+        const CheckResult result = future.result();
+        QCOMPARE(result.status, CheckStatus::Failed);
+        QVERIFY2(result.errorMessage.text().contains(QStringLiteral("thinking")), qPrintable(result.errorMessage.text()));
+
+        // The next request keeps the thinking: the server was not marked.
+        const QFuture<CheckResult> next = model.check(fixRequest(), config);
+        QTRY_VERIFY_WITH_TIMEOUT(next.isFinished(), 15000);
+        QCOMPARE(server.requests.size(), 2);
+        const QJsonObject body = QJsonDocument::fromJson(server.requests.at(1)).object();
+        QCOMPARE(body.value(QStringLiteral("reasoning_budget_tokens")).toInt(), 512);
+        QCOMPARE(body.value(QStringLiteral("chat_template_kwargs")).toObject().value(QStringLiteral("enable_thinking")).toBool(), true);
+    }
+
     // The log window shows both sources at once: the client's own trace
     // (ADR 228) and the server process's output. The global mode does not
     // choose between them any more — the journal is the client's trace

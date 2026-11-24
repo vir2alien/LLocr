@@ -123,7 +123,8 @@ Request to a fix model (assembled in `src/models/FixModel.cpp`):
   `OCR candidate:\n<CANDIDATE>\n…\n</CANDIDATE>`; a stored correction is
   never re-sent, the candidate is the block's own effective text;
 - every parameter of the task's request profile goes into the body as a
-  top-level field (`VisionChatModel::buildRoot`).
+  top-level field (`VisionChatModel::buildRoot`) — except the stop words on
+  a request with thinking (ADR 332).
 
 The reply is exactly one of:
 
@@ -136,10 +137,19 @@ The reply is exactly one of:
 - `REVIEW` — the image is unreadable/damaged; red status, no correction
   stored.
 
+The keyword owns the whole first line: `OK`/`REVIEW` stand alone on it
+(trailing punctuation aside), `FIX` carries its separator (colon, space or
+the line break) with the block after it. A longer word (`FIXED`) and a
+justified `OK — …` are deviations; the reply is cut at the candidate frame
+(`<CANDIDATE>`/`</CANDIDATE>`) before the gate (ADR 332).
+
 The fix model may think first: the profile declares `reasoning: true`, the
 budget is the global setting `check/fixReasoningBudgetTokens` injected per
 request (ADR 193/268), and `RequestBudget` clips the thinking before the
-answer.
+answer. A thinking request sends no stop words — the thinking quotes the
+framed candidate, so the marker's cut lives in the parser (ADR 332,
+amending ADR 249); only a reply cut at the budget is treated as the
+ignored-budget case of the retry (ADR 231).
 
 ## 5. The read protocol (`read_block`, ADR 259–267, 331)
 

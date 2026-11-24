@@ -4889,6 +4889,14 @@
         <translation>модель потратила бюджет токенов на размышления и не вернула ответ</translation>
     </message>
     <message>
+        <source>the reply was stopped inside the thinking: a stop word matched before the answer</source>
+        <translation>ответ оборван внутри размышления: стоп-слово совпало раньше ответа</translation>
+    </message>
+    <message>
+        <source>the reply carries reasoning and no answer</source>
+        <translation>в ответе есть размышления, но нет ответа</translation>
+    </message>
+    <message>
         <location line="+1"/>
         <source>the reply carries an empty answer</source>
         <translation>ответ пустой</translation>

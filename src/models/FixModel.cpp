@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 
 #include <utility>
 
@@ -31,9 +32,11 @@ bool replyCutByBudget(const QByteArray &responseData)
 }
 
 // The thinking took the whole budget and the answer is missing: the reply
-// carries reasoning and no content. A server that ignores
+// carries reasoning and no content, cut at the budget. A server that ignores
 // reasoning_budget_tokens spends max_tokens on the reasoning (llama.cpp cuts
-// the thinking at the budget; omlx does not).
+// the thinking at the budget; omlx does not). A reply stopped inside the
+// thinking by a stop word (finish stop) is a different failure — the budget
+// is not the cause, and the retry without thinking must not run (ADR 332).
 bool thinkingAteTheAnswer(const QByteArray &responseData)
 {
     const QJsonDocument doc = QJsonDocument::fromJson(responseData);
@@ -42,7 +45,10 @@ bool thinkingAteTheAnswer(const QByteArray &responseData)
     const QJsonArray choices = doc.object().value(QStringLiteral("choices")).toArray();
     if (choices.isEmpty())
         return false;
-    const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
+    const QJsonObject choice = choices.first().toObject();
+    if (choice.value(QStringLiteral("finish_reason")).toString() != QLatin1String("length"))
+        return false;
+    const QJsonObject message = choice.value(QStringLiteral("message")).toObject();
     if (!message.value(QStringLiteral("content")).toString().isEmpty())
         return false;
     return !message.value(QStringLiteral("reasoning_content")).toString().isEmpty();
@@ -95,6 +101,60 @@ QString readBlockBody(const QString &trimmed)
     if (trimmed.startsWith(QStringLiteral("FIX:"), Qt::CaseInsensitive))
         return trimmed.mid(4).trimmed();
     return trimmed;
+}
+
+// The reply ends at the candidate frame (ADR 332): a model that echoes the
+// request after its answer must not carry the frame into the block. The cut
+// sits before the opening marker, so an echo of the whole framing leaves
+// neither the frame nor the echoed candidate behind — the stop word of
+// ADR 249 cut behind the closing marker only, and never rides a thinking
+// request (the thinking quotes the frame legitimately).
+QString cutAtCandidateFrame(const QString &text)
+{
+    int cut = text.indexOf(QStringLiteral("</CANDIDATE>"));
+    const int open = text.indexOf(QStringLiteral("<CANDIDATE>"));
+    if (open >= 0 && (cut < 0 || open < cut))
+        cut = open;
+    if (cut < 0)
+        return text;
+    return text.left(cut);
+}
+
+// The fixer's verdict: the keyword owns the whole first line. "OK" and
+// "REVIEW" stand alone on it (trailing punctuation aside); "FIX" is the
+// keyword plus its separator — colon, space or the line break — with the
+// corrected block after it, on the same line or the next ones. A longer word
+// ("FIXED") is not the keyword, and a justified "OK — …" is not the verdict:
+// both are deviations, the reader's whole-line rule (ADR 331) applied to the
+// fixer (ADR 332).
+enum class Verdict { Ok, Review, Fix, Deviation };
+
+Verdict splitFixVerdict(const QString &trimmed, QString *body)
+{
+    *body = QString();
+    const int lineEnd = trimmed.indexOf(QLatin1Char('\n'));
+    const QString firstLine = (lineEnd < 0 ? trimmed : trimmed.left(lineEnd)).trimmed();
+
+    if (firstLine.startsWith(QStringLiteral("FIX"), Qt::CaseInsensitive)) {
+        const QChar next = firstLine.size() > 3 ? firstLine.at(3) : QChar();
+        if (firstLine.size() == 3 || next == QLatin1Char(':') || next.isSpace()) {
+            QString sameLine = firstLine.mid(next == QLatin1Char(':') ? 4 : 3).trimmed();
+            if (sameLine.startsWith(QLatin1Char(':')))
+                sameLine = sameLine.mid(1).trimmed();
+            const QString rest = lineEnd < 0 ? QString() : trimmed.mid(lineEnd + 1).trimmed();
+            *body = sameLine.isEmpty() ? rest : (rest.isEmpty() ? sameLine : sameLine + QLatin1Char('\n') + rest);
+            return Verdict::Fix;
+        }
+    }
+
+    static const QRegularExpression tail(QStringLiteral("[.!,:;…\\s]+$"));
+    QString bare = firstLine;
+    bare.remove(tail);
+    if (bare.compare(QStringLiteral("OK"), Qt::CaseInsensitive) == 0)
+        return Verdict::Ok;
+    if (bare.compare(QStringLiteral("REVIEW"), Qt::CaseInsensitive) == 0)
+        return Verdict::Review;
+    return Verdict::Deviation;
 }
 
 // A verdict is not block text: a reader that answers a verdict has not read
@@ -256,6 +316,13 @@ QByteArray FixModel::buildRequest(const CheckRequest &request)
 
 QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
 {
+    // A request with thinking carries no stop words (ADR 332): the thinking
+    // quotes the framed candidate, and a stop match inside the thinking stops
+    // the reply before the answer. The parser cuts the reply at the frame.
+    CheckRequest wire = request;
+    if (parameterNumber(wire.parameters, QLatin1String(kReasoningBudgetParameter)) > 0)
+        wire.parameters.removeIf([](const RequestParameter &parameter) { return parameter.name == QLatin1String("stop"); });
+
     // Fix protocol (ADR 163): the candidate travels as its own user-message
     // part, framed by <CANDIDATE>; the system message carries the shared
     // contract; the parts follow the order the model's fix role trains.
@@ -290,7 +357,7 @@ QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteAr
         messages.append(QJsonObject{{QStringLiteral("role"), QStringLiteral("system")}, {QStringLiteral("content"), request.systemPrompt}});
     messages.append(QJsonObject{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), std::move(content)}});
 
-    return QJsonDocument(buildRoot(request, std::move(messages))).toJson(QJsonDocument::Compact);
+    return QJsonDocument(buildRoot(wire, std::move(messages))).toJson(QJsonDocument::Compact);
 }
 
 CheckResult FixModel::parseResponse(const QByteArray &responseData, const QString &candidate, const QString &blockType, CheckRequest::FixProtocol protocol)
@@ -306,31 +373,30 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
         return CheckResult::makeError(
             StatusMessage::translate("FixModel", readProtocol ? "The model returned no block text: %1" : "The model returned no corrected text: %1").arg(missingAnswerReason(responseData)));
 
-    const QString cleaned = stripOuterCodeFence(stripControlTokens(content));
+    QString cleaned = cutAtCandidateFrame(stripControlTokens(content));
+    cleaned = stripOuterCodeFence(cleaned);
     const QString trimmed = cleaned.trimmed();
-    const QString upper = trimmed.toUpper();
 
     if (readProtocol)
         return parseReadReply(responseData, trimmed, candidate, blockType);
 
-    if (upper.startsWith(QStringLiteral("OK"))) {
+    QString body;
+    const Verdict verdict = splitFixVerdict(trimmed, &body);
+
+    if (verdict == Verdict::Ok) {
         CheckResult ok;
         ok.status = CheckStatus::Ok;
         // Recognition is already correct — do not touch the original text.
         return ok;
     }
 
-    if (upper.startsWith(QStringLiteral("REVIEW"))) {
+    if (verdict == Verdict::Review) {
         CheckResult review;
         review.status = CheckStatus::Review;
         return review;
     }
 
-    if (upper.startsWith(QStringLiteral("FIX"))) {
-        QString body = trimmed.mid(3).trimmed();
-        // Accept both "FIX: ..." and "FIX\n..." spellings.
-        if (body.startsWith(QLatin1Char(':')))
-            body = body.mid(1).trimmed();
+    if (verdict == Verdict::Fix) {
         if (body.isEmpty()) {
             // The verdict is explicit but the payload is missing (small models
             // sometimes stop after the keyword): the block needs human eyes,
@@ -356,7 +422,9 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
     }
 
     // Anything outside the scheme is a deviation, not a protocol error: the
-    // block goes to human eyes.
+    // block goes to human eyes. A longer word ("FIXED") and a keyword with a
+    // justification attached ("OK — …") land here too: the keyword owns the
+    // whole first line (ADR 332).
     CheckResult review;
     review.status = CheckStatus::Review;
     review.notes = StatusMessage::translate("FixModel", "The reply does not follow the %1 scheme: %2").arg(QStringLiteral("OK/FIX/REVIEW"), cleaned.left(120));
