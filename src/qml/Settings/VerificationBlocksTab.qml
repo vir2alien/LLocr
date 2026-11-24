@@ -156,7 +156,7 @@ Item {
             Item { Layout.fillWidth: true }
 
             LLOLabel {
-                text: qsTr("Thinking during read")
+                text: qsTr("Thinking during recognition (LLM)")
                 font.pixelSize: Theme.bodySize
                 color: Theme.textPrimary
             }

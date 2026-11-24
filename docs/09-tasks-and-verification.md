@@ -143,7 +143,7 @@ answer.
 
 ## 5. The read protocol (`read_block`, ADR 259–267)
 
-The same fix models serve the read task («Распознать точно») with another
+The same fix models serve the read task («Распознать (LLM)») with another
 contract: the request is exactly the image, the system prompt and the block
 prompt — **the recognized text never travels**. The reply is `FIX` (full
 block) or `REVIEW` (`OK` is outside the schema and lands on Review with the
@@ -219,8 +219,8 @@ block erases its contents — it is markup again (ADR 241).
 
 Header (`MainWindow/Header.qml`, ADR 270/171): «Документ» (project menu,
 import, export), «Целевые страницы» (page-range field + «Авто-проход»),
-«Разметка и OCR» (Разметить / Распознать блоки), «Проверки и AI-коррекция»
-(Проверить / Исправить / Распознать точно), «Настройки». Everything acts on
+«Разметка и OCR» (Разметить / Распознать (OCR)), «Проверки и AI-коррекция»
+(Проверить / Исправить / Распознать (LLM)), «Настройки». Everything acts on
 the thumbnail selection (empty selection = whole document).
 
 - «Проверить» runs the decision pass over the scoped blocks
@@ -228,7 +228,7 @@ the thumbnail selection (empty selection = whole document).
   automatic check/fix switches are gone (ADR 178).
 - «Исправить» carries the `scopedPendingFixCount` badge (ADR 188) and runs
   the fix task over the problem blocks of the whole scope.
-- «Распознать точно» runs the read task over the blocks of the selected pages
+- «Распознать (LLM)» runs the read task over the blocks of the selected pages
   (ADR 260/266): on a page without verdicts — every text block; on a page the
   check has answered anything on — only the blocks the decision model rejected,
   the set the fixer takes (ADR 311, ADR 322). User-owned blocks never enter the

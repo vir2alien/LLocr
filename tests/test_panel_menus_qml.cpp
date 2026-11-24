@@ -35,13 +35,18 @@ private slots:
     void initTestCase();
     void theThreeMenusShareOneHeight();
     void theSelectAllButtonIsTheAppsButton();
+    void theZoomStandsInTheToolbar();
 
 private:
     std::unique_ptr<QObject> loadFile(const QString &relativePath, qreal width, qreal height);
     std::unique_ptr<QObject> loadInline(const QString &qml, qreal width, qreal height);
     QObject *findByClassName(QObject *root, const QLatin1String &className);
+    QObject *findByProperty(QObject *root, const char *name, const QVariant &value);
+    QObject *findText(QObject *root, const QString &text);
+    int countMenus(QObject *root);
     QQuickItem *bandOf(QObject *panel);
     QQuickItem *selectAllButtonOf(QObject *thumbPanel);
+    double zoomOf(QObject *toolBar);
 
     QString m_qmlRoot;
     std::unique_ptr<SettingsStore> m_settings;
@@ -166,6 +171,48 @@ QObject *TestPanelMenusQml::findByClassName(QObject *root, const QLatin1String &
     return nullptr;
 }
 
+// The zoom step carries the name of its glyph — the property tells the minus
+// from the plus without a look at the picture.
+QObject *TestPanelMenusQml::findByProperty(QObject *root, const char *name, const QVariant &value)
+{
+    for (QObject *child : root->children()) {
+        if (child->metaObject()->indexOfProperty(name) >= 0 && child->property(name) == value)
+            return child;
+        if (QObject *found = findByProperty(child, name, value))
+            return found;
+    }
+    return nullptr;
+}
+
+QObject *TestPanelMenusQml::findText(QObject *root, const QString &text)
+{
+    for (QObject *child : root->children()) {
+        if (child->inherits("QQuickText") && child->property("text").toString() == text)
+            return child;
+        if (QObject *found = findText(child, text))
+            return found;
+    }
+    return nullptr;
+}
+
+int TestPanelMenusQml::countMenus(QObject *root)
+{
+    int count = 0;
+    for (QObject *child : root->children()) {
+        if (child->inherits("QQuickMenu"))
+            ++count;
+        count += countMenus(child);
+    }
+    return count;
+}
+
+// The zoom of the preview the toolbar acts on.
+double TestPanelMenusQml::zoomOf(QObject *toolBar)
+{
+    QObject *preview = toolBar->property("preview").value<QObject *>();
+    return preview ? preview->property("zoom").toDouble() : 0.0;
+}
+
 // The menu of a panel is its first row: the header that carries the panel's
 // tools. The page panel's menu is the toolbar itself — it is loaded inside a
 // column, the way the image panel holds it.
@@ -252,6 +299,67 @@ void TestPanelMenusQml::theSelectAllButtonIsTheAppsButton()
     QQuickItem *band = bandOf(thumb.get());
     QVERIFY(band);
     QCOMPARE(button->y() + button->height() / 2.0, band->height() / 2.0);
+}
+
+// The zoom of the page panel stands in the toolbar: the two signs and the
+// percentage between them, with no dropdown behind a chevron (ADR 324).
+void TestPanelMenusQml::theZoomStandsInTheToolbar()
+{
+    const std::unique_ptr<QObject> page = loadInline(QStringLiteral(R"(
+import QtQuick
+import QtQuick.Layouts
+import LLocr
+
+ColumnLayout {
+    PageToolBar {
+        id: bar
+        Layout.fillWidth: true
+        preview: QtObject {
+            property real zoom: 1.25
+            function zoomBy(factor) { zoom = zoom * factor }
+            function resetZoom() { zoom = 1 }
+        }
+    }
+}
+)"),
+                                                     400,
+                                                     600);
+    QVERIFY2(page, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *bar = findByClassName(page.get(), QLatin1String("PageToolBar"));
+    QVERIFY2(bar, "the page panel must have its toolbar");
+
+    // The two signs stand in the toolbar.
+    QObject *minusButton = findByProperty(bar, "iconName", QStringLiteral("minus"));
+    QObject *plusButton = findByProperty(bar, "iconName", QStringLiteral("plus"));
+    QVERIFY2(minusButton, "the toolbar must carry the «minus» sign");
+    QVERIFY2(plusButton, "the toolbar must carry the «plus» sign");
+
+    // The dropdown is gone: the blocks menu is the only menu of the toolbar.
+    QCOMPARE(countMenus(bar), 1);
+
+    // The percentage between the signs says the zoom.
+    QVERIFY2(findText(bar, QStringLiteral("125%")), "the toolbar must show the zoom in percent");
+
+    // The signs scale the page by the editor's step.
+    QMetaObject::invokeMethod(minusButton, "click");
+    QTest::qWait(20);
+    QVERIFY(qAbs(zoomOf(bar) - 1.0) < 0.0001);
+    QVERIFY2(findText(bar, QStringLiteral("100%")), "the percentage must follow the zoom");
+
+    QMetaObject::invokeMethod(plusButton, "click");
+    QTest::qWait(20);
+    QVERIFY(qAbs(zoomOf(bar) - 1.25) < 0.0001);
+    QVERIFY2(findText(bar, QStringLiteral("125%")), "the percentage must follow the zoom");
+
+    // The percentage returns the page to the fit.
+    QObject *percentText = findText(bar, QStringLiteral("125%"));
+    QVERIFY(percentText);
+    QQuickItem *percentButton = qobject_cast<QQuickItem *>(percentText)->parentItem();
+    QVERIFY(percentButton);
+    QMetaObject::invokeMethod(percentButton, "click");
+    QTest::qWait(20);
+    QVERIFY(qAbs(zoomOf(bar) - 1.0) < 0.0001);
 }
 
 QTEST_MAIN(TestPanelMenusQml)

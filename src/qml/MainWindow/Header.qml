@@ -236,7 +236,7 @@ ToolBar {
                 }
 
                 IconToolButton {
-                    text: qsTr("Recognize blocks")
+                    text: qsTr("Recognize (OCR)")
                     iconName: "scan-text"
                     stopMode: Controller.checkBusy && Controller.checkRecheckPhase
                     // The scope keeps the button alive when the recognition
@@ -324,8 +324,8 @@ ToolBar {
 
                 IconToolButton {
                     text: Controller.scopedReadBlockCount > 0
-                          ? qsTr("Recognize exactly") + " (" + Controller.scopedReadBlockCount + ")"
-                          : qsTr("Recognize exactly")
+                          ? qsTr("Recognize (LLM)") + " (" + Controller.scopedReadBlockCount + ")"
+                          : qsTr("Recognize (LLM)")
                     iconName: "file-search"
                     stopMode: Controller.checkBusy && Controller.checkReadPhase
                     // The scope keeps the button alive when the read has

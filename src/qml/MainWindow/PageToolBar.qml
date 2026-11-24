@@ -148,49 +148,43 @@ ToolBar {
 
         Item { Layout.fillWidth: true }
 
-        ToolButton {
-            id: zoomButton
-            implicitWidth: 58
-            implicitHeight: 28
-            padding: 0
-            enabled: pageToolBarRoot.preview !== null
-            Row {
-                anchors.centerIn: parent
-                spacing: 0
+        // The zoom stands in the toolbar the way it stands in the editor: the
+        // two signs and the percentage between them, without a dropdown
+        // (ADR 324).
+        Row {
+            spacing: 0
+
+            ZoomStepButton {
+                factor: 1 / 1.25
+                iconName: "minus"
+                ToolTip.text: qsTr("Zoom out")
+            }
+
+            ToolButton {
+                id: zoomValueButton
+                implicitWidth: 46
+                implicitHeight: 28
+                padding: 0
+                enabled: pageToolBarRoot.preview !== null
+                onClicked: pageToolBarRoot.preview.resetZoom()
+
                 Text {
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.centerIn: parent
                     text: pageToolBarRoot.preview
                           ? Math.round(pageToolBarRoot.preview.zoom * 100) + "%" : ""
-                    color: Theme.textPrimary
+                    font: Theme.button
+                    color: zoomValueButton.enabled ? Theme.textPrimary : Theme.textMuted
                 }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "\u25be"
-                    font: Theme.caption
-                    color: Theme.textPrimary
-                }
+
+                ToolTip.visible: zoomValueButton.hovered
+                ToolTip.text: qsTr("Fit page")
             }
-            onClicked: zoomMenu.popup(zoomButton, 0, zoomButton.height + 2)
-        }
-    }
 
-    Menu {
-        id: zoomMenu
-
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Zoom in")
-            onTriggered: pageToolBarRoot.preview.zoomBy(1.25)
-        }
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Zoom out")
-            onTriggered: pageToolBarRoot.preview.zoomBy(1 / 1.25)
-        }
-        MenuItem {
-            font: Theme.button
-            text: qsTr("Fit page")
-            onTriggered: pageToolBarRoot.preview.resetZoom()
+            ZoomStepButton {
+                factor: 1.25
+                iconName: "plus"
+                ToolTip.text: qsTr("Zoom in")
+            }
         }
     }
 
@@ -289,5 +283,29 @@ ToolBar {
 
         ToolTip.visible: rotateButton.hovered
         ToolTip.text: rotateButton.degrees < 0 ? qsTr("Turn left") : qsTr("Turn right")
+    }
+
+    component ZoomStepButton: ToolButton {
+        id: zoomStepButton
+
+        required property real factor
+        required property string iconName
+
+        implicitWidth: 28
+        implicitHeight: 28
+        Layout.minimumWidth: implicitWidth
+        padding: 0
+        enabled: pageToolBarRoot.preview !== null
+
+        Icon {
+            anchors.centerIn: parent
+            name: zoomStepButton.iconName
+            size: Theme.iconSizeLarge
+            color: zoomStepButton.enabled ? Theme.textPrimary : Theme.textMuted
+        }
+
+        onClicked: pageToolBarRoot.preview.zoomBy(zoomStepButton.factor)
+
+        ToolTip.visible: zoomStepButton.hovered
     }
 }

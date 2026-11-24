@@ -1669,7 +1669,8 @@ appendix at the end of this file.
   «Авто-проход»), «Разметка и OCR», «Проверки и AI-коррекция», «Настройки».
   Button names are «Распознать блоки» and «Распознать точно» — ADR 263's names
   are cancelled; block captions are `Theme.captionUpper`, minimum window width
-  1490, default 1540.
+  1490, default 1540. (Amended by ADR 325: the two names are
+  «Распознать (OCR)» and «Распознать (LLM)».)
 - **279.** Every dropdown is drawn by one component, `Common/LLOComboBox.qml`
   (flat frame, `Theme.surfaceAlt`, chevron-down from Lucide, flat popup); the
   theme switcher is a `Common/SegmentedToggle.qml` row («Как в ОС» / «Светлая»
@@ -2190,6 +2191,45 @@ appendix at the end of this file.
   the name, the state, the switch and the actions, and it has no room for a
   fourth pair of words; and a warning that speaks about the document stands
   after the text it speaks about.)
+
+
+- **324.** The zoom of the page panel stands in the toolbar, not behind a
+  chevron. The page preview carried the percentage and a dropdown arrow, and
+  the three actions — zoom in, zoom out, fit the page — hid behind it. The
+  editor's menu already showed the zoom as it should be shown: the two signs
+  and the percentage between them. The page panel takes that shape —
+  **− | 100 % | +**. The percentage returns the page to the fit
+  (`ImagePreview::resetZoom()`), the signs scale the page by the editor's step
+  (×1.25), and the chevron that said «there is more here» is gone — there is
+  nothing more there. The signs are the Lucide `minus` and `plus`, the same
+  glyphs the editor draws.
+
+
+- **325.** The two recognition buttons name the engine that does the work. The
+  menu carried «Распознать блоки» and «Распознать точно»: the first name
+  says **what** is recognized, the second says **how well** it is recognized,
+  and neither says **who** reads the page. The block recognition is the OCR
+  of the pipeline and the read is the LLM, so the buttons are now
+  **«Распознать (OCR)»** and **«Распознать (LLM)»** — the same two words
+  tell the operator which model answers and what the action costs. The
+  setting of the thinking budget follows the same words: «Мышление при
+  распознавании (LLM)» instead of «Мышление при чтении» — the read is a
+  recognition made by an LLM, and its budget belongs to that engine. The
+  names of the confirmation dialogs stay as they were («Распознать блоки?»,
+  «Распознать точно?»): the dialog asks about the blocks and about the
+  exactness, and it is not the menu. (Amends ADR 270: the names of the two
+  buttons are «Распознать (OCR)» and «Распознать (LLM)».)
+- **326.** The log of the work is a light field without a frame. The panes of
+  the runtime log (`ServerLogWindow.qml`) and of the problem log
+  (`ProblemLogWindow.qml`) carried two frames around the text: the sunken
+  surface with its own outline, and the frame of the style around the
+  `TextArea` — a box inside a box, and a second one in blue where the pane
+  had the focus. A log is read, not edited, and neither frame says anything
+  that the pane does not already say. The pane **is** the light field now
+  (`Theme.surfaceAlt`), and the text area keeps that field
+  (`background: Rectangle { color: Theme.surfaceAlt }`): the text lies on a
+  plain light surface. The pane keeps one thin outline of its own — 1 px of
+  `Theme.border` — the line that tells the eye where the log ends.
 
 
 ### Security & secrets

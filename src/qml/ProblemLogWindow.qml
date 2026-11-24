@@ -119,7 +119,7 @@ ApplicationWindow {
     Rectangle {
         anchors.fill: parent
         anchors.margins: 10
-        color: Theme.surfaceSunken
+        color: Theme.surfaceAlt
         border.color: Theme.border
         border.width: 1
         radius: Theme.controlRadius
@@ -172,6 +172,10 @@ ApplicationWindow {
             font.preferShaping: false
             color: Theme.textPrimary
             selectByMouse: true
+
+            background: Rectangle {
+                color: Theme.surfaceAlt
+            }
 
             Component.onCompleted: Log.attachLogView(textDocument)
         }

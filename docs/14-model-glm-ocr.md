@@ -17,7 +17,7 @@ code-heavy documents, seals, and skewed/warped scans. Small enough for a
 4 GB GPU.
 
 Of LLocr's four tasks it serves **blockRecognition** — per-block
-transcription («Распознать», «Распознать блоки», the re-recognition of
+transcription («Распознать (OCR)», the re-recognition of
 mismatched blocks). It is not the task's default (MinerU is, ADR 252). It
 is not given `layout`: the model emits no layout tokens and no coordinates
 — the official SDK pipeline pairs it with an external layout model

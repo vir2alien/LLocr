@@ -17,7 +17,7 @@ and it is the **default model for both** (ADR 252):
 | task | role in the app | parser |
 | --- | --- | --- |
 | `layout` | the «Разметить страницу» markup pass (page toolbar, ADR 149–150) | `mineru-layout` |
-| `blockRecognition` | per-block transcription after markup («Распознать», «Распознать блоки») | `raw` |
+| `blockRecognition` | per-block transcription after markup («Распознать (OCR)») | `raw` |
 
 Both roles ship an identical launch layer, so the markup → recognition
 sequence never reloads the weights. The model is not used for `decision`

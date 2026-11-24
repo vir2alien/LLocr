@@ -1504,8 +1504,8 @@
     <message>
         <location line="+16"/>
         <location line="+1"/>
-        <source>Recognize exactly</source>
-        <translation>Распознать точно</translation>
+        <source>Recognize (LLM)</source>
+        <translation>Распознать (LLM)</translation>
     </message>
     <message>
         <location line="+11"/>
@@ -1596,8 +1596,8 @@
     </message>
     <message>
         <location line="+16"/>
-        <source>Recognize blocks</source>
-        <translation>Распознать блоки</translation>
+        <source>Recognize (OCR)</source>
+        <translation>Распознать (OCR)</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -4812,8 +4812,8 @@
     </message>
     <message>
         <location line="+15"/>
-        <source>Thinking during read</source>
-        <translation>Мышление при чтении</translation>
+        <source>Thinking during recognition (LLM)</source>
+        <translation>Мышление при распознавании (LLM)</translation>
     </message>
     <message>
         <location line="+21"/>

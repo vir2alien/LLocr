@@ -242,7 +242,7 @@
     the decision model judges every queued block with the visual diff
     (`systemone_visual_diff_v1`, ADR 254); the fix task (OK/FIX/REVIEW over
     the `full_block` protocol, ADR 192) runs as a separate action over the
-    problem blocks; the read task («Распознать точно», `read_block`, ADR 259–267)
+    problem blocks; the read task («Распознать (LLM)», `read_block`, ADR 259–267)
     re-transcribes a block from the image alone — the recognized text never
     travels — and takes only the blocks the check rejected on a page the check
     has answered on (ADR 311, ADR 322). Every block carries two text layers (`box.text` /

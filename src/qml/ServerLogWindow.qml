@@ -126,7 +126,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: Theme.surfaceSunken
+                color: Theme.surfaceAlt
                 border.color: Theme.border
                 border.width: 1
                 radius: Theme.controlRadius
@@ -178,6 +178,14 @@ ApplicationWindow {
                         color: Theme.textPrimary
                         selectByMouse: true
 
+                        // The log is read, not edited: the frame of the style
+                        // around the text is a box inside a box, and it says
+                        // nothing that the pane does not already say. The
+                        // light field of the text stays.
+                        background: Rectangle {
+                            color: Theme.surfaceAlt
+                        }
+
                         Component.onCompleted: RuntimeLog.attachLogView(textDocument)
                     }
 
@@ -209,7 +217,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: Theme.surfaceSunken
+                color: Theme.surfaceAlt
                 border.color: Theme.border
                 border.width: 1
                 radius: Theme.controlRadius
@@ -260,6 +268,10 @@ ApplicationWindow {
                         font.preferShaping: false
                         color: Theme.textPrimary
                         selectByMouse: true
+
+                        background: Rectangle {
+                            color: Theme.surfaceAlt
+                        }
 
                         Component.onCompleted: RuntimeLog.attachJournalView(textDocument)
                     }
