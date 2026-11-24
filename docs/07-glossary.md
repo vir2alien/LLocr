@@ -2230,6 +2230,28 @@ appendix at the end of this file.
   (`background: Rectangle { color: Theme.surfaceAlt }`): the text lies on a
   plain light surface. The pane keeps one thin outline of its own — 1 px of
   `Theme.border` — the line that tells the eye where the log ends.
+- **327.** The client area of the auxiliary windows is flat. The windows that
+  open over the app — «Настройки», «Журнал работы», «Журнал проблем» — drew
+  their own frame inside the frame of the system: a rounded corner at the top
+  of the client area and a 1 px line under the title bar, right under the line
+  the system draws itself. Two lines and a corner that no other window of the
+  system has. The background of a window is a plain surface now
+  (`Theme.surface`, no radius, no border), and the problem log has lost the
+  divider under its header row: the system frame says where the window ends,
+  the app does not say it a second time. The cards that float over the main
+  window — the export dialog, the confirmations, the wizard — keep their
+  rounded shape: they are cards, not windows, and there is no system frame
+  above them.
+- **328.** The settings window keeps one padding. The window had four gaps of
+  its own: 24 px around the content (`Theme.paddingWindow`), 16 px between the
+  section list and the card, 16 px inside the card and 24 px at the sides of
+  the footer — the content sat in a wider frame than the gap that held it, and
+  the footer began further out than the list above it. Every gap is
+  `Theme.spacingLarge` now (16 px): the margin around the content, the gap
+  between the section list and the card, the padding inside the card and the
+  margins of the footer (`Common/SettingsFooter.qml`). One number, and the
+  window reads symmetrically: the list and the card begin on the same line,
+  and the footer begins where the list begins.
 
 
 ### Security & secrets

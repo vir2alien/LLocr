@@ -29,24 +29,16 @@ ApplicationWindow {
         }
     }
 
+    // The client area is flat: the system frame of the window already draws
+    // the outline, and a rounded corner or a second line under the title bar
+    // only duplicates it.
     background: Rectangle {
         color: Theme.surface
-        radius: Theme.dialogRadius
-        border.color: Theme.border
-        border.width: 1
     }
 
     header: Rectangle {
         implicitHeight: headerRow.implicitHeight + 2 * 10
         color: Theme.surface
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: 1
-            color: Theme.divider
-        }
 
         RowLayout {
             id: headerRow

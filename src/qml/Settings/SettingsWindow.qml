@@ -187,7 +187,11 @@ ApplicationWindow {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: Theme.paddingWindow
+        // One padding for the whole window: the margin around the content,
+        // the gap between the section list and the card, the padding inside
+        // the card and the margins of the footer are all the same
+        // (Theme.spacingLarge), so the window reads symmetrically.
+        anchors.margins: Theme.spacingLarge
         spacing: Theme.spacingLarge
 
         SettingsSectionNav {

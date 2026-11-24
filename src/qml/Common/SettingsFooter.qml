@@ -21,8 +21,8 @@ Rectangle {
     RowLayout {
         id: footerRow
         anchors.fill: parent
-        anchors.leftMargin: Theme.paddingWindow
-        anchors.rightMargin: Theme.paddingWindow
+        anchors.leftMargin: Theme.spacingLarge
+        anchors.rightMargin: Theme.spacingLarge
         anchors.topMargin: Theme.spacingLarge
         anchors.bottomMargin: Theme.spacingLarge
         spacing: Theme.spacing

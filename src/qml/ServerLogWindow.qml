@@ -51,11 +51,11 @@ ApplicationWindow {
         }
     }
 
+    // The client area is flat: the system frame of the window already draws
+    // the outline, and a rounded corner or a second line under the title bar
+    // only duplicates it.
     background: Rectangle {
         color: Theme.surface
-        radius: Theme.dialogRadius
-        border.color: Theme.border
-        border.width: 1
     }
 
     footer: Rectangle {
