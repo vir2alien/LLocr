@@ -1014,19 +1014,6 @@ void SettingsStore::setRuntimeChannel(const QString &channel)
     emit runtimeChannelChanged();
 }
 
-QString SettingsStore::runtimeIgnoredBuild() const
-{
-    return m_settings.value(kRuntimeIgnoredBuild).toString();
-}
-
-void SettingsStore::setRuntimeIgnoredBuild(const QString &build)
-{
-    if (runtimeIgnoredBuild() == build)
-        return;
-    m_settings.setValue(kRuntimeIgnoredBuild, build);
-    emit runtimeIgnoredBuildChanged();
-}
-
 QString SettingsStore::installedTag() const
 {
     return m_settings.value(kInstalledTag).toString();

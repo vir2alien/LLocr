@@ -50,8 +50,6 @@ class RuntimeInstaller : public QObject
     Q_PROPERTY(QString candidateTag READ candidateTag NOTIFY candidateChanged)
     Q_PROPERTY(QString candidateDate READ candidateDate NOTIFY candidateChanged)
     Q_PROPERTY(QString candidateSize READ candidateSize NOTIFY candidateChanged)
-    Q_PROPERTY(bool candidateIgnored READ candidateIgnored NOTIFY candidateChanged)
-    Q_PROPERTY(QString ignoredBuild READ ignoredBuild NOTIFY candidateChanged)
     // The candidate build is on disk already: there is nothing to download,
     // the build is activated instead (ADR 317).
     Q_PROPERTY(bool candidateInstalled READ candidateInstalled NOTIFY candidateChanged)
@@ -93,8 +91,6 @@ public:
     Q_INVOKABLE QString releaseTag(int index) const;
     Q_INVOKABLE QString releaseDate(int index) const;
     Q_INVOKABLE bool releaseIsActive(int index) const;
-    Q_INVOKABLE void ignoreSelectedVersion();
-    Q_INVOKABLE void restoreIgnoredVersion();
     Q_INVOKABLE void checkForUpdates();
     Q_INVOKABLE void startDownloadAndInstall();
     // Switches to the candidate build that is already on disk. False when
@@ -117,9 +113,7 @@ public:
     QString candidateTag() const;
     QString candidateDate() const;
     QString candidateSize() const;
-    bool candidateIgnored() const;
     bool candidateInstalled() const;
-    QString ignoredBuild() const;
     QString checkedAtLabel() const;
     QString catalogWarning() const;
 

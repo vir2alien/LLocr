@@ -3557,17 +3557,17 @@
     <message>
         <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+54"/>
         <source>The key is kept in %1 — not in the settings file.</source>
-        <translation>Ключ хранится в %1 — не в файле настроек.</translation>
+        <translation type="vanished">Ключ хранится в %1 — не в файле настроек.</translation>
     </message>
     <message>
         <location line="-3"/>
         <source>There is no system secret store on this machine: the key is kept in the memory until the app is closed.</source>
-        <translation>На этой машине нет системного хранилища секретов: ключ держится в памяти до закрытия приложения.</translation>
+        <translation type="vanished">На этой машине нет системного хранилища секретов: ключ держится в памяти до закрытия приложения.</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>The system store refused the key: it is kept in the memory until the app is closed.</source>
-        <translation>Системное хранилище отказало: ключ держится в памяти до закрытия приложения.</translation>
+        <translation type="vanished">Системное хранилище отказало: ключ держится в памяти до закрытия приложения.</translation>
     </message>
     <message>
         <source>Shared server — the default for every task</source>
@@ -3576,7 +3576,7 @@
     <message>
         <location line="+233"/>
         <source>The system store did not answer: %1</source>
-        <translation>Системное хранилище не ответило: %1</translation>
+        <translation type="vanished">Системное хранилище не ответило: %1</translation>
     </message>
     <message>
         <location line="-110"/>
@@ -3626,7 +3626,7 @@
     <message>
         <location line="+6"/>
         <source>The default for every task</source>
-        <translation>Значение по умолчанию для всех задач</translation>
+        <translation type="vanished">Значение по умолчанию для всех задач</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -3765,7 +3765,7 @@
     <message>
         <location line="+27"/>
         <source>Ignored</source>
-        <translation>Игнорирована</translation>
+        <translation type="vanished">Игнорирована</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -3814,12 +3814,12 @@
     <message>
         <location line="+8"/>
         <source>Restore this version</source>
-        <translation>Вернуть версию</translation>
+        <translation type="vanished">Вернуть версию</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>Ignore this version</source>
-        <translation>Игнорировать версию</translation>
+        <translation type="vanished">Игнорировать версию</translation>
     </message>
     <message>
         <location line="+26"/>

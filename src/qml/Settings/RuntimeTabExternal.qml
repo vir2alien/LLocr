@@ -45,15 +45,6 @@ ColumnLayout {
         sharedKey.save()
     }
 
-    // Where the key lives, said plainly.
-    function storeNote() {
-        if (!Settings.secretStoreAvailable)
-            return qsTr("There is no system secret store on this machine: the key is kept in the memory until the app is closed.")
-        if (!Settings.lastKeyPersisted)
-            return qsTr("The system store refused the key: it is kept in the memory until the app is closed.")
-        return qsTr("The key is kept in %1 — not in the settings file.").arg(Settings.secretStoreName)
-    }
-
     // What the system store answered, said the way the user can act on it.
     // The store without a key is the normal state of an optional key: only a
     // refusal (or a failure) is a badge (ADR 233).
@@ -111,22 +102,13 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacing
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: Theme.spacingTiny
-
-                    LLOLabel {
-                        text: qsTr("Shared server")
-                        font.pixelSize: Theme.bodySize
-                        font.bold: true
-                        color: Theme.textPrimary
-                    }
-                    LLOLabel {
-                        text: qsTr("The default for every task")
-                        font.pixelSize: Theme.footnoteSize
-                        color: Theme.helpColor
-                    }
+                LLOLabel {
+                    text: qsTr("Shared server")
+                    font.pixelSize: Theme.bodySize
+                    font.bold: true
+                    color: Theme.textPrimary
                 }
+                Item { Layout.fillWidth: true }
 
                 IconToolButton {
                     text: qsTr("Check")
@@ -236,13 +218,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacing
 
-                LLOLabel {
-                    Layout.fillWidth: true
-                    font.pixelSize: Theme.footnoteSize
-                    color: Theme.helpColor
-                    wrapMode: Text.WordWrap
-                    text: extRoot.storeNote()
-                }
+                Item { Layout.fillWidth: true }
 
                 Rectangle {
                     visible: extRoot.storeError().length > 0
@@ -275,15 +251,6 @@ ColumnLayout {
                         }
                     }
                 }
-            }
-
-            LLOLabel {
-                Layout.fillWidth: true
-                visible: extRoot.storeError().length > 0 && Settings.secretError.length > 0
-                wrapMode: Text.WordWrap
-                font.pixelSize: Theme.footnoteSize
-                color: Theme.helpColor
-                text: qsTr("The system store did not answer: %1").arg(Settings.secretError)
             }
         }
     }

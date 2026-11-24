@@ -9,8 +9,8 @@
 // chain fails, and the update flag across both channels.
 //
 // The card tests cover the facts the update card shows: the candidate row
-// (tag, date, size), the mark of the active build in the version list, and
-// the ignored version that stops the offer until it is restored (ADR 315).
+// (tag, date, size) and the mark of the active build in the version list
+// (ADR 315).
 
 #include <functional>
 #include <QDir>
@@ -423,7 +423,6 @@ private slots:
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         settings.setRuntimeChannel(QStringLiteral("stable"));
-        settings.setRuntimeIgnoredBuild(QString());
         writeCachedStableRelease(root.path());
 
         InstalledState installed(settings);
@@ -439,41 +438,6 @@ private slots:
         QVERIFY2(!installer.checkedAtLabel().isEmpty(), "the check left no time");
         // A clean check is not an exception: the yellow alert stays empty.
         QVERIFY2(installer.catalogWarning().isEmpty(), qPrintable(installer.catalogWarning()));
-        QVERIFY(!installer.candidateIgnored());
-
-        installer.shutdown();
-    }
-
-    // An ignored version is not an update any more: the card stops asking for
-    // it, and the way back restores the offer.
-    void ignoringAVersionStopsTheOfferAndRestoresIt()
-    {
-        QTemporaryDir root;
-        QVERIFY(root.isValid());
-
-        SettingsStore settings;
-        pointAtTempDir(settings, root.path());
-        settings.setRuntimeChannel(QStringLiteral("stable"));
-        settings.setRuntimeIgnoredBuild(QString());
-        settings.setInstalledBuild(QStringLiteral("b12000"));
-        writeCachedStableRelease(root.path());
-
-        InstalledState installed(settings);
-        RuntimeInstaller installer(settings, installed);
-
-        installer.checkForUpdates();
-        QVERIFY2(waitFor([&] { return installer.releaseCount() == 1; }), "the stable catalog never arrived");
-        QVERIFY2(installer.hasUpdate(), "b12000 is older than the resolved b12359");
-
-        installer.ignoreSelectedVersion();
-        QCOMPARE(settings.runtimeIgnoredBuild(), QStringLiteral("b12359"));
-        QVERIFY(installer.candidateIgnored());
-        QVERIFY2(!installer.hasUpdate(), "an ignored version is not an update");
-
-        installer.restoreIgnoredVersion();
-        QVERIFY(settings.runtimeIgnoredBuild().isEmpty());
-        QVERIFY(!installer.candidateIgnored());
-        QVERIFY2(installer.hasUpdate(), "the offer did not come back after the restore");
 
         installer.shutdown();
     }
@@ -488,7 +452,6 @@ private slots:
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         settings.setRuntimeChannel(QStringLiteral("stable"));
-        settings.setRuntimeIgnoredBuild(QString());
         settings.setInstalledBuild(QStringLiteral("b12359"));
         writeCachedStableRelease(root.path());
 
@@ -514,7 +477,6 @@ private slots:
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         settings.setRuntimeChannel(QStringLiteral("stable"));
-        settings.setRuntimeIgnoredBuild(QString());
         settings.setInstalledBuild(QStringLiteral("b12000"));
         writeCachedStableRelease(root.path());
 
@@ -556,7 +518,6 @@ private slots:
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         settings.setRuntimeChannel(QStringLiteral("stable"));
-        settings.setRuntimeIgnoredBuild(QString());
         settings.setInstalledBuild(QStringLiteral("b12000"));
         writeCachedStableRelease(root.path());
 

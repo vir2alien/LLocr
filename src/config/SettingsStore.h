@@ -64,7 +64,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString runtimeBackend READ runtimeBackend WRITE setRuntimeBackend NOTIFY runtimeBackendChanged)
     Q_PROPERTY(QString installedBuild READ installedBuild WRITE setInstalledBuild NOTIFY installedBuildChanged)
     Q_PROPERTY(QString runtimeChannel READ runtimeChannel WRITE setRuntimeChannel NOTIFY runtimeChannelChanged)
-    Q_PROPERTY(QString runtimeIgnoredBuild READ runtimeIgnoredBuild WRITE setRuntimeIgnoredBuild NOTIFY runtimeIgnoredBuildChanged)
     Q_PROPERTY(QString installedTag READ installedTag WRITE setInstalledTag NOTIFY installedTagChanged)
     Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart NOTIFY autoStartChanged)
     Q_PROPERTY(bool startOnDemand READ startOnDemand WRITE setStartOnDemand NOTIFY startOnDemandChanged)
@@ -243,10 +242,6 @@ public:
     void setInstalledBuild(const QString &build);
     QString runtimeChannel() const;
     void setRuntimeChannel(const QString &channel);
-    // The build the user told the app to stop offering ("b12430"). It is a
-    // plain setting, not a secret: it belongs to the profile of the machine.
-    QString runtimeIgnoredBuild() const;
-    void setRuntimeIgnoredBuild(const QString &build);
     QString installedTag() const;
     void setInstalledTag(const QString &tag);
     bool autoStart() const;
@@ -390,7 +385,6 @@ signals:
     void runtimeBackendChanged();
     void installedBuildChanged();
     void runtimeChannelChanged();
-    void runtimeIgnoredBuildChanged();
     void installedTagChanged();
     void autoStartChanged();
     void startOnDemandChanged();
@@ -531,7 +525,6 @@ private:
     static constexpr const char *kRuntimeBackend = "runtime/backend";
     static constexpr const char *kInstalledBuild = "runtime/installedBuild";
     static constexpr const char *kRuntimeChannel = "runtime/channel";
-    static constexpr const char *kRuntimeIgnoredBuild = "runtime/ignoredBuild";
     static constexpr const char *kDefaultRuntimeChannel = "stable";
     static constexpr const char *kInstalledTag = "runtime/installedTag";
     static constexpr const char *kAutoStart = "runtime/autoStart";

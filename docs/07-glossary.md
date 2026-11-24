@@ -2091,6 +2091,7 @@ appendix at the end of this file.
   (`runtime/RuntimeInstaller`: `candidateTag`, `candidateDate`,
   `candidateSize`, `checkedAtLabel`, `catalogWarning`), and the ignored
   build is a plain setting (`runtime/ignoredBuild`), not a secret.
+  (Amended by ADR 330: the ignored version is gone with its setting.)
 - **316.** The controls of the app are drawn by the app. The platform style
   (Fusion) paints the buttons of `Dialog.standardButtons`, the radio buttons
   and the number fields, and they carry the look of the system, not of the
@@ -2252,6 +2253,24 @@ appendix at the end of this file.
   margins of the footer (`Common/SettingsFooter.qml`). One number, and the
   window reads symmetrically: the list and the card begin on the same line,
   and the footer begins where the list begins.
+- **329.** The shared server card of the runtime settings says less. Three
+  lines repeated what the card already says: «The default for every task»
+  under the title, «The key is kept in %1 — not in the settings file» under
+  the key field, and «The system store did not answer: %1» under the badge
+  that names the failure and offers «Retry» already. All three are gone — the
+  badge is the one place where the state of the store is spoken of
+  (ADR 233). The «Check» button stands at the right edge of the card: the
+  header of a card is a title and an action, and the action belongs to the end
+  of the row, not next to the title.
+- **330.** A version is not ignored any more. The update card could carry a
+  version the user did not want to hear about: the button «Ignore this
+  version» set the setting `runtime/ignoredBuild`, the chip said «Ignored»,
+  and «Restore this version» took the offer back. The feature is gone with
+  its code — the button, the chip, the two methods of the installer
+  (`ignoreSelectedVersion`, `restoreIgnoredVersion`) and the setting itself
+  (`SettingsStore::runtimeIgnoredBuild`). The card offers the update or says
+  nothing about it; the states are available → installing → up to date, plus
+  the failure (ADR 315).
 
 
 ### Security & secrets

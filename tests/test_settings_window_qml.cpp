@@ -327,9 +327,7 @@ class FakeRuntimeInstaller : public QObject
     Q_PROPERTY(QString candidateTag READ candidateTag NOTIFY candidateChanged)
     Q_PROPERTY(QString candidateDate READ candidateDate NOTIFY candidateChanged)
     Q_PROPERTY(QString candidateSize READ candidateSize NOTIFY candidateChanged)
-    Q_PROPERTY(bool candidateIgnored READ candidateIgnored NOTIFY candidateChanged)
     Q_PROPERTY(bool candidateInstalled READ candidateInstalled NOTIFY candidateChanged)
-    Q_PROPERTY(QString ignoredBuild READ ignoredBuild NOTIFY candidateChanged)
     Q_PROPERTY(QString checkedAtLabel READ checkedAtLabel NOTIFY catalogChanged)
     Q_PROPERTY(QString catalogWarning READ catalogWarning NOTIFY catalogChanged)
     Q_PROPERTY(int installedBuildCount READ installedBuildCount CONSTANT)
@@ -386,14 +384,6 @@ public:
     QString candidateTag() const { return QStringLiteral("b12345"); }
     QString candidateDate() const { return QStringLiteral("2026-11-16"); }
     QString candidateSize() const { return QStringLiteral("649 MiB"); }
-    bool candidateIgnored() const { return m_candidateIgnored; }
-    void setCandidateIgnored(bool value)
-    {
-        if (m_candidateIgnored == value)
-            return;
-        m_candidateIgnored = value;
-        emit candidateChanged();
-    }
     bool candidateInstalled() const { return m_candidateInstalled; }
     void setCandidateInstalled(bool value)
     {
@@ -402,7 +392,6 @@ public:
         m_candidateInstalled = value;
         emit candidateChanged();
     }
-    QString ignoredBuild() const { return QString(); }
     QString checkedAtLabel() const { return QStringLiteral("09:23"); }
     QString catalogWarning() const { return m_catalogWarning; }
     void setCatalogWarning(const QString &value)
@@ -438,8 +427,6 @@ public:
         Q_UNUSED(index)
         return false;
     }
-    Q_INVOKABLE void ignoreSelectedVersion() {}
-    Q_INVOKABLE void restoreIgnoredVersion() {}
     Q_INVOKABLE void checkForUpdates() {}
     Q_INVOKABLE void startDownloadAndInstall() {}
     Q_INVOKABLE bool activateCandidate() { return m_candidateInstalled; }
@@ -488,7 +475,6 @@ private:
     QString m_catalogWarning;
     int m_selectedRelease = -1;
     bool m_hasUpdate = false;
-    bool m_candidateIgnored = false;
     bool m_candidateInstalled = false;
 };
 
@@ -922,12 +908,11 @@ void TestSettingsWindowQml::theRuntimeAndModelsBlocksAreCards()
 
 // The update card with a candidate: one row of facts with a chip, one
 // action — the button that starts the installation — and the quiet settings
-// under it. The version can be ignored, and the manual choice of a release
-// is not a select in the main flow (ADR 315).
+// under it. The manual choice of a release is not a select in the main flow
+// (ADR 315).
 void TestSettingsWindowQml::theUpdatesCardOffersOneActionAndOneFact()
 {
     m_runtimeInstaller->setHasUpdate(true);
-    m_runtimeInstaller->setCandidateIgnored(false);
     m_runtimeInstaller->setCandidateInstalled(false);
     // The card lives in the managed half of the runtime tab.
     m_settings->setConnectionMode(QStringLiteral("managed"));
@@ -960,10 +945,7 @@ void TestSettingsWindowQml::theUpdatesCardOffersOneActionAndOneFact()
     QVERIFY2(update, "the card has no «Update» action");
     QVERIFY(update->isVisible());
 
-    // The way out of the offer, and the quiet settings without a select.
-    QQuickItem *ignore = findItemWithText(runtime, QStringLiteral("Ignore this version"));
-    QVERIFY2(ignore, "the card has no way to ignore the version");
-    QVERIFY(ignore->isVisible());
+    // The quiet settings carry no select of their own.
     QVERIFY2(!findItemWithText(runtime, QStringLiteral("Release")), "the quiet settings row still has a «Release» select");
 
     // The other state of the card is not shown at the same time.
@@ -977,7 +959,6 @@ void TestSettingsWindowQml::theUpdatesCardOffersOneActionAndOneFact()
 void TestSettingsWindowQml::theUpdatesCardActivatesTheBuildThatIsOnDisk()
 {
     m_runtimeInstaller->setHasUpdate(true);
-    m_runtimeInstaller->setCandidateIgnored(false);
     m_runtimeInstaller->setCandidateInstalled(true);
     // The card lives in the managed half of the runtime tab.
     m_settings->setConnectionMode(QStringLiteral("managed"));
@@ -1015,7 +996,6 @@ void TestSettingsWindowQml::theUpdatesCardActivatesTheBuildThatIsOnDisk()
 void TestSettingsWindowQml::theUpdatesCardShowsTheActiveBuildWhenThereIsNothingToInstall()
 {
     m_runtimeInstaller->setHasUpdate(false);
-    m_runtimeInstaller->setCandidateIgnored(false);
     m_runtimeInstaller->setCandidateInstalled(false);
     // The card lives in the managed half of the runtime tab.
     m_settings->setConnectionMode(QStringLiteral("managed"));

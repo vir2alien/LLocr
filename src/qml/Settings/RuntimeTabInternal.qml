@@ -152,14 +152,12 @@ ColumnLayout {
         // Nothing to offer: the catalog never arrived, so there is no
         // candidate and no version to pick.
         readonly property bool catalogEmpty: RuntimeInstaller.releaseCount === 0
-        readonly property bool ignored: RuntimeInstaller.candidateIgnored
         // The candidate build is on disk already: there is nothing to
         // download, the build is switched to (ADR 317).
         readonly property bool candidateInstalled: RuntimeInstaller.candidateInstalled
-        readonly property bool offered: RuntimeInstaller.hasUpdate && !updatesCard.ignored
-        // Nothing to install and nothing ignored: the runtime is the latest
-        // build.
-        readonly property bool upToDate: !updatesCard.offered && !updatesCard.ignored
+        readonly property bool offered: RuntimeInstaller.hasUpdate
+        // Nothing to install: the runtime is the latest build.
+        readonly property bool upToDate: !updatesCard.offered
                                        && !updatesCard.failed && !updatesCard.fetching
                                        && !updatesCard.installing && !updatesCard.catalogEmpty
 
@@ -300,12 +298,11 @@ ColumnLayout {
             // The candidate: one row with the version and the one action.
             RowLayout {
                 Layout.fillWidth: true
-                visible: updatesCard.offered || updatesCard.ignored
+                visible: updatesCard.offered
                 spacing: Theme.spacingSmall
 
                 LLOLabel {
-                    text: updatesCard.ignored ? qsTr("Ignored")
-                          : updatesCard.candidateInstalled ? qsTr("Installed")
+                    text: updatesCard.candidateInstalled ? qsTr("Installed")
                           : qsTr("Available")
                     font.pixelSize: Theme.bodySize
                 }
@@ -400,23 +397,6 @@ ColumnLayout {
                 font.pixelSize: Theme.footnoteSize
                 color: Theme.textMuted
                 text: qsTr("The installation runs in the background — you can keep working.")
-            }
-
-            // The version the user does not want to hear about — and the way
-            // back.
-            LLOButton {
-                Layout.alignment: Qt.AlignRight
-                visible: updatesCard.offered || updatesCard.ignored
-                text: updatesCard.ignored ? qsTr("Restore this version") : qsTr("Ignore this version")
-                subtle: true
-                font: Theme.buttonSmall
-                enabled: !RuntimeInstaller.busy
-                onClicked: {
-                    if (updatesCard.ignored)
-                        RuntimeInstaller.restoreIgnoredVersion()
-                    else
-                        RuntimeInstaller.ignoreSelectedVersion()
-                }
             }
 
             Rectangle {

@@ -318,17 +318,6 @@ QString RuntimeInstaller::candidateSize() const
     return formatBytes(asset.size);
 }
 
-bool RuntimeInstaller::candidateIgnored() const
-{
-    const QString ignored = ignoredBuild();
-    if (ignored.isEmpty() || m_releases.isEmpty())
-        return false;
-    if (m_selectedRelease < 0 || m_selectedRelease >= m_releases.size())
-        return false;
-    const int build = m_releases.at(m_selectedRelease).build;
-    return build > 0 && ignored == QStringLiteral("b%1").arg(build);
-}
-
 const InstalledBuildInfo *RuntimeInstaller::installedCandidate() const
 {
     if (m_releases.isEmpty() || m_selectedRelease < 0 || m_selectedRelease >= m_releases.size())
@@ -361,32 +350,6 @@ bool RuntimeInstaller::activateCandidate()
         return false;
     const InstalledBuildInfo build = *candidate;
     return activateInstalledBuild(build);
-}
-
-QString RuntimeInstaller::ignoredBuild() const
-{
-    return m_settings.runtimeIgnoredBuild();
-}
-
-void RuntimeInstaller::ignoreSelectedVersion()
-{
-    if (m_releases.isEmpty() || m_selectedRelease < 0 || m_selectedRelease >= m_releases.size())
-        return;
-    const int build = m_releases.at(m_selectedRelease).build;
-    if (build <= 0)
-        return;
-    m_settings.setRuntimeIgnoredBuild(QStringLiteral("b%1").arg(build));
-    emit candidateChanged();
-    recomputeHasUpdate();
-}
-
-void RuntimeInstaller::restoreIgnoredVersion()
-{
-    if (m_settings.runtimeIgnoredBuild().isEmpty())
-        return;
-    m_settings.setRuntimeIgnoredBuild(QString());
-    emit candidateChanged();
-    recomputeHasUpdate();
 }
 
 void RuntimeInstaller::checkForUpdates()
@@ -672,10 +635,7 @@ void RuntimeInstaller::recomputeHasUpdate()
 {
     const int latestBuild = m_releases.isEmpty() ? -1 : m_releases.first().build;
     const int cur = buildNumber(installedBuild());
-    // An ignored version is not an update: the user told the app to stop
-    // offering it, so the card must not ask for it again (ADR 315).
-    const bool ignored = latestBuild > 0 && ignoredBuild() == QStringLiteral("b%1").arg(latestBuild);
-    const bool upd = cur >= 0 && latestBuild > cur && !ignored;
+    const bool upd = cur >= 0 && latestBuild > cur;
     if (m_hasUpdate != upd) {
         m_hasUpdate = upd;
         emit hasUpdateChanged();
