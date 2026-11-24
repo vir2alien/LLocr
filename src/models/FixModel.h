@@ -13,8 +13,8 @@ namespace llocr {
 // empty or budget-cut reply goes to human eyes.
 //
 // The read protocol (ADR 259) is the same task with another contract: the
-// recognized text travels as a sample of the document's notation, and the
-// reply is FIX / REVIEW — the reader writes the block from the image.
+// reader writes the block from the image alone (ADR 266) and the reply IS the
+// block text — REVIEW is the only verdict it owns (ADR 331).
 class FixModel : public VisionChatModel
 {
     Q_DISABLE_COPY_MOVE(FixModel)

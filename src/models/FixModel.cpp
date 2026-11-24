@@ -74,6 +74,88 @@ void setParameterNumber(QList<RequestParameter> &parameters, const QString &name
     }
 }
 
+// The reader's verdict: the word REVIEW alone on the first line. A block
+// whose own text begins with the word (a heading "REVIEW OF …") is text.
+bool isReadVerdict(const QString &trimmed)
+{
+    const int lineEnd = trimmed.indexOf(QLatin1Char('\n'));
+    const QString firstLine = (lineEnd < 0 ? trimmed : trimmed.left(lineEnd)).trimmed();
+    return firstLine.compare(QStringLiteral("REVIEW"), Qt::CaseInsensitive) == 0;
+}
+
+// The block the reader wrote: the reply itself. A reply that still carries the
+// old keyword (a profile that speaks the pre-331 wording) loses the keyword
+// and keeps the block — a block must never carry the keyword.
+QString readBlockBody(const QString &trimmed)
+{
+    const int lineEnd = trimmed.indexOf(QLatin1Char('\n'));
+    const QString firstLine = (lineEnd < 0 ? trimmed : trimmed.left(lineEnd)).trimmed();
+    if (firstLine.compare(QStringLiteral("FIX"), Qt::CaseInsensitive) == 0)
+        return lineEnd < 0 ? QString() : trimmed.mid(lineEnd + 1).trimmed();
+    if (trimmed.startsWith(QStringLiteral("FIX:"), Qt::CaseInsensitive))
+        return trimmed.mid(4).trimmed();
+    return trimmed;
+}
+
+// A verdict is not block text: a reader that answers a verdict has not read
+// the block, and the keyword must not land in the block.
+bool isVerdictOnly(const QString &body)
+{
+    return body.compare(QStringLiteral("OK"), Qt::CaseInsensitive) == 0 || body.compare(QStringLiteral("EMPTY"), Qt::CaseInsensitive) == 0;
+}
+
+// The read protocol (ADR 331): the reader writes the block from the image, so
+// the reply IS the block text — REVIEW is the only verdict it owns. The gate
+// is the same one the fix protocol uses: the block's own text is the
+// comparison base, an equivalent read keeps the block's bytes.
+CheckResult parseReadReply(const QByteArray &responseData, const QString &trimmed, const QString &candidate, const QString &blockType)
+{
+    if (isReadVerdict(trimmed)) {
+        CheckResult review;
+        review.status = CheckStatus::Review;
+        review.notes = StatusMessage::translate("FixModel", "The block could not be read: the crop is cut, covered or blurred.");
+        return review;
+    }
+
+    const QString body = readBlockBody(trimmed);
+
+    if (body.isEmpty()) {
+        CheckResult review;
+        review.status = CheckStatus::Review;
+        review.notes = StatusMessage::translate("FixModel", "The block could not be read: the model wrote no text.");
+        return review;
+    }
+
+    if (isVerdictOnly(body)) {
+        CheckResult review;
+        review.status = CheckStatus::Review;
+        review.notes = StatusMessage::translate("FixModel", "The reply is a verdict, not the block text: %1").arg(body);
+        return review;
+    }
+
+    if (replyCutByBudget(responseData)) {
+        CheckResult review;
+        review.status = CheckStatus::Review;
+        review.notes = StatusMessage::translate("FixModel", "The reply was cut by the token budget; the block needs a human look.");
+        return review;
+    }
+
+    const FixDiffGate::Outcome outcome = FixDiffGate::fixBlock(candidate, body, blockType);
+    CheckResult result;
+    result.status = outcome.status;
+    if (outcome.status == CheckStatus::Fixed)
+        result.text = outcome.text;
+    result.notes = outcome.downgradeReason;
+    // The gate's reason is the fixer's: it speaks about a candidate and a
+    // correction. The reader has no candidate — it writes the block from the
+    // image — so it explains the same outcome in its own words (ADR 260).
+    if (outcome.status == CheckStatus::Ok)
+        result.notes = StatusMessage::translate("FixModel", "The block was read: the text matches the image, so the block text is kept.");
+    else if (outcome.status == CheckStatus::Review)
+        result.notes = StatusMessage::translate("FixModel", "The block could not be read: the model wrote no text.");
+    return result;
+}
+
 // The same request without the thinking: the budget of the thinking goes back
 // to the answer, which is what the answer had before the thinking was added.
 // A request without its own max_tokens keeps the server's default — inventing
@@ -214,9 +296,6 @@ QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteAr
 CheckResult FixModel::parseResponse(const QByteArray &responseData, const QString &candidate, const QString &blockType, CheckRequest::FixProtocol protocol)
 {
     const bool readProtocol = protocol == CheckRequest::FixProtocol::ReadBlock;
-    // The reader answers FIX / REVIEW: it has no verdict on the candidate, it
-    // writes the block from the image.
-    const QString scheme = readProtocol ? QStringLiteral("FIX/REVIEW") : QStringLiteral("OK/FIX/REVIEW");
 
     QString content;
     CheckResult error;
@@ -231,7 +310,10 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
     const QString trimmed = cleaned.trimmed();
     const QString upper = trimmed.toUpper();
 
-    if (!readProtocol && upper.startsWith(QStringLiteral("OK"))) {
+    if (readProtocol)
+        return parseReadReply(responseData, trimmed, candidate, blockType);
+
+    if (upper.startsWith(QStringLiteral("OK"))) {
         CheckResult ok;
         ok.status = CheckStatus::Ok;
         // Recognition is already correct — do not touch the original text.
@@ -241,10 +323,6 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
     if (upper.startsWith(QStringLiteral("REVIEW"))) {
         CheckResult review;
         review.status = CheckStatus::Review;
-        // The reader's own words: the fixer and the reader answer the same
-        // scheme, but they speak about different things (ADR 260).
-        if (readProtocol)
-            review.notes = StatusMessage::translate("FixModel", "The block could not be read: the crop is cut, covered or blurred.");
         return review;
     }
 
@@ -259,8 +337,6 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
             // not a protocol error.
             CheckResult review;
             review.status = CheckStatus::Review;
-            if (readProtocol)
-                review.notes = StatusMessage::translate("FixModel", "The block could not be read: the model wrote no text.");
             return review;
         }
         if (replyCutByBudget(responseData)) {
@@ -276,12 +352,6 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
         if (outcome.status == CheckStatus::Fixed)
             result.text = outcome.text;
         result.notes = outcome.downgradeReason;
-        // The gate's reason is the fixer's: it speaks about a candidate and a
-        // correction. The reader has no candidate — it writes the block from
-        // the image — so it explains the same outcome in its own words
-        // (ADR 260).
-        if (readProtocol && outcome.status == CheckStatus::Ok)
-            result.notes = StatusMessage::translate("FixModel", "The block was read: the text matches the image, so the block text is kept.");
         return result;
     }
 
@@ -289,7 +359,7 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
     // block goes to human eyes.
     CheckResult review;
     review.status = CheckStatus::Review;
-    review.notes = StatusMessage::translate("FixModel", "The reply does not follow the %1 scheme: %2").arg(scheme, cleaned.left(120));
+    review.notes = StatusMessage::translate("FixModel", "The reply does not follow the %1 scheme: %2").arg(QStringLiteral("OK/FIX/REVIEW"), cleaned.left(120));
     return review;
 }
 

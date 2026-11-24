@@ -1201,14 +1201,15 @@ appendix at the end of this file.
   paragraph, p ≈ 0.1–0.35); residual FN are print homoglyphs and integrals.
   Report: `OCRtest/decision_models/test 2/iteration8/README.md`.
 - **259.** The fix role has a second protocol, `read_block`: the model writes
-  the block from the image, and the reply is `FIX` (full block) or `REVIEW` —
-  `OK` is out of the schema. `FixDiffGate::fixBlock` compares the read text
-  with the block text (equivalent → Ok, different → Fixed, empty or cut →
-  Review) and treats `\eqno{n}` ≡ `\eqno(n)` ≡ `\tag{n}` ≡ `(n)` and `{{x}}` ≡
-  `{x}` as equivalent carriers. Prompt texts live in the shared
-  `read-requests.json`; the recognized text no longer travels as a writing
-  sample (see ADR 266). Measured on `gemma-4-12b`
-  (`OCRtest/fix_models/READ_PROTOCOL.md`).
+  the block from the image, and the reply is the block text — `REVIEW` is the
+  only verdict it owns (`OK` is out of the schema). (Amended by ADR 331: the
+  reply is no longer `FIX` + the block — the keyword is gone from the read
+  path.) `FixDiffGate::fixBlock` compares the read text with the block text
+  (equivalent → Ok, different → Fixed, empty or cut → Review) and treats
+  `\eqno{n}` ≡ `\eqno(n)` ≡ `\tag{n}` ≡ `(n)` and `{{x}}` ≡ `{x}` as equivalent
+  carriers. Prompt texts live in the shared `read-requests.json`; the
+  recognized text no longer travels as a writing sample (see ADR 266).
+  Measured on `gemma-4-12b` (`OCRtest/fix_models/READ_PROTOCOL.md`).
 - **260.** Re-reading is an action, not a model property: the protocol rides
   the request (`CheckRequest::fixProtocol`), so any fix model can read — no
   role switch or model reload. «Распознать точно» (magnifier over the page) sits
@@ -1245,7 +1246,9 @@ appendix at the end of this file.
   ADR 182). The Qwen3-VL family reads the shared read wording as
   correction-verification and answers REVIEW on every readable block, so it
   carries its own texts; read block prompts and answer budgets fall back to
-  the shared profile, and the alias hop applies to overrides too.
+  the shared profile, and the alias hop applies to overrides too. (Amended by
+  ADR 331: the qwen3.5-4b's own reader wording is gone — the family takes the
+  shared reader, which now speaks the read contract.)
 - **268.** Reasoning budgets are global check settings, not a request-profile
   parameter: `check/fixReasoningBudgetTokens` and
   `check/readReasoningBudgetTokens` (default 0; the four steps off / 512 /
@@ -1367,6 +1370,27 @@ appendix at the end of this file.
   для разметки»), and the recognition/verification/fix stages keep the full
   scope, skipping done blocks through their collectors. Amends ADR 257
   (in part — the markup stage is no longer always from scratch).
+- **331.** The reader writes the block, it does not answer a verdict. The read
+  protocol's reply is the **block text**: the model writes the block from the
+  image alone (ADR 266) and the reply lands whole; the only verdict the reader
+  owns is `REVIEW` — the block could not be read. The keyword `FIX` is gone
+  from the read path: `FixModel::parseResponse` sends every read reply that is
+  not a verdict through the gate (`FixDiffGate::fixBlock`), which compares it
+  with the block's own text — equivalent keeps the bytes, different rewrites
+  the block, and an empty reply, a reply cut by the token budget or a verdict
+  of the fix protocol (`OK`) goes to Review with the reader's own words
+  (ADR 260). Two rules keep a profile with the old wording from corrupting a
+  block: a reply that still carries the keyword (`FIX` alone on the first
+  line, or `FIX:`) loses the keyword and keeps the block, and the word
+  `REVIEW` counts as a verdict only when it stands alone on the first line —
+  a heading that begins with the word is the block's own text. The wording
+  lives in the request profiles (`read-requests.json`, a fix role's
+  `readSystemPrompt`/`readBlockPrompts`) and is the user's to change. The
+  shipped reader names it: `read-requests.json` carries the system prompt and
+  one prompt per block type, each stating the contract (the block text, or
+  `REVIEW`), and the qwen3.5-4b's own reader wording is gone — the family
+  takes the shared one. Amends ADR 259 (the read reply contract); the fix
+  protocol's own contract (OK / FIX / REVIEW) is untouched.
 
 ### UI
 
@@ -2032,8 +2056,8 @@ appendix at the end of this file.
   exactly in the gutter between two columns takes the general rule, and the
   operator's up/down buttons remain the last word.
 - **311.** The reader takes what the check has left. The read action
-  («Распознать точно» — the tooltip says «Распознать текст большой
-  ИИ-моделью») runs over the scope, and the scope decides which blocks those
+  («Распознать (LLM)» — the tooltip says «Распознать текст большой
+  ИИ-моделью», ADR 325) runs over the scope, and the scope decides which blocks those
   are: on a page the check has not finished — every text block, as before; on a
   checked page — only the blocks the decision model rejected, the very set the
   fixer takes (ADR 188). A page is checked when the decision stage answered
@@ -2218,8 +2242,11 @@ appendix at the end of this file.
   recognition made by an LLM, and its budget belongs to that engine. The
   names of the confirmation dialogs stay as they were («Распознать блоки?»,
   «Распознать точно?»): the dialog asks about the blocks and about the
-  exactness, and it is not the menu. (Amends ADR 270: the names of the two
-  buttons are «Распознать (OCR)» and «Распознать (LLM)».)
+  exactness, and it is not the menu. The **block's mini-toolbar** speaks the
+  same two names in its tooltips («Распознать блок» and «Распознать блок
+  точно» are gone): the button of the header and the button of the block name
+  the same engine. (Amends ADR 270: the names of the two buttons are
+  «Распознать (OCR)» and «Распознать (LLM)».)
 - **326.** The log of the work is a light field without a frame. The panes of
   the runtime log (`ServerLogWindow.qml`) and of the problem log
   (`ProblemLogWindow.qml`) carried two frames around the text: the sunken

@@ -141,20 +141,23 @@ budget is the global setting `check/fixReasoningBudgetTokens` injected per
 request (ADR 193/268), and `RequestBudget` clips the thinking before the
 answer.
 
-## 5. The read protocol (`read_block`, ADR 259–267)
+## 5. The read protocol (`read_block`, ADR 259–267, 331)
 
 The same fix models serve the read task («Распознать (LLM)») with another
 contract: the request is exactly the image, the system prompt and the block
-prompt — **the recognized text never travels**. The reply is `FIX` (full
-block) or `REVIEW` (`OK` is outside the schema and lands on Review with the
-reason). The gate is the same `FixDiffGate`, so a read that reproduces the
-text keeps the block's bytes and drops a stale Mismatch. Outcomes are its own
-statuses `Read` / `ReadFixed` / `ReadDamaged`; a run ends with its tally
-(«Прочитано блоков: переписано — N, подтверждено — M, не прочитано — K»).
-Prompt texts live in `resources/profiles/requests/read-requests.json`; a fix
-role may override them (`readSystemPrompt`/`readBlockPrompts`) — the Qwen3-VL
-family does, because it reads the shared wording as correction-verification
-(ADR 267).
+prompt — **the recognized text never travels**. The reply **is the block
+text**: the reader writes the block from the image, and the only verdict it
+owns is `REVIEW` (the block could not be read). A verdict of the fix protocol
+(`OK`) is not block text and lands on Review with the reason; a reply that
+still carries the old `FIX` keyword (a profile with the pre-331 wording) loses
+the keyword and keeps the block (ADR 331). The gate is the same `FixDiffGate`,
+so a read that reproduces the text keeps the block's bytes and drops a stale
+Mismatch. Outcomes are its own statuses `Read` / `ReadFixed` / `ReadDamaged`;
+a run ends with its tally («Прочитано блоков: переписано — N, подтверждено — M,
+не прочитано — K»). Prompt texts live in
+`resources/profiles/requests/read-requests.json`; a fix role may override them
+(`readSystemPrompt`/`readBlockPrompts`) — the Qwen3-VL family does, because it
+reads the shared wording as correction-verification (ADR 267).
 
 Which blocks the read takes is the scope's decision (ADR 311, ADR 322): a page
 without verdicts gives every text block; a page the check has answered anything

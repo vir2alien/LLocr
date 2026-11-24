@@ -260,10 +260,10 @@ public:
 };
 }  // namespace
 
-// The reader's system prompt opens with this (the read profile's own words):
-// the mock server recognizes the reader's request by it — the sample-carrying
-// one and the bare image alike (ADR 260).
-const QByteArray kReadPromptMarker = QByteArrayLiteral("You correct one block of a document from an image");
+// The reader's system prompt opens with this (the shared read profile's own
+// words): the mock server recognizes the reader's request by it — the
+// sample-carrying one and the bare image alike (ADR 260).
+const QByteArray kReadPromptMarker = QByteArrayLiteral("You are an OCR module");
 
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
 // fixed reply, so the real recognition pipeline produces real blocks.
@@ -321,9 +321,10 @@ public:
     // fixReplies overrides per candidate.
     QString fixReply = QStringLiteral("FIX\nFixed block text");
     QHash<QString, QString> fixReplies;
-    // The read protocol's reply (ADR 259): the reader writes the block from
-    // the image, so the answer is the whole block and nothing else.
-    QString readReply = QStringLiteral("FIX\nRead block text");
+    // The read protocol's reply (ADR 259/331): the reader writes the block
+    // from the image, so the answer is the whole block and nothing else — no
+    // keyword in front of it.
+    QString readReply = QStringLiteral("Read block text");
     // The layout reply (the "\nLayout Detection:" prompt): the markup-shaped
     // block lines the layout parser reads. The default pair mirrors the
     // transcription sequence: a title block over a text block, both large

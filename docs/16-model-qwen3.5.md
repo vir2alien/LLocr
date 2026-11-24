@@ -24,9 +24,9 @@ Russian mirror: [`16-model-qwen3.5.ru.md`](16-model-qwen3.5.ru.md).
   `FIX` carries the **complete corrected block**, `REVIEW` hands the block to
   human eyes. The same model also serves the **read** task
   («Распознать (LLM)», ADR 259) — same transport, the read protocol's own
-  prompts and a FIX/REVIEW contract (ADR 260); the protocol is the action's
-  choice, not the model's (ADR 266); the 4B ships its own measured read
-  wording (§4). Not declared for **blockRecognition**,
+  prompts and the read contract — the block text, or `REVIEW` (ADR 260/331);
+  the protocol is the action's choice, not the model's (ADR 266); the read
+  wording is the shared one (§4). Not declared for **blockRecognition**,
   **decision** or **layout**.
 
 ## 2. Files and download
@@ -214,8 +214,8 @@ iteration together with the gate echo strip.
 **Read protocol** («Распознать (LLM)», `FixProtocol::ReadBlock`) — same body
 except: the system prompt and block prompt come from the fix role's own
 `readSystemPrompt` / `readBlockPrompts` when it ships them, else from
-`resources/profiles/requests/read-requests.json` — the 4B ships its measured
-read wording (below), the 9B takes the shared texts. `max_tokens` comes from
+`resources/profiles/requests/read-requests.json` — both qwen3.5 roles take the
+shared reader (the 4B's own wording is gone, ADR 331). `max_tokens` comes from
 `read-requests.json → maxOutputByBlock`, the reasoning budget is the read
 budget — and there is **no candidate part**: the
 user content is only `[type prompt, image]`. The recognized text of the block
@@ -224,12 +224,15 @@ never travels (ADR 266); the reader writes the block from the image alone.
 **The 4B's measured read optimum** (the manual read stand, `OCRtest/manual/`;
 the settings the corpus run picked):
 
-- **Doubled block prompt.** The winning wording states the task, the
-  FIX/REVIEW contract and the escape twice: the full text repeats verbatim,
-  separated by a blank line, and the separators ride as literal `\n`
-  characters. The 4B ships it per block type in `roles.fix.readBlockPrompts`
-  — all 15 canonical types; `readSystemPrompt` is `You are an OCR agent.` A
-  type the profile omits would fall back to the shared reader.
+- **Block prompt.** The stand's winner stated the task, the reply contract (the
+  block text, or `REVIEW` — ADR 331) and the escape **twice**: the full text
+  repeated verbatim, separated by a blank line, and the separators rode as
+  literal `\n` characters. The shipped reader is the **shared** one — a single
+  prompt per block type in `read-requests.json`, all 15 canonical types, plus
+  the shared system prompt `You are an OCR module. …`; the wording is the
+  user's to change. Until a wording names the new contract, the app
+  understands the old one — a leading `FIX` is stripped and the block that
+  follows it is read (ADR 331).
 - **Reasoning on, budget 256 tokens.** The read stand pins the thinking
   server-side (`--reasoning on --reasoning-budget 256`). In the app the
   budget rides the request (`reasoning_budget_tokens`, ADR 268) from

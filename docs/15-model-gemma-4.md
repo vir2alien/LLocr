@@ -31,7 +31,8 @@ Russian mirror: [`15-model-gemma-4.ru.md`](15-model-gemma-4.ru.md).
   (ADR 192) — `OK` keeps the candidate, `FIX` carries the **complete
   corrected block**, `REVIEW` hands the block to human eyes. The same model
   serves the **read** task («Распознать (LLM)», ADR 259) with the read
-  protocol's own prompts and a FIX/REVIEW contract (ADR 260/266).
+  protocol's own prompts and the read contract — the block text, or
+  `REVIEW` (ADR 260/266/331).
   Transcription and the decision task are other models' jobs (ADR 252/254).
 
 ## 2. Files and download

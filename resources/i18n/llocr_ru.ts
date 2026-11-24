@@ -492,8 +492,8 @@
     </message>
     <message>
         <location line="+6"/>
-        <source>Recognize block</source>
-        <translation>Распознать блок</translation>
+        <source>Recognize (OCR)</source>
+        <translation>Распознать (OCR)</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -507,8 +507,8 @@
     </message>
     <message>
         <location line="+8"/>
-        <source>Recognize block exactly</source>
-        <translation>Распознать блок точно</translation>
+        <source>Recognize (LLM)</source>
+        <translation>Распознать (LLM)</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -1188,11 +1188,15 @@
     </message>
     <message>
         <source>The model returned no corrected text: %1</source>
-        <translation type="vanished">Модель не вернула исправленный текст: %1</translation>
+        <translation>Модель не вернула исправленный текст: %1</translation>
     </message>
     <message>
         <source>The model returned no block text: %1</source>
-        <translation type="vanished">Модель не вернула текст блока: %1</translation>
+        <translation>Модель не вернула текст блока: %1</translation>
+    </message>
+    <message>
+        <source>The reply is a verdict, not the block text: %1</source>
+        <translation>Ответ — вердикт, а не текст блока: %1</translation>
     </message>
     <message>
         <location line="-26"/>

@@ -68,7 +68,7 @@ Rectangle {
         MiniButton {
             visible: miniRoot.isTextBlock
             iconName: "scan-text"
-            tip: qsTr("Recognize block")
+            tip: qsTr("Recognize (OCR)")
             enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle && Controller.blockRecognitionModelAvailable
             onClicked: Controller.recognizeSelectedBlock()
         }
@@ -91,7 +91,7 @@ Rectangle {
         MiniButton {
             visible: miniRoot.isTextBlock
             iconName: "file-search"
-            tip: qsTr("Recognize block exactly")
+            tip: qsTr("Recognize (LLM)")
             enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle && Controller.fixModelAvailable
             onClicked: Controller.readSelectedBlock()
         }

@@ -127,9 +127,15 @@ private slots:
     // The reader's request does not depend on the block's text: a block
     // nobody recognized gets the same request.
     void readWithoutATextSendsTheSameRequest();
-    // The reader has no verdict on the candidate: OK is outside its scheme.
-    void readSchemeHasNoOk();
-    void readFixCarriesTheBlock();
+    // The reader has no verdict on the candidate: a verdict is not block text.
+    void readVerdictIsNotTheBlockText();
+    // The reader's answer IS the block: no keyword in front of it.
+    void readReplyIsTheBlock();
+    // A profile that still speaks the old wording answers FIX + the block:
+    // the keyword is dropped, the block stays.
+    void readOldFixSpellingIsUnderstood();
+    // A block whose own text begins with the word REVIEW is text.
+    void readTextStartingWithTheVerdictWordIsText();
     void readReviewIsReviewed();
     // A block the reader reproduces as it is confirms the candidate.
     void readEquivalentBlockConfirmsWithoutText();
@@ -375,24 +381,50 @@ void TestFixProtocol::readWithoutATextSendsTheSameRequest()
     QCOMPARE(QJsonDocument(withoutText).toJson(), QJsonDocument(withText).toJson());
 }
 
-void TestFixProtocol::readSchemeHasNoOk()
+void TestFixProtocol::readVerdictIsNotTheBlockText()
 {
-    // The reader writes the block from the image; it has no verdict on the
-    // candidate, so OK is outside its scheme (ADR 259).
+    // The reader writes the block from the image: a verdict is not block text
+    // and must not land in the block (ADR 331).
     ExposedFixModel model;
-    const CheckResult result = model.parse(chatReply(QStringLiteral("OK")), QStringLiteral("The candidate text"), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
-    QCOMPARE(result.status, CheckStatus::Review);
-    QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
-    QVERIFY2(result.notes.text().contains(QStringLiteral("FIX/REVIEW")), qPrintable(result.notes.text()));
+    for (const QString &answer : {QStringLiteral("OK"), QStringLiteral("EMPTY")}) {
+        const CheckResult result = model.parse(chatReply(answer), QStringLiteral("The candidate text"), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+        QCOMPARE(result.status, CheckStatus::Review);
+        QVERIFY(result.text.isEmpty());
+        QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
+    }
 }
 
-void TestFixProtocol::readFixCarriesTheBlock()
+void TestFixProtocol::readReplyIsTheBlock()
 {
+    // The reply is the block text — the keyword of the fix protocol is not
+    // expected any more (ADR 331).
     ExposedFixModel model;
-    const CheckResult result = model.parse(
-        chatReply(QStringLiteral("FIX\nКоэффициент k = 0,35 подтверждён.")), QStringLiteral("Коэффициент k = 0,85 подтверждён."), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+    const CheckResult result =
+        model.parse(chatReply(QStringLiteral("Коэффициент k = 0,35 подтверждён.")), QStringLiteral("Коэффициент k = 0,85 подтверждён."), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
     QCOMPARE(result.status, CheckStatus::Fixed);
     QCOMPARE(result.text, QStringLiteral("Коэффициент k = 0,35 подтверждён."));
+}
+
+void TestFixProtocol::readOldFixSpellingIsUnderstood()
+{
+    // A profile that still carries the old wording answers FIX + the block:
+    // the keyword is dropped, the block lands whole.
+    ExposedFixModel model;
+    for (const QString &answer : {QStringLiteral("FIX\nКоэффициент k = 0,35 подтверждён."), QStringLiteral("FIX: Коэффициент k = 0,35 подтверждён.")}) {
+        const CheckResult result = model.parse(chatReply(answer), QStringLiteral("Коэффициент k = 0,85 подтверждён."), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+        QCOMPARE(result.status, CheckStatus::Fixed);
+        QCOMPARE(result.text, QStringLiteral("Коэффициент k = 0,35 подтверждён."));
+    }
+}
+
+void TestFixProtocol::readTextStartingWithTheVerdictWordIsText()
+{
+    // The verdict is the word alone on the first line: a heading that begins
+    // with the word is the block's own text.
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QStringLiteral("REVIEW OF THE METHOD")), QStringLiteral("Обзор метода"), QStringLiteral("title"), CheckRequest::FixProtocol::ReadBlock);
+    QCOMPARE(result.status, CheckStatus::Fixed);
+    QCOMPARE(result.text, QStringLiteral("REVIEW OF THE METHOD"));
 }
 
 void TestFixProtocol::readReviewIsReviewed()
@@ -408,8 +440,8 @@ void TestFixProtocol::readEquivalentBlockConfirmsWithoutText()
     // The gate judges the read block against the current text: a block that
     // says the same thing confirms the candidate and keeps its bytes.
     ExposedFixModel model;
-    const CheckResult result = model.parse(
-        chatReply(QStringLiteral("FIX\nКоэффициент k = 0,85 подтверждён.")), QStringLiteral("Коэффициент k = 0,85 подтверждён."), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
+    const CheckResult result =
+        model.parse(chatReply(QStringLiteral("Коэффициент k = 0,85 подтверждён.")), QStringLiteral("Коэффициент k = 0,85 подтверждён."), QStringLiteral("text"), CheckRequest::FixProtocol::ReadBlock);
     QCOMPARE(result.status, CheckStatus::Ok);
     QVERIFY(result.text.isEmpty());
     // The reader explains the outcome in its own words: the fixer's note
@@ -434,7 +466,7 @@ void TestFixProtocol::readTruncatedReplyIsReviewed()
 {
     // The reader's answer is the whole block: a cut one is a fragment.
     ExposedFixModel model;
-    const CheckResult result = model.parse(chatReplyCut(QStringLiteral("FIX\nВ 2026 году коэффициент k = 0,35 был подтв")),
+    const CheckResult result = model.parse(chatReplyCut(QStringLiteral("В 2026 году коэффициент k = 0,35 был подтв")),
                                            QStringLiteral("В 2026 году коэффициент k = 0,85 был подтверждён."),
                                            QStringLiteral("text"),
                                            CheckRequest::FixProtocol::ReadBlock);
