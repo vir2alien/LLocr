@@ -196,6 +196,32 @@ add_test(NAME test_editor_qml COMMAND test_editor_qml)
 set_tests_properties(test_editor_qml PROPERTIES RESOURCE_LOCK webengine
     ENVIRONMENT "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu")
 
+# ---- Preview page: the offline gate for the preview tab ---------------------
+# preview.html must pull the bundled marked + KaTeX + DOMPurify from qrc and
+# render the page's markdown into structure. The preview tab and the HTML/PDF
+# export stand on this one bundle.
+qt_add_executable(test_preview_page test_preview_page.cpp)
+
+target_link_libraries(test_preview_page PRIVATE
+    Qt6::Test
+    Qt6::WebEngineQuick
+    Qt6::WebEngineCore
+    llocr_app
+)
+
+file(GLOB_RECURSE TEST_PREVIEW_PAGE_FILES
+    "${CMAKE_SOURCE_DIR}/resources/preview/*")
+list(FILTER TEST_PREVIEW_PAGE_FILES EXCLUDE REGEX "\\.DS_Store$")
+
+qt_add_resources(test_preview_page "preview_page_res"
+    PREFIX "/preview"
+    BASE "${CMAKE_SOURCE_DIR}/resources/preview"
+    FILES ${TEST_PREVIEW_PAGE_FILES}
+)
+add_test(NAME test_preview_page COMMAND test_preview_page)
+set_tests_properties(test_preview_page PROPERTIES RESOURCE_LOCK webengine
+    ENVIRONMENT "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu")
+
 qt_add_executable(test_det_parser test_det_parser.cpp)
 
 target_link_libraries(test_det_parser PRIVATE

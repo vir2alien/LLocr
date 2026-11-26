@@ -2000,8 +2000,9 @@
 <context>
     <name>MarkdownPreview</name>
     <message>
+        <location filename="../../src/qml/MainWindow/MarkdownPreview.qml" line="+40"/>
         <source>Failed to load the preview page (%1).</source>
-        <translation type="vanished">Не удалось загрузить страницу предпросмотра (%1).</translation>
+        <translation>Не удалось загрузить страницу предпросмотра (%1).</translation>
     </message>
 </context>
 <context>
@@ -4948,6 +4949,11 @@
         <location line="+13"/>
         <source>Text (MD)</source>
         <translation>Текст (MD)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Preview</source>
+        <translation>Предпросмотр</translation>
     </message>
     <message>
         <location line="+1"/>

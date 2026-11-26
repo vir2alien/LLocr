@@ -14,8 +14,11 @@ Rectangle {
     property string editorMarkdown: ""
     property var editorBlockMap: []
     property var editorBlockMd: []
-    // The segmented switch's state: raw markdown editor or the WYSIWYG one.
-    property bool wysiwygActive: false
+    // The segmented switch's state: the raw markdown, the rendered preview or
+    // the WYSIWYG editor (ADR 331).
+    property int viewMode: 0
+    readonly property bool previewActive: viewMode === 1
+    readonly property bool wysiwygActive: viewMode === 2
 
     readonly property var selectedRange: Controller.selectedBlockTextRange
 
@@ -23,7 +26,9 @@ Rectangle {
         id: editorDebounce
         interval: 250
         onTriggered: {
-            if (root.wysiwygActive)
+            // The preview and the editor read the same encoded markdown — the
+            // crop references travel as data: URIs (ADR 296).
+            if (root.previewActive || root.wysiwygActive)
                 Controller.requestEditorMarkdown(textArea.text)
         }
     }
@@ -41,7 +46,7 @@ Rectangle {
     LLOLabel {
         anchors.centerIn: parent
         verticalAlignment: Text.AlignVCenter
-        visible: !Controller.hasResult && !root.wysiwygActive
+        visible: !Controller.hasResult && !root.previewActive && !root.wysiwygActive
         text: qsTr("Recognized text will appear here")
         color: Theme.textMuted
         horizontalAlignment: Text.AlignHCenter
@@ -118,10 +123,11 @@ Rectangle {
                 id: viewSwitch
                 options: [
                     { label: qsTr("Text (MD)") },
+                    { label: qsTr("Preview") },
                     { label: qsTr("WYSIWYG") }
                 ]
-                currentIndex: root.wysiwygActive ? 1 : 0
-                onActivated: (index) => root.wysiwygActive = index === 1
+                currentIndex: root.viewMode
+                onActivated: (index) => root.viewMode = index
             }
         }// RowLayout text menu
         Rectangle {
@@ -133,7 +139,7 @@ Rectangle {
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: root.wysiwygActive ? 1 : 0
+            currentIndex: root.viewMode
 
             Flickable {
                 id: textFlickable
@@ -202,17 +208,24 @@ Rectangle {
                         function onResultChanged() {
                             // The push defers itself inside the page while
                             // the user is typing (editor.js dirty/stale).
-                            if (root.wysiwygActive)
+                            if (root.previewActive || root.wysiwygActive)
                                 editorDebounce.restart()
                             textArea.reload()
                         }
                         function onPageChanged() {
                             textArea.reload()
-                            if (root.wysiwygActive)
+                            if (root.previewActive || root.wysiwygActive)
                                 editorDebounce.restart()
                         }
                     }
                 }
+            }
+
+            Loader {
+                id: previewLoader
+                active: root.previewActive
+                onActiveChanged: if (active) editorDebounce.restart()
+                sourceComponent: previewComponent
             }
 
             Loader {
@@ -233,12 +246,26 @@ Rectangle {
                     ed.highlightBox(Controller.selectedBoxIndex)
                 return
             }
+            // The preview is a render, not a map: a block selected elsewhere
+            // has nothing to scroll to in it.
+            if (root.previewActive)
+                return
             const range = root.selectedRange
             if (range.length !== 2)
                 return
             if (textArea.activeFocus)
                 return
             textFlickable.ensureVisible(textArea.positionToRectangle(range[0]))
+        }
+    }
+
+    Component {
+        id: previewComponent
+        MarkdownPreview {
+            markdown: root.editorMarkdown
+            dark: Theme.dark
+            bgColor: Theme.surfaceAlt
+            fgColor: Theme.textPrimary
         }
     }
 

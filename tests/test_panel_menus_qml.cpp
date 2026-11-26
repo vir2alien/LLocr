@@ -36,6 +36,7 @@ private slots:
     void theThreeMenusShareOneHeight();
     void theSelectAllButtonIsTheAppsButton();
     void theZoomStandsInTheToolbar();
+    void theSwitchOffersThePreview();
 
 private:
     std::unique_ptr<QObject> loadFile(const QString &relativePath, qreal width, qreal height);
@@ -360,6 +361,24 @@ ColumnLayout {
     QMetaObject::invokeMethod(percentButton, "click");
     QTest::qWait(20);
     QVERIFY(qAbs(zoomOf(bar) - 1.0) < 0.0001);
+}
+
+// The work panel's switch has three positions: the raw markdown, the
+// rendered preview and the editor (ADR 331).
+void TestPanelMenusQml::theSwitchOffersThePreview()
+{
+    const std::unique_ptr<QObject> panel = loadFile(QStringLiteral("MainWindow/WorkPanel.qml"), 400, 600);
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *viewSwitch = findByClassName(panel.get(), QLatin1String("SegmentedControl"));
+    QVERIFY2(viewSwitch, "the panel must carry its view switch");
+
+    const QVariantList options = viewSwitch->property("options").toList();
+    QCOMPARE(options.size(), 3);
+    QCOMPARE(options.at(0).toMap().value(QStringLiteral("label")).toString(), QStringLiteral("Text (MD)"));
+    QCOMPARE(options.at(1).toMap().value(QStringLiteral("label")).toString(), QStringLiteral("Preview"));
+    QCOMPARE(options.at(2).toMap().value(QStringLiteral("label")).toString(), QStringLiteral("WYSIWYG"));
+    QCOMPARE(viewSwitch->property("currentIndex").toInt(), 0);
 }
 
 QTEST_MAIN(TestPanelMenusQml)

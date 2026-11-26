@@ -354,7 +354,8 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("formula")));
     QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("reference")));
     QCOMPARE(qwenFix->blockPrompts.value(QStringLiteral("equation")),
-             QStringLiteral("OK if the OCR candidate matches the image, FIX followed by the corrected LaTeX if not, REVIEW if the image is cut off by the crop, covered, overlapped, faded, too small to resolve or otherwise unreadable."));
+             QStringLiteral("OK if the OCR candidate matches the image, FIX followed by the corrected LaTeX if not, REVIEW if the image is cut off by the crop, covered, overlapped, faded, too small "
+                            "to resolve or otherwise unreadable."));
     for (auto it = fixRequests->prompts.blockPrompts.constBegin(); it != fixRequests->prompts.blockPrompts.constEnd(); ++it) {
         if (it.key() == QStringLiteral("equation"))
             continue;  // its own minimal measured wording, pinned above

@@ -2351,6 +2351,19 @@ appendix at the end of this file.
   (`SettingsStore::runtimeIgnoredBuild`). The card offers the update or says
   nothing about it; the states are available → installing → up to date, plus
   the failure (ADR 315).
+- **331.** The work panel's preview tab is back, beside the editor. The
+  switch has three positions — «Text (MD)», «Preview», «WYSIWYG» — and the
+  middle one renders the page's markdown through the bundle the export
+  already uses (`qrc:/preview/preview.html`: marked → DOMPurify → KaTeX), so
+  the panel shows what the HTML/PDF file carries. The preview is a render,
+  not a map: it takes no clicks and highlights no block (ADR 294 gave the
+  block mapping to the editor), and the raw tab keeps the tap-to-block and
+  the block-range highlight. The preview and the editor read one markdown —
+  the page's text with the crop references inlined as `data:` URIs
+  (`encodePreviewMarkdown`) — so an edit made in the editor is in the
+  preview on the next push and no second encode path exists. The view is
+  created lazily (a `Loader`): the page's WebEngine view lives only while
+  the tab is open.
 
 
 ### Security & secrets

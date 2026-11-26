@@ -38,6 +38,7 @@ GPU-инициализация прерывается (особенность с
 | Модели (адаптеры, decision, fix/read) | `test_ocr_models`, `test_crop_scaling`, `test_pagemodel`, `test_page_edit_store`, `test_box_model`, `test_decision_model`, `test_fix_protocol`, `test_fix_diff_gate`, `test_external_runtime` |
 | Документ, страницы, разметка, ориентация | `test_page_status`, `test_layout`, `test_project_store`, `test_document_model`, `test_page_document`, `test_block_placement`, `test_page_rotation`, `test_page_orientation`, `test_djvu_document`* , `test_app_import` |
 | Редактор (WYSIWYG-страница, pull, обёртка) | `test_editor_page`, `test_editor_pull`, `test_editor_qml` |
+| Предпросмотр (страница предпросмотра, набор экспорта) | `test_preview_page`, `test_export_renderer` |
 | Импорт, настройки, профили | `test_settings_store`, `test_request_profile`, `test_request_budget`, `test_launch_profile`, `test_launch_config` |
 | QML (вкладка запуска, мастер, переключатель) | `test_launch_tab_qml`, `test_setup_wizard_qml`, `test_segmented_control_qml` |
 | QML (таблица задач и её попапы) | `test_task_models_table_qml`, `test_task_connection_tab_qml` |

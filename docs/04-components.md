@@ -465,13 +465,18 @@ QML suite:
   which `main.cpp` connects to `QQmlApplicationEngine::retranslate()`. ✅
 
 ## 4.15 Markdown preview
-- The right text pane has a **Preview** switch that renders the current page's
-  Markdown in a `QtWebEngine` view (`MarkdownPreview.qml`). ✅
-- Rendering is done client-side by bundled `marked` + `KaTeX` assets
-  (`resources/preview/`), so LaTeX formulas, tables, and images render
+- The right text pane's switch has three positions — **Text (MD)**,
+  **Preview** and **WYSIWYG** — and the preview renders the current page's
+  Markdown in a `QtWebEngine` view (`MarkdownPreview.qml`, ADR 331). ✅
+- Rendering is done client-side by the bundled `marked` + `DOMPurify` +
+  `KaTeX` assets (`resources/preview/`) — the same bundle the HTML/PDF
+  export renders through — so LaTeX formulas, tables, and images render
   locally with no network access. ✅
-- `image://ocr/crop/<N>` references are converted to `data:` URIs before
-  rendering (`AppController::resolveImagesForPreview`). ✅
+- The crop references travel as `data:` URIs: the preview and the editor
+  read one markdown, encoded by `AppController::encodePreviewMarkdown`. ✅
+- The preview is a render, not a map: it carries no block map — the
+  tap-to-block and the block highlight stay in the **Text (MD)** tab and in
+  the editor (ADR 294). ✅
 
 ## 4.16 Local runtime (managed llama.cpp)
 The managed-runtime layer (`src/runtime/`) lets LLocr start, own and stop a
