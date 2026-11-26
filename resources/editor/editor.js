@@ -6,10 +6,11 @@
 let bridge = null;
 let vditor = null;
 let reference = "";      // the editor's serialization of the last applied push
-let rawLast = null;      // the markdown of the last model push, as received
 let lastEditor = "";     // the editor's serialization the pulls slice against
 let domBlocks = 0;       // the DOM block count of the synced state
-let blockMd = [];        // the pushed markdown of every tagged block
+let blockMd = [];        // the document the DOM shows, block by block: a
+                        // push's fragments as received, a pulled block as
+                        // the page serialized it
 let pushToken = 0;       // identifies the push the page's content derives from
 let dirty = false;       // the DOM holds text the model has not seen yet
 let stale = false;       // a model push was skipped while dirty; fetched at the next settle
@@ -198,7 +199,9 @@ function pull() {
     if (suppressPull)
         return;
     if (blockStructureChanged()) {
-        pushPage(rawLast, null);
+        // From blockMd: the rebuilt DOM must be the document the fragments
+        // describe — a pull the model already holds stays on the page.
+        pushPage(blockMd.join("\n\n"), null);
         return;
     }
     retagBlocks();
@@ -262,15 +265,6 @@ function applyTheme(t) {
 function pushPage(markdown, theme) {
     applyTheme(theme);
     retagBlocks();
-    rawLast = markdown;
-    if (markdown === lastEditor) {
-        // The model's raw join already equals the editor's serialization:
-        // the DOM — and with it the caret and the undo stack — stays
-        // untouched.
-        dirty = false;
-        stale = false;
-        return;
-    }
     pushToken += 1;
     dirty = false;
     stale = false;
@@ -304,7 +298,21 @@ function pushDocument(markdown, theme, nextBlockMd) {
         armSettle();
         return;
     }
-    blockMd = nextBlockMd || [];
+    // The push that answers a pull carries the fragments the DOM already
+    // shows — the pulled block is the very markdown the page sent — and
+    // leaves the DOM, the caret and the undo stack untouched. The fragments
+    // are the baseline, never the editor's serialization: it normalizes the
+    // same document (a closing newline, a trailing space), and the rebuild
+    // such a comparison asked for dropped the caret to the start of the page
+    // after every pause in typing.
+    const incoming = nextBlockMd || [];
+    if (incoming.length === blockMd.length && incoming.every((md, i) => md === blockMd[i])) {
+        applyTheme(theme);
+        dirty = false;
+        stale = false;
+        return;
+    }
+    blockMd = incoming;
     pushPage(markdown, theme);
 }
 

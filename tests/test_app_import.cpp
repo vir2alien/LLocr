@@ -3548,6 +3548,60 @@ private slots:
         QCOMPARE(controller.projectPath().toLocalFile(), secondPath);
     }
 
+    // A project whose saved page text is not the join of its blocks — saved
+    // under another setting, or by an older build — carries a text the
+    // fragments cannot reproduce. Nothing is layered and the canonical
+    // document stands at load (ADR 296): the text the editor is pushed is
+    // the join, so the answer to the editor's first pull is the document it
+    // already shows. Left as stored, the join first arrived with that pull
+    // and rebuilt the editor under the caret.
+    void anUnmappablePageTextLeavesTheCanonicalDocumentAtLoad()
+    {
+        ProjectData data;
+        ProjectSource source;
+        source.id = 0;
+        source.originalName = QStringLiteral("scan page.png");
+        source.typeName = QStringLiteral("image");
+        source.sourcePath = m_raster;
+        data.sources.append(source);
+
+        ProjectPageData page;
+        page.sourceId = 0;
+        page.recognized = true;
+        page.recognitionMode = PageRecognitionMode::MarkupOcr;
+        BoundingBox body;
+        body.label = QStringLiteral("text");
+        body.text = QStringLiteral("Body text");
+        body.rect = QRectF(0.1, 0.1, 0.8, 0.3);
+        page.boxes.append(body);
+        BoundingBox number;
+        number.label = QStringLiteral("page_number");
+        number.text = QStringLiteral("7");
+        number.rect = QRectF(0.1, 0.8, 0.2, 0.1);
+        page.boxes.append(number);
+        page.text = body.text;
+        data.pages.append(page);
+
+        const QString projectPath = m_dir.filePath(QStringLiteral("unmappable.llocr"));
+        QString error;
+        QVERIFY2(ProjectStore::save(projectPath, data, &error), qPrintable(error));
+
+        auto &controller = *m_controller;
+        controller.openProject(QUrl::fromLocalFile(projectPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+        QCOMPARE(controller.pageCount(), 1);
+
+        // The page text at load is the join: the block the stored text
+        // dropped is back, and a rebuild from the blocks — what Revert runs —
+        // changes nothing. How the number renders is the parser's; that it
+        // stands in the document is the load's.
+        const QString atLoad = controller.resultText();
+        QVERIFY2(atLoad.contains(QLatin1String("7")), qPrintable(atLoad));
+        controller.revertCurrentPageEdits();
+        QCOMPARE(controller.resultText(), atLoad);
+        QVERIFY(!controller.currentPageEdited());
+    }
+
     // The turn drops the page's recognition: the blocks were read from the
     // old turn and say nothing about the new one.
     void theTurnDropsTheRecognition()

@@ -2398,6 +2398,22 @@ appendix at the end of this file.
   preview on the next push and no second encode path exists. The view is
   created lazily (a `Loader`): the page's WebEngine view lives only while
   the tab is open.
+- **337.** The editor's push baseline is the fragments, not the editor's own
+  serialization (amending ADR 295 and ADR 296). `pushDocument` leaves the
+  DOM — the caret, the undo stack — untouched when every pushed fragment
+  equals the one the page tracks for that block (`blockMd`: a push's
+  fragments as received, a pulled block as the page serialized it). The
+  earlier verdict compared the model's join with `vditor.getValue()`, and
+  the editor normalizes the same document (a closing newline after a display
+  formula, a trailing space), so the push that answered a pull rebuilt the
+  page under the caret after every pause in typing. The page pushed back
+  over a structural change is rebuilt from the same fragments, so a pull the
+  model already holds stays on the page. At load, a legacy page text the
+  fragments cannot reproduce takes the canonical join at once — the stored
+  text stood until the page's next refresh, and the editor, pushed the page
+  text, met an answer to its first pull that differed from the document on
+  screen (`thePushThatAnswersAPullLeavesTheCaretWhereItIs`,
+  `anUnmappablePageTextLeavesTheCanonicalDocumentAtLoad`).
 
 
 ### Security & secrets

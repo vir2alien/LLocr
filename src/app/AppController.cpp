@@ -2384,16 +2384,26 @@ void AppController::notifyPageChanged()
 void AppController::migrateLegacyProjectText()
 {
     const ParserOptions options = parserOptions();
-    QWriteLocker locker(&m_documentLock);
-    for (int i = 0; i < m_document.pageCount(); ++i) {
-        DocumentPage &page = m_document.page(i);
-        if (!page.recognized || page.result.pages.isEmpty())
-            continue;
-        OcrPage &ocrPage = page.result.pages[0];
-        if (renderPageText(ocrPage, options).text == page.result.text)
-            continue;
-        migrateLegacyPageText(ocrPage, page.result.text, options);
+    QList<int> unmapped;
+    {
+        QWriteLocker locker(&m_documentLock);
+        for (int i = 0; i < m_document.pageCount(); ++i) {
+            DocumentPage &page = m_document.page(i);
+            if (!page.recognized || page.result.pages.isEmpty())
+                continue;
+            OcrPage &ocrPage = page.result.pages[0];
+            if (renderPageText(ocrPage, options).text == page.result.text)
+                continue;
+            // A text the fragments cannot reproduce layers nothing, and the
+            // stored one must not stand in for the join: the WYSIWYG editor
+            // is pushed the page text, and its first pull would answer with a
+            // document that differs from the one on screen.
+            if (!migrateLegacyPageText(ocrPage, page.result.text, options))
+                unmapped.append(i);
+        }
     }
+    for (int pageIndex : unmapped)
+        refreshPageDocument(pageIndex);
 }
 
 // The segments the page pushes must live in the same serialization as the
