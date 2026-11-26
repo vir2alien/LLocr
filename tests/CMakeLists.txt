@@ -18,6 +18,7 @@
 # needs the shipped data. Declared once so adding a model does not mean editing
 # every test target (docs/19-testing.md, finding 6).
 set(LLOCR_MODEL_PROFILE_FILES
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/external-universal.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-4b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-9b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/gemma-4-e4b.json"

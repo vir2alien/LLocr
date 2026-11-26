@@ -254,6 +254,10 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
     const QList<ModelProfiles::Profile> profiles = all ? ModelProfiles::instance() : ModelProfiles::forRole(ModelProfiles::instance(), m_role);
     QList<Row> rows;
     for (const ModelProfiles::Profile &profile : std::as_const(profiles)) {
+        // A weights-less profile (ADR 336) lists only while its task runs on
+        // the external endpoint: there is nothing on this machine behind it,
+        // so the whole-catalog list never shows it either.
+        const bool externalOnly = profile.externalOnly && !all && !m_installer.taskRunsLocally(m_role);
         Row row;
         row.key = profile.id;
         row.title = profile.title;
@@ -295,7 +299,7 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
             quant.ramBytes = req.requiredRamBytes;
             quant.cpuOffload = profile.memory.valid && profile.memory.cpuOffload;
         }
-        if (!row.quants.isEmpty())
+        if (!row.quants.isEmpty() || externalOnly)
             rows.append(row);
     }
 

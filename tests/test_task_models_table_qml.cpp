@@ -992,6 +992,24 @@ void TestTaskModelsTableQml::theDraftRuntimeModesReachTheInstaller()
     modes = m_modelInstaller->draftModes();
     QCOMPARE(modes.value(QStringLiteral("fix")).toString(), QStringLiteral("external"));
     QCOMPARE(modes.value(QStringLiteral("decision")).toString(), QStringLiteral("managed"));
+
+    // The toggle of the row reaches the installer from the SegmentedControl
+    // itself, not only through the function above — the model dropdown of the
+    // row rebuilds from exactly this publish (ADR 336).
+    QList<QQuickItem *> toggles = itemsByType(qobject_cast<QQuickItem *>(table.get()), QStringLiteral("SegmentedControl"));
+    QQuickItem *fixToggle = nullptr;
+    for (QQuickItem *item : toggles) {
+        if (item->isVisible())
+            fixToggle = item;  // the measuring probe stays invisible; the rows follow the draft's task order
+    }
+    QVERIFY(fixToggle);
+    QVERIFY(QMetaObject::invokeMethod(fixToggle, "activated", Q_ARG(int, 0)));
+    QCoreApplication::processEvents();
+    QCOMPARE(m_modelInstaller->draftModes().value(QStringLiteral("fix")).toString(), QStringLiteral("managed"));
+
+    QVERIFY(QMetaObject::invokeMethod(fixToggle, "activated", Q_ARG(int, 1)));
+    QCoreApplication::processEvents();
+    QCOMPARE(m_modelInstaller->draftModes().value(QStringLiteral("fix")).toString(), QStringLiteral("external"));
 }
 
 // The gear popup must not swallow the click that hits the window under it:// the Save of the window is the way the alias is written, and a click that

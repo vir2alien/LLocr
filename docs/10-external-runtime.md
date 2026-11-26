@@ -172,6 +172,26 @@ reaches the UI, never an empty field.
   memory (the last 500 records — a page is the user's document) and the API
   key never enters it.
 
+### The universal profile (fix, ADR 336)
+
+Settings → Модели lists one weights-less profile — **Универсальная**
+(`external-universal`) — in the «Исправление блока» row while that row
+runs **Внешний**. It serves whatever multimodal model the endpoint runs: no
+files, no launch layer, no download, and the wire model name stays the row's
+alias (`tasks/fix/modelName`) as for any external task. The profile carries
+only OpenAI-compatible request parameters — temperature 0, top_p 1,
+stream false, stop `</CANDIDATE>`, `max_tokens` from the profile's
+`maxOutput` — editable in the gear popup's **Запрос** tab and persisted as a
+user copy like any profile's; the prompts are the shared `fix-requests`
+texts, the read task takes the shared reader. Thinking is off:
+`enable_thinking=false` rides every request, no reasoning budget is sent, and
+a server that inlines `<think>` into the content loses the block before
+parsing (a closed block is dropped whole, an unterminated one takes the rest
+of the reply). The profile never reaches a managed row: switching the row
+back to **Управляемый** drops it from the dropdown — the pick falls back to
+the fix default — and a pick that outlives the switch in the saved settings
+reads as the default again.
+
 ## 4. Appendix: model repositories for external use
 
 Repos that were listed for serving the tasks from an external server
@@ -221,11 +241,14 @@ the alias the server knows the model under — e.g. `http://127.0.0.1:8000/v1`):
   task there is no server at all.
 - **ADR 320** — the log window has two sources: the server's output and the
   request journal are both shown, in every mode.
+- **ADR 336** — the universal fix profile is external-only: a weights-less
+  profile with OpenAI-compatible request parameters only, listed for the fix
+  row while it runs external, never a role default.
 
 ## 6. Links
 
 - Glossary and decision record: `docs/07-glossary.md` (ADR 226–235, 283,
-  318–320).
+  318–320, 336).
 - The fix task's models: `docs/16-model-qwen3.5.md`.
 - The decision model: `docs/17-model-minicpm-jev.md`.
 - Russian mirror: `docs/10-external-runtime.ru.md`.

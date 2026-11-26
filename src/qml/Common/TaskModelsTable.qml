@@ -482,9 +482,12 @@ Item {
                     options: table.runtimeOptions
                     currentIndex: taskRow.external ? 1 : 0
                     onActivated: (index) => {
-                        taskRow.entry.runtimeMode = index === 1 ? "external" : "managed"
-                        taskRow.entry.runtimeModeEdited = true
-                        table.edited()
+                        // The published draft modes are what the model
+                        // dropdown rebuilds from: an external-only profile
+                        // (ADR 336) enters and leaves the list on this very
+                        // click, and the managed pick falls back through the
+                        // installer's changed signal.
+                        table.setRuntimeModeForTask(taskRow.task, index === 1 ? "external" : "managed")
                     }
                 }
 

@@ -114,8 +114,15 @@ QString RequestProfileStore::activeProfileId() const
         id = m_settings.fixRequestProfileId();
         break;
     }
-    if (m_profiles.isKnown(id))
-        return id;
+    if (m_profiles.isKnown(id)) {
+        // A weights-less profile answers no local runtime (ADR 336): a pick
+        // that outlived the mode switch reads as the role default instead.
+        const ModelProfiles::Profile *picked = ModelProfiles::find(m_modelProfiles, id);
+        if (picked && picked->externalOnly && m_settings.isManagedRole(connectionRoleName(m_role)))
+            id = ModelProfiles::defaultIdForRole(m_modelProfiles, connectionRoleName(m_role));
+        else
+            return id;
+    }
     if (!m_profiles.builtIn().isEmpty())
         return m_profiles.builtIn().constFirst().id;
     return id;

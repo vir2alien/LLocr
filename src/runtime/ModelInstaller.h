@@ -86,6 +86,12 @@ public:
     const QList<ModelEntry> &installedEntries() const { return m_installed; }
     RuntimeController &runtime() { return m_runtime; }
 
+    // A task that runs externally has its model on the other server: the
+    // local file is not its. The draft of the window wins over the saved
+    // mode — the task rows show the draft (ADR 318). The model lists read it
+    // to show a weights-less profile (ADR 336) only for an external task.
+    bool taskRunsLocally(const QString &task) const;
+
     Q_INVOKABLE void reloadPresets();
     Q_INVOKABLE QString setActiveModel(int index, const QString &task = QStringLiteral("blockRecognition"));
     Q_INVOKABLE QString removeModel(int index);
@@ -158,11 +164,6 @@ private:
     };
 
     void reloadPresetsInternal();
-
-    // A task that runs externally has its model on the other server: the
-    // local file is not its. The draft of the window wins over the saved
-    // mode — the task rows show the draft (ADR 318).
-    bool taskRunsLocally(const QString &task) const;
 
     void reportStaleSelections(const ReconcileResult &report);
 

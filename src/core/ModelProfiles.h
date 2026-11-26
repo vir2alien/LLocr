@@ -112,6 +112,10 @@ public:
         QString license;
         QString runtimeNote;
         bool isDefault = false;
+        // Serves external endpoints only (ADR 336): no weights to download, no
+        // launch layer, so it must never surface as a role default and only
+        // reaches a task's model list while that task runs externally.
+        bool externalOnly = false;
         Files files;
         Memory memory;
         QHash<QString, Role> roles;

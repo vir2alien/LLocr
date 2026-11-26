@@ -445,6 +445,10 @@ void TestModelMemoryEstimator::everyProfileCarriesItsArchitecture()
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     QVERIFY(!profiles.isEmpty());
     for (const ModelProfiles::Profile &profile : profiles) {
+        // The universal profile runs on the other server (ADR 336): there is
+        // no local run to estimate, so it ships no architecture at all.
+        if (profile.externalOnly)
+            continue;
         QVERIFY2(profile.memory.valid, qPrintable(profile.id));
         QVERIFY(profile.memory.nEmbd > 0);
         QVERIFY(profile.memory.nLayer > 0);

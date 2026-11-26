@@ -32,6 +32,7 @@ private slots:
     void checkModelBlockPromptsOverridePerType();
     void fixRolesShipTheCorrectionProtocol();
     void fixRequestProfilesCarryNoReasoningBudget();
+    void externalOnlyProfileShipsRequestsOnly();
     void rolePromptsFallBackToTheSharedProfile();
     void requestProfilesCarryTheSharedRequests();
     void runtimeNoteReachesTheSettings();
@@ -275,7 +276,13 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     const QStringList fixModels = ModelProfiles::idsForRole(profiles, QStringLiteral("fix"));
-    QCOMPARE(fixModels, QStringList({QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-26b-a4b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
+    QCOMPARE(fixModels,
+             QStringList({QStringLiteral("external-universal"),
+                          QStringLiteral("gemma-4-12b"),
+                          QStringLiteral("gemma-4-26b-a4b"),
+                          QStringLiteral("gemma-4-e4b"),
+                          QStringLiteral("qwen3.5-4b"),
+                          QStringLiteral("qwen3.5-9b")}));
 
     const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
     QVERIFY(fixRequests);
@@ -445,13 +452,79 @@ void TestModelPresetCatalog::fixRequestProfilesCarryNoReasoningBudget()
     // The qwen3.5 and gemma pairs declare the capability (the gemma chat
     // template carries the enable_thinking switch and the thought channel —
     // verified on llama.cpp b11799). Every shipped fix model thinks; the last
-    // one without a thinking channel was cut (ADR 335).
-    for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix")))
+    // one without a thinking channel was cut (ADR 335). The universal profile
+    // runs who-knows-what on the other server, so it ships thinking off.
+    for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
+        if (id == QLatin1String("external-universal"))
+            continue;
         QVERIFY2(ModelProfiles::roleFor(id, QStringLiteral("fix"))->reasoningSupported, qPrintable(id));
+    }
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-9b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-e4b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-12b"), QStringLiteral("fix"))->reasoningSupported);
+}
+
+// The universal fix profile (ADR 336) serves whatever multimodal model the
+// user's external endpoint runs: it ships no weights, no launch layer and no
+// wording of its own — the OpenAI-compatible request parameters are the whole
+// payload, and the texts fall back to the shared fix profile. It must never
+// become the role's default and never lose that request list.
+void TestModelPresetCatalog::externalOnlyProfileShipsRequestsOnly()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const ModelProfiles::Profile *universal = ModelProfiles::find(profiles, QStringLiteral("external-universal"));
+    QVERIFY2(universal, "the external-universal profile ships");
+    QVERIFY(universal->externalOnly);
+    QVERIFY(universal->files.repo.isEmpty());
+    QVERIFY(universal->files.quants.isEmpty());  // nothing to download
+    QVERIFY(universal->minBuild.isEmpty());      // nothing local to gate
+    QVERIFY(universal->memory.nEmbd == 0);       // no memory estimate exists
+    QCOMPARE(universal->roles.size(), 1);        // fix only: the other tasks are model-specific
+
+    const ModelProfiles::Role *fix = ModelProfiles::roleFor(*universal, QStringLiteral("fix"));
+    QVERIFY(fix);
+    QCOMPARE(fix->protocol, QStringLiteral("full_block"));
+    QVERIFY(!fix->reasoningSupported);
+    QVERIFY(fix->launch.isEmpty());
+
+    // The texts are the shared fix profile's (ADR 182); the reader's are the
+    // shared read profile's (no overrides shipped).
+    const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
+    QVERIFY(fixRequests);
+    QCOMPARE(fix->promptProfile, QStringLiteral("fix-requests"));
+    QCOMPARE(fix->systemPrompt, fixRequests->prompts.systemPrompt);
+    QCOMPARE(fix->blockPrompts, fixRequests->prompts.blockPrompts);
+    QCOMPARE(fix->blockAliases, fixRequests->prompts.blockAliases);
+    QVERIFY(fix->readSystemPrompt.isEmpty());
+    QVERIFY(fix->readBlockPrompts.isEmpty());
+
+    // The request layer: only fields an OpenAI-compatible endpoint accepts;
+    // max_tokens rides on top of the profile's own list (ADR 193's budget is
+    // a setting, not a profile entry — reasoning stays off here anyway).
+    const QList<RequestParameter> request = ModelProfiles::requestWithMaxOutput(profiles, QStringLiteral("external-universal"), QStringLiteral("fix"));
+    QStringList names;
+    for (const RequestParameter &parameter : request)
+        names.append(parameter.name);
+    QCOMPARE(names, QStringList({QStringLiteral("temperature"), QStringLiteral("top_p"), QStringLiteral("stream"), QStringLiteral("stop"), QStringLiteral("max_tokens")}));
+    for (const RequestParameter &parameter : request) {
+        if (parameter.name == QLatin1String("temperature"))
+            QCOMPARE(parameter.value.toDouble(), 0.0);
+        if (parameter.name == QLatin1String("top_p"))
+            QCOMPARE(parameter.value.toDouble(), 1.0);
+        if (parameter.name == QLatin1String("stream"))
+            QCOMPARE(parameter.value.toBool(), false);
+        if (parameter.name == QLatin1String("stop"))
+            QCOMPARE(parameter.value.toStringList().join(QLatin1Char(' ')), QStringLiteral("</CANDIDATE>"));
+        if (parameter.name == QLatin1String("max_tokens"))
+            QCOMPARE(parameter.value.toInt(), 8192);
+    }
+
+    // A default or a fallback must never land on the universal profile, but
+    // the role lists keep it (the dropdown and the request store read them).
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("fix")), QStringLiteral("qwen3.5-4b"));
+    QVERIFY(ModelProfiles::idsForRole(profiles, QStringLiteral("fix")).contains(QStringLiteral("external-universal")));
+    QCOMPARE(ModelProfiles::forRole(profiles, QStringLiteral("fix")).constLast().id, QStringLiteral("external-universal"));
 }
 
 // A prompt is a calibration like the thresholds (ADR 267): the shared request

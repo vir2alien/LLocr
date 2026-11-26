@@ -228,6 +228,7 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
     profile.license = root.value(QStringLiteral("license")).toString();
     profile.runtimeNote = root.value(QStringLiteral("runtimeNote")).toString();
     profile.isDefault = root.value(QStringLiteral("default")).toBool(false);
+    profile.externalOnly = root.value(QStringLiteral("externalOnly")).toBool(false);
     profile.files = readFiles(root, profile.id, error);
     if (!error.isEmpty())
         return profile;
@@ -511,17 +512,22 @@ QString ModelProfiles::quantIdForFile(const QString &repo, const QString &fileNa
 
 QString ModelProfiles::defaultIdForRole(const QList<Profile> &profiles, const QString &role)
 {
+    // An external-only profile answers no local runtime: it stays out of the
+    // defaults and out of the last-resort first-in-list fallback (ADR 336).
     for (const Profile &profile : profiles) {
         const Role *modelRole = roleFor(profile, role);
-        if (modelRole && modelRole->isDefault)
+        if (modelRole && modelRole->isDefault && !profile.externalOnly)
             return profile.id;
     }
     for (const Profile &profile : profiles) {
-        if (profile.isDefault && roleFor(profile, role))
+        if (profile.isDefault && !profile.externalOnly && roleFor(profile, role))
             return profile.id;
     }
-    const QStringList ids = idsForRole(profiles, role);
-    return ids.isEmpty() ? QString() : ids.constFirst();
+    for (const Profile &profile : profiles) {
+        if (!profile.externalOnly && roleFor(profile, role))
+            return profile.id;
+    }
+    return QString();
 }
 
 QStringList ModelProfiles::idsForRole(const QList<Profile> &profiles, const QString &role)

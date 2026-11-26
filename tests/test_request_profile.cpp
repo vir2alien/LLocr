@@ -607,6 +607,41 @@ private slots:
         QVERIFY(store2.activeProfile() == parseBuiltInDefaults());
     }
 
+    // A weights-less profile answers no local runtime (ADR 336): while the
+    // task runs managed, a pick pointing at the universal profile reads as the
+    // role default; while it runs externally, the pick stands.
+    void storeFallsBackFromTheUniversalProfileOnAManagedTask()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+
+        ModelProfiles::Profile universal;
+        universal.id = QStringLiteral("external-universal");
+        universal.title = universal.id;
+        universal.externalOnly = true;
+        ModelProfiles::Role universalRole;
+        universalRole.protocol = QStringLiteral("full_block");
+        universal.roles.insert(QStringLiteral("blockRecognition"), universalRole);
+
+        ModelProfiles::Profile local = makeProfile(QStringLiteral("local-model"), defaultParameters());
+        local.roles[QStringLiteral("blockRecognition")].isDefault = true;
+
+        RequestProfileStore store(settings);
+        store.setModelProfiles({universal, local});
+
+        settings.setModelRecipeId(QStringLiteral("external-universal"));
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("external"));
+        QCOMPARE(store.activeProfileId(), QStringLiteral("external-universal"));
+
+        settings.setRuntimeModeForRole(QStringLiteral("blockRecognition"), QStringLiteral("managed"));
+        QCOMPARE(store.activeProfileId(), QStringLiteral("local-model"));
+
+        settings.setModelRecipeId(QStringLiteral("local-model"));
+        QCOMPARE(store.activeProfileId(), QStringLiteral("local-model"));
+    }
+
     void legacyUserFileAdoptedByDefaultProfile()
     {
         QTemporaryDir dir;

@@ -1030,6 +1030,34 @@ appendix at the end of this file.
   8192` and `fit-target 512`; `minBuild` b12137 — older builds silently
   parse `auto` as 0 (`atoi`). Manual: `docs/15-model-gemma-4.md`; method and
   calibration: `docs/18-memory-estimate.md` §6.1.
+- **336.** The fix task gains an external-only universal profile
+  (`external-universal`): a weights-less model profile (`externalOnly: true` —
+  no `files`, no `memory`, no `minBuild`, no launch layer) that serves
+  whatever multimodal model the user's external endpoint runs. External
+  OpenAI-compatible VLMs are interchangeable for fix/read, and the per-model
+  calibration the shipped profiles carry (prompts, thresholds, image budgets)
+  cannot exist for a model the app never sees. The profile carries only
+  OpenAI-compatible request parameters — temperature 0, top_p 1,
+  stream false, stop `</CANDIDATE>`; the llama.cpp-only fields
+  (`repeat_penalty`, `cache_prompt`, `reasoning_budget_tokens`) stay out — and
+  names the shared `fix-requests` texts; the reader takes the shared
+  `read-requests` profile (no overrides). The parser reads `externalOnly`
+  into `ModelProfiles::Profile`; `defaultIdForRole` keeps it out of the role
+  defaults and out of the first-in-list fallback; the fix task's model
+  dropdown lists it only while the task runs externally
+  (`ModelQuantModel::buildRows` over `ModelInstaller::taskRunsLocally`, which
+  prefers the row draft — the runtime toggle now publishes the draft modes it
+  always should have), the toggle's own click re-points a managed-invalid
+  pick through the installer's changed signal, and
+  `RequestProfileStore::activeProfileId` falls back to the role default when
+  a stale pick survives a switch to the managed runtime. The wire model name
+  stays where it always lived for an external task: the per-task alias
+  (`tasks/fix/modelName`, ADR 226). Thinking: `reasoning: false` sends no
+  budget, `chat_template_kwargs.enable_thinking=false` asks the model not to
+  think, and a server that inlines `<think>` into the content loses the block
+  in `VisionChatModel::stripControlTokens` — a closed block is dropped whole,
+  an unterminated one takes the rest of the reply (there is no answer behind
+  it). See `docs/10-external-runtime.md`.
 
 ### Verification & fix
 

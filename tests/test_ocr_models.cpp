@@ -633,6 +633,20 @@ private slots:
         QVERIFY2(withThink.status == CheckStatus::Recognized, withThink.errorMessage.text().toUtf8().constData());
         QCOMPARE(withThink.text, QStringLiteral("recognized text"));
 
+        // A server that does not split the reasoning into its own channel
+        // inlines a <think> block (the universal profile runs on those, ADR
+        // 336): a closed block is dropped whole, and an unterminated one takes
+        // the rest of the reply with it — there is no answer behind it.
+        const CheckResult withInlineThink = model.parse("{\"choices\":[{\"message\":{\"content\":"
+                                                        "\"<think>chain of thought</think>\\nrecognized text\"}}]}");
+        QCOMPARE(withInlineThink.status, CheckStatus::Recognized);
+        QCOMPARE(withInlineThink.text, QStringLiteral("recognized text"));
+
+        const CheckResult withOpenThink = model.parse("{\"choices\":[{\"message\":{\"content\":"
+                                                      "\"recognized text\\n<think>and the thinking never ends\"}}]}");
+        QCOMPARE(withOpenThink.status, CheckStatus::Recognized);
+        QCOMPARE(withOpenThink.text, QStringLiteral("recognized text"));
+
         // Trailing end-of-sentence markers must be stripped (ADR 18 parity).
         const CheckResult withMarker = model.parse("{\"choices\":[{\"message\":{\"content\":"
                                                    "\"recognized\\n<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");

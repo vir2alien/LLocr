@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "external-universal",
+  "title": "Универсальная",
+  "externalOnly": true,
+  "roles": {
+    "fix": {
+      "protocol": "full_block",
+      "promptProfile": "fix-requests",
+      "reasoning": false,
+      "maxOutput": 8192,
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "top_p",
+          "value": 1.0,
+          "description": "Nucleus sampling cutoff; 1.0 disables it."
+        },
+        {
+          "order": 3,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 4,
+          "name": "stop",
+          "value": [
+            "</CANDIDATE>"
+          ],
+          "description": "Stop sequences; the reply ends with the verdict even when the model would keep generating. Only the protocol marker belongs here: an end-of-text token listed as a stop word is matched against the reply itself and cuts the answer to nothing."
+        }
+      ]
+    }
+  }
+}

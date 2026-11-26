@@ -111,13 +111,23 @@ QString VisionChatModel::missingAnswerReason(const QByteArray &responseData)
 QString VisionChatModel::stripControlTokens(const QString &text)
 {
     static const QRegularExpression thinkBlock(QStringLiteral(R"( thinking[\s\S]*? response\s*)"));
+    // A server that does not split the reasoning into its own channel (the
+    // universal profile runs on those, ADR 336) leaves the thinking inline:
+    // a closed block is chatter, an unterminated one takes the rest of the
+    // reply — the answer never comes behind it.
+    static const QRegularExpression inlineThink(QStringLiteral(R"(<think>[\s\S]*?</think>)"));
 
     QString out = stripServiceTokens(text);
     out.remove(thinkBlock);
+    out.remove(inlineThink);
 
     const int thinkStart = out.indexOf(QStringLiteral(" thinking"));
     if (thinkStart >= 0)
         out.truncate(thinkStart);
+
+    const int inlineThinkStart = out.indexOf(QStringLiteral("<think>"));
+    if (inlineThinkStart >= 0)
+        out.truncate(inlineThinkStart);
 
     return out.trimmed();
 }

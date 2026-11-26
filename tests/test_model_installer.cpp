@@ -462,6 +462,10 @@ private slots:
     {
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
+        // The default connection mode is external: this test pins the local
+        // listing, so the fix task runs managed and its weights-less profile
+        // stays out (ADR 336).
+        s->settings.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("managed"));
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
@@ -509,6 +513,48 @@ private slots:
         QCOMPARE(quants.first().toMap().value(QStringLiteral("id")).toString(), mineruProfile->files.quants.first().id.toUpper());
         QVERIFY(!roleAt(check, mineru, ModelQuantModel::SelectedInstalledRole).toBool());
         QVERIFY(roleAt(check, mineru, ModelQuantModel::SelectedDownloadableRole).toBool());
+    }
+
+    // The universal fix profile has no weights behind it (ADR 336): the fix
+    // dropdown lists it only while the fix task runs externally, and the
+    // whole-catalog list — the file manager — never shows it.
+    void fixDropdownListsTheUniversalProfileOnlyExternal()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        // The default connection mode is external: pin the managed mode the
+        // test starts from.
+        s->settings.setRuntimeModeForRole(QStringLiteral("fix"), QStringLiteral("managed"));
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+        ModelInstaller &mi = *s->installer;
+
+        auto *fix = quantModel(qobject_cast<QAbstractItemModel *>(mi.fixQuantModels()));
+        QVERIFY(rowOfKey(fix, QStringLiteral("external-universal")) < 0);  // the saved mode is managed
+
+        QVariantMap modes;
+        modes.insert(QStringLiteral("fix"), QStringLiteral("external"));
+        mi.setDraftRuntimeModes(modes);
+        const int universal = rowOfKey(fix, QStringLiteral("external-universal"));
+        QVERIFY(universal >= 0);
+        QCOMPARE(roleAt(fix, universal, ModelQuantModel::TitleRole).toString(), QStringLiteral("Универсальная"));
+        QVERIFY(roleAt(fix, universal, ModelQuantModel::ProfileRole).toBool());
+        QVERIFY(roleAt(fix, universal, ModelQuantModel::QuantsRole).toList().isEmpty());
+        // The local models keep their order; the universal one closes the list.
+        QCOMPARE(universal, fix->rowCount() - 1);
+
+        // The row toggle publishes the mode again: the profile leaves the list,
+        // and the local rows are exactly as before.
+        modes.insert(QStringLiteral("fix"), QStringLiteral("managed"));
+        mi.setDraftRuntimeModes(modes);
+        QVERIFY(rowOfKey(fix, QStringLiteral("external-universal")) < 0);
+        QCOMPARE(fix->rowCount(), 5);
+
+        // The management list has nothing on this machine to manage for it.
+        modes.insert(QStringLiteral("fix"), QStringLiteral("external"));
+        mi.setDraftRuntimeModes(modes);
+        auto *all = quantModel(qobject_cast<QAbstractItemModel *>(mi.allModels()));
+        QVERIFY(rowOfKey(all, QStringLiteral("external-universal")) < 0);
     }
 
     // A quantization the profile does not list — hand-downloaded, or left behind
