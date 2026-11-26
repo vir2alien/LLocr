@@ -118,13 +118,27 @@ again. The transitions are pure functions in
 
 Request to a fix model (assembled in `src/models/FixModel.cpp`):
 
-- `system` = the shared verifier prompt (`resources/profiles/requests/fix-requests.json`);
+- `system` = the shared fix contract (`resources/profiles/requests/fix-requests.json`);
 - `user` = `[block-type prompt, candidate, image]` — the candidate framed
   `OCR candidate:\n<CANDIDATE>\n…\n</CANDIDATE>`; a stored correction is
   never re-sent, the candidate is the block's own effective text;
 - every parameter of the task's request profile goes into the body as a
   top-level field (`VisionChatModel::buildRoot`) — except the stop words on
   a request with thinking (ADR 332).
+
+The contract is explicit (ADR 333). The system prompt names the width of a
+change — "one character, or a run of characters, or a whole word — and
+nothing else", every change visible in the image — and the rules around it:
+nothing is inserted that the image does not show and no ambiguity is resolved
+by guessing; a letter drawn identically in two alphabets is not an error by
+itself (the candidate's script is kept unless the image clearly shows the
+other one); no markup is added that the candidate does not have (a Markdown
+heading prefix, a code fence, a list marker, a table delimiter). The REVIEW
+triggers are enumerated: a character to be corrected is cut off by the crop,
+covered, overlapped, faded or too small to resolve — or the candidate is
+empty. The per-type prompt states the type in four parts: `Correct:` what a
+FIX may change here, `Leave:` what stays as the candidate has it, `Never:`
+what a FIX must not do, and the output instruction.
 
 The reply is exactly one of:
 
@@ -166,8 +180,25 @@ Mismatch. Outcomes are its own statuses `Read` / `ReadFixed` / `ReadDamaged`;
 a run ends with its tally («Прочитано блоков: переписано — N, подтверждено — M,
 не прочитано — K»). Prompt texts live in
 `resources/profiles/requests/read-requests.json`; a fix role may override them
-(`readSystemPrompt`/`readBlockPrompts`) — the Qwen3-VL family does, because it
-reads the shared wording as correction-verification (ADR 267).
+(`readSystemPrompt`/`readBlockPrompts`) — the Qwen3-VL family does: it read the
+shared wording as a correction check and answered REVIEW on every readable
+block (ADR 267), a measurement that is not repeated here, so the override
+stays. Its wording is the shared read contract plus the family's own
+calibration on small print (ADR 334).
+
+The contract is explicit here too (ADR 334). The system prompt names the
+preservation axes (script, case, face, position, spacing, hyphenation, line
+and paragraph breaks, bracket pairing), the identical-glyph rule (a letter
+drawn identically in two alphabets is not a different letter — the script of
+the document is kept), the no-insertion rule (add nothing, complete nothing
+that cannot be fully read) and the scanner-artifact rule (artifacts,
+bleed-through from the reverse side and marks that are not text are ignored).
+The math delimiters are the canonical ones: an inline formula between `\(` and
+`\)`, a display formula between `\[` and `\]`, never `$` or `$$`. The REVIEW
+triggers are the same five as in the fix contract — cut off, covered,
+overlapped, faded, too small to resolve — and the REVIEW line stays in
+**every** read type prompt: the escape is the one thing a type prompt must not
+lose.
 
 Which blocks the read takes is the scope's decision (ADR 311, ADR 322): a page
 without verdicts gives every text block; a page the check has answered anything

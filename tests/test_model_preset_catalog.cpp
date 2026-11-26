@@ -354,16 +354,38 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("formula")));
     QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("reference")));
     QCOMPARE(qwenFix->blockPrompts.value(QStringLiteral("equation")),
-             QStringLiteral("OK if the OCR candidate matches the image, FIX followed by the corrected LaTeX if not, REVIEW if the image is unreadable."));
+             QStringLiteral("OK if the OCR candidate matches the image, FIX followed by the corrected LaTeX if not, REVIEW if the image is cut off by the crop, covered, overlapped, faded, too small to resolve or otherwise unreadable."));
     for (auto it = fixRequests->prompts.blockPrompts.constBegin(); it != fixRequests->prompts.blockPrompts.constEnd(); ++it) {
         if (it.key() == QStringLiteral("equation"))
             continue;  // its own minimal measured wording, pinned above
         const QString prompt = qwenFix->blockPrompts.value(it.key());
         QVERIFY2(prompt.count(QStringLiteral("output only OK")) == 2, qPrintable(QStringLiteral("qwen3.5-4b/") + it.key()));
     }
+    // The calibration keeps its measured shape (the prompt twice, the literal
+    // "\n" separator, the minimal equation wording) and gains the contract's
+    // new rules: the width of a change, the no-insertion rule, the confusable
+    // letter and the no-added-markup rule (ADR 333).
+    for (auto it = qwenFix->blockPrompts.constBegin(); it != qwenFix->blockPrompts.constEnd(); ++it) {
+        if (it.key() == QLatin1String("equation"))
+            continue;  // the minimal formula wording is the measured exception
+        const QString prompt = it.value();
+        QVERIFY2(prompt.contains(QStringLiteral("one character, or a run of characters, or a whole word")), qPrintable(it.key()));
+        QVERIFY2(prompt.contains(QStringLiteral("Never insert content the image does not show")), qPrintable(it.key()));
+        QVERIFY2(prompt.contains(QStringLiteral("drawn identically in two alphabets")), qPrintable(it.key()));
+        QVERIFY2(prompt.contains(QStringLiteral("Never add markup the candidate does not have")), qPrintable(it.key()));
+    }
     QVERIFY(qwenFix->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("rowspan")));
     QVERIFY(qwenFix->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("colspan")));
+    // The table prompt must not ask for an HTML table the candidate does not
+    // have: the candidate's own serialization is kept (ADR 333).
+    QVERIFY(qwenFix->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("a pipe table if it is Markdown")));
+    QVERIFY(!qwenFix->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("the complete corrected HTML table")));
     QVERIFY(qwenFix->blockPrompts.value(QStringLiteral("text")).contains(QStringLiteral("do not reflow, join or translate lines")));
+    // The shared contract never reaches this model, so the enumerated REVIEW
+    // triggers are in its own wording — every prompt of the type, the minimal
+    // equation wording included (ADR 333).
+    for (auto it = qwenFix->blockPrompts.constBegin(); it != qwenFix->blockPrompts.constEnd(); ++it)
+        QVERIFY2(it.value().contains(QStringLiteral("too small to resolve")), qPrintable(it.key()));
 }
 
 void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
@@ -448,9 +470,10 @@ void TestModelPresetCatalog::fixRequestProfilesCarryNoReasoningBudget()
 void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
 {
     // The shipped catalog: only the Qwen3-VL pair ships a reader wording of
-    // its own (the shared one reads as a correction-verification to that
-    // family); every other fix model — the qwen3.5-4b included — takes the
-    // shared texts.
+    // its own — the shared one, read as a correction-verification, made that
+    // family answer REVIEW on every legible block (ADR 267); its own wording
+    // keeps the family calibrated on small print. Every other fix model — the
+    // qwen3.5-4b included — takes the shared texts.
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
         const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
@@ -461,12 +484,6 @@ void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
             continue;
         }
         QVERIFY2(!fix->readSystemPrompt.isEmpty(), qPrintable(id));
-        QVERIFY2(fix->readSystemPrompt.contains(QStringLiteral("REVIEW")), qPrintable(id));
-        QVERIFY2(fix->readSystemPrompt.contains(QStringLiteral("FIX")), qPrintable(id));
-        // The clause the shared wording lacks: REVIEW is not "nothing to
-        // correct" — the shared text reads as a correction-verification to
-        // this family and every legible block came back unread.
-        QVERIFY2(fix->readSystemPrompt.contains(QStringLiteral("no original text here to compare with")), qPrintable(id));
         QVERIFY2(fix->readBlockPrompts.isEmpty(), qPrintable(id));
     }
 
@@ -474,6 +491,24 @@ void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
     // apart would calibrate the pair differently for no reason.
     QCOMPARE(ModelProfiles::roleFor(QStringLiteral("qwen3-vl-4b"), QStringLiteral("fix"))->readSystemPrompt,
              ModelProfiles::roleFor(QStringLiteral("qwen3-vl-8b"), QStringLiteral("fix"))->readSystemPrompt);
+
+    // The family speaks the read contract (ADR 331): the reply is the block
+    // text, REVIEW is the only verdict. The old wording ("REVIEW or FIX
+    // <block>") contradicted the shared type prompts, which ask for the
+    // transcription only.
+    for (const QString &id : {QStringLiteral("qwen3-vl-4b"), QStringLiteral("qwen3-vl-8b")}) {
+        const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("fix"));
+        QVERIFY2(role, qPrintable(id));
+        const QString read = role->readSystemPrompt;
+        QVERIFY2(!read.isEmpty(), qPrintable(id));
+        QVERIFY2(!read.contains(QStringLiteral("FIX")), qPrintable(id));
+        QVERIFY2(read.contains(QStringLiteral("REVIEW")), qPrintable(id));
+        QVERIFY2(read.contains(QStringLiteral("Add nothing")), qPrintable(id));
+        QVERIFY2(read.contains(QStringLiteral("Preserve by default: script, case, face")), qPrintable(id));
+        // The family's own calibration on small print is the reason the
+        // override exists (ADR 267).
+        QVERIFY2(read.contains(QStringLiteral("Read glyphs at the printed size")), qPrintable(id));
+    }
 
     // The shared reader speaks the read contract (ADR 331): the reply is the
     // block text, REVIEW is the only verdict. The qwen3.5-4b takes it as is —
@@ -484,7 +519,7 @@ void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
     QVERIFY(readRequests);
     QVERIFY(qwenFix->readSystemPrompt.isEmpty());
     QVERIFY(qwenFix->readBlockPrompts.isEmpty());
-    QVERIFY(readRequests->prompts.systemPrompt.contains(QStringLiteral("You are an OCR module.")));
+    QVERIFY(readRequests->prompts.systemPrompt.contains(QStringLiteral("You transcribe one block of a printed document")));
     for (auto it = readRequests->prompts.blockPrompts.constBegin(); it != readRequests->prompts.blockPrompts.constEnd(); ++it) {
         const QString prompt = it.value();
         // The keyword of the fix protocol is not expected any more.

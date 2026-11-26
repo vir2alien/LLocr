@@ -535,6 +535,16 @@ target_link_libraries(test_request_budget PRIVATE
 )
 add_test(NAME test_request_budget COMMAND test_request_budget)
 
+# ---- The request contracts: what the fix and the read protocols ask for ---
+qt_add_executable(test_request_contracts test_request_contracts.cpp)
+
+target_link_libraries(test_request_contracts PRIVATE
+    Qt6::Test
+    llocr_core
+)
+llocr_add_profile_resources(test_request_contracts)
+add_test(NAME test_request_contracts COMMAND test_request_contracts)
+
 qt_add_executable(test_launch_profile test_launch_profile.cpp)
 
 # LaunchProfileStore::activeProfileId() uses ReleaseCatalog::detectPlatform,

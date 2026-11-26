@@ -1413,6 +1413,37 @@ appendix at the end of this file.
   two apart, and only a reply cut at the budget (`finish_reason` `length`)
   is the ignored one. (Amends ADRs 231 and 249; measured on llama.cpp b12559
   with qwen3.5-4b and gemma-4-12b.)
+- **333.** The fix contract is rebuilt as an explicit specification: the shared
+  `fix-requests` profile carries the system prompt with the closed taxonomy of a
+  change ("one character, or a run of characters, or a whole word"), the
+  no-insertion rule, the confusable-letter rule, the no-added-markup rule and the
+  enumerated REVIEW triggers (cut off, covered, overlapped, faded, too small to
+  resolve). The per-type prompts carry four parts — `Correct:`, `Leave:`,
+  `Never:` and the output instruction. The qwen3.5-4b calibration (ADR 267) is
+  not cancelled: its own wording keeps its measured shape (the prompt twice, the
+  literal `\n` separator, the minimal equation wording) and gains the new rules;
+  its system prompt stays as it is. The table type keeps the candidate's own
+  serialization — HTML if the candidate is HTML, a pipe table if it is Markdown:
+  a forced HTML output would contradict the no-added-markup rule, and the app
+  writes a table as HTML only when the `tablesAsHtml` setting is on. The Leave
+  of the table type keeps the cell position, `rowspan`, `colspan` and the empty
+  cells as content: a cell the image leaves empty is content too, not a blank
+  to fill.
+- **334.** The read contract is rebuilt: the reply is the block text, REVIEW is
+  the only verdict, and the system prompt carries the preservation axes, the
+  no-insertion rule, the scanner-artifact rule and the canonical math
+  delimiters `\(…\)` / `\[…\]`. The "between `$` signs" rule leaves the read
+  type prompts — it contradicted the app's canonical form (ADR 194) and the
+  gate's carrier view, so every re-read of a text block with a formula rewrote
+  its delimiters. The qwen3-vl family's own reader wording is rewritten into the
+  read contract and stays a family override (ADR 267): the family answered REVIEW
+  on every readable block, and that measurement is not repeated here. That
+  wording is the shared read contract plus the family's own calibration — "Read
+  glyphs at the printed size; never guess small print." — and not a private copy
+  of the contract: the small-print clause is the only thing of its own in the
+  family text. The ADR 267 rationale stays in force and is not verified here —
+  the family is not on this machine, so the override cannot be dropped without a
+  measurement on it.
 
 ### UI
 

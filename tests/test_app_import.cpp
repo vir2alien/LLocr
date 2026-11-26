@@ -262,8 +262,12 @@ public:
 
 // The reader's system prompt opens with this (the shared read profile's own
 // words): the mock server recognizes the reader's request by it — the
-// sample-carrying one and the bare image alike (ADR 260).
-const QByteArray kReadPromptMarker = QByteArrayLiteral("You are an OCR module");
+// sample-carrying one and the bare image alike (ADR 260). The phrase is long
+// enough to be unique: the block-recognition wording of GLM-OCR carries the
+// same words too ("You are an OCR engine. You transcribe one block cropped
+// from a document image"), and the mock server answers the reader's request
+// before the transcriber's.
+const QByteArray kReadPromptMarker = QByteArrayLiteral("You transcribe one block of a printed document");
 
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
 // fixed reply, so the real recognition pipeline produces real blocks.

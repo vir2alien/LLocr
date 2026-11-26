@@ -168,6 +168,20 @@ fallback — a role's own wording would win, ADR 182/267). The image is the
 block crop as a PNG data URL; the candidate is the block's effective text, a
 formula already in canonical LaTeX (ADR 194).
 
+**The fix contract** (`fix-requests.json`, ADR 333): the system prompt states
+the width of a change — "one character, or a run of characters, or a whole
+word — and nothing else", every change visible in the image — and the rules
+around it: nothing is inserted that the image does not show and no ambiguity
+is resolved by guessing; a letter drawn identically in two alphabets is not an
+error by itself (the candidate's script is kept unless the image clearly shows
+the other one); no markup is added that the candidate does not have (a
+Markdown heading prefix, a code fence, a list marker, a table delimiter). The
+REVIEW triggers are enumerated: a character to be corrected is cut off by the
+crop, covered, overlapped, faded or too small to resolve — or the candidate is
+empty. The per-type prompt states the type in four parts: `Correct:` what a
+FIX may change, `Leave:` what stays as the candidate has it, `Never:` what a
+FIX must not do, and the output instruction.
+
 **Fix protocol** (`full_block`) — the literal body for a `text` block,
 thinking off (the two long strings are verbatim in
 `resources/profiles/requests/fix-requests.json`, keys `systemPrompt` and

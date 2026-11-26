@@ -157,15 +157,26 @@ top-level JSON field, plus two injected ones:
 | `stop` | `["</CANDIDATE>"]` | role `request` — ends the reply at the verdict. Only the protocol marker belongs here: llama-server already stops at the end-of-text token, and naming that in the stop list cuts the answer to nothing and lands every block on Review |
 | `max_tokens` | per block, §5 | role `maxOutput` 8192 as the default (`requestWithMaxOutput`); overridden per block type from `fix-requests.json → maxOutputByBlock` (`FixController::fixBlock`) |
 | `reasoning_budget_tokens` | `0` / 512 / 1024 / 1536 | injected by `applyReasoningBudget` from the global settings (`check/fixReasoningBudgetTokens` for fix, `check/readReasoningBudgetTokens` for read; default off) |
+| `chat_template_kwargs.enable_thinking` | `true` iff `reasoning_budget_tokens` > 0 | `buildRoot` — the budget is also the switch (ADR 193) |
 
 **The 4B's measured fix prompts** (ADR 267; the prompt_ab stand,
 `OCRtest/fix_models/prompt_ab.py`): the fix role ships its own system prompt
 (one sentence) and block prompts; the block prompts state the task and the
 OK/FIX/REVIEW contract twice — the doubling won the earlier fix stand. The
-`equation` prompt is the measured exception, a single sentence:
+measured shape is kept (the doubled body, the literal `\n` separators, the
+minimal equation wording, the pinned system prompt) and the body gains the
+four rules of the shared contract (ADR 333): the width of a change ("one
+character, or a run of characters, or a whole word"), the no-insertion rule,
+the identical-glyph rule and the no-added-markup rule. The enumerated REVIEW
+triggers reached the model's own wording as well — the shared contract never
+arrives here, so the model's own prompts now name what makes a character
+unreadable ("cut off by the crop, covered, overlapped, faded, too small to
+resolve"), and that wording is measured anew. The `equation` prompt
+is the measured exception, a single sentence:
 
 > OK if the OCR candidate matches the image, FIX followed by the corrected
-> LaTeX if not, REVIEW if the image is unreadable.
+> LaTeX if not, REVIEW if the image is cut off by the crop, covered,
+> overlapped, faded, too small to resolve or otherwise unreadable.
 
 A long formula prompt fixates the model on the wording instead of the image
 and the candidate: on initially-correct candidates it rewrites instead of
@@ -206,10 +217,14 @@ failure modes of the short wording:
 Tables add their own finding: even the shipped table prompt does not hold
 the candidate's OTSL serialization — all 9 corpus tables came back
 re-serialized as HTML (which `BlockRender` passes through raw instead of
-`formatOtslTable`). A "in the candidate's own format" clause keeps the
-serialization but brings the echo along. Table wording needs its own
-iteration together with the gate echo strip.
-| `chat_template_kwargs.enable_thinking` | `true` iff `reasoning_budget_tokens` > 0 | `buildRoot` — the budget is also the switch (ADR 193) |
+`formatOtslTable`). The prompt now carries the clause that keeps the
+candidate's own serialization (ADR 333): HTML if the candidate is HTML, a
+pipe table if it is Markdown. The clause did not bring the candidate echo
+along: in the 4B fix pass after the rebuild not a single reply starts with
+`OCR candidate:`. Its side effect is another one — the answer for the table
+`p06_b03_table` lost two `-<br>` (in the run before the rebuild the same
+table, on the contrary, **added** two `<br>`), so the model re-serializes the
+table by the candidate, but not literally.
 
 **Read protocol** («Распознать (LLM)», `FixProtocol::ReadBlock`) — same body
 except: the system prompt and block prompt come from the fix role's own
@@ -229,10 +244,10 @@ the settings the corpus run picked):
   repeated verbatim, separated by a blank line, and the separators rode as
   literal `\n` characters. The shipped reader is the **shared** one — a single
   prompt per block type in `read-requests.json`, all 15 canonical types, plus
-  the shared system prompt `You are an OCR module. …`; the wording is the
-  user's to change. Until a wording names the new contract, the app
-  understands the old one — a leading `FIX` is stripped and the block that
-  follows it is read (ADR 331).
+  the shared system prompt `You transcribe one block of a printed document
+  from an image crop …`; the wording is the user's to change. The shipped
+  wording names the new contract; the app still understands the old one — a
+  leading `FIX` is stripped and the block that follows it is read (ADR 331).
 - **Reasoning on, budget 256 tokens.** The read stand pins the thinking
   server-side (`--reasoning on --reasoning-budget 256`). In the app the
   budget rides the request (`reasoning_budget_tokens`, ADR 268) from
