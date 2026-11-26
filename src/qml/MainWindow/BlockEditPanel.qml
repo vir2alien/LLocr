@@ -81,10 +81,15 @@ Rectangle {
             root.viewIndex = 0
     }
 
-    // The block the panel reads: a new one starts at its recognized text.
+    // The segment of the layer the document carries: the correction when the
+    // block points at one, else the recognized text.
+    readonly property int documentViewIndex: Controller.selectedBlockUsesCorrected
+                                             && Controller.selectedBlockCorrected.length > 0 ? 1 : 0
+    // The panel opens on the layer the document carries and follows it: the
+    // fix and the read move the block in view to a fresh correction (ADR 185).
     readonly property int currentBox: Controller.selectedBoxIndex
-    onCurrentBoxChanged: root.viewIndex = (Controller.selectedBlockUsesCorrected
-                                            && Controller.selectedBlockCorrected.length > 0) ? 1 : 0
+    onCurrentBoxChanged: root.viewIndex = root.documentViewIndex
+    onDocumentViewIndexChanged: root.viewIndex = root.documentViewIndex
 
     // The switch moves the document: the layer the operator reads is the layer
     // the document carries (ADR 164).

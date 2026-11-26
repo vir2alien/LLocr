@@ -29,6 +29,7 @@ private slots:
     void theSegmentsSayWhenThereIsNoSecondVariant();
     void theNoteStandsWithItsLayer();
     void theSwitchMovesTheDocument();
+    void thePanelSwitchesToACorrectionThatLandsOnTheBlock();
     void theComparisonShowsBothLayers();
     void theComparisonTintsTheDiff();
     void theResetActionIsGone();
@@ -298,6 +299,45 @@ void TestBlockPanelQml::theSwitchMovesTheDocument()
 
     clickSegment(switchControl, 0);
     QCOMPARE(m_controller->property("selectedBlockUsesCorrected").toBool(), false);
+}
+
+// The fix and the read land a fresh correction on the block in view and move
+// the block to it: the panel follows, without the block being chosen again
+// (ADR 185).
+void TestBlockPanelQml::thePanelSwitchesToACorrectionThatLandsOnTheBlock()
+{
+    // The panel is open on a block that carries its recognized text alone.
+    m_controller->setProperty("selectedBlockCorrected", "");
+    m_controller->setProperty("selectedBlockUsesCorrected", false);
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *switchControl = theSwitch(panel.get());
+    QVERIFY(switchControl);
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("Recognized text (OCR)"));
+    QVERIFY2(original, "the panel must carry the panel of the recognized text");
+    QObject *correction = thePanelWithTitle(panel.get(), QStringLiteral("Correction (AI)"));
+    QVERIFY2(correction, "the panel must carry the panel of the correction");
+    QVERIFY(isVisible(original));
+    QVERIFY(!isVisible(correction));
+    QCOMPARE(switchControl->property("currentIndex").toInt(), 0);
+
+    // The fix lands on the block in view: a fresh correction, and the block
+    // points at it.
+    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
+    m_controller->setProperty("selectedBlockUsesCorrected", true);
+    QTest::qWait(20);
+
+    const bool correctionShown = isVisible(correction);
+    const bool originalShown = isVisible(original);
+    const int segment = switchControl->property("currentIndex").toInt();
+
+    m_controller->setProperty("selectedBlockUsesCorrected", false);
+
+    QVERIFY2(correctionShown, "the panel must switch to the correction that landed on the block");
+    QVERIFY2(!originalShown, "the recognized text must give way to the correction that landed");
+    QCOMPARE(segment, 1);
 }
 
 // The comparison shows both layers, one above the other.
