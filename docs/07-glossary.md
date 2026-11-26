@@ -1252,7 +1252,11 @@ appendix at the end of this file.
   carries its own texts; read block prompts and answer budgets fall back to
   the shared profile, and the alias hop applies to overrides too. (Amended by
   ADR 331: the qwen3.5-4b's own reader wording is gone — the family takes the
-  shared reader, which now speaks the read contract.)
+  shared reader, which now speaks the read contract. Amended by ADR 335: the
+  Qwen3-VL family that carried a reader wording of its own is cut, so no
+  shipped model overrides the reader any more — the shared reader answers for
+  all of them, and the override mechanism stays for the models that come
+  after it.)
 - **268.** Reasoning budgets are global check settings, not a request-profile
   parameter: `check/fixReasoningBudgetTokens` and
   `check/readReasoningBudgetTokens` (default 0; the four steps off / 512 /
@@ -1443,7 +1447,9 @@ appendix at the end of this file.
   of the contract: the small-print clause is the only thing of its own in the
   family text. The ADR 267 rationale stays in force and is not verified here —
   the family is not on this machine, so the override cannot be dropped without a
-  measurement on it.
+  measurement on it. (Amended by ADR 335: the family is cut — its profile with
+  the wording is in the archive, and the shared reader answers for every shipped
+  model.)
 
 ### UI
 
@@ -2500,7 +2506,7 @@ appendix at the end of this file.
   0.668 on the raw-string state and no phrasing verified formulas or tables
   (seven schemes tried), so a structured-state scheme replaced it — the d1-3B
   profile and its manual were deleted, the harness and the study remain.
-- **251.** Everything cut by the release is kept in `archive/` — nine model
+- **251.** Everything cut by the release is kept in `archive/` — twelve model
   profiles in `archive/models/profiles/`, their parsers in
   `archive/parsers/`, guides in `archive/models/docs/`, single-pass page
   recognition in `archive/single-pass/`, the text decision protocol with its
@@ -2536,6 +2542,15 @@ appendix at the end of this file.
   (ADR 251), leaving MinerU (default) and GLM-OCR on block recognition —
   raising it to MinerU's level would mean a second layout step with its own
   protocol and parser, since its RT-DETR layout model is not shipped in GGUF.
+- **335.** The Qwen3-VL pair (`qwen3-vl-4b`, `qwen3-vl-8b`) is cut: the
+  profiles and the guide (`archive/models/profiles/qwen3-vl-4b.json`,
+  `archive/models/profiles/qwen3-vl-8b.json`,
+  `archive/models/docs/31-qwen3-vl.md`) are in `archive/` with the rest
+  (ADR 251). The quality and the speed did not hold up in the measurements,
+  and the fix task stays with the Qwen3.5 and Gemma-4 families — five shipped
+  models serve it. The pair was the only shipped family with a reader wording
+  of its own (ADR 267, ADR 334): the mechanism stays, the shared reader
+  answers for every shipped model now.
 
 ## Appendix: removed decisions
 

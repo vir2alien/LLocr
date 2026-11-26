@@ -4,10 +4,10 @@ Everything that was cut from LLocr, kept whole.
 
 ## Why
 
-The release ships four tasks and seven models. Ten models and two of the six
+The release ships four tasks and eight models. Twelve models and two of the six
 tasks did not earn their place: the decision models that worked markedly worse
-and slower than MiniCPM-OCR Jev, and the OCR models whose quality, speed,
-licence or language support did not hold up.
+and slower than MiniCPM-OCR Jev, and the models whose quality, speed, licence
+or language support did not hold up.
 
 PaddleOCR-VL was cut later (ADR 255): it serves block recognition only, and
 its page layout is a separate model that ships outside the GGUF.
@@ -37,6 +37,10 @@ model that was wrong for this release is not wrong forever.
    `src/config/SettingsStore.cpp` and its case in
    `connectionRoleName()`.
 
+A profile that carried a wording of its own needs no code: the Qwen3-VL pair
+kept a reader wording in its profile, and the override that reads it is still
+in the profile layer (ADR 267).
+
 ## The code that was interleaved with the shared code
 
 The removal was one commit, and the tree before it is the tag
@@ -61,6 +65,8 @@ hunks included.
 | d3-flash | decision | markedly worse and slower than MiniCPM-OCR Jev |
 | d3-mini | decision | markedly worse and slower than MiniCPM-OCR Jev |
 | PaddleOCR-VL-1.6 | blockRecognition | the page layout is a separate model outside the GGUF — too many changes to reach MinerU's level |
+| Qwen3-VL-4B | fix | quality and speed did not hold up in the measurements |
+| Qwen3-VL-8B | fix | quality and speed did not hold up in the measurements |
 
 ## The single-pass page recognition
 
@@ -121,6 +127,8 @@ thresholds — point it at the visual diff to recalibrate MiniCPM-Jev.
 | d3-flash | `models/profiles/d3-flash.json` | — | `models/docs/21-d3.md` |
 | d3-mini | `models/profiles/d3-mini.json` | — | `models/docs/21-d3.md` |
 | PaddleOCR-VL-1.6 | `models/profiles/paddleocr-vl.json` | — | `models/docs/25-paddleocr-vl.md` |
+| Qwen3-VL-4B | `models/profiles/qwen3-vl-4b.json` | — | `models/docs/31-qwen3-vl.md` |
+| Qwen3-VL-8B | `models/profiles/qwen3-vl-8b.json` | — | `models/docs/31-qwen3-vl.md` |
 
 The single-pass controller is in `single-pass/`; the text-decision prompt
 profile and the calibration harness are in `decision-text/`.

@@ -73,7 +73,7 @@ exactly as before, and decision/layout are untouched.
 
 ## 2. Model → task matrix
 
-Nine profiles ship in `resources/profiles/models/`; cut profiles live in
+Eight profiles ship in `resources/profiles/models/`; cut profiles live in
 `archive/models/profiles/` (ADR 251). Exactly one profile per task carries
 `"default": true` — it feeds auto-selection (ADR 169).
 
@@ -86,8 +86,7 @@ Nine profiles ship in `resources/profiles/models/`; cut profiles live in
 | `qwen3.5-9b.json` | fix | — |
 | `gemma-4-e4b.json` | fix | — |
 | `gemma-4-12b.json` | fix | — |
-| `qwen3-vl-4b.json` | fix | — |
-| `qwen3-vl-8b.json` | fix | — |
+| `gemma-4-26b-a4b.json` | fix | — |
 
 Principle: **OCR models only OCR, decision only verifies, universal models
 only fix.** A profile never combines incompatible tasks. Model manuals:
@@ -180,11 +179,10 @@ Mismatch. Outcomes are its own statuses `Read` / `ReadFixed` / `ReadDamaged`;
 a run ends with its tally («Прочитано блоков: переписано — N, подтверждено — M,
 не прочитано — K»). Prompt texts live in
 `resources/profiles/requests/read-requests.json`; a fix role may override them
-(`readSystemPrompt`/`readBlockPrompts`) — the Qwen3-VL family does: it read the
-shared wording as a correction check and answered REVIEW on every readable
-block (ADR 267), a measurement that is not repeated here, so the override
-stays. Its wording is the shared read contract plus the family's own
-calibration on small print (ADR 334).
+(`readSystemPrompt`/`readBlockPrompts`) — no shipped model does, the shared
+reader answers for all of them (ADR 267). The family that carried a wording of
+its own, the Qwen3-VL pair, was cut (ADR 335); its profile keeps the wording in
+the archive.
 
 The contract is explicit here too (ADR 334). The system prompt names the
 preservation axes (script, case, face, position, spacing, hyphenation, line

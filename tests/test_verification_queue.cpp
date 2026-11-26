@@ -1,3 +1,5 @@
+#include <QDir>
+#include <QFile>
 #include <QImage>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -341,15 +343,40 @@ private slots:
         QCOMPARE(parameters.size(), 1);
         QCOMPARE(parameterValue(parameters, QLatin1String(kReasoningBudgetParameter)), 0);
 
-        settings->setFixRequestProfileId(QStringLiteral("qwen3-vl-4b"));
-        QCOMPARE(store.activeProfileId(), QStringLiteral("qwen3-vl-4b"));
-        applyReasoningBudget(parameters, CheckRequest::FixProtocol::FullBlock, store, *settings);
-        QCOMPARE(parameterValue(parameters, QLatin1String(kReasoningBudgetParameter)), -1);
-
         settings->setFixRequestProfileId(QStringLiteral("qwen3.5-4b"));
         applyReasoningBudget(parameters, CheckRequest::FixProtocol::ReadBlock, store, *settings);
         QCOMPARE(parameters.size(), 1);
         QCOMPARE(parameterValue(parameters, QLatin1String(kReasoningBudgetParameter)), 0);
+    }
+
+    // A request profile the app ships no model for — the user's copy of an
+    // external endpoint's settings — has no fix role to look up, so there is
+    // no model that could think and the request carries no budget at all.
+    void aProfileWithoutAShippedModelGetsNoReasoningBudget()
+    {
+        const QString profilesDir = m_dir.filePath(QStringLiteral("runtime/profiles"));
+        QVERIFY(QDir().mkpath(profilesDir));
+        QFile userProfiles(QDir(profilesDir).filePath(QStringLiteral("requestFix.json")));
+        QVERIFY(userProfiles.open(QIODevice::WriteOnly));
+        userProfiles.write(R"({
+            "schemaVersion": 2,
+            "profiles": [
+                { "id": "external-model", "parameters": [{ "order": 1, "name": "temperature", "value": 0.0 }] }
+            ]
+        })");
+        userProfiles.close();
+
+        auto settings = std::make_unique<SettingsStore>();
+        settings->setRuntimeRootDir(m_dir.filePath(QStringLiteral("runtime")));
+        settings->setRuntimeModelsDir(m_dir.filePath(QStringLiteral("models")));
+        RequestProfileStore store(*settings, ConnectionRole::Fix);
+        settings->setFixRequestProfileId(QStringLiteral("external-model"));
+        QCOMPARE(store.activeProfileId(), QStringLiteral("external-model"));
+
+        settings->setFixReasoningBudgetTokens(1024);
+        QList<RequestParameter> parameters;
+        applyReasoningBudget(parameters, CheckRequest::FixProtocol::FullBlock, store, *settings);
+        QCOMPARE(parameterValue(parameters, QLatin1String(kReasoningBudgetParameter)), -1);
     }
 };
 

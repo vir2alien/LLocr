@@ -94,8 +94,6 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     const QList<Expected> expected = {
         {"qwen3.5-4b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"qwen3.5-9b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
-        {"qwen3-vl-4b", "fix", "b9263", "q8_0,q4_k_m", "temp,jinja,flash-attn,image-min-tokens"},
-        {"qwen3-vl-8b", "fix", "b9263", "q8_0,q4_k_m", "temp,jinja,flash-attn,image-min-tokens"},
         {"gemma-4-e4b", "fix", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,image-min-tokens,ubatch-size"},
         {"gemma-4-26b-a4b", "fix", "b12137", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,image-min-tokens,ubatch-size,ctx-size,n-gpu-layers,fit-target"},
@@ -277,14 +275,7 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     const QStringList fixModels = ModelProfiles::idsForRole(profiles, QStringLiteral("fix"));
-    QCOMPARE(fixModels,
-             QStringList({QStringLiteral("gemma-4-12b"),
-                          QStringLiteral("gemma-4-26b-a4b"),
-                          QStringLiteral("gemma-4-e4b"),
-                          QStringLiteral("qwen3-vl-4b"),
-                          QStringLiteral("qwen3-vl-8b"),
-                          QStringLiteral("qwen3.5-4b"),
-                          QStringLiteral("qwen3.5-9b")}));
+    QCOMPARE(fixModels, QStringList({QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-26b-a4b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
 
     const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
     QVERIFY(fixRequests);
@@ -453,14 +444,14 @@ void TestModelPresetCatalog::fixRequestProfilesCarryNoReasoningBudget()
 
     // The qwen3.5 and gemma pairs declare the capability (the gemma chat
     // template carries the enable_thinking switch and the thought channel —
-    // verified on llama.cpp b11799). The Qwen3-VL pair is an Instruct line
-    // with no thinking channel.
+    // verified on llama.cpp b11799). Every shipped fix model thinks; the last
+    // one without a thinking channel was cut (ADR 335).
+    for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix")))
+        QVERIFY2(ModelProfiles::roleFor(id, QStringLiteral("fix"))->reasoningSupported, qPrintable(id));
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-9b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-e4b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-12b"), QStringLiteral("fix"))->reasoningSupported);
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("qwen3-vl-4b"), QStringLiteral("fix"))->reasoningSupported);
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("qwen3-vl-8b"), QStringLiteral("fix"))->reasoningSupported);
 }
 
 // A prompt is a calibration like the thresholds (ADR 267): the shared request
@@ -470,45 +461,16 @@ void TestModelPresetCatalog::fixRequestProfilesCarryNoReasoningBudget()
 // back to the shared profile.
 void TestModelPresetCatalog::rolePromptsFallBackToTheSharedProfile()
 {
-    // The shipped catalog: only the Qwen3-VL pair ships a reader wording of
-    // its own — the shared one, read as a correction-verification, made that
-    // family answer REVIEW on every legible block (ADR 267); its own wording
-    // keeps the family calibrated on small print. Every other fix model — the
-    // qwen3.5-4b included — takes the shared texts.
+    // The shipped catalog: no fix model ships a reader wording of its own —
+    // the shared reader answers for all of them. The last family that had one
+    // was cut (ADR 335); the mechanism stays (ADR 267) and is exercised on the
+    // synthetic profile below.
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
         const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(fix, qPrintable(id));
-        if (!id.startsWith(QStringLiteral("qwen3-vl"))) {
-            QVERIFY2(fix->readSystemPrompt.isEmpty(), qPrintable(id));
-            QVERIFY2(fix->readBlockPrompts.isEmpty(), qPrintable(id));
-            continue;
-        }
-        QVERIFY2(!fix->readSystemPrompt.isEmpty(), qPrintable(id));
+        QVERIFY2(fix->readSystemPrompt.isEmpty(), qPrintable(id));
         QVERIFY2(fix->readBlockPrompts.isEmpty(), qPrintable(id));
-    }
-
-    // The two Qwen3-VL profiles carry the same text: a wording that drifted
-    // apart would calibrate the pair differently for no reason.
-    QCOMPARE(ModelProfiles::roleFor(QStringLiteral("qwen3-vl-4b"), QStringLiteral("fix"))->readSystemPrompt,
-             ModelProfiles::roleFor(QStringLiteral("qwen3-vl-8b"), QStringLiteral("fix"))->readSystemPrompt);
-
-    // The family speaks the read contract (ADR 331): the reply is the block
-    // text, REVIEW is the only verdict. The old wording ("REVIEW or FIX
-    // <block>") contradicted the shared type prompts, which ask for the
-    // transcription only.
-    for (const QString &id : {QStringLiteral("qwen3-vl-4b"), QStringLiteral("qwen3-vl-8b")}) {
-        const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("fix"));
-        QVERIFY2(role, qPrintable(id));
-        const QString read = role->readSystemPrompt;
-        QVERIFY2(!read.isEmpty(), qPrintable(id));
-        QVERIFY2(!read.contains(QStringLiteral("FIX")), qPrintable(id));
-        QVERIFY2(read.contains(QStringLiteral("REVIEW")), qPrintable(id));
-        QVERIFY2(read.contains(QStringLiteral("Add nothing")), qPrintable(id));
-        QVERIFY2(read.contains(QStringLiteral("Preserve by default: script, case, face")), qPrintable(id));
-        // The family's own calibration on small print is the reason the
-        // override exists (ADR 267).
-        QVERIFY2(read.contains(QStringLiteral("Read glyphs at the printed size")), qPrintable(id));
     }
 
     // The shared reader speaks the read contract (ADR 331): the reply is the

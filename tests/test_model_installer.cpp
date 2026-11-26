@@ -495,14 +495,7 @@ private slots:
         QStringList fixKeys;
         for (int i = 0; i < fix->rowCount(); ++i)
             fixKeys.append(roleAt(fix, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(fixKeys,
-                 QStringList({QStringLiteral("qwen3.5-4b"),
-                              QStringLiteral("gemma-4-12b"),
-                              QStringLiteral("gemma-4-26b-a4b"),
-                              QStringLiteral("gemma-4-e4b"),
-                              QStringLiteral("qwen3-vl-4b"),
-                              QStringLiteral("qwen3-vl-8b"),
-                              QStringLiteral("qwen3.5-9b")}));
+        QCOMPARE(fixKeys, QStringList({QStringLiteral("qwen3.5-4b"), QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-26b-a4b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3.5-9b")}));
 
         // MinerU answers two tasks and offers the quantizations its profile
         // declares — the shipped file is the source here, not a copy of it, so an
@@ -934,7 +927,7 @@ private slots:
         // user brought themselves — a legacy entry with an mmproj stays out of
         // the role lists (the page task it read as is gone), the management
         // list is where it lives.
-        QCOMPARE(models->rowCount(), 11);
+        QCOMPARE(models->rowCount(), 9);
 
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(ModelQuantModel::KeyRole), QByteArray("key"));
@@ -959,7 +952,7 @@ private slots:
         QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
         installer.refreshInstalled();
         QCOMPARE(resetSpy.count(), 0);
-        QCOMPARE(models->rowCount(), 11);
+        QCOMPARE(models->rowCount(), 9);
 
         // Activating the model re-reads the highlight from the settings: the
         // management list marks nothing active — the role list is where the
