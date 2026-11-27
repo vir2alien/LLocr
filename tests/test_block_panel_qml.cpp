@@ -1130,7 +1130,7 @@ void TestBlockPanelQml::theApproveActionWaitsForTheIdleApp()
 
     // The shortcut of the rhythm waits with the button.
     const QList<QObject *> shortcuts = findAllByClassName(panel.get(), QLatin1String("QQuickShortcut"));
-    QVERIFY2(!shortcuts.isEmpty(), "the panel must carry the shortcut of the rhythm");
+    QCOMPARE(shortcuts.size(), 1);
     QObject *shortcut = shortcuts.first();
     QVERIFY2(shortcut->property("enabled").toBool(), "the idle app lets the shortcut stand");
 
