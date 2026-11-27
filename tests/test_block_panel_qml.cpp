@@ -42,7 +42,7 @@ private slots:
     void theNameOfTheBlockIsInTheInterfaceLanguage();
     void theSwitchHasThreeSegments();
     void theSwitchIsGoneWhenOnlyTheMarkupIsThere();
-    void theSegmentsSayWhenThereIsNoSecondVariant();
+    void theSwitchIsGoneWithoutBothLayers();
     void theNoteStandsWithItsLayer();
     void theSwitchMovesTheDocument();
     void thePanelSwitchesToACorrectionThatLandsOnTheBlock();
@@ -292,8 +292,8 @@ void TestBlockPanelQml::theNameOfTheBlockIsInTheInterfaceLanguage()
     QVERIFY2(!childWithText(panel.get(), QLatin1String("LLOLabel"), QStringLiteral("equation")), "the label of the model must not stand in the panel");
 }
 
-// The switch has three segments: the recognized text, the correction and the
-// comparison of both.
+// The switch names the layers of the block: the recognized text, the VLM's
+// word and the difference between them (ADR 339).
 void TestBlockPanelQml::theSwitchHasThreeSegments()
 {
     const std::unique_ptr<QObject> panel = loadPanel();
@@ -305,8 +305,8 @@ void TestBlockPanelQml::theSwitchHasThreeSegments()
     const QVariantList options = switchControl->property("options").toList();
     QCOMPARE(options.size(), 3);
     QCOMPARE(options.at(0).toMap().value("label").toString(), QStringLiteral("OCR"));
-    QCOMPARE(options.at(1).toMap().value("label").toString(), QStringLiteral("Correction"));
-    QCOMPARE(options.at(2).toMap().value("label").toString(), QStringLiteral("Comparison"));
+    QCOMPARE(options.at(1).toMap().value("label").toString(), QStringLiteral("VLM"));
+    QCOMPARE(options.at(2).toMap().value("label").toString(), QStringLiteral("Difference"));
 }
 
 // A block that carries the markup alone has nothing to switch between: the
@@ -329,9 +329,9 @@ void TestBlockPanelQml::theSwitchIsGoneWhenOnlyTheMarkupIsThere()
     QVERIFY2(!switchVisible, "the switch must be gone where there is nothing to switch between");
 }
 
-// Without a correction there is no second variant: the segments that need one
-// say so instead of answering a click.
-void TestBlockPanelQml::theSegmentsSayWhenThereIsNoSecondVariant()
+// The switch stands only where there is something to switch between: a block
+// with an OCR text alone, or a correction alone, has one layer.
+void TestBlockPanelQml::theSwitchIsGoneWithoutBothLayers()
 {
     m_controller->setProperty("selectedBlockCorrected", "");
 
@@ -340,19 +340,11 @@ void TestBlockPanelQml::theSegmentsSayWhenThereIsNoSecondVariant()
 
     QObject *switchControl = theSwitch(panel.get());
     QVERIFY(switchControl);
-    QVERIFY(isVisible(switchControl));
-
-    const QVariantList options = switchControl->property("options").toList();
-    QCOMPARE(options.size(), 3);
-    const bool ocrEnabled = options.at(0).toMap().value("enabled").toBool();
-    const bool correctionEnabled = options.at(1).toMap().value("enabled").toBool();
-    const bool comparisonEnabled = options.at(2).toMap().value("enabled").toBool();
+    QVERIFY2(!isVisible(switchControl), "the switch must be gone where there is nothing to switch between");
 
     m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
-
-    QCOMPARE(ocrEnabled, true);
-    QCOMPARE(correctionEnabled, false);
-    QCOMPARE(comparisonEnabled, false);
+    QTest::qWait(20);
+    QVERIFY2(isVisible(theSwitch(panel.get())), "the switch must stand where both layers are there");
 }
 
 // The fixer's answer speaks about the recognized text, so it stands with it:
@@ -510,7 +502,7 @@ void TestBlockPanelQml::theSwitchGoesToTheNextLineWhenTheHeaderDoesNotFit()
     QCOMPARE(qobject_cast<QQuickItem *>(wide)->parentItem(), headerRow);
 
     // A narrow panel: the header row cannot hold the switch.
-    item->setWidth(420);
+    item->setWidth(300);
     QTest::qWait(20);
 
     QObject *narrow = theSwitch(panel.get());
@@ -681,9 +673,7 @@ void TestBlockPanelQml::theNoticeRowIsGone()
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
 
-    QVERIFY2(!childWithText(panel.get(), QLatin1String("LLOLabel"),
-                            QStringLiteral("The document text differs from the block")),
-             "the panel must not keep the notice under the text");
+    QVERIFY2(!childWithText(panel.get(), QLatin1String("LLOLabel"), QStringLiteral("The document text differs from the block")), "the panel must not keep the notice under the text");
 }
 
 // The panel takes the clicks over its own background: a press that missed a

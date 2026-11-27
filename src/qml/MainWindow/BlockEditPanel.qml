@@ -14,8 +14,8 @@ import "../Common"
 //
 // The header names the block in the interface language and carries its state
 // — the word and the dot — next to the action that takes the user's text back
-// (ADR 338, ADR 339); the switch chooses what the panel shows — the
-// recognized text, the correction or both (ADR 323). Every verdict has one
+// (ADR 338, ADR 339); the switch reads OCR | VLM | Разница and stands only
+// where the block carries both layers (ADR 339). Every verdict has one
 // place: the header of the text panel (ADR 239).
 Rectangle {
     id: root
@@ -113,14 +113,19 @@ Rectangle {
     // 2 — both, one above the other.
     property int viewIndex: 0
     readonly property bool compareMode: viewIndex === 2
+    // The layer in view: the recognized text or the VLM's word. A block with
+    // one layer only shows that layer, whatever the switch said before.
     readonly property bool showOriginal: root.isTextBlock
                                          && Controller.selectedBlockText.length > 0
-                                         && (root.compareMode || root.viewIndex === 0)
+                                         && (root.compareMode || root.viewIndex === 0 || !root.hasLayers)
     readonly property bool showCorrection: root.isTextBlock
-                                           && (root.compareMode ? root.correctionStored : root.viewIndex === 1)
-    // A block with nothing to switch between: the markup alone, or a picture.
-    // The switch of the layers has nothing to say and is gone.
-    readonly property bool hasLayers: Controller.selectedBlockText.length > 0 || root.correctionStored
+                                           && root.correctionStored
+                                           && (root.compareMode || root.viewIndex === 1 || !root.hasLayers)
+    // A block with nothing to switch between: the markup alone, a picture, a
+    // block with one layer only. The switch of the layers has nothing to say
+    // and is gone.
+    readonly property bool hasLayers: Controller.selectedBlockText.length > 0
+                                     && root.correctionStored
     // A correction that is gone takes its segment with it.
     onCorrectionStoredChanged: {
         if (!root.correctionStored && root.viewIndex !== 0)
@@ -160,9 +165,9 @@ Rectangle {
     // The segments of the switch: the same switch in both places it may
     // stand.
     readonly property var switchOptions: [
-        { label: qsTr("OCR"), enabled: true },
-        { label: qsTr("Correction"), enabled: root.correctionStored },
-        { label: qsTr("Comparison"), enabled: root.correctionStored }
+        { label: qsTr("OCR") },
+        { label: qsTr("VLM") },
+        { label: qsTr("Difference") }
     ]
 
     // What the header row holds, if every word stands at its natural width:
