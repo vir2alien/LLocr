@@ -369,9 +369,14 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
     if (!replyContent(responseData, &content, &error))
         return error;
 
-    if (content.isEmpty())
-        return CheckResult::makeError(
-            StatusMessage::translate("FixModel", readProtocol ? "The model returned no block text: %1" : "The model returned no corrected text: %1").arg(missingAnswerReason(responseData)));
+    if (content.isEmpty()) {
+        // Two calls, not a ternary: lupdate reads the source text from the
+        // literal of the call, and a ternary hides it from the catalog.
+        const QString reason = missingAnswerReason(responseData);
+        if (readProtocol)
+            return CheckResult::makeError(StatusMessage::translate("FixModel", "The model returned no block text: %1").arg(reason));
+        return CheckResult::makeError(StatusMessage::translate("FixModel", "The model returned no corrected text: %1").arg(reason));
+    }
 
     QString cleaned = cutAtCandidateFrame(stripControlTokens(content));
     cleaned = stripOuterCodeFence(cleaned);

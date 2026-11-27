@@ -1688,7 +1688,9 @@ appendix at the end of this file.
   `project.json` keys, schema version stays 2). A hand-written text is its own
   state `BoxCheckStatus::Edited` («Изменён вручную», no score), the edit exits
   through «Сохранить»/`Esc` (Ctrl/⌘+Return saves instead of approving), and
-  the version card has one uniform frame.
+  the version card has one uniform frame. (Amended by ADR 338: the word of a
+  hand-written block is not «Изменён вручную» any more — the block reads
+  «Отредактирован» and the page reads «Отредактировано».)
 - **188.** The panel loses its colour noise (no green buttons — the colours
   are the verdicts and the accent of the version in view), the «Различия»
   switch appears only when a second version exists, and the «Исправить (N)»
@@ -2452,7 +2454,7 @@ appendix at the end of this file.
   header of the layer. The header of a text layer reads: the name of the
   layer — **OCR** or **VLM** (the correction and the text the reader wrote
   are both the VLM's word) — the note of what the pipeline did to this layer
-  («исправление не требуется», «прочитано с изображения», the kind of the
+  («Не требует исправления», «Прочитано с изображения», the kind of the
   broken LaTeX), **«Оценка:»** as ordinary text, the number of the score
   (green when the check confirmed the text, red when it rejected it), the
   approve action («Утвердить», tooltip «Игнорировать результат проверки»,

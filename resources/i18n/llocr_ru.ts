@@ -1165,15 +1165,17 @@
         <translation>Не удалось закодировать изображение блока</translation>
     </message>
     <message>
+        <location line="+76"/>
         <source>The model returned no corrected text: %1</source>
-        <translation type="vanished">Модель не вернула исправленный текст: %1</translation>
+        <translation>Модель не вернула исправленный текст: %1</translation>
     </message>
     <message>
+        <location line="-1"/>
         <source>The model returned no block text: %1</source>
-        <translation type="vanished">Модель не вернула текст блока: %1</translation>
+        <translation>Модель не вернула текст блока: %1</translation>
     </message>
     <message>
-        <location line="-110"/>
+        <location line="-185"/>
         <source>The reply is a verdict, not the block text: %1</source>
         <translation>Ответ — вердикт, а не текст блока: %1</translation>
     </message>
@@ -1189,7 +1191,7 @@
     </message>
     <message>
         <location line="-59"/>
-        <location line="+213"/>
+        <location line="+218"/>
         <source>The reply was cut by the token budget; the block needs a human look.</source>
         <translation>Ответ обрезан бюджетом токенов — блок нужно посмотреть глазами.</translation>
     </message>
@@ -1199,7 +1201,7 @@
         <translation>Ответ не соответствует схеме %1: %2</translation>
     </message>
     <message>
-        <location line="-254"/>
+        <location line="-259"/>
         <source>The block could not be read: the crop is cut, covered or blurred.</source>
         <translation>Не удалось прочитать блок: кроп обрезан, закрыт или размыт.</translation>
     </message>

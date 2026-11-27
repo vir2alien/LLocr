@@ -166,7 +166,7 @@ rides the `.llocr` project next to the turn.
 ### 4.2 The sideways mark
 
 `DocumentPage::orientationProblem` takes `Sideways`, the thumbnail and the
-panel turn red («На боку»), and the status line asks the user to turn the
+panel turn red («Лежит боком»), and the status line asks the user to turn the
 page. The mark clears on any turn of the page.
 
 ## 5. Stage 3 — the markup pass
@@ -294,7 +294,7 @@ closing 6–14 ms, sweep 40–150 ms depending on ink.
   (`recognition/orientationCheck`, on) and «Поворачивать боковую страницу
   после разметки автоматически» (`recognition/orientationAutoTurn`, on,
   visible while the check is on).
-* **UI**: the red «На боку» / «Ориентация не определяется» status
+* **UI**: the red «Лежит боком» / «Ориентация не определена» status
   (`PageStatus`, thumbnails, panel), the suggestion button beside the mark
   (`WorkPanel`), the manual ±90 buttons with their confirm dialog
   (`PageToolBar`), status lines for straightening and auto-turning in the

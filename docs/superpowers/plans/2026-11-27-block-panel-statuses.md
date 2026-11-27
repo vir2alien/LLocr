@@ -1350,7 +1350,7 @@ The new or changed entries (the context is the file the string lives in):
 | `PageStatus` | `Edited` | `Отредактировано` |
 | `PageStatus` | `Verified` | `Проверено` |
 
-The strings that stay as they are: `OCR`, `Approve` → `Утвердить`, `Revoke` → `Отозвать`, `Restore the block text` → `Вернуть текст блока`, `No correction required` → `Исправление не требуется`, `Read: the text matches the image`, `On its side` → `На боку`, `Orientation unclear` → `Ориентация не определяется`.
+The strings that stay as they are: `OCR`, `Approve` → `Утвердить`, `Revoke` → `Отозвать`, `Restore the block text` → `Вернуть текст блока`, `No correction required` → `Не требует исправления`, `Read: the text matches the image`, `On its side` → `Лежит боком`, `Orientation unclear` → `Ориентация не определена`.
 
 Remove the entries of the words that are gone: `Recognized text (OCR)`, `Correction (AI)`, `Read text (AI)`, `Comparison`, `Correction`, `· Check:`, `The document text differs from the block`, `Markup only`, `Recognized (without markup)`, `Verified (no errors)`, `Verified (with errors)`.
 

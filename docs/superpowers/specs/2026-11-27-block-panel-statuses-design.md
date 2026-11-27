@@ -72,8 +72,8 @@ from this row: it belongs to the layer it acts on.
 
 - The layer names itself **OCR** or **VLM**. The correction and the text
   the reader wrote are both the VLM's word.
-- The note (grey) is what the pipeline did to this layer: «исправление не
-  требуется», «прочитано с изображения», the kind of the broken LaTeX.
+- The note (grey) is what the pipeline did to this layer: «Не требует
+  исправления», «Прочитано с изображения», the kind of the broken LaTeX.
 - The score reads «Оценка: 43%» — the prefix is ordinary text, the number
   is green when the check confirmed the text and red when it rejected it.
   A layer without a score of its own (approved, written by hand, not
