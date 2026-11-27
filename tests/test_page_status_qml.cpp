@@ -31,6 +31,7 @@ class TestPageStatusQml : public QObject
 
 private slots:
     void initTestCase();
+    void cleanup();
     void aPageWithoutMarkupHasNoStatus();
     void aMarkedUpPageIsMarkedUp();
     void anUnjudgedPageIsRecognized();
@@ -38,11 +39,14 @@ private slots:
     void anEditedPageIsEdited();
     void aVerifiedPageIsVerified();
     void theOrientationOutranksEverything();
+    void anErrorOutranksTheEdit();
+    void theEditWaitsForTheWholePage();
+    void theOrientationOutranksTheMarkupAndTheError();
 
 private:
     QString statusText(int mode, int verification, bool edited, int orientation);
-    QString statusColor(int mode, int verification, bool edited, int orientation);
-    QString themeColor(const QString &name);
+    QColor statusColor(int mode, int verification, bool edited, int orientation);
+    QColor themeColor(const QString &name);
 
     std::unique_ptr<FakeUiController> m_uiController;
     QString m_qmlRoot;
@@ -81,6 +85,13 @@ void TestPageStatusQml::initTestCase()
     QVERIFY(m_theme);
 }
 
+// The mapping must load and run without a word of complaint: a broken branch
+// the test happens not to call would otherwise stay unnoticed.
+void TestPageStatusQml::cleanup()
+{
+    QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
+}
+
 QString TestPageStatusQml::statusText(int mode, int verification, bool edited, int orientation)
 {
     QVariant result;
@@ -91,20 +102,19 @@ QString TestPageStatusQml::statusText(int mode, int verification, bool edited, i
     return result.toString();
 }
 
-QString TestPageStatusQml::statusColor(int mode, int verification, bool edited, int orientation)
+QColor TestPageStatusQml::statusColor(int mode, int verification, bool edited, int orientation)
 {
     QVariant result;
     const bool ok =
         QMetaObject::invokeMethod(m_status, "statusColor", Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, mode), Q_ARG(QVariant, verification), Q_ARG(QVariant, edited), Q_ARG(QVariant, orientation));
     if (!QTest::qVerify(ok, "statusColor()", "the page status has a statusColor()", __FILE__, __LINE__))
-        return QString();
-    const QColor color = result.value<QColor>();
-    return color.isValid() ? color.name() : QString();
+        return QColor();
+    return result.value<QColor>();
 }
 
-QString TestPageStatusQml::themeColor(const QString &name)
+QColor TestPageStatusQml::themeColor(const QString &name)
 {
-    return m_theme->property(name.toUtf8().constData()).value<QColor>().name();
+    return m_theme->property(name.toUtf8().constData()).value<QColor>();
 }
 
 // A page without a markup block has nothing to say.
@@ -112,6 +122,12 @@ void TestPageStatusQml::aPageWithoutMarkupHasNoStatus()
 {
     QCOMPARE(statusText(0, 0, false, 0), QString());
     QCOMPARE(statusText(2, 0, false, 0), QString());
+
+    // The color of the state with no status is transparent: the dot of the
+    // thumbnail draws nothing.
+    const QColor color = statusColor(0, 0, false, 0);
+    QVERIFY(color.isValid());
+    QCOMPARE(color.alpha(), 0);
 }
 
 // The markup alone: the page says it is marked up.
@@ -155,6 +171,30 @@ void TestPageStatusQml::theOrientationOutranksEverything()
     QCOMPARE(statusText(3, 2, false, 1), QStringLiteral("On its side"));
     QCOMPARE(statusColor(3, 2, false, 1), themeColor(QStringLiteral("error")));
     QCOMPARE(statusText(3, 2, false, 2), QStringLiteral("Orientation unclear"));
+}
+
+// The error comes first: the page needs a human eye before the hand-written
+// text of the user matters.
+void TestPageStatusQml::anErrorOutranksTheEdit()
+{
+    QCOMPARE(statusText(3, 1, true, 0), QStringLiteral("Errors"));
+    QCOMPARE(statusColor(3, 1, true, 0), themeColor(QStringLiteral("error")));
+}
+
+// The hand-written text counts only when the whole page is judged: until
+// then the page says that it is recognized.
+void TestPageStatusQml::theEditWaitsForTheWholePage()
+{
+    QCOMPARE(statusText(3, 0, true, 0), QStringLiteral("Recognized"));
+    QCOMPARE(statusColor(3, 0, true, 0), themeColor(QStringLiteral("nothing")));
+}
+
+// The turn the page needs comes before the markup and before the error.
+void TestPageStatusQml::theOrientationOutranksTheMarkupAndTheError()
+{
+    QCOMPARE(statusText(1, 0, false, 1), QStringLiteral("On its side"));
+    QCOMPARE(statusColor(1, 0, false, 1), themeColor(QStringLiteral("error")));
+    QCOMPARE(statusText(3, 1, true, 1), QStringLiteral("On its side"));
 }
 
 QTEST_MAIN(TestPageStatusQml)

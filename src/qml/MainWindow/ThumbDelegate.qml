@@ -104,7 +104,9 @@ Item {
                     visible: statusText.length > 0
                     text: statusText
                     font.pixelSize: Theme.captionSize
-                    color: statusKind === "errors" || statusKind === "orientation" ? Theme.error : Theme.textMuted
+                    // The list of the pages stays muted: the dot of the page
+                    // carries the state and its color (ADR 338).
+                    color: Theme.textMuted
                     horizontalAlignment: Text.AlignRight
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
