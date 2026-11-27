@@ -233,10 +233,19 @@ ADR 194), so both tasks judge the same bytes.
 
 ## 8. Block and page statuses
 
-**Block** — the frame carries the state (ADR 238): no frame = markup only,
-gray = recognized, red = verified with a problem (Mismatch, Review, invalid
-syntax), green = verified clean (Ok, approved, hand-written). The frame
-follows the **effective** layer; the confidence number (option
+**Block** — the state speaks with six words (ADR 338): **Распознан** (gray —
+nobody judged the block, but it carries a text), **Есть ошибки** (red — the
+decision model rejected the text), **Повреждён** (red — the block could not be
+read), **Неверный синтаксис** (red — the formula's LaTeX is broken),
+**Нет ошибок** (green — the decision model confirmed the text or the user
+approved it) and **Отредактирован** (yellow — the user wrote the text). A
+block that carries no text at all (the markup alone) has no status: no dot
+and no word. The word stands in the header of the panel beside the name of
+the block type, the dot of that header carries the color (ADR 339), and the
+frame on the preview carries the same state as a color (ADR 238): no frame =
+markup only, gray = recognized, red = verified with a problem (Mismatch,
+Review, invalid syntax), green = verified clean (Ok, approved, hand-written).
+The frame follows the **effective** layer; the confidence number (option
 `check/showConfidence`) is printed in the frame's color. The fixer's states
 never speak in the frame — it is not a verifier (ADR 240). Reader states do:
 green — a read that reproduced the text (the independent re-read is itself a
@@ -248,14 +257,22 @@ text is `BoxCheckStatus::Edited` (ADR 187). Neither layer of a user-owned
 block is erased nor re-run by any redo (ADR 291). Moving or resizing a
 block erases its contents — it is markup again (ADR 241).
 
-**Page** — two independent values (ADR 165):
+**Page** — the page speaks with the same words (ADR 338): no markup block —
+no status at all; markup with an unrecognized block — **Размечено** (gray);
+every block recognized but one of them unjudged — **Распознано** (gray); every
+block judged and one of them with an error — **Есть ошибки** (red); every
+block judged or approved and one of them written by hand —
+**Отредактировано** (yellow); every block judged without an error —
+**Проверено** (green). An approved block counts as a judged one with a green
+result, and an error outranks a hand-written block. Under the word, two
+independent values (ADR 165):
 
 - the persisted recognition mode (`PageRecognitionMode`): none / markup only /
   recognized / markup+recognized — «только разметка» flips to «с разметкой»
   automatically once every non-image block has text;
 - the computed verification aggregate over the enabled block types + duplicate
-  suspects: «проверено» only when every subject block has a verdict on its
-  effective layer; any Mismatch/Review → «есть ошибки».
+  suspects: «Проверено» only when every subject block has a verdict on its
+  effective layer; any Mismatch/Review → «Есть ошибки».
 
 ## 9. Interface
 
@@ -294,8 +311,11 @@ it is sent. User-owned blocks (Edited/Approved) are never erased nor re-run.
 Page toolbar: page navigation, block-add buttons (T / image / table / Σ /
 code + a ▾ menu of every type, ADR 177), rotation. The selected block
 carries a floating mini-toolbar (recognize / verify / fix / delete). The
-block panel is the version inspector (ADR 185–187): two cards, in-place
-diff tinting (`core/TextDiff.h`), approve/revoke, hand edit.
+block panel is the inspector of the block (ADR 185–187, ADR 339): the header
+of the module carries the state, the switch of the layers reads **OCR | VLM |
+Разница**, and one text layer stands under it — the header of the layer
+carries the note, the score and the approve action, in-place diff tinting
+(`core/TextDiff.h`), approve/revoke, hand edit.
 
 Availability: buttons requiring a task's model go inactive when the model is
 not selected/downloaded (managed: file missing; external: alias empty) —

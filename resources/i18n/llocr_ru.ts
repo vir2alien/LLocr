@@ -303,41 +303,44 @@
 <context>
     <name>BlockEditPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+363"/>
-        <source>The document text differs from the block</source>
-        <translation>Текст в документе отличается от блока</translation>
-    </message>
-    <message>
-        <location line="+9"/>
+        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+408"/>
         <source>Restore the block text</source>
         <translation>Вернуть текст блока</translation>
     </message>
     <message>
-        <location line="-246"/>
-        <location line="+58"/>
-        <source>Verified</source>
-        <translation>Проверено</translation>
-    </message>
-    <message>
-        <location line="-52"/>
-        <location line="+53"/>
+        <location line="-329"/>
+        <location line="+6"/>
         <source>Damaged</source>
-        <translation>Повреждено</translation>
+        <translation>Повреждён</translation>
     </message>
     <message>
-        <location line="-51"/>
-        <location line="+52"/>
-        <source>Mismatch</source>
-        <translation>Не совпало</translation>
-    </message>
-    <message>
-        <location line="-50"/>
-        <location line="+51"/>
+        <location line="-2"/>
         <source>Invalid syntax</source>
         <translation>Неверный синтаксис</translation>
     </message>
     <message>
-        <location line="-37"/>
+        <location line="+4"/>
+        <source>Errors</source>
+        <translation>Есть ошибки</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Read from the image</source>
+        <translation>Прочитано с изображения</translation>
+    </message>
+    <message>
+        <location line="+46"/>
+        <location line="+295"/>
+        <source>VLM</source>
+        <translation>VLM</translation>
+    </message>
+    <message>
+        <location line="-294"/>
+        <source>Difference</source>
+        <translation>Разница</translation>
+    </message>
+    <message>
+        <location line="+34"/>
         <source>Unclosed brace</source>
         <translation>Незакрытая скобка</translation>
     </message>
@@ -382,100 +385,65 @@
         <translation>Блок кода внутри формулы</translation>
     </message>
     <message>
-        <location line="+24"/>
-        <source>Corrected</source>
-        <translation>Исправлено</translation>
+        <location line="+231"/>
+        <location line="+20"/>
+        <source>Revoke the approval</source>
+        <translation>Отозвать утверждение</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="-20"/>
+        <location line="+20"/>
+        <source>Ignore the check result</source>
+        <translation>Игнорировать результат проверки</translation>
+    </message>
+    <message>
+        <location line="-401"/>
         <source>Recognized</source>
-        <translation>Распознано</translation>
+        <translation>Распознан</translation>
     </message>
     <message>
-        <location line="+143"/>
+        <location line="+380"/>
+        <location line="+20"/>
         <source>Revoke</source>
         <translation>Отозвать</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="-20"/>
+        <location line="+20"/>
         <source>Approve</source>
         <translation>Утвердить</translation>
     </message>
     <message>
-        <location line="+67"/>
-        <source>Correction (AI)</source>
-        <translation>Исправление (AI)</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>No correction yet</source>
-        <translation>Исправлений пока нет</translation>
-    </message>
-    <message>
-        <location line="-282"/>
-        <location line="+54"/>
-        <source>Approved</source>
-        <translation>Утверждено</translation>
-    </message>
-    <message>
-        <location line="-52"/>
-        <location line="+53"/>
-        <source>Manually modified</source>
-        <translation>Изменён вручную</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Markup</source>
-        <translation>Разметка</translation>
-    </message>
-    <message>
-        <location line="+195"/>
+        <location line="-350"/>
         <source>No correction required</source>
         <translation>Не требует исправления</translation>
     </message>
     <message>
-        <location line="-81"/>
+        <location line="-1"/>
         <source>Read: the text matches the image</source>
         <translation>Прочитано: текст совпадает с изображением</translation>
     </message>
     <message>
-        <location line="-124"/>
+        <location line="-62"/>
+        <source>Edited</source>
+        <translation>Отредактирован</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <location line="+8"/>
+        <source>No errors</source>
+        <translation>Нет ошибок</translation>
+    </message>
+    <message>
+        <location line="+49"/>
         <source>Could not read the block</source>
         <translation>Не удалось прочитать блок</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <location line="+1"/>
-        <source>Read</source>
-        <translation>Прочитано</translation>
-    </message>
-    <message>
-        <location line="+130"/>
+        <location line="+50"/>
+        <location line="+277"/>
         <source>OCR</source>
         <translation>OCR</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Correction</source>
-        <translation>Исправление</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Comparison</source>
-        <translation>Сравнение</translation>
-    </message>
-    
-    <message>
-        <location line="+81"/>
-        <source>Read text (AI)</source>
-        <translation>Прочитанный текст (AI)</translation>
-    </message>
-    
-    
-    <message>
-        <location line="-17"/>
-        <source>Recognized text (OCR)</source>
-        <translation>Распознанный текст (OCR)</translation>
     </message>
 </context>
 <context>
@@ -812,14 +780,24 @@
 <context>
     <name>BlockTextPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockTextPanel.qml" line="+94"/>
-        <source>· Check:</source>
-        <translation>· Проверка:</translation>
+        <location filename="../../src/qml/MainWindow/BlockTextPanel.qml" line="+27"/>
+        <source>Approve</source>
+        <translation>Утвердить</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+1"/>
+        <source>Ignore the check result</source>
+        <translation>Игнорировать результат проверки</translation>
+    </message>
+    <message>
+        <location line="+69"/>
+        <source>· Score:</source>
+        <translation>· Оценка:</translation>
+    </message>
+    <message>
+        <location line="+40"/>
         <source>In the document</source>
-        <translation>Используется в документе</translation>
+        <translation>В документе</translation>
     </message>
 </context>
 <context>
@@ -1086,13 +1064,13 @@
         <translation>Для экспорта в DOCX требуется Pandoc, который не найден в PATH. Установите с pandoc.org или экспортируйте в Markdown/HTML.</translation>
     </message>
     <message>
+        <location line="+13"/>
         <location filename="../../src/app/ExportController.cpp" line="+25"/>
-        <location filename="../../src/app/Exporter.cpp" line="+13"/>
         <source>Exported PDF using the built-in writer (%1).</source>
         <translation>PDF экспортирован встроенным модулем (%1).</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location filename="../../src/app/ExportController.cpp" line="+9"/>
         <source>Exported HTML using the basic writer (%1).</source>
         <translation>HTML экспортирован упрощённым модулем (%1).</translation>
     </message>
@@ -1112,15 +1090,15 @@
         <translation>Не удалось записать файл: %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../../src/app/ExportController.cpp" line="-12"/>
-        <location filename="../../src/app/Exporter.cpp" line="+2"/>
+        <location line="+2"/>
         <location line="+36"/>
         <location line="+55"/>
+        <location filename="../../src/app/ExportController.cpp" line="-12"/>
         <source>Exported to %1</source>
         <translation>Экспортировано: %1</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="-77"/>
+        <location line="-77"/>
         <source>Pandoc not found.</source>
         <translation>Pandoc не найден.</translation>
     </message>
@@ -1182,24 +1160,25 @@
 <context>
     <name>FixModel</name>
     <message>
-        <location filename="../../src/models/FixModel.cpp" line="+160"/>
+        <location filename="../../src/models/FixModel.cpp" line="+302"/>
         <source>Failed to encode the block image</source>
         <translation>Не удалось закодировать изображение блока</translation>
     </message>
     <message>
         <source>The model returned no corrected text: %1</source>
-        <translation>Модель не вернула исправленный текст: %1</translation>
+        <translation type="vanished">Модель не вернула исправленный текст: %1</translation>
     </message>
     <message>
         <source>The model returned no block text: %1</source>
-        <translation>Модель не вернула текст блока: %1</translation>
+        <translation type="vanished">Модель не вернула текст блока: %1</translation>
     </message>
     <message>
+        <location line="-110"/>
         <source>The reply is a verdict, not the block text: %1</source>
         <translation>Ответ — вердикт, а не текст блока: %1</translation>
     </message>
     <message>
-        <location line="-26"/>
+        <location line="+84"/>
         <source>The server ignored the reasoning budget — the answer was requested again without the thinking.</source>
         <translation>Сервер проигнорировал бюджет размышлений — ответ запрошен заново, без размышлений.</translation>
     </message>
@@ -1209,27 +1188,29 @@
         <translation>Размышления отключены: сервер игнорирует бюджет размышлений (reasoning_budget_tokens).</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="-59"/>
+        <location line="+213"/>
         <source>The reply was cut by the token budget; the block needs a human look.</source>
         <translation>Ответ обрезан бюджетом токенов — блок нужно посмотреть глазами.</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+18"/>
         <source>The reply does not follow the %1 scheme: %2</source>
         <translation>Ответ не соответствует схеме %1: %2</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-254"/>
         <source>The block could not be read: the crop is cut, covered or blurred.</source>
         <translation>Не удалось прочитать блок: кроп обрезан, закрыт или размыт.</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+9"/>
+        <location line="+30"/>
         <source>The block could not be read: the model wrote no text.</source>
         <translation>Не удалось прочитать блок: модель не написала текст.</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="-2"/>
         <source>The block was read: the text matches the image, so the block text is kept.</source>
         <translation>Прочитано: текст совпадает с картинкой, текст блока не изменён.</translation>
     </message>
@@ -2000,7 +1981,7 @@
 <context>
     <name>MarkdownPreview</name>
     <message>
-        <location filename="../../src/qml/MainWindow/MarkdownPreview.qml" line="+40"/>
+        <location filename="../../src/qml/MainWindow/MarkdownPreview.qml" line="+76"/>
         <source>Failed to load the preview page (%1).</source>
         <translation>Не удалось загрузить страницу предпросмотра (%1).</translation>
     </message>
@@ -2154,37 +2135,37 @@
 <context>
     <name>PageStatus</name>
     <message>
-        <location filename="../../src/qml/PageStatus.qml" line="+12"/>
+        <location filename="../../src/qml/PageStatus.qml" line="+33"/>
         <source>On its side</source>
         <translation>Лежит боком</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+0"/>
         <source>Orientation unclear</source>
         <translation>Ориентация не определена</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>Verified (no errors)</source>
-        <translation>Нет ошибок</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Verified (with errors)</source>
-        <translation>Есть ошибки</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Markup only</source>
+        <location line="+4"/>
+        <source>Marked up</source>
         <translation>Размечено</translation>
     </message>
     <message>
         <location line="+2"/>
-        <source>Recognized (without markup)</source>
-        <translation>Распознано (без разметки)</translation>
+        <source>Errors</source>
+        <translation>Есть ошибки</translation>
     </message>
     <message>
         <location line="+2"/>
+        <source>Edited</source>
+        <translation>Отредактировано</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Verified</source>
+        <translation>Проверено</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Recognized</source>
         <translation>Распознано</translation>
     </message>
@@ -2197,7 +2178,7 @@
         <translation>Стр.</translation>
     </message>
     <message>
-        <location line="+184"/>
+        <location line="+178"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -2222,17 +2203,17 @@
         <translation>Поворот страницы сбрасывает распознавание: блоки прочитаны при прежней ориентации. Продолжить?</translation>
     </message>
     <message>
-        <location line="-37"/>
+        <location line="-27"/>
         <source>Zoom in</source>
         <translation>Увеличить</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="-26"/>
         <source>Zoom out</source>
         <translation>Уменьшить</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+20"/>
         <source>Fit page</source>
         <translation>Вписать страницу</translation>
     </message>
@@ -2295,17 +2276,17 @@
     <name>ProblemLogWindow</name>
     <message>
         <location filename="../../src/qml/ProblemLogWindow.qml" line="+12"/>
-        <location line="+49"/>
+        <location line="+41"/>
         <source>Problem log</source>
         <translation>Журнал проблем</translation>
     </message>
     <message>
-        <location line="+124"/>
+        <location line="+128"/>
         <source>Nothing went wrong so far.</source>
         <translation>Пока ничего не произошло.</translation>
     </message>
     <message numerus="yes">
-        <location line="-116"/>
+        <location line="-120"/>
         <source>%n error(s)</source>
         <translation>
             <numerusform>%n ошибка</numerusform>
@@ -3082,7 +3063,7 @@
         <translation>Профиль модели имеет пустой id</translation>
     </message>
     <message>
-        <location line="+37"/>
+        <location line="+38"/>
         <source>Model profile</source>
         <translation>Профиль модели</translation>
     </message>
@@ -3097,7 +3078,7 @@
         <translation>Профиль модели %1 содержит промпт без id или текста</translation>
     </message>
     <message>
-        <location line="-163"/>
+        <location line="-164"/>
         <source>Model profile %1 has a block prompt without a block type or text</source>
         <translation>Профиль модели %1 содержит блочный промпт без типа блока или текста</translation>
     </message>
@@ -3107,12 +3088,12 @@
         <translation>Профиль модели %1 содержит псевдоним блока без типа блока или цели</translation>
     </message>
     <message>
-        <location line="+188"/>
+        <location line="+189"/>
         <source>Model profile directory not found: %1</source>
         <translation>Каталог профилей моделей не найден: %1</translation>
     </message>
     <message>
-        <location line="-138"/>
+        <location line="-139"/>
         <source>A request profile has an empty id</source>
         <translation>Профиль запросов имеет пустой id</translation>
     </message>
@@ -3127,7 +3108,7 @@
         <translation>Профиль запросов %1 содержит псевдоним блока без типа блока или цели</translation>
     </message>
     <message>
-        <location line="+240"/>
+        <location line="+241"/>
         <source>Request profile directory not found: %1</source>
         <translation>Каталог профилей запросов не найден: %1</translation>
     </message>
@@ -3172,7 +3153,7 @@
         <translation>Дублирующийся id профиля модели: %1</translation>
     </message>
     <message>
-        <location line="+287"/>
+        <location line="+292"/>
         <source>Maximum tokens the model may generate for one page.</source>
         <translation>Максимум токенов, которые модель может сгенерировать для одной страницы.</translation>
     </message>
@@ -3217,31 +3198,31 @@
         <translation>Профиль запроса не содержит массива параметров</translation>
     </message>
     <message>
+        <location line="-61"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+149"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="-61"/>
         <source>%1 parameter is not an object</source>
         <translation>%1: параметр не является объектом</translation>
     </message>
     <message>
-        <location line="-47"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+7"/>
+        <location line="+7"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="-47"/>
         <source>%1 parameter has an empty name</source>
         <translation>%1: у параметра пустое имя</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+6"/>
+        <location line="+6"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+8"/>
         <source>%1 parameter %2 has an invalid order</source>
         <translation>%1: параметр %2 имеет некорректный порядок</translation>
     </message>
     <message>
-        <location line="+22"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+9"/>
+        <location line="+9"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+22"/>
         <source>%1 parameter %2 has an unsupported value</source>
         <translation>%1: параметр %2 имеет неподдерживаемое значение</translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="+8"/>
+        <location line="+8"/>
         <source>%1 parameter %2 has a malformed choice</source>
         <translation>%1: параметр %2 содержит некорректный вариант</translation>
     </message>
@@ -3256,13 +3237,13 @@
         <translation>%1: параметр %2 содержит вариант с неподдерживаемым значением</translation>
     </message>
     <message>
+        <location line="+7"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+25"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+7"/>
         <source>%1 has a duplicate parameter: %2</source>
         <translation>%1: дублирующийся параметр: %2</translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="+18"/>
+        <location line="+18"/>
         <source>Request profile</source>
         <translation>Профиль запроса</translation>
     </message>
@@ -3560,17 +3541,14 @@
 <context>
     <name>RuntimeTabExternal</name>
     <message>
-        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+54"/>
         <source>The key is kept in %1 — not in the settings file.</source>
         <translation type="vanished">Ключ хранится в %1 — не в файле настроек.</translation>
     </message>
     <message>
-        <location line="-3"/>
         <source>There is no system secret store on this machine: the key is kept in the memory until the app is closed.</source>
         <translation type="vanished">На этой машине нет системного хранилища секретов: ключ держится в памяти до закрытия приложения.</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>The system store refused the key: it is kept in the memory until the app is closed.</source>
         <translation type="vanished">Системное хранилище отказало: ключ держится в памяти до закрытия приложения.</translation>
     </message>
@@ -3579,17 +3557,16 @@
         <translation type="vanished">Общий сервер — значение по умолчанию для всех задач</translation>
     </message>
     <message>
-        <location line="+233"/>
         <source>The system store did not answer: %1</source>
         <translation type="vanished">Системное хранилище не ответило: %1</translation>
     </message>
     <message>
-        <location line="-110"/>
+        <location filename="../../src/qml/Settings/RuntimeTabExternal.qml" line="+158"/>
         <source>Endpoint base URL</source>
         <translation>Базовый URL конечной точки</translation>
     </message>
     <message>
-        <location line="-114"/>
+        <location line="-105"/>
         <source>No system secret store</source>
         <translation>Нет системного хранилища</translation>
     </message>
@@ -3624,17 +3601,16 @@
         <translation>Нет ответа: %1</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+28"/>
         <source>Shared server</source>
         <translation>Общий сервер</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>The default for every task</source>
         <translation type="vanished">Значение по умолчанию для всех задач</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+8"/>
         <source>Check</source>
         <translation>Проверить</translation>
     </message>
@@ -3644,7 +3620,7 @@
         <translation>Ключ будет передан открытым текстом (http вне локальной машины).</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+34"/>
         <source>Retry</source>
         <translation>Повторить</translation>
     </message>
@@ -3657,7 +3633,7 @@
         <translation type="vanished">Пустое поле берёт общее значение</translation>
     </message>
     <message>
-        <location line="-128"/>
+        <location line="-122"/>
         <source>Only the external tasks use this address. A different server can be set in the task&apos;s settings.</source>
         <translation>Этот адрес используют только внешние задачи. Другой сервер можно указать в параметрах задачи.</translation>
     </message>
@@ -3724,7 +3700,7 @@
         <translation type="vanished">Остановить сервер и обновить</translation>
     </message>
     <message>
-        <location line="+218"/>
+        <location line="+215"/>
         <source>Update</source>
         <translation>Обновить</translation>
     </message>
@@ -3733,7 +3709,7 @@
         <translation type="vanished">Посмотреть изменения</translation>
     </message>
     <message>
-        <location line="-189"/>
+        <location line="-186"/>
         <source>Platform: %1 · recommended backend: %2</source>
         <translation>Платформа: %1 · рекомендуемый backend: %2</translation>
     </message>
@@ -3743,7 +3719,7 @@
         <translation>Сборки llama.cpp</translation>
     </message>
     <message>
-        <location line="+113"/>
+        <location line="+111"/>
         <source>Updates</source>
         <translation>Обновления</translation>
     </message>
@@ -3768,12 +3744,11 @@
         <translation>Повторить</translation>
     </message>
     <message>
-        <location line="+27"/>
         <source>Ignored</source>
         <translation type="vanished">Игнорирована</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+28"/>
         <source>Available</source>
         <translation>Доступна</translation>
     </message>
@@ -3817,17 +3792,15 @@
         <translation>Установка идёт в фоне — работать можно не прерываясь.</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Restore this version</source>
         <translation type="vanished">Вернуть версию</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Ignore this version</source>
         <translation type="vanished">Игнорировать версию</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+17"/>
         <source>Channel</source>
         <translation>Канал</translation>
     </message>
@@ -3851,7 +3824,7 @@
         <translation type="vanished">Релиз</translation>
     </message>
     <message>
-        <location line="-232"/>
+        <location line="-214"/>
         <source>Check for updates</source>
         <translation>Проверить обновления</translation>
     </message>
@@ -3860,7 +3833,7 @@
         <translation type="vanished">Откройте эту вкладку или нажмите «Проверить обновления», чтобы загрузить релизы.</translation>
     </message>
     <message>
-        <location line="+162"/>
+        <location line="+161"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -3869,7 +3842,7 @@
         <translation type="vanished">Скачать и установить</translation>
     </message>
     <message>
-        <location line="-287"/>
+        <location line="-284"/>
         <source>Clean up unused builds</source>
         <translation>Очистить неиспользуемые сборки</translation>
     </message>
@@ -3999,7 +3972,7 @@
         <translation type="vanished">Журнал запросов</translation>
     </message>
     <message>
-        <location filename="../../src/qml/ServerLogWindow.qml" line="+191"/>
+        <location filename="../../src/qml/ServerLogWindow.qml" line="+199"/>
         <source>No log output yet.</source>
         <translation>Вывода журнала пока нет.</translation>
     </message>
@@ -4009,12 +3982,12 @@
         <translation>Журнал запросов</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+73"/>
         <source>No requests yet.</source>
         <translation>Запросов пока нет.</translation>
     </message>
     <message>
-        <location line="-191"/>
+        <location line="-203"/>
         <source>Copy log</source>
         <translation>Скопировать журнал</translation>
     </message>
@@ -4109,17 +4082,17 @@
     </message>
     <message>
         <location line="+5"/>
-        <location line="+116"/>
+        <location line="+120"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location line="-108"/>
+        <location line="-112"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location line="+90"/>
+        <location line="+94"/>
         <source>Reset all settings?</source>
         <translation>Сбросить все настройки?</translation>
     </message>
@@ -4581,7 +4554,7 @@
         <translation>RAM ≥ %1 · VRAM ≥ %2 (частично) / %3 (полностью)</translation>
     </message>
     <message>
-        <location line="+300"/>
+        <location line="+303"/>
         <source>Launch and request settings</source>
         <translation>Запуск и запрос</translation>
     </message>
@@ -4602,7 +4575,7 @@
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location line="-336"/>
+        <location line="-339"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
@@ -4617,7 +4590,7 @@
         <translation>Внешний</translation>
     </message>
     <message>
-        <location line="+390"/>
+        <location line="+393"/>
         <source>Connection</source>
         <translation>Подключение</translation>
     </message>
@@ -4694,16 +4667,28 @@
     </message>
 </context>
 <context>
+    <name>TestAppImport</name>
+    <message>
+        <location filename="../../tests/test_app_import.cpp" line="+1181"/>
+        <source>Broken page %1.</source>
+        <translation>Страница %1 повреждена.</translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>Page %1 is blank.</source>
+        <translation>Страница %1 пустая.</translation>
+    </message>
+</context>
+<context>
     <name>ThumbDelegate</name>
     <message>
-        <location filename="../../src/qml/MainWindow/ThumbDelegate.qml" line="+94"/>
+        <location filename="../../src/qml/MainWindow/ThumbDelegate.qml" line="+89"/>
         <source>Has duplicates</source>
         <translation>Дубликаты</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Edited</source>
-        <translation>Изменено</translation>
+        <translation type="vanished">Изменено</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -4721,7 +4706,7 @@
         <translation>Стр. %1</translation>
     </message>
     <message>
-        <location line="+120"/>
+        <location line="+122"/>
         <source>Delete page</source>
         <translation>Удалить страницу</translation>
     </message>
@@ -4751,7 +4736,7 @@
         <translation>Перенести</translation>
     </message>
     <message>
-        <location line="-216"/>
+        <location line="-211"/>
         <source>Load error</source>
         <translation>Ошибка загрузки</translation>
     </message>
@@ -4885,20 +4870,22 @@
         <translation>в ответе нет вариантов (%1)</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+11"/>
         <source>the model spent the token budget on reasoning and returned no answer</source>
         <translation>модель потратила бюджет токенов на размышления и не вернула ответ</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>the reply was stopped inside the thinking: a stop word matched before the answer</source>
         <translation>ответ оборван внутри размышления: стоп-слово совпало раньше ответа</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>the reply carries reasoning and no answer</source>
         <translation>в ответе есть размышления, но нет ответа</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>the reply carries an empty answer</source>
         <translation>ответ пустой</translation>
     </message>
@@ -4906,17 +4893,16 @@
 <context>
     <name>WorkPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/WorkPanel.qml" line="+45"/>
+        <location filename="../../src/qml/MainWindow/WorkPanel.qml" line="+50"/>
         <source>Recognized text will appear here</source>
         <translation>Здесь появится распознанный текст</translation>
     </message>
     <message>
-        <location line="+22"/>
         <source>Edited</source>
-        <translation>Изменено</translation>
+        <translation type="vanished">Изменено</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+44"/>
         <source>Revert</source>
         <translation>Отменить изменения</translation>
     </message>
@@ -5497,19 +5483,19 @@
     <message>
         <location line="+76"/>
         <location line="+94"/>
-        <location line="+342"/>
+        <location line="+305"/>
         <source>Downloading %1 …</source>
         <translation>Скачивание %1 …</translation>
     </message>
     <message>
-        <location line="-436"/>
+        <location line="-399"/>
         <location line="+94"/>
         <source>runtime</source>
         <translation>среда</translation>
     </message>
     <message>
         <location line="-3"/>
-        <location line="+200"/>
+        <location line="+163"/>
         <source>Checking for updates…</source>
         <translation>Проверка обновлений…</translation>
     </message>
@@ -5559,7 +5545,7 @@
         <translation>Другой экземпляр LLocr сейчас устанавливает рантайм; повторите попытку чуть позже.</translation>
     </message>
     <message>
-        <location line="+250"/>
+        <location line="+247"/>
         <source>This build is active — activate another build first</source>
         <translation>Эта сборка активна — сначала активируйте другую</translation>
     </message>
@@ -5574,8 +5560,8 @@
         <translation>Удалена сборка %1</translation>
     </message>
     <message>
-        <location line="-647"/>
-        <location line="+393"/>
+        <location line="-607"/>
+        <location line="+356"/>
         <source>Installing %1 …</source>
         <translation>Установка %1 …</translation>
     </message>
@@ -5595,7 +5581,7 @@
         <translation>Установлено %1 (%2). %3</translation>
     </message>
     <message>
-        <location line="+37"/>
+        <location line="+34"/>
         <source>Installation cancelled</source>
         <translation>Установка отменена</translation>
     </message>
