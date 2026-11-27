@@ -148,7 +148,7 @@ In `tests/fake_block_controller.qml`, make the double start from a block nobody 
     property bool selectedBlockDocumentDiverged: false
 ```
 
-In `tests/test_block_panel_qml.cpp`, replace the slot `theStateFollowsTheVerdict` with these three slots:
+In `tests/test_block_panel_qml.cpp`, delete the slot `theApproveActionIsNamed` and its body — the approve action leaves the module in this task and comes back in the header of the layer in Task 4, where `theApproveActionStandsWithItsLayer` covers it. Replace the slot `theStateFollowsTheVerdict` with these four slots:
 
 ```cpp
     void theStatusWordsTheBlock();
@@ -475,7 +475,7 @@ cmake --build build -j 8 --target test_block_panel_qml
 ctest --test-dir build -R test_block_panel_qml --output-on-failure
 ```
 
-Expected: PASS — the four new tests and the old ones that still apply. The old test `theNoticeStandsUnderTheText` is removed (the notice is gone), and `theApproveActionIsNamed` is replaced in Task 4.
+Expected: PASS — the four new tests and the old ones that still apply. The old test `theNoticeStandsUnderTheText` is removed (the notice is gone), and `theApproveActionIsNamed` was removed in Step 1 — the action comes back in the header of the layer in Task 4.
 
 - [ ] **Step 8: Commit**
 
