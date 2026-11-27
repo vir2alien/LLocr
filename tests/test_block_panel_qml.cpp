@@ -17,6 +17,22 @@
 #include <QQuickWindow>
 #include <QtTest>
 
+namespace {
+
+// The content of the panel is a tree: the buttons and the fields stand under
+// the layouts, not under the panel itself.
+QList<QQuickItem *> descendantsOf(QQuickItem *item)
+{
+    QList<QQuickItem *> all;
+    for (QQuickItem *child : item->childItems()) {
+        all.append(child);
+        all.append(descendantsOf(child));
+    }
+    return all;
+}
+
+}  // namespace
+
 class TestBlockPanelQml : public QObject
 {
     Q_OBJECT
@@ -41,6 +57,8 @@ private slots:
 
 private:
     std::unique_ptr<QObject> loadPanel();
+    std::unique_ptr<QObject> createUnderlay();
+    bool backgroundSpot(QQuickItem *panel, QPointF *spot);
     QList<QObject *> findAllByClassName(QObject *root, const QLatin1String &className);
     QObject *childWithText(QObject *root, const QLatin1String &className, const QString &text);
     QObject *theSwitch(QObject *root);
@@ -124,6 +142,77 @@ std::unique_ptr<QObject> TestBlockPanelQml::loadPanel()
     // measures the row.
     QTest::qWait(20);
     return object;
+}
+
+// The item under the panel: the preview of the page stands there in the app,
+// and it counts the presses that reach it.
+std::unique_ptr<QObject> TestBlockPanelQml::createUnderlay()
+{
+    m_warnings.clear();
+
+    QQmlComponent component(m_engine.get());
+    component.setData(QByteArrayLiteral("import QtQuick\n"
+                                        "MouseArea {\n"
+                                        "    property int presses: 0\n"
+                                        "    onClicked: presses++\n"
+                                        "}"),
+                      QUrl());
+    if (!component.isReady()) {
+        m_warnings.append(component.errorString());
+        return nullptr;
+    }
+
+    std::unique_ptr<QObject> object(component.create());
+    if (!object) {
+        m_warnings.append(component.errorString());
+        return nullptr;
+    }
+
+    auto *item = qobject_cast<QQuickItem *>(object.get());
+    if (!item)
+        return nullptr;
+    item->setParentItem(m_parent);
+    // The underlay stands below the panel: the panel is what the press must
+    // stop at.
+    item->setZ(-1);
+    item->setWidth(m_parent->width());
+    item->setHeight(m_parent->height());
+    return object;
+}
+
+// A point over the panel's own background: no button, no field and no label
+// stands there. The mouse area of the panel is not content — it is the
+// background itself.
+bool TestBlockPanelQml::backgroundSpot(QQuickItem *panel, QPointF *spot)
+{
+    const QRectF panelRect = panel->mapRectToScene(QRectF(0, 0, panel->width(), panel->height()));
+    const QList<QObject *> mouseAreas = findAllByClassName(panel, QLatin1String("QQuickMouseArea"));
+
+    QList<QQuickItem *> content;
+    for (QQuickItem *item : descendantsOf(panel)) {
+        if (!item->isVisible() || mouseAreas.contains(item))
+            continue;
+        content.append(item);
+    }
+
+    const int steps = 32;
+    for (int row = 1; row < steps; ++row) {
+        for (int column = 1; column < steps; ++column) {
+            const QPointF candidate(panelRect.left() + panelRect.width() * column / steps, panelRect.top() + panelRect.height() * row / steps);
+            bool overContent = false;
+            for (QQuickItem *item : content) {
+                if (item->contains(item->mapFromScene(candidate))) {
+                    overContent = true;
+                    break;
+                }
+            }
+            if (!overContent) {
+                *spot = candidate;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 QList<QObject *> TestBlockPanelQml::findAllByClassName(QObject *root, const QLatin1String &className)
@@ -539,26 +628,38 @@ void TestBlockPanelQml::theStateFollowsTheVerdict()
     QTest::qWait(20);
 }
 
-// The panel takes the clicks over its own background: a click that missed a
-// button must not reach the preview under it (ADR 340).
+// The panel takes the clicks over its own background: a press that missed a
+// button must not reach the preview under it, and the buttons of the panel
+// must keep their own clicks (ADR 340).
 void TestBlockPanelQml::thePanelCoversTheSpaceUnderIt()
 {
+    const std::unique_ptr<QObject> underlay = createUnderlay();
+    QVERIFY2(underlay, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    m_controller->setProperty("restoreCalls", 0);
+
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
-
     auto *panelItem = qobject_cast<QQuickItem *>(panel.get());
     QVERIFY(panelItem);
 
-    QQuickItem *shield = nullptr;
-    for (QObject *child : panel->children()) {
-        if (QString::fromLatin1(child->metaObject()->className()) != QStringLiteral("QQuickMouseArea"))
-            continue;
-        shield = qobject_cast<QQuickItem *>(child);
-    }
-    QVERIFY2(shield, "the panel must take the clicks over its own background");
-    QCOMPARE(shield->parentItem(), panelItem);
-    QCOMPARE(shield->width(), panelItem->width());
-    QCOMPARE(shield->height(), panelItem->height());
+    // The press over the panel's own background stops at the panel: the item
+    // under it must not see it.
+    QPointF background;
+    QVERIFY2(backgroundSpot(panelItem, &background), "the panel must have a background of its own to press");
+    QTest::mouseClick(m_window.get(), Qt::LeftButton, Qt::NoModifier, background.toPoint());
+    QTest::qWait(20);
+    QCOMPARE(underlay->property("presses").toInt(), 0);
+
+    // The button of the panel keeps its click: the area of the panel stands
+    // under the content, so it does not swallow the press.
+    QObject *restore = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("Restore the block text"));
+    QVERIFY2(restore, "the panel must offer to restore the block's text");
+    auto *restoreItem = qobject_cast<QQuickItem *>(restore);
+    QVERIFY(restoreItem);
+    QTest::mouseClick(m_window.get(), Qt::LeftButton, Qt::NoModifier, restoreItem->mapToScene(QPointF(restoreItem->width() / 2.0, restoreItem->height() / 2.0)).toPoint());
+    QTest::qWait(20);
+    QCOMPARE(m_controller->property("restoreCalls").toInt(), 1);
 }
 
 QTEST_MAIN(TestBlockPanelQml)
