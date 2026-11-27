@@ -40,7 +40,7 @@ Rectangle {
                                            : Controller.selectedBlockCheckStatus
     // The layer the operator acts on: the one the panel shows (ADR 187).
     readonly property bool correctionLayerInView: Controller.selectedBlockUsesCorrected && correctionActive
-    // The block in view carries the user's approval: the button offers the undo.
+    // The block in view carries the user's approval (ADR 187).
     readonly property bool approved: effectiveStatus === 5
     // A block the user drew and nothing has been recognized in yet: it is
     // markup, not a recognized text (ADR 189). The page says the same about
@@ -322,6 +322,11 @@ Rectangle {
             spacing: Theme.spacingSmall
 
             Rectangle {
+                id: statusDot
+                objectName: "statusDot"
+                // A block that carries no text has no status: neither the dot
+                // nor the word (ADR 338).
+                visible: root.showsStatus
                 Layout.preferredWidth: 10
                 Layout.preferredHeight: 10
                 // The dot stands as far from the left edge as it stands from

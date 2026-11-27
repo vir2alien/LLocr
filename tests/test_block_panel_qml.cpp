@@ -51,6 +51,7 @@ private slots:
     void theResetActionIsGone();
     void theSwitchGoesToTheNextLineWhenTheHeaderDoesNotFit();
     void theStatusWordsTheBlock();
+    void theBlockWithoutTextHasNoDot();
     void theStatusFollowsTheVerdict();
     void theRestoreActionStandsInTheHeader();
     void theNoticeRowIsGone();
@@ -580,7 +581,41 @@ void TestBlockPanelQml::theStatusWordsTheBlock()
 
     m_controller->setProperty("selectedBlockDocumentDiverged", false);
     m_controller->setProperty("selectedBlockCheckStatus", 1);
+    m_controller->setProperty("selectedBlockText", "E = mc^2");
+    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
     QTest::qWait(20);
+}
+
+// A block the user drew and nothing has been recognized in yet carries no
+// status: neither the dot nor the word (ADR 338).
+void TestBlockPanelQml::theBlockWithoutTextHasNoDot()
+{
+    m_controller->setProperty("selectedBlockText", "");
+    m_controller->setProperty("selectedBlockCorrected", "");
+    m_controller->setProperty("selectedBlockCheckStatus", 0);
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QQuickItem *dot = panel->findChild<QQuickItem *>(QStringLiteral("statusDot"));
+    // The block carries no text: the dot of the state goes away.
+    const bool hiddenWithoutText = !dot || !dot->isVisible();
+
+    // The text arrives: the dot of the state stands again.
+    m_controller->setProperty("selectedBlockText", "E = mc^2");
+    QTest::qWait(20);
+    const bool shownWithText = dot && dot->isVisible();
+
+    // The state of the double is restored before the assertions: a failed
+    // assertion must not leak into the next test.
+    m_controller->setProperty("selectedBlockText", "");
+    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
+    m_controller->setProperty("selectedBlockCheckStatus", 1);
+    QTest::qWait(20);
+
+    QVERIFY2(dot, "the panel must carry the dot of the state");
+    QVERIFY2(hiddenWithoutText, "a block without a text must not show the dot of the state");
+    QVERIFY2(shownWithText, "a block with a text must show the dot of the state");
 }
 
 // The state of the block wears the color of its verdict: gray — nobody
