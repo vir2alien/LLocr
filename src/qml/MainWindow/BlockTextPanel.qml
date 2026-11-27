@@ -25,6 +25,7 @@ Rectangle {
     // The approve action belongs to the layer it acts on (ADR 339).
     property bool approveVisible: false
     property string approveText: qsTr("Approve")
+    property string approveTip: qsTr("Ignore the check result")
 
     signal approveRequested()
 
@@ -113,7 +114,7 @@ Rectangle {
                     bottomPadding: 0
                     onClicked: root.approveRequested()
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Ignore the check result")
+                    ToolTip.text: root.approveTip
                 }
 
                 Item {

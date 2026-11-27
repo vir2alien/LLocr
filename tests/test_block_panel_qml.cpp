@@ -56,6 +56,7 @@ private slots:
     void theBlockWithoutTextHasNoDot();
     void theStatusFollowsTheVerdict();
     void theStatusFollowsTheLayerInView();
+    void theReviewAnswerDamagesTheBlock();
     void theNameDoesNotMoveWhenTheDotIsGone();
     void theRestoreActionStandsInTheHeader();
     void theNoticeRowIsGone();
@@ -64,6 +65,9 @@ private slots:
     void theApproveActionStandsWithItsLayer();
     void theChipStandsInTheComparison();
     void theVlmLayerStandsWithoutTheOcrText();
+    void theApproveActionStandsOnTheVisibleCard();
+    void theApproveTipFollowsTheAction();
+    void theHeaderKnowsItsWidth();
 
 private:
     std::unique_ptr<QObject> loadPanel();
@@ -299,6 +303,10 @@ void TestBlockPanelQml::restoreControllerDefaults()
     m_controller->setProperty("selectedBlockCheckStatus", 1);
     m_controller->setProperty("selectedBlockCorrectedCheckStatus", 4);
     m_controller->setProperty("selectedBlockDocumentDiverged", false);
+    m_controller->setProperty("selectedBlockFixStatus", 0);
+    m_controller->setProperty("selectedBlockConfidence", 0.9);
+    m_controller->setProperty("selectedBlockCorrectedConfidence", 0.38);
+    m_controller->setProperty("selectedBlockSyntaxProblem", 0);
     QTest::qWait(20);
 }
 
@@ -666,9 +674,9 @@ void TestBlockPanelQml::theStatusFollowsTheVerdict()
     restoreControllerDefaults();
 }
 
-// The header speaks about the layer that is in view: the block points at the
-// correction, but there is no correction to show — the header speaks about
-// the recognized text, and the card of the OCR layer agrees with it.
+// The header speaks about the layer the block carries, as the engine counts
+// it (BoxTransitions::effectiveCheckStatus): the correction's verdict where
+// the block points at a correction that exists, else the recognized text's.
 void TestBlockPanelQml::theStatusFollowsTheLayerInView()
 {
     m_controller->setProperty("selectedBlockText", "E = mc^2");
@@ -683,16 +691,39 @@ void TestBlockPanelQml::theStatusFollowsTheLayerInView()
     QObject *theme = m_engine->singletonInstance<QObject *>(QStringLiteral("LLocr"), QStringLiteral("Theme"));
     QVERIFY(theme);
 
-    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
-    QVERIFY(original);
-    QVERIFY(isVisible(original));
-    QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("success").value<QColor>());
-    QCOMPARE(original->property("scoreColor").value<QColor>(), theme->property("success").value<QColor>());
+    // The block points at the correction, and the correction exists: the
+    // block's verdict is the correction's — the block is wrong.
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("Errors"));
+    QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("error").value<QColor>());
 
-    // The correction is there and the block points at it: the header speaks
-    // about the correction.
-    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
+    // The block points at the recognized text: its verdict speaks.
+    m_controller->setProperty("selectedBlockUsesCorrected", false);
     QTest::qWait(20);
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("No errors"));
+    QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("success").value<QColor>());
+
+    restoreControllerDefaults();
+}
+
+// The fixer's REVIEW: the correction text is gone, but the verdict stays —
+// the block is damaged, as the preview and the page say
+// (BoxTransitions::fixMarkedUnreadable).
+void TestBlockPanelQml::theReviewAnswerDamagesTheBlock()
+{
+    m_controller->setProperty("selectedBlockText", "E = mc^2");
+    m_controller->setProperty("selectedBlockCorrected", "");
+    m_controller->setProperty("selectedBlockUsesCorrected", true);
+    m_controller->setProperty("selectedBlockCheckStatus", 1);
+    m_controller->setProperty("selectedBlockCorrectedCheckStatus", 3);
+    m_controller->setProperty("selectedBlockFixStatus", 3);
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *theme = m_engine->singletonInstance<QObject *>(QStringLiteral("LLocr"), QStringLiteral("Theme"));
+    QVERIFY(theme);
+
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("Damaged"));
     QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("error").value<QColor>());
 
     restoreControllerDefaults();
@@ -881,6 +912,83 @@ void TestBlockPanelQml::theVlmLayerStandsWithoutTheOcrText()
     QVERIFY2(!isVisible(theSwitch(panel.get())), "the switch must be gone where there is nothing to switch between");
 
     restoreControllerDefaults();
+}
+
+// The approve action stands on the card that is in view — also when the block
+// carries one layer only (ADR 339).
+void TestBlockPanelQml::theApproveActionStandsOnTheVisibleCard()
+{
+    // A block with a correction but without the recognized text: the card of
+    // the VLM's word stands alone, and it offers the action.
+    m_controller->setProperty("selectedBlockText", "");
+    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *vlm = thePanelWithTitle(panel.get(), QStringLiteral("VLM"));
+    QVERIFY(vlm);
+    QVERIFY(isVisible(vlm));
+    QVERIFY2(vlm->property("approveVisible").toBool(), "the layer in view must offer to approve the block");
+
+    // The switch stands on the VLM, but the card of the VLM is not there:
+    // the card in view offers the action.
+    m_controller->setProperty("selectedBlockText", "E = mc^2");
+    m_controller->setProperty("selectedBlockCorrected", "E = mc^2");
+    m_controller->setProperty("selectedBlockUsesCorrected", true);
+    QTest::qWait(20);
+
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(original);
+    QVERIFY(isVisible(original));
+    QVERIFY2(original->property("approveVisible").toBool(), "the layer in view must offer to approve the block");
+
+    restoreControllerDefaults();
+}
+
+// The tooltip of the approve action follows its label: the button says what
+// it will do, and the tooltip says the same.
+void TestBlockPanelQml::theApproveTipFollowsTheAction()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(original);
+    QCOMPARE(original->property("approveText").toString(), QStringLiteral("Approve"));
+    QCOMPARE(original->property("approveTip").toString(), QStringLiteral("Ignore the check result"));
+
+    // The block is approved: the action takes the approval back.
+    m_controller->setProperty("selectedBlockCheckStatus", 5);
+    QTest::qWait(20);
+    QCOMPARE(original->property("approveText").toString(), QStringLiteral("Revoke"));
+    QCOMPARE(original->property("approveTip").toString(), QStringLiteral("Revoke the approval"));
+
+    restoreControllerDefaults();
+}
+
+// The header knows its own width: the estimate may not be short of the row,
+// or the switch would stay in a row that cannot hold it (ADR 323).
+void TestBlockPanelQml::theHeaderKnowsItsWidth()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *theme = m_engine->singletonInstance<QObject *>(QStringLiteral("LLocr"), QStringLiteral("Theme"));
+    QVERIFY(theme);
+    const qreal slack = theme->property("spacingSmall").toInt();
+
+    QObject *close = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("✕"));
+    QVERIFY(close);
+    auto *headerRow = qobject_cast<QQuickItem *>(close)->parentItem();
+    QVERIFY(headerRow);
+
+    // The row's own width: the estimate of the header must not be short of
+    // it, and must not waste the room of the row either.
+    const qreal natural = headerRow->implicitWidth();
+    const qreal estimate = panel->property("headerNeed").toReal();
+    QVERIFY2(estimate >= natural, "the estimate of the header must not be short of the row");
+    QVERIFY2(estimate <= natural + slack * 2, "the estimate of the header must not waste the room of the row");
 }
 
 QTEST_MAIN(TestBlockPanelQml)

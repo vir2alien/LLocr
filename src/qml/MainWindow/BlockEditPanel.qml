@@ -32,10 +32,16 @@ Rectangle {
     // that layer (ADR 185).
     readonly property bool correctionStored: Controller.selectedBlockCorrected.length > 0
                                              && Controller.selectedBlockCorrected !== Controller.selectedBlockText
-    // The state of the block speaks about the layer the block carries and the
-    // panel shows: the correction where there is one, the recognized text
-    // otherwise (ADR 185).
-    readonly property int effectiveStatus: Controller.selectedBlockUsesCorrected && correctionStored
+    // The correction layer exists when it carries text or a verdict: a fix
+    // REVIEW stores a verdict without text, and the damage is the block's
+    // (BoxTransitions::hasCorrection — the preview counts the same way,
+    // ImagePreview.qml).
+    readonly property bool correctionActive: Controller.selectedBlockCorrected.length > 0
+                                             || Controller.selectedBlockCorrectedCheckStatus !== 0
+    // The verdict of the block: the correction's where the block points at it
+    // and the correction exists, else the recognized text's
+    // (BoxTransitions::effectiveCheckStatus).
+    readonly property int effectiveStatus: Controller.selectedBlockUsesCorrected && correctionActive
                                            ? Controller.selectedBlockCorrectedCheckStatus
                                            : Controller.selectedBlockCheckStatus
     // The block in view carries the user's approval (ADR 187).
@@ -187,14 +193,14 @@ Rectangle {
     // What the header row holds, if every word stands at its natural width:
     // the dot, the name of the block, the state, the switch and the actions.
     readonly property real headerNeed:
-          Theme.spacing
-        + 10
-        + blockNameLabel.implicitWidth
-        + root.stateRoom
-        + (root.hasLayers ? switchControl.implicitWidth : 0)
-        + (restoreButton.visible ? restoreButton.implicitWidth : 0)
-        + closeButton.implicitWidth
-        + Theme.spacingSmall * 5
+          root.dotInset
+        + root.dotSize
+        + Math.ceil(blockNameLabel.implicitWidth)
+        + (statusLabel.visible ? Math.ceil(statusLabel.implicitWidth) : 0)
+        + (restoreButton.visible ? Math.ceil(restoreButton.implicitWidth) : 0)
+        + (root.hasLayers ? Math.ceil(switchControl.implicitWidth) : 0)
+        + Math.ceil(closeButton.implicitWidth)
+        + Theme.spacingSmall * 7
 
     // The switch stays in the header row while the row holds it; when the row
     // cannot hold it, the switch goes to the line below and the row keeps the
@@ -206,6 +212,10 @@ Rectangle {
     readonly property real stateRoom:
           (statusLabel.visible ? statusLabel.implicitWidth : 0)
         + Theme.spacingSmall * 3
+
+    // The dot of the state: its size and the inset it stands at.
+    readonly property int dotSize: 10
+    readonly property int dotInset: Theme.spacing
 
     // What is wrong with the formula's LaTeX (ADR 194): the kind the app
     // found, named in the language of the interface.
@@ -345,7 +355,7 @@ Rectangle {
             // The inset of the header: it stands whether the dot is there or
             // not, so the name of the block does not move.
             Item {
-                Layout.preferredWidth: Theme.spacing
+                Layout.preferredWidth: root.dotInset
                 Layout.preferredHeight: 1
             }
 
@@ -353,8 +363,8 @@ Rectangle {
             // room, so the name of the block does not move when the dot goes
             // away (ADR 338).
             Item {
-                Layout.preferredWidth: 10
-                Layout.preferredHeight: 10
+                Layout.preferredWidth: root.dotSize
+                Layout.preferredHeight: root.dotSize
 
                 Rectangle {
                     id: statusDot
@@ -363,7 +373,7 @@ Rectangle {
                     // dot nor the word (ADR 338).
                     visible: root.showsStatus
                     anchors.fill: parent
-                    radius: 5
+                    radius: root.dotSize / 2
                     color: root.stateColor
                     border.color: root.stateColor
                     border.width: 1
@@ -456,8 +466,9 @@ Rectangle {
             noteText: root.originalNote
             scoreText: root.layerScore(Controller.selectedBlockConfidence, Controller.selectedBlockCheckStatus)
             scoreColor: root.scoreColor(Controller.selectedBlockCheckStatus)
-            approveVisible: root.viewIndex === 0 && !root.userEdited
+            approveVisible: root.showOriginal && !root.compareMode && !root.userEdited
             approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
+            approveTip: root.approved ? qsTr("Revoke the approval") : qsTr("Ignore the check result")
             onApproveRequested: root.approve()
             inDocument: root.compareMode && root.documentCarriesOcr && !root.userEdited
             html: root.originalHtml
@@ -475,8 +486,9 @@ Rectangle {
             scoreText: root.layerScore(Controller.selectedBlockCorrectedConfidence,
                                         Controller.selectedBlockCorrectedCheckStatus)
             scoreColor: root.scoreColor(Controller.selectedBlockCorrectedCheckStatus)
-            approveVisible: root.viewIndex === 1 && !root.userEdited
+            approveVisible: root.showVlm && !root.compareMode && !root.userEdited
             approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
+            approveTip: root.approved ? qsTr("Revoke the approval") : qsTr("Ignore the check result")
             onApproveRequested: root.approve()
             inDocument: root.compareMode && root.documentCarriesVlm && !root.userEdited
             html: root.correctedHtml
