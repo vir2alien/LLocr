@@ -2303,6 +2303,10 @@ appendix at the end of this file.
   the name, the state, the switch and the actions, and it has no room for a
   fourth pair of words; and a warning that speaks about the document stands
   after the text it speaks about.)
+  (Amended by ADR 339: the switch reads **OCR | VLM | Разница**, and it
+  stands only where the block carries both an OCR result and a correction — a
+  block without a second variant carries no switch at all, not a row with a
+  switched-off segment.)
 
 
 - **324.** The zoom of the page panel stands in the toolbar, not behind a
