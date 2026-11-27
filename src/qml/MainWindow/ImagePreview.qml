@@ -385,6 +385,7 @@ Item {
                     required property real boxCorrectedConfidence
                     required property bool boxUseCorrectedText
                     required property int boxFixStatus
+                    required property bool boxDocumentDiverged
 
                     property bool isImage: Controller.boxModel.isImageBox(boxDelegate.index)
                     property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
@@ -400,7 +401,8 @@ Item {
 
                     // The frame carries the state of the block (ADR 238): no
                     // frame = layout markup only, gray = recognized, red =
-                    // verified with an error, green = verified without one.
+                    // verified with an error, green = verified without one, and
+                    // yellow = the block the user wrote by hand (ADR 338).
                     // The reader's confirmation speaks for the block while it
                     // stands (ADR 261): a re-read that reproduced the text is
                     // itself a verification — green. A re-read that replaced
@@ -414,14 +416,8 @@ Item {
                     // the fixer is not a verifier (ADR 240).
                     readonly property bool hasText: boxText.length > 0 || boxCorrectedText.length > 0
                     readonly property bool readDamaged: boxFixStatus === 6
-                    readonly property bool readVerdict: boxFixStatus === 4
-                    readonly property bool verified: effectiveStatus === 1 || effectiveStatus === 5 || effectiveStatus === 6
                     readonly property bool failed: boxDelegate.readDamaged || effectiveStatus === 3 || effectiveStatus === 4 || effectiveStatus === 7
-                    readonly property color stateColor: boxDelegate.readDamaged ? Theme.error
-                                                     : boxDelegate.readVerdict ? Theme.success
-                                                     : boxDelegate.verified ? Theme.success
-                                                     : boxDelegate.failed ? Theme.error
-                                                     : Theme.nothing
+                    readonly property color stateColor: BlockFrame.stateColor(effectiveStatus, boxFixStatus, boxDocumentDiverged)
 
                     // One hue per block kind: the inner frame and the fill
                     // keep the type of the block readable.
@@ -443,7 +439,7 @@ Item {
                     // A block the reader could not read carries a verdict
                     // without text: the frame is the only sign that the block
                     // needs a human (ADR 261).
-                    border.color: boxDelegate.hasText || boxDelegate.readDamaged ? stateColor : "transparent"
+                    border.color: BlockFrame.frameColor(effectiveStatus, boxFixStatus, boxDocumentDiverged, hasText)
                     // A block with an error is framed heavier: the eye finds
                     // the problem without reading the colors.
                     border.width: isSelected || boxDelegate.failed ? 2 : 1

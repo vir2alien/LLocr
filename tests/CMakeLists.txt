@@ -764,6 +764,19 @@ target_link_libraries(test_page_status_qml PRIVATE
 )
 add_test(NAME test_page_status_qml COMMAND test_page_status_qml)
 
+# The frame of a block in the preview: the color of every state of the block
+# (ADR 238, ADR 338). The mapping lives in QML, so the test reads the shipped
+# file.
+qt_add_executable(test_block_frame_qml test_block_frame_qml.cpp)
+
+target_link_libraries(test_block_frame_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_app
+)
+add_test(NAME test_block_frame_qml COMMAND test_block_frame_qml)
+
 # The icon set: the glyphs must be light (the colorization mixes the source by
 # its luminance, so a dark stroke keeps its own color in every theme — ADR 298),
 # and the component must hand the requested color to the effect. The files are

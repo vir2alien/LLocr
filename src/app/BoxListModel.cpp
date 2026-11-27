@@ -64,6 +64,8 @@ QVariant BoxListModel::data(const QModelIndex &index, int role) const
         return static_cast<int>(box.fixStatus);
     case UseCorrectedRole:
         return box.useCorrectedText;
+    case DocumentDivergedRole:
+        return !box.userText.isEmpty();
     }
     return {};
 }
@@ -85,6 +87,7 @@ QHash<int, QByteArray> BoxListModel::roleNames() const
         {CorrectedConfidenceRole, "boxCorrectedConfidence"},
         {FixStatusRole, "boxFixStatus"},
         {UseCorrectedRole, "boxUseCorrectedText"},
+        {DocumentDivergedRole, "boxDocumentDiverged"},
     };
     return roles;
 }
@@ -162,6 +165,19 @@ void BoxListModel::updateBoxState(int index, const BoundingBox &box)
     current.useCorrectedText = box.useCorrectedText;
     const QModelIndex mi = createIndex(index, 0);
     emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole, CorrectedCheckStatusRole, TextRole, ConfidenceRole, CorrectedConfidenceRole, FixStatusRole, UseCorrectedRole});
+}
+
+void BoxListModel::updateBoxUserText(int index, const QString &userText)
+{
+    if (index < 0 || index >= m_boxes.size())
+        return;
+    BoundingBox &box = m_boxes[index];
+    const bool wasDiverged = !box.userText.isEmpty();
+    box.userText = userText;
+    if (wasDiverged == !box.userText.isEmpty())
+        return;
+    const QModelIndex mi = createIndex(index, 0);
+    emit dataChanged(mi, mi, {DocumentDivergedRole});
 }
 
 void BoxListModel::removeBox(int index)

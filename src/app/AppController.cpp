@@ -990,7 +990,9 @@ void AppController::setUserBlockText(int segmentIndex, const QString &markdown)
         boxes[boxIndex].userText.clear();
     else
         BoxTransitions::setUserText(boxes[boxIndex], layer);
+    const QString userText = boxes[boxIndex].userText;
     locker.unlock();
+    m_boxModel.updateBoxUserText(boxIndex, userText);
     refreshPageDocument(m_currentPage);
 }
 
@@ -1010,6 +1012,7 @@ void AppController::releaseBlockUserText(int boxIndex)
             return;
         boxes[boxIndex].userText.clear();
     }
+    m_boxModel.updateBoxUserText(boxIndex, QString());
     refreshPageDocument(m_currentPage);
     setStatus(StatusMessage::translate("AppController", "The block text was returned to the document."));
 }
@@ -1023,13 +1026,21 @@ bool AppController::selectedBlockDocumentDiverged() const
 void AppController::revertCurrentPageEdits()
 {
     const int index = m_currentPage;
+    QList<int> released;
     {
         QWriteLocker locker(&m_documentLock);
         if (!m_document.isValidIndex(index) || m_document.page(index).result.pages.isEmpty())
             return;
-        for (BoundingBox &box : m_document.page(index).result.pages[0].boxes)
-            box.userText.clear();
+        QList<BoundingBox> &boxes = m_document.page(index).result.pages[0].boxes;
+        for (int i = 0; i < boxes.size(); ++i) {
+            if (boxes[i].userText.isEmpty())
+                continue;
+            boxes[i].userText.clear();
+            released.append(i);
+        }
     }
+    for (int boxIndex : released)
+        m_boxModel.updateBoxUserText(boxIndex, QString());
     refreshPageDocument(index);
 }
 

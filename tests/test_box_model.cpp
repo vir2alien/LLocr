@@ -238,6 +238,37 @@ private slots:
         QCOMPARE(model.data(model.index(0), BoxListModel::FixStatusRole).toInt(), int(BoxFixStatus::None));
         QCOMPARE(spy.count(), 3);
     }
+
+    // The user's own wording for the block (ADR 296): the preview frames the
+    // block the user wrote in yellow, so the model must carry the flag.
+    void documentDivergedRoleFollowsTheUserText()
+    {
+        BoxListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1))});
+        QCOMPARE(model.data(model.index(0), BoxListModel::DocumentDivergedRole).toBool(), false);
+
+        QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
+        model.updateBoxUserText(0, QStringLiteral("the user's own wording"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::DocumentDivergedRole).toBool(), true);
+        QCOMPARE(spy.count(), 1);
+
+        // Another wording of the same block changes nothing: the flag is the
+        // same one.
+        model.updateBoxUserText(0, QStringLiteral("another wording"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::DocumentDivergedRole).toBool(), true);
+        QCOMPARE(spy.count(), 1);
+
+        // The block returns to the recognition.
+        model.updateBoxUserText(0, QString());
+        QCOMPARE(model.data(model.index(0), BoxListModel::DocumentDivergedRole).toBool(), false);
+        QCOMPARE(spy.count(), 2);
+
+        // An out-of-range index is a no-op.
+        model.updateBoxUserText(7, QStringLiteral("nowhere"));
+        QCOMPARE(spy.count(), 2);
+    }
 };
 
 QTEST_MAIN(TestBoxModel)

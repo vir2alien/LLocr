@@ -36,6 +36,7 @@ public:
         CorrectedConfidenceRole,
         FixStatusRole,
         UseCorrectedRole,
+        DocumentDivergedRole,
     };
 
     explicit BoxListModel(QObject *parent = nullptr);
@@ -57,6 +58,9 @@ public:
     // confidence), the correction layer (correctedText, its own verdict and
     // confidence) and the fix outcome with the layer the user reads.
     void updateBoxState(int index, const BoundingBox &box);
+    // The user's own wording for the block (ADR 296): the preview frames the
+    // block the user wrote in yellow, so the model must know about it.
+    void updateBoxUserText(int index, const QString &userText);
     void removeBox(int index);
     void insertBox(int row, const BoundingBox &box);
     void moveBox(int from, int to);
