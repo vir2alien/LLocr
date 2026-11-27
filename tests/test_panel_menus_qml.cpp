@@ -37,6 +37,7 @@ private slots:
     void theSelectAllButtonIsTheAppsButton();
     void theZoomStandsInTheToolbar();
     void theSwitchOffersThePreview();
+    void theWorkPanelSaysNoPageStatus();
 
 private:
     std::unique_ptr<QObject> loadFile(const QString &relativePath, qreal width, qreal height);
@@ -379,6 +380,18 @@ void TestPanelMenusQml::theSwitchOffersThePreview()
     QCOMPARE(options.at(1).toMap().value(QStringLiteral("label")).toString(), QStringLiteral("Preview"));
     QCOMPARE(options.at(2).toMap().value(QStringLiteral("label")).toString(), QStringLiteral("WYSIWYG"));
     QCOMPARE(viewSwitch->property("currentIndex").toInt(), 0);
+}
+
+// The work panel says nothing about the state of the page: the page list
+// carries the status, and the panel carries the page itself (ADR 342).
+void TestPanelMenusQml::theWorkPanelSaysNoPageStatus()
+{
+    const std::unique_ptr<QObject> panel = loadFile(QStringLiteral("MainWindow/WorkPanel.qml"), 400, 600);
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    // The double reports a recognized page: the status word would be
+    // «Recognized» — the panel must not carry it.
+    QVERIFY2(!findText(panel.get(), QStringLiteral("Recognized")), "the work panel must not carry the status of the page");
 }
 
 QTEST_MAIN(TestPanelMenusQml)

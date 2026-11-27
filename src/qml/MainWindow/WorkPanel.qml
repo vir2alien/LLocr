@@ -67,18 +67,6 @@ Rectangle {
             Layout.leftMargin: Theme.spacingSmall
             Layout.rightMargin: Theme.spacingSmall
 
-            LLOLabel {
-                visible: Controller.currentPageEditable
-                text: PageStatus.statusText(Controller.currentPageRecognitionMode,
-                                            Controller.currentPageVerification,
-                                            Controller.currentPageEdited,
-                                            Controller.currentPageOrientationProblem)
-                color: PageStatus.statusColor(Controller.currentPageRecognitionMode,
-                                              Controller.currentPageVerification,
-                                              Controller.currentPageEdited,
-                                              Controller.currentPageOrientationProblem)
-            }
-
             // The turn the layout tokens advise for a sideways page (ADR 245):
             // one click applies it — the user turns, the app advises.
             LLOButton {

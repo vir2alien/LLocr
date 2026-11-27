@@ -65,6 +65,14 @@ Rectangle {
     readonly property bool userEdited: (root.isTextBlock && Controller.selectedBlockDocumentDiverged)
                                       || effectiveStatus === 6
     readonly property bool showsStatus: !root.markupOnly || root.userEdited
+    // The red status of the block: the model rejected the text, and the
+    // operator's confirmation is what the block waits for (ADR 339).
+    readonly property bool errorStatus: !root.userEdited
+                                       && (root.readDamaged || root.effectiveStatus === 3
+                                           || root.effectiveStatus === 4 || root.effectiveStatus === 7)
+    // The approve action stands where the block waits for the operator: the
+    // red status — and the approval that stands, so it can be taken back.
+    readonly property bool approveStands: root.errorStatus || root.approved
     // The state of the block in the header: the word and the color of the
     // dot (ADR 338).
     readonly property string statusWord: root.showsStatus
@@ -214,9 +222,11 @@ Rectangle {
           (statusLabel.visible ? statusLabel.implicitWidth : 0)
         + Theme.spacingSmall * 3
 
-    // The dot of the state: its size and the inset it stands at.
+    // The dot of the state: its size and the inset it stands at. The inset
+    // is the indent of the header of a layer below, so the module and the
+    // layer it holds begin at the same line (ADR 339).
     readonly property int dotSize: 10
-    readonly property int dotInset: Theme.spacing
+    readonly property int dotInset: Theme.spacingSmall
 
     // What is wrong with the formula's LaTeX (ADR 194): the kind the app
     // found, named in the language of the interface.
@@ -356,19 +366,15 @@ Rectangle {
             Layout.preferredHeight: Math.max(closeButton.implicitHeight, switchControl.implicitHeight)
             spacing: Theme.spacingSmall
 
-            // The inset of the header: it stands whether the dot is there or
-            // not, so the name of the block does not move.
-            Item {
-                Layout.preferredWidth: root.dotInset
-                Layout.preferredHeight: 1
-            }
-
             // The place of the dot of the state: the box around it keeps its
             // room, so the name of the block does not move when the dot goes
-            // away (ADR 338).
+            // away (ADR 338). Its indent is the indent of the header of a
+            // layer below: the module and the layer it holds begin at the
+            // same line (ADR 342).
             Item {
                 Layout.preferredWidth: root.dotSize
                 Layout.preferredHeight: root.dotSize
+                Layout.leftMargin: root.dotInset
 
                 Rectangle {
                     id: statusDot
@@ -470,7 +476,7 @@ Rectangle {
             noteText: root.originalNote
             scoreText: root.layerScore(Controller.selectedBlockConfidence, Controller.selectedBlockCheckStatus)
             scoreColor: root.scoreColor(Controller.selectedBlockCheckStatus)
-            approveVisible: root.showOriginal && !root.compareMode && !root.userEdited
+            approveVisible: root.showOriginal && !root.compareMode && root.approveStands
             approveEnabled: !Controller.checkBusy && !Controller.busy
             approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
             approveTip: root.approved ? qsTr("Revoke the approval") : qsTr("Ignore the check result")
@@ -491,7 +497,7 @@ Rectangle {
             scoreText: root.layerScore(Controller.selectedBlockCorrectedConfidence,
                                         Controller.selectedBlockCorrectedCheckStatus)
             scoreColor: root.scoreColor(Controller.selectedBlockCorrectedCheckStatus)
-            approveVisible: root.showVlm && !root.compareMode && !root.userEdited
+            approveVisible: root.showVlm && !root.compareMode && root.approveStands
             approveEnabled: !Controller.checkBusy && !Controller.busy
             approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
             approveTip: root.approved ? qsTr("Revoke the approval") : qsTr("Ignore the check result")

@@ -2471,10 +2471,11 @@ appendix at the end of this file.
   it), the approve action («Утвердить», tooltip «Игнорировать результат
   проверки», «Отозвать» while the approval stands) and the ordinary word
   **«В документе»**. The approve action stands when the layer in view is OCR
-  or VLM and the block is not yellow; the word stands in the comparison
-  alone, on the layer the document carries, and not while the block is
-  yellow. (Amended by ADR 341: the note does not name the read, and the word
-  of the document is no badge.) The switch reads
+  or VLM and the block is red — a block nobody rejected needs no confirmation
+  (ADR 342); the word stands in the comparison alone, on the layer the
+  document carries, and not while the block is yellow. (Amended by ADR 341:
+  the note does not name the read, and the word of the document is no badge.)
+  The switch reads
   **OCR | VLM | Разница** and stands only where the block carries both an
   OCR result and a correction. The row under the text — «Текст в документе
   отличается от блока» with the action that settles it — is gone: the yellow
@@ -2499,6 +2500,16 @@ appendix at the end of this file.
   verdicts still speak in their own words (ADR 261). The badge «В документе»
   is now the ordinary word — no badge of its own: a mark of a layer was a
   color, and the color belongs to the data.
+- **342.** Three more corrections of the panel. The work panel — the preview
+  and the editor on the right — does not carry the status of the page: the
+  list of the pages speaks about the page, the panel shows the page itself.
+  The header of the module begins at the line of the header of the layer
+  below it: the dot of the state stands over the name of the layer, and the
+  indent of the header is the indent of the layer (`Layout.leftMargin` of the
+  dot's box, not a spacer before it). The approve action stands on the red
+  status alone: a block nobody rejected needs no confirmation, and the block
+  the user wrote is theirs; the approval that stands keeps the action in
+  place, so it can be taken back («Отозвать»).
 
 
 ### Security & secrets

@@ -70,7 +70,9 @@ so the preview knows about it.
 
 «Вернуть текст блока» stands only where the user wrote the text in the
 editor — there is something to take back there. The approve action is gone
-from this row: it belongs to the layer it acts on.
+from this row: it belongs to the layer it acts on. The header begins at the
+line of the header of the layer below it: the dot of the state stands over
+the name of the layer (ADR 342).
 
 ### 4. The header of a text layer
 
@@ -88,8 +90,10 @@ from this row: it belongs to the layer it acts on.
   A layer without a score of its own (approved, written by hand, not
   judged) shows neither the prefix nor the number.
 - «Утвердить» (tooltip: «Игнорировать результат проверки») stands when the
-  layer in view is OCR or VLM and the block is not yellow. While the
-  approval stands the button reads «Отозвать». The action acts on the layer
+  layer in view is OCR or VLM and the block is red: a block nobody rejected
+  needs no confirmation, and the block the user wrote is theirs. While the
+  approval stands the button reads «Отозвать» and stays in place, so the
+  approval can be taken back. The action acts on the layer
   in view — the switch moves the document, so the layer the operator reads is
   the layer the block carries.
 - The word «В документе» stands in the comparison alone, on the layer the
@@ -128,8 +132,10 @@ outranks a hand-written block: the page needs a human eye first. The
 orientation problem keeps the top place it had — a page that lies on its
 side needs a turn before anything else is said about it.
 
-The page speaks in two places: the label of the work panel and the chip of
-the thumbnail. Both take the word and its color from `PageStatus.qml`.
+The page speaks in one place: the chip of the thumbnail. The work panel — the
+preview and the editor on the right — says nothing about the state of the
+page: the list of the pages speaks about the page, the panel shows the page
+itself (ADR 342). The chip takes the word and its color from `PageStatus.qml`.
 
 ## The data behind it
 
@@ -173,3 +179,6 @@ the block model (`BoxListModel`) carries the user's own wording as the role
 - **ADR 340** — the panel covers the space under it.
 - **ADR 341** — the three corrections: the yellow frame, the unnamed read and
   the ordinary word of the document.
+- **ADR 342** — the work panel says nothing about the page, the module and
+  the layer begin at the same line, and the approve action stands on the red
+  status alone.

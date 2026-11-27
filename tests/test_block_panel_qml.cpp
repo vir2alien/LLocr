@@ -81,6 +81,8 @@ private slots:
     void theChipSaysInTheDocument();
     void theReadIsNotNamedInTheLayer();
     void theApproveActionWaitsForTheIdleApp();
+    void theApproveActionStandsOnTheRedStatusOnly();
+    void theModuleHeaderBeginsAtTheLineOfTheLayer();
 
 private:
     std::unique_ptr<QObject> loadPanel();
@@ -872,6 +874,10 @@ void TestBlockPanelQml::theScoreStandsWithItsLayer()
 // the layer, not in the header of the module.
 void TestBlockPanelQml::theApproveActionStandsWithItsLayer()
 {
+    // The model rejected the text: the block is red and waits for the
+    // operator's confirmation.
+    m_controller->setProperty("selectedBlockCheckStatus", 4);
+
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
 
@@ -933,6 +939,9 @@ void TestBlockPanelQml::theVlmLayerStandsWithoutTheOcrText()
 // carries one layer only (ADR 339).
 void TestBlockPanelQml::theApproveActionStandsOnTheVisibleCard()
 {
+    // The model rejected the text: the block is red.
+    m_controller->setProperty("selectedBlockCheckStatus", 4);
+
     // A block with a correction but without the recognized text: the card of
     // the VLM's word stands alone, and it offers the action.
     m_controller->setProperty("selectedBlockText", "");
@@ -1056,6 +1065,9 @@ void TestBlockPanelQml::theLayerHeaderKeepsItsOrder()
     m_controller->setProperty("selectedBlockCorrected", "");
     m_controller->setProperty("selectedBlockCorrectedCheckStatus", 0);
     m_controller->setProperty("selectedBlockFixStatus", 1);
+    // The model rejected the text: the approve action stands next to the
+    // score (ADR 339).
+    m_controller->setProperty("selectedBlockCheckStatus", 4);
 
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
@@ -1153,10 +1165,68 @@ void TestBlockPanelQml::theReadIsNotNamedInTheLayer()
     restoreControllerDefaults();
 }
 
+// The approve action stands on the red status alone: a block nobody rejected
+// needs no confirmation, and the block the user wrote is theirs (ADR 339).
+void TestBlockPanelQml::theApproveActionStandsOnTheRedStatusOnly()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(original);
+
+    // Nobody rejected the text: the action has nothing to confirm.
+    QVERIFY2(!original->property("approveVisible").toBool(), "a green block needs no confirmation");
+
+    // The model rejected the text: the action stands.
+    m_controller->setProperty("selectedBlockCheckStatus", 4);
+    QTest::qWait(20);
+    QVERIFY2(original->property("approveVisible").toBool(), "the red block must offer to approve it");
+
+    // The block the user wrote: the action is gone.
+    m_controller->setProperty("selectedBlockDocumentDiverged", true);
+    QTest::qWait(20);
+    QVERIFY2(!original->property("approveVisible").toBool(), "a yellow block needs no confirmation");
+
+    // The approval stands: the action takes it back.
+    m_controller->setProperty("selectedBlockDocumentDiverged", false);
+    m_controller->setProperty("selectedBlockCheckStatus", 5);
+    QTest::qWait(20);
+    QVERIFY2(original->property("approveVisible").toBool(), "the approval must be revocable");
+    QCOMPARE(original->property("approveText").toString(), QStringLiteral("Revoke"));
+
+    restoreControllerDefaults();
+}
+
+// The module and the layer it holds begin at the same line: the dot of the
+// state stands over the name of the layer (ADR 342).
+void TestBlockPanelQml::theModuleHeaderBeginsAtTheLineOfTheLayer()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QQuickItem *dot = panel->findChild<QQuickItem *>(QStringLiteral("statusDot"));
+    QVERIFY2(dot, "the panel must carry the dot of the state");
+
+    QObject *ocr = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(ocr);
+    QObject *title = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("OCR"));
+    QVERIFY2(title, "the card must name its layer");
+    auto *titleItem = qobject_cast<QQuickItem *>(title);
+    QVERIFY(titleItem);
+
+    QVERIFY2(qAbs(sceneX(dot) - sceneX(titleItem)) < 0.5, "the header of the module and the header of the layer must begin at the same line");
+
+    restoreControllerDefaults();
+}
+
 // The approve action waits for the idle app: while the check runs or the app
 // is busy, the action cannot write an approval over the model's answer.
 void TestBlockPanelQml::theApproveActionWaitsForTheIdleApp()
 {
+    // The model rejected the text: the block is red and the action stands.
+    m_controller->setProperty("selectedBlockCheckStatus", 4);
+
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
 

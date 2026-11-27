@@ -303,12 +303,12 @@
 <context>
     <name>BlockEditPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+412"/>
+        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+418"/>
         <source>Restore the block text</source>
         <translation>Вернуть текст блока</translation>
     </message>
     <message>
-        <location line="-334"/>
+        <location line="-332"/>
         <location line="+6"/>
         <source>Damaged</source>
         <translation>Повреждён</translation>
@@ -329,17 +329,17 @@
     </message>
     <message>
         <location line="+104"/>
-        <location line="+299"/>
+        <location line="+297"/>
         <source>VLM</source>
         <translation>VLM</translation>
     </message>
     <message>
-        <location line="-298"/>
+        <location line="-296"/>
         <source>Difference</source>
         <translation>Разница</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+36"/>
         <source>Unclosed brace</source>
         <translation>Незакрытая скобка</translation>
     </message>
@@ -384,7 +384,7 @@
         <translation>Блок кода внутри формулы</translation>
     </message>
     <message>
-        <location line="+235"/>
+        <location line="+231"/>
         <location line="+21"/>
         <source>Revoke the approval</source>
         <translation>Отозвать утверждение</translation>
@@ -396,12 +396,12 @@
         <translation>Игнорировать результат проверки</translation>
     </message>
     <message>
-        <location line="-408"/>
+        <location line="-406"/>
         <source>Recognized</source>
         <translation>Распознан</translation>
     </message>
     <message>
-        <location line="+386"/>
+        <location line="+384"/>
         <location line="+21"/>
         <source>Revoke</source>
         <translation>Отозвать</translation>
@@ -413,7 +413,7 @@
         <translation>Утвердить</translation>
     </message>
     <message>
-        <location line="-357"/>
+        <location line="-355"/>
         <source>No correction required</source>
         <translation>Не требует исправления</translation>
     </message>
@@ -440,7 +440,7 @@
     </message>
     <message>
         <location line="+52"/>
-        <location line="+280"/>
+        <location line="+278"/>
         <source>OCR</source>
         <translation>OCR</translation>
     </message>
@@ -4903,7 +4903,7 @@
         <translation type="vanished">Изменено</translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="+32"/>
         <source>Revert</source>
         <translation>Отменить изменения</translation>
     </message>
