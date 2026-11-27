@@ -4,7 +4,7 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+1482"/>
+        <location filename="../../src/app/AppController.cpp" line="+1493"/>
         <source>Nothing to check:</source>
         <translation>Проверять нечего:</translation>
     </message>
@@ -45,12 +45,12 @@
         <translation>отклонено формул с неверным LaTeX: %1</translation>
     </message>
     <message>
-        <location line="-729"/>
+        <location line="-740"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
-        <location line="+443"/>
+        <location line="+454"/>
         <source>Block added.</source>
         <translation>Блок добавлен.</translation>
     </message>
@@ -65,7 +65,7 @@
         <translation>Утверждение блока отозвано.</translation>
     </message>
     <message>
-        <location line="-275"/>
+        <location line="-283"/>
         <source>The block text was returned to the document.</source>
         <translation>Текст блока возвращён в документ.</translation>
     </message>
@@ -74,12 +74,12 @@
         <translation type="vanished">Изменённый фрагмент больше не найден в тексте документа.</translation>
     </message>
     <message>
-        <location line="+1227"/>
+        <location line="+1235"/>
         <source>Page %1 turned %2° clockwise.</source>
         <translation>Страница %1 повёрнута на %2° по часовой стрелке.</translation>
     </message>
     <message>
-        <location line="-2119"/>
+        <location line="-2130"/>
         <source>Page %1: the orientation is not clear, the page was left as it is.</source>
         <translation>Страница %1: ориентация не определяется, страница оставлена как есть.</translation>
     </message>
@@ -98,12 +98,12 @@
         <translation type="vanished">Страница %1 выровнена на %2°.</translation>
     </message>
     <message>
-        <location line="+1699"/>
+        <location line="+1710"/>
         <source>Page %1 lies on its side — turned by %2°, the markup runs again.</source>
         <translation>Страница %1 лежала боком — повёрнута на %2°, разметка запускается снова.</translation>
     </message>
     <message>
-        <location line="-978"/>
+        <location line="-989"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
     </message>
@@ -124,7 +124,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+760"/>
+        <location line="+771"/>
         <source>Page text copied to the clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -179,7 +179,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1528"/>
+        <location line="-1539"/>
         <source>Page %1 could not be rendered and is shown blank — see the problem log.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -227,7 +227,7 @@
         <translation>Нет страниц для обработки</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+798"/>
+        <location filename="../../src/app/AppController.cpp" line="+809"/>
         <source>No model for the markup or the recognition task</source>
         <translation>Нет модели для разметки или распознавания</translation>
     </message>
@@ -303,12 +303,12 @@
 <context>
     <name>BlockEditPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+408"/>
+        <location filename="../../src/qml/MainWindow/BlockEditPanel.qml" line="+412"/>
         <source>Restore the block text</source>
         <translation>Вернуть текст блока</translation>
     </message>
     <message>
-        <location line="-329"/>
+        <location line="-334"/>
         <location line="+6"/>
         <source>Damaged</source>
         <translation>Повреждён</translation>
@@ -324,18 +324,17 @@
         <translation>Есть ошибки</translation>
     </message>
     <message>
-        <location line="+56"/>
         <source>Read from the image</source>
-        <translation>Прочитано с изображения</translation>
+        <translation type="vanished">Прочитано с изображения</translation>
     </message>
     <message>
-        <location line="+46"/>
-        <location line="+295"/>
+        <location line="+104"/>
+        <location line="+299"/>
         <source>VLM</source>
         <translation>VLM</translation>
     </message>
     <message>
-        <location line="-294"/>
+        <location line="-298"/>
         <source>Difference</source>
         <translation>Разница</translation>
     </message>
@@ -385,36 +384,36 @@
         <translation>Блок кода внутри формулы</translation>
     </message>
     <message>
-        <location line="+231"/>
-        <location line="+20"/>
+        <location line="+235"/>
+        <location line="+21"/>
         <source>Revoke the approval</source>
         <translation>Отозвать утверждение</translation>
     </message>
     <message>
-        <location line="-20"/>
-        <location line="+20"/>
+        <location line="-21"/>
+        <location line="+21"/>
         <source>Ignore the check result</source>
         <translation>Игнорировать результат проверки</translation>
     </message>
     <message>
-        <location line="-401"/>
+        <location line="-408"/>
         <source>Recognized</source>
         <translation>Распознан</translation>
     </message>
     <message>
-        <location line="+380"/>
-        <location line="+20"/>
+        <location line="+386"/>
+        <location line="+21"/>
         <source>Revoke</source>
         <translation>Отозвать</translation>
     </message>
     <message>
-        <location line="-20"/>
-        <location line="+20"/>
+        <location line="-21"/>
+        <location line="+21"/>
         <source>Approve</source>
         <translation>Утвердить</translation>
     </message>
     <message>
-        <location line="-350"/>
+        <location line="-357"/>
         <source>No correction required</source>
         <translation>Не требует исправления</translation>
     </message>
@@ -440,8 +439,8 @@
         <translation>Не удалось прочитать блок</translation>
     </message>
     <message>
-        <location line="+50"/>
-        <location line="+277"/>
+        <location line="+52"/>
+        <location line="+280"/>
         <source>OCR</source>
         <translation>OCR</translation>
     </message>
@@ -780,7 +779,7 @@
 <context>
     <name>BlockTextPanel</name>
     <message>
-        <location filename="../../src/qml/MainWindow/BlockTextPanel.qml" line="+27"/>
+        <location filename="../../src/qml/MainWindow/BlockTextPanel.qml" line="+28"/>
         <source>Approve</source>
         <translation>Утвердить</translation>
     </message>
@@ -795,7 +794,7 @@
         <translation>· Оценка:</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+35"/>
         <source>In the document</source>
         <translation>В документе</translation>
     </message>
