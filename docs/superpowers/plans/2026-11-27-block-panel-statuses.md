@@ -1368,6 +1368,8 @@ Expected: the count is not higher than it was before this change (29 before it �
 
 `docs/09-tasks-and-verification.md` describes the block and page statuses. Read the parts that name the old words («Проверка», «Исправлено», «Прочитано», «Размечено») and bring them in step with the new vocabulary; do the same in `docs/09-tasks-and-verification.ru.md`.
 
+The ADR log must speak with one voice: ADR 323 still declares the segments of the switch as «OCR | Исправление | Сравнение» and the rule that a segment without a second variant stays in the row but says it is unavailable. Mark it as amended by ADR 339 in `docs/07-glossary.md` and in `docs/07-glossary.ru.md`.
+
 - [ ] **Step 5: The whole verification**
 
 ```sh
