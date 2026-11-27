@@ -889,7 +889,7 @@ In `src/qml/MainWindow/BlockEditPanel.qml`, replace the two `BlockTextPanel` blo
             noteText: root.originalNote
             scoreText: root.layerScore(Controller.selectedBlockConfidence, Controller.selectedBlockCheckStatus)
             scoreColor: root.scoreColor(Controller.selectedBlockCheckStatus)
-            approveVisible: root.viewIndex === 0 && !root.userEdited
+            approveVisible: root.showOriginal && !root.compareMode && !root.userEdited
             approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
             onApproveRequested: root.approve()
             inDocument: root.compareMode && root.documentCarriesOcr && !root.userEdited
@@ -908,7 +908,7 @@ In `src/qml/MainWindow/BlockEditPanel.qml`, replace the two `BlockTextPanel` blo
             scoreText: root.layerScore(Controller.selectedBlockCorrectedConfidence,
                                         Controller.selectedBlockCorrectedCheckStatus)
             scoreColor: root.scoreColor(Controller.selectedBlockCorrectedCheckStatus)
-            approveVisible: root.viewIndex === 1 && !root.userEdited
+            approveVisible: root.showVlm && !root.compareMode && !root.userEdited
             approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
             onApproveRequested: root.approve()
             inDocument: root.compareMode && root.documentCarriesVlm && !root.userEdited
@@ -930,12 +930,11 @@ In the same file, replace the properties `showOriginal` and `showCorrection` wit
     readonly property bool showVlm: root.isTextBlock
                                     && root.correctionStored
                                     && (root.compareMode || root.viewIndex === 1 || !root.hasLayers)
-    // The layer the document carries: the VLM's word when the block points at
+    // The layer the block carries: the VLM's word when the block points at
     // it, else the recognized text.
     readonly property bool documentCarriesVlm: Controller.selectedBlockUsesCorrected
                                                && root.correctionStored
     readonly property bool documentCarriesOcr: !root.documentCarriesVlm
-
     // What the pipeline did to the recognized text: the fixer's answer and
     // the reader's (ADR 260). The kind of the broken LaTeX belongs to the
     // layer that carries it (ADR 194).
