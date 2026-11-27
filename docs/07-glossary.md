@@ -2442,8 +2442,9 @@ appendix at the end of this file.
   color and the word stands in the header as ordinary text. The frame of the
   preview speaks in its own colors: it carries the verdict the model left on
   the block (ADR 238), not the words — a block the user wrote is yellow in the
-  header, and the frame keeps the color of that verdict. The page speaks
-  with the same words: no markup block — no status at all; markup with an
+  header, and the frame keeps the color of that verdict. (Amended by ADR 341:
+  the frame of the block the user wrote is yellow too.) The page speaks with
+  the same words: no markup block — no status at all; markup with an
   unrecognized block — **Размечено** (gray); every block recognized but one
   of them unjudged — **Распознано** (gray); every block judged and one of
   them with an error — **Есть ошибки** (red); every block judged or approved
@@ -2470,7 +2471,9 @@ appendix at the end of this file.
   «Отозвать» while the approval stands) and the chip **«В документе»**. The
   approve action stands when the layer in view is OCR or VLM and the block is
   not yellow; the chip stands in the comparison alone, on the layer the
-  document carries, and not while the block is yellow. The switch reads
+  document carries, and not while the block is yellow. (Amended by ADR 341:
+  the note of the layer does not name the read anymore, and the chip is the
+  ordinary word **«В документе»** — no badge.) The switch reads
   **OCR | VLM | Разница** and stands only where the block carries both an
   OCR result and a correction. The row under the text — «Текст в документе
   отличается от блока» with the action that settles it — is gone: the yellow
@@ -2483,6 +2486,18 @@ appendix at the end of this file.
   its content (declared first): it swallows every press over the background
   of the panel, while the buttons, the switch and the text fields — declared
   above it — keep their events.
+- **341.** Three corrections of the block panel. The frame of a block the
+  user wrote by hand is yellow: the frame says what the block is now, not
+  what the model said about the text before it (ADR 338; ADR 238). The rule
+  lives in `BlockFrame.qml` — the color of every state of the block, beside
+  the word of the page in `PageStatus.qml` — and the block model carries the
+  user's own wording as a role (`boxDocumentDiverged`), so the preview knows
+  about it. The read and the fix are the same amendment of the block: the
+  layer of the correction does not name the protocol that wrote it, and the
+  word «Прочитано с изображения» is gone (ADR 339); the reader's own
+  verdicts still speak in their own words (ADR 261). The chip «В документе»
+  is the ordinary word «В документе»: a badge of its own color was a mark
+  of a layer, and the color belongs to the data.
 
 
 ### Security & secrets

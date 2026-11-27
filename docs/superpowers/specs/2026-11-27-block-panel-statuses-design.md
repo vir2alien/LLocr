@@ -57,6 +57,12 @@ gives the verdict, the user layer (`BoundingBox::userText`, ADR 296) or a
 hand-written layer (`BoxCheckStatus::Edited`) gives the yellow, and a block
 without a text gives nothing at all.
 
+The frame of the block in the preview wears the same yellow when the user
+wrote the block: the frame says what the block is now, not what the model
+said about the text before it. The rule lives in `BlockFrame.qml` and the
+block model carries the user's own wording as a role (`boxDocumentDiverged`),
+so the preview knows about it.
+
 ### 3. The header of the module
 
     dot → name of the block type → status (text) → «Вернуть текст блока»
@@ -73,7 +79,10 @@ from this row: it belongs to the layer it acts on.
 - The layer names itself **OCR** or **VLM**. The correction and the text
   the reader wrote are both the VLM's word.
 - The note (grey) is what the pipeline did to this layer: «Не требует
-  исправления», «Прочитано с изображения», the kind of the broken LaTeX.
+  исправления», the kind of the broken LaTeX. The read and the fix are the
+  same amendment of the block, so the layer does not name the protocol that
+  wrote it; the reader's own verdicts still speak in their own words (a
+  confirmation, a damage).
 - The score reads «· Оценка: 43%» — the prefix is ordinary text, the number
   is green when the check confirmed the text and red when it rejected it.
   A layer without a score of its own (approved, written by hand, not
@@ -83,8 +92,9 @@ from this row: it belongs to the layer it acts on.
   approval stands the button reads «Отозвать». The action acts on the layer
   in view — the switch moves the document, so the layer the operator reads is
   the layer the block carries.
-- The chip «В документе» stands in the comparison alone, on the layer the
-  document carries, and not while the block is yellow.
+- The word «В документе» stands in the comparison alone, on the layer the
+  document carries, and not while the block is yellow. It is an ordinary
+  word, not a badge: the color belongs to the data.
 
 ### 5. The switch
 
@@ -141,13 +151,19 @@ change: the aggregation of the verification (`PageStatus::verificationAggregate`
 and the recognition mode (`PageStatus::recognitionModeAfterBlockText`) already
 answer what the page status needs.
 
+`BlockFrame.qml` holds the color of the frame of a block in the preview, and
+the block model (`BoxListModel`) carries the user's own wording as the role
+`boxDocumentDiverged`.
+
 ## What is checked
 
 - `tests/test_block_panel_qml.cpp` — the panel's header, the switch, the
-  chip, the approve action and the status: rewritten for the new words, the
-  new order and the removed row.
+  word of the document, the approve action and the status: rewritten for the
+  new words, the new order and the removed row.
 - A new test for the layout of the page status — the word and its color for
   every state of the page.
+- A new test for the frame of the block — its color for every state of the
+  block, the hand-written one included.
 - `tests/test_page_status.cpp` — the C++ aggregation does not change.
 
 ## The decisions in the ADR log
@@ -155,3 +171,5 @@ answer what the page status needs.
 - **ADR 338** — the block's status vocabulary and the page's status.
 - **ADR 339** — the headers of the module and of the layer.
 - **ADR 340** — the panel covers the space under it.
+- **ADR 341** — the three corrections: the yellow frame, the unnamed read and
+  the ordinary word of the document.
