@@ -2414,6 +2414,60 @@ appendix at the end of this file.
   text, met an answer to its first pull that differed from the document on
   screen (`thePushThatAnswersAPullLeavesTheCaretWhereItIs`,
   `anUnmappablePageTextLeavesTheCanonicalDocumentAtLoad`).
+- **338.** One vocabulary of states for the block and the page. The block's
+  status is the state of the layer in view, and the user layer outranks it: a
+  block the user wrote is the user's, and the model's verdict about the
+  previous text does not speak for it. The words are **Распознан** (gray —
+  nobody judged the block, but it carries a text), **Есть ошибки** (red — the
+  decision model rejected the text), **Повреждён** (red — the block could not
+  be read), **Неверный синтаксис** (red — the formula's LaTeX is broken),
+  **Нет ошибок** (green — the decision model confirmed the text or the user
+  approved it) and **Отредактирован** (yellow — the user wrote the text). A
+  block that carries no text at all (the markup alone) has no status: no dot
+  and no word — the status appears with the recognition. The status is
+  derived, not stored: the layer in view gives the verdict, the user layer
+  (`BoundingBox::userText`, ADR 296) gives the yellow, the dot carries the
+  color and the word stands in the header as ordinary text. The page speaks
+  with the same words: no markup block — no status at all; markup with an
+  unrecognized block — **Размечено** (gray); every block recognized but one
+  of them unjudged — **Распознано** (gray); every block judged and one of
+  them with an error — **Есть ошибки** (red); every block judged or approved
+  and one of them written by hand — **Отредактировано** (yellow); every block
+  judged without an error — **Проверено** (green). An approved block counts
+  as a judged one with a green result, and an error outranks a hand-written
+  block: the page needs a human eye first. The orientation the check could not
+  settle keeps the top place it had — a page that lies on its side needs a
+  turn before anything else is said about it. `PageStatus.qml` grows
+  `statusColor()` beside `statusText()`, and `statusText()` takes the edited
+  flag of the page; the aggregation on the C++ side does not change.
+- **339.** The headers of the module and of the layer. The header of the
+  module reads: the dot, the name of the block type, the status as ordinary
+  text, **«Вернуть текст блока»** (only where the user wrote the text in the
+  editor — there is something to take back), the switch and the close. The
+  approve action left that row: it acts on a layer, so it belongs to the
+  header of the layer. The header of a text layer reads: the name of the
+  layer — **OCR** or **VLM** (the correction and the text the reader wrote
+  are both the VLM's word) — the note of what the pipeline did to this layer
+  («исправление не требуется», «прочитано с изображения», the kind of the
+  broken LaTeX), **«Оценка:»** as ordinary text, the number of the score
+  (green when the check confirmed the text, red when it rejected it), the
+  approve action («Утвердить», tooltip «Игнорировать результат проверки»,
+  «Отозвать» while the approval stands) and the chip **«В документе»**. The
+  approve action stands when the layer in view is OCR or VLM and the block is
+  not yellow; the chip stands in the comparison alone, on the layer the
+  document carries, and not while the block is yellow. The switch reads
+  **OCR | VLM | Разница** and stands only where the block carries both an
+  OCR result and a correction. The row under the text — «Текст в документе
+  отличается от блока» with the action that settles it — is gone: the yellow
+  status and the button in the header say the same thing where the state of
+  the block belongs.
+- **340.** The block panel covers the space under it. The panel was a plain
+  `Rectangle`, so it took no mouse: a click that missed a button inside the
+  panel reached the preview underneath and selected another block or closed
+  the panel. The panel carries a `MouseArea` that fills it and stands under
+  its content (declared first): it swallows every press over the background
+  of the panel, while the buttons, the switch and the text fields — declared
+  above it — keep their events.
 
 
 ### Security & secrets
