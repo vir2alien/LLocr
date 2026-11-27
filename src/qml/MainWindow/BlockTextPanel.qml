@@ -10,7 +10,7 @@ import "../Common"
 
 // One layer of a block: the recognized text or the correction. The card
 // names its layer, carries the note of the pipeline, the score the layer
-// earned and the approve action of the layer. The chip at the right says
+// earned and the approve action of the layer. The word at the right says
 // whether the document carries this layer (ADR 339).
 Rectangle {
     id: root
@@ -35,7 +35,7 @@ Rectangle {
     readonly property real rightRoom: (scorePrefix.visible ? scorePrefix.implicitWidth : 0)
                                   + (scoreLabel.visible ? scoreLabel.implicitWidth : 0)
                                   + (approveButton.visible ? approveButton.implicitWidth : 0)
-                                  + (documentChipBox.visible ? documentChipBox.implicitWidth : 0)
+                                  + (documentMark.visible ? documentMark.implicitWidth : 0)
                                   + Theme.spacingSmall * 4
     readonly property real noteRoom: noteLabel.visible
                                       ? Math.min(noteLabel.implicitWidth, root.noteLimit)
@@ -123,23 +123,16 @@ Rectangle {
                     Layout.fillWidth: true
                 }
 
-                Rectangle {
-                    id: documentChipBox
+                // The word of the document: the layer the document carries.
+                // It is an ordinary word, not a badge — the color belongs to
+                // the data, not to the mark of a layer (ADR 339).
+                LLOLabel {
+                    id: documentMark
+                    objectName: "documentMark"
                     visible: root.inDocument
-                    Layout.preferredWidth: documentChip.implicitWidth + 12
-                    Layout.preferredHeight: 18
-                    radius: 9
-                    color: Theme.selected
-                    border.color: Theme.border
-                    border.width: 1
-
-                    LLOLabel {
-                        id: documentChip
-                        anchors.centerIn: parent
-                        text: qsTr("In the document")
-                        color: Theme.textSecondary
-                        font: Theme.caption
-                    }
+                    text: qsTr("In the document")
+                    color: Theme.textMuted
+                    font: Theme.caption
                 }
             }
         }

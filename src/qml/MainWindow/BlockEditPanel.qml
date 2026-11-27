@@ -56,7 +56,6 @@ Rectangle {
     // The reader's outcomes (ADR 260): the block was written from the image,
     // so the panel says what the reader read — not what the fixer corrected.
     readonly property bool readConfirmed: Controller.selectedBlockFixStatus === 4 && !correctionStored
-    readonly property bool readApplied: Controller.selectedBlockFixStatus === 5
     readonly property bool readDamaged: Controller.selectedBlockFixStatus === 6
 
     // The user wrote the block's text: in the WYSIWYG editor (the document
@@ -139,8 +138,10 @@ Rectangle {
                                                : root.readConfirmed ? qsTr("Read: the text matches the image")
                                                : root.fixNotNeeded ? qsTr("No correction required")
                                                : "")
-    readonly property string vlmNote: root.layerNote(Controller.selectedBlockCorrectedCheckStatus,
-                                          root.readApplied ? qsTr("Read from the image") : "")
+    // The correction layer carries no word of its own: the read and the fix
+    // are the same amendment of the block, and the layer does not name the
+    // protocol that wrote it (ADR 339).
+    readonly property string vlmNote: root.layerNote(Controller.selectedBlockCorrectedCheckStatus, "")
     // A block with nothing to switch between: the markup alone, a picture, a
     // block with one layer only. The switch of the layers has nothing to say
     // and is gone.
@@ -254,10 +255,10 @@ Rectangle {
 
     // The note of a layer: what the pipeline did with it. The broken LaTeX
     // speaks for the layer that carries it.
-    function layerNote(status, readNote) {
+    function layerNote(status, fallback) {
         if (status === 7)
             return root.syntaxProblem
-        return readNote
+        return fallback
     }
 
     // The score wears the color of the verdict it belongs to.

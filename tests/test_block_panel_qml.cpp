@@ -79,6 +79,7 @@ private slots:
     void theHeaderKeepsItsOrder();
     void theLayerHeaderKeepsItsOrder();
     void theChipSaysInTheDocument();
+    void theReadIsNotNamedInTheLayer();
     void theApproveActionWaitsForTheIdleApp();
 
 private:
@@ -1081,8 +1082,9 @@ void TestBlockPanelQml::theLayerHeaderKeepsItsOrder()
     restoreControllerDefaults();
 }
 
-// The chip of the document stands in the comparison alone, on the layer the
-// document carries, and it says where it stands (ADR 339).
+// The word of the document stands in the comparison alone, on the layer the
+// document carries, and it says where it stands (ADR 339). It is an ordinary
+// word, not a badge: the color belongs to the data, not to the mark of a layer.
 void TestBlockPanelQml::theChipSaysInTheDocument()
 {
     const std::unique_ptr<QObject> panel = loadPanel();
@@ -1091,26 +1093,62 @@ void TestBlockPanelQml::theChipSaysInTheDocument()
     QObject *ocr = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
     QVERIFY(ocr);
 
-    // The chip belongs to the comparison: it is not there while the layer
+    // The word belongs to the comparison: it is not there while the layer
     // stands alone.
-    QObject *chip = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("In the document"));
-    QVERIFY2(chip, "the card must carry the chip of the document");
-    auto *chipItem = qobject_cast<QQuickItem *>(chip);
-    QVERIFY(chipItem);
-    QVERIFY2(!chipItem->isVisible(), "the chip belongs to the comparison alone");
+    QObject *mark = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("In the document"));
+    QVERIFY2(mark, "the card must carry the word of the document");
+    auto *markItem = qobject_cast<QQuickItem *>(mark);
+    QVERIFY(markItem);
+    QVERIFY2(!markItem->isVisible(), "the word belongs to the comparison alone");
+
+    // The word is no badge: it stands in the row of the header itself, where
+    // the name of the layer stands.
+    QObject *title = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("OCR"));
+    QVERIFY(title);
+    auto *titleItem = qobject_cast<QQuickItem *>(title);
+    QVERIFY(titleItem);
+    QVERIFY2(markItem->parentItem() == titleItem->parentItem(), "the word of the document must be an ordinary word, not a badge");
 
     clickSegment(theSwitch(panel.get()), 2);
-    QVERIFY2(chipItem->isVisible(), "the comparison must mark the layer the document carries");
+    QVERIFY2(markItem->isVisible(), "the comparison must mark the layer the document carries");
 
-    // The chip stands at the right of the header, after the score.
+    // The word stands at the right of the header, after the score.
     QObject *score = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("90%"));
     QVERIFY(score);
-    QVERIFY2(sceneX(score) < sceneX(chip), "the chip stands after the score");
+    QVERIFY2(sceneX(score) < sceneX(mark), "the word stands after the score");
 
-    // The block the user wrote: the chip goes away.
+    // The block the user wrote: the word goes away.
     m_controller->setProperty("selectedBlockDocumentDiverged", true);
     QTest::qWait(20);
-    QVERIFY2(!chipItem->isVisible(), "a yellow block carries no chip");
+    QVERIFY2(!markItem->isVisible(), "a yellow block carries no word of the document");
+
+    restoreControllerDefaults();
+}
+
+// The read and the fix are the same amendment of the block: the layer does
+// not name the protocol that wrote it (ADR 339).
+void TestBlockPanelQml::theReadIsNotNamedInTheLayer()
+{
+    // The reader wrote the block from the image.
+    m_controller->setProperty("selectedBlockFixStatus", 5);
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *vlm = thePanelWithTitle(panel.get(), QStringLiteral("VLM"));
+    QVERIFY(vlm);
+
+    clickSegment(theSwitch(panel.get()), 1);
+    QVERIFY2(isVisible(vlm), "the card of the VLM's word must stand");
+    QCOMPARE(vlm->property("noteText").toString(), QString());
+
+    // The reader confirmed the text: its own word still speaks (ADR 261).
+    m_controller->setProperty("selectedBlockFixStatus", 4);
+    m_controller->setProperty("selectedBlockCorrected", "");
+    QTest::qWait(20);
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(original);
+    QCOMPARE(original->property("noteText").toString(), QStringLiteral("Read: the text matches the image"));
 
     restoreControllerDefaults();
 }
