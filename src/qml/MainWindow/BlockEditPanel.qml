@@ -66,7 +66,7 @@ Rectangle {
                                       || effectiveStatus === 6
     readonly property bool showsStatus: !root.markupOnly || root.userEdited
     // The red status of the block: the model rejected the text, and the
-    // operator's confirmation is what the block waits for (ADR 339).
+    // operator's confirmation is what the block waits for (ADR 342).
     readonly property bool errorStatus: !root.userEdited
                                        && (root.readDamaged || root.effectiveStatus === 3
                                            || root.effectiveStatus === 4 || root.effectiveStatus === 7)
@@ -224,7 +224,7 @@ Rectangle {
 
     // The dot of the state: its size and the inset it stands at. The inset
     // is the indent of the header of a layer below, so the module and the
-    // layer it holds begin at the same line (ADR 339).
+    // layer it holds begin at the same line (ADR 342).
     readonly property int dotSize: 10
     readonly property int dotInset: Theme.spacingSmall
 
