@@ -14,7 +14,7 @@ import "../Common"
 //
 // The header names the block in the interface language and carries its state
 // — the word and the dot — next to the action that takes the user's text back
-// (ADR 338, ADR 339); the switch reads OCR | VLM | Разница and stands only
+// (ADR 338, ADR 339); the switch reads OCR | VLM | Difference and stands only
 // where the block carries both layers (ADR 339). Every verdict has one
 // place: the header of the text panel (ADR 239).
 Rectangle {
@@ -32,14 +32,12 @@ Rectangle {
     // that layer (ADR 185).
     readonly property bool correctionStored: Controller.selectedBlockCorrected.length > 0
                                              && Controller.selectedBlockCorrected !== Controller.selectedBlockText
-    readonly property bool correctionActive: Controller.selectedBlockCorrected.length > 0
-                                             || Controller.selectedBlockCorrectedCheckStatus !== 0
-    readonly property bool correctionInView: Controller.selectedBlockUsesCorrected && correctionStored
-    readonly property int effectiveStatus: Controller.selectedBlockUsesCorrected && correctionActive
+    // The state of the block speaks about the layer the block carries and the
+    // panel shows: the correction where there is one, the recognized text
+    // otherwise (ADR 185).
+    readonly property int effectiveStatus: Controller.selectedBlockUsesCorrected && correctionStored
                                            ? Controller.selectedBlockCorrectedCheckStatus
                                            : Controller.selectedBlockCheckStatus
-    // The layer the operator acts on: the one the panel shows (ADR 187).
-    readonly property bool correctionLayerInView: Controller.selectedBlockUsesCorrected && correctionActive
     // The block in view carries the user's approval (ADR 187).
     readonly property bool approved: effectiveStatus === 5
     // A block the user drew and nothing has been recognized in yet: it is
@@ -118,9 +116,25 @@ Rectangle {
     readonly property bool showOriginal: root.isTextBlock
                                          && Controller.selectedBlockText.length > 0
                                          && (root.compareMode || root.viewIndex === 0 || !root.hasLayers)
-    readonly property bool showCorrection: root.isTextBlock
-                                           && root.correctionStored
-                                           && (root.compareMode || root.viewIndex === 1 || !root.hasLayers)
+    readonly property bool showVlm: root.isTextBlock
+                                    && root.correctionStored
+                                    && (root.compareMode || root.viewIndex === 1 || !root.hasLayers)
+    // The layer the document carries: the VLM's word when the block points at
+    // it, else the recognized text.
+    readonly property bool documentCarriesVlm: Controller.selectedBlockUsesCorrected
+                                               && root.correctionStored
+    readonly property bool documentCarriesOcr: !root.documentCarriesVlm
+
+    // What the pipeline did to the recognized text: the fixer's answer and
+    // the reader's (ADR 260). The kind of the broken LaTeX belongs to the
+    // layer that carries it (ADR 194).
+    readonly property string originalNote: root.layerNote(Controller.selectedBlockCheckStatus,
+                                               root.readDamaged ? qsTr("Could not read the block")
+                                               : root.readConfirmed ? qsTr("Read: the text matches the image")
+                                               : root.fixNotNeeded ? qsTr("No correction required")
+                                               : "")
+    readonly property string vlmNote: root.layerNote(Controller.selectedBlockCorrectedCheckStatus,
+                                          root.readApplied ? qsTr("Read from the image") : "")
     // A block with nothing to switch between: the markup alone, a picture, a
     // block with one layer only. The switch of the layers has nothing to say
     // and is gone.
@@ -193,31 +207,6 @@ Rectangle {
           (statusLabel.visible ? statusLabel.implicitWidth : 0)
         + Theme.spacingSmall * 3
 
-    // The word on the card of a layer: what the pipeline state of that layer
-    // is. A layer nobody judged yet carries no word — its title says what it
-    // is.
-    function layerStatusWord(status) {
-        if (status === 1)
-            return qsTr("Verified")
-        if (status === 5)
-            return qsTr("Approved")
-        if (status === 6)
-            return qsTr("Manually modified")
-        if (status === 3)
-            return qsTr("Damaged")
-        if (status === 4)
-            return qsTr("Mismatch")
-        if (status === 7)
-            return qsTr("Invalid syntax")
-        return ""
-    }
-    function dotColor(status) {
-        if (status === 1 || status === 5 || status === 6)
-            return Theme.success
-        if (status === 3 || status === 4 || status === 7)
-            return Theme.error
-        return Theme.nothing
-    }
     // What is wrong with the formula's LaTeX (ADR 194): the kind the app
     // found, named in the language of the interface.
     function syntaxProblemWord(problem) {
@@ -251,6 +240,33 @@ Rectangle {
         if (status === 5 || status === 6)
             return ""
         return scoreText(confidence)
+    }
+
+    // The note of a layer: what the pipeline did with it. The broken LaTeX
+    // speaks for the layer that carries it.
+    function layerNote(status, readNote) {
+        if (status === 7)
+            return root.syntaxProblem
+        return readNote
+    }
+
+    // The score wears the color of the verdict it belongs to.
+    function scoreColor(status) {
+        if (status === 3 || status === 4 || status === 7)
+            return Theme.error
+        if (status === 1 || status === 5)
+            return Theme.success
+        return Theme.nothing
+    }
+
+    // The approve action acts on the layer in view — the switch moves the
+    // document, so the layer the operator reads is the layer the block
+    // carries (ADR 164).
+    function approve() {
+        if (root.approved)
+            Controller.revertBlockApproval()
+        else
+            Controller.approveSelectedBlock()
     }
 
     // The outcome of the last fix run (ADR 185). A fix that confirmed the
@@ -326,21 +342,32 @@ Rectangle {
             Layout.preferredHeight: Math.max(closeButton.implicitHeight, switchControl.implicitHeight)
             spacing: Theme.spacingSmall
 
-            Rectangle {
-                id: statusDot
-                objectName: "statusDot"
-                // A block that carries no text has no status: neither the dot
-                // nor the word (ADR 338).
-                visible: root.showsStatus
+            // The inset of the header: it stands whether the dot is there or
+            // not, so the name of the block does not move.
+            Item {
+                Layout.preferredWidth: Theme.spacing
+                Layout.preferredHeight: 1
+            }
+
+            // The place of the dot of the state: the box around it keeps its
+            // room, so the name of the block does not move when the dot goes
+            // away (ADR 338).
+            Item {
                 Layout.preferredWidth: 10
                 Layout.preferredHeight: 10
-                // The dot stands as far from the left edge as it stands from
-                // the top one — the header's insents are equal.
-                Layout.leftMargin: Theme.spacing
-                radius: 5
-                color: root.stateColor
-                border.color: root.stateColor
-                border.width: 1
+
+                Rectangle {
+                    id: statusDot
+                    objectName: "statusDot"
+                    // A block that carries no text has no status: neither the
+                    // dot nor the word (ADR 338).
+                    visible: root.showsStatus
+                    anchors.fill: parent
+                    radius: 5
+                    color: root.stateColor
+                    border.color: root.stateColor
+                    border.width: 1
+                }
             }
 
             LLOLabel {
@@ -420,40 +447,40 @@ Rectangle {
             }
         }
 
-        // The recognized text: the OCR result and the verdict it earned.
+        // The recognized text: the OCR result and the score it earned.
         BlockTextPanel {
             id: originalPanel
             Layout.fillWidth: true
             visible: root.showOriginal
-            title: qsTr("Recognized text (OCR)")
-            noteText: root.fixNotNeeded ? qsTr("No correction required") : ""
-            verdictText: root.layerStatusWord(Controller.selectedBlockCheckStatus)
-            confidenceText: root.layerScore(Controller.selectedBlockConfidence, Controller.selectedBlockCheckStatus)
-            verdictColor: root.dotColor(Controller.selectedBlockCheckStatus)
-            // The document carries the correction only when there is one and
-            // the block points at it; otherwise it carries the recognized
-            // text.
-            inDocument: !(Controller.selectedBlockUsesCorrected && root.correctionStored)
+            title: qsTr("OCR")
+            noteText: root.originalNote
+            scoreText: root.layerScore(Controller.selectedBlockConfidence, Controller.selectedBlockCheckStatus)
+            scoreColor: root.scoreColor(Controller.selectedBlockCheckStatus)
+            approveVisible: root.viewIndex === 0 && !root.userEdited
+            approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
+            onApproveRequested: root.approve()
+            inDocument: root.compareMode && root.documentCarriesOcr && !root.userEdited
             html: root.originalHtml
             mono: root.monoBlock
         }
 
-        // The correction layer: the universal model's fix, judged separately
-        // from the text. A block the fixer confirmed carries no correction to
-        // show.
+        // The VLM's layer: the correction of the universal model or the text
+        // the reader wrote from the image. It stands only where there is one.
         BlockTextPanel {
-            id: correctionPanel
+            id: vlmPanel
             Layout.fillWidth: true
-            visible: root.showCorrection
-            title: root.readApplied ? qsTr("Read text (AI)") : qsTr("Correction (AI)")
-            verdictText: root.layerStatusWord(Controller.selectedBlockCorrectedCheckStatus)
-            confidenceText: root.layerScore(Controller.selectedBlockCorrectedConfidence, Controller.selectedBlockCorrectedCheckStatus)
-            verdictColor: root.dotColor(Controller.selectedBlockCorrectedCheckStatus)
-            inDocument: Controller.selectedBlockUsesCorrected && root.correctionStored
+            visible: root.showVlm
+            title: qsTr("VLM")
+            noteText: root.vlmNote
+            scoreText: root.layerScore(Controller.selectedBlockCorrectedConfidence,
+                                        Controller.selectedBlockCorrectedCheckStatus)
+            scoreColor: root.scoreColor(Controller.selectedBlockCorrectedCheckStatus)
+            approveVisible: root.viewIndex === 1 && !root.userEdited
+            approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
+            onApproveRequested: root.approve()
+            inDocument: root.compareMode && root.documentCarriesVlm && !root.userEdited
             html: root.correctedHtml
             mono: root.monoBlock
-            empty: !root.correctionStored
-            emptyText: qsTr("No correction yet")
         }
     }
 }

@@ -39,10 +39,12 @@ class TestBlockPanelQml : public QObject
 
 private slots:
     void initTestCase();
+    void cleanup();
     void theNameOfTheBlockIsInTheInterfaceLanguage();
     void theSwitchHasThreeSegments();
     void theSwitchIsGoneWhenOnlyTheMarkupIsThere();
     void theSwitchIsGoneWithoutBothLayers();
+    void theLayersAreNamed();
     void theNoteStandsWithItsLayer();
     void theSwitchMovesTheDocument();
     void thePanelSwitchesToACorrectionThatLandsOnTheBlock();
@@ -53,9 +55,15 @@ private slots:
     void theStatusWordsTheBlock();
     void theBlockWithoutTextHasNoDot();
     void theStatusFollowsTheVerdict();
+    void theStatusFollowsTheLayerInView();
+    void theNameDoesNotMoveWhenTheDotIsGone();
     void theRestoreActionStandsInTheHeader();
     void theNoticeRowIsGone();
     void thePanelCoversTheSpaceUnderIt();
+    void theScoreStandsWithItsLayer();
+    void theApproveActionStandsWithItsLayer();
+    void theChipStandsInTheComparison();
+    void theVlmLayerStandsWithoutTheOcrText();
 
 private:
     std::unique_ptr<QObject> loadPanel();
@@ -67,6 +75,7 @@ private:
     QObject *thePanelWithTitle(QObject *root, const QString &title);
     bool isVisible(QObject *item);
     void clickSegment(QObject *switchControl, int index);
+    void restoreControllerDefaults();
 
     QString m_qmlRoot;
     std::unique_ptr<QQmlEngine> m_engine;
@@ -280,6 +289,26 @@ void TestBlockPanelQml::clickSegment(QObject *switchControl, int index)
     QTest::qWait(20);
 }
 
+// The state the double starts from: a test that changes it gives it back,
+// so the next test reads the same block.
+void TestBlockPanelQml::restoreControllerDefaults()
+{
+    m_controller->setProperty("selectedBlockText", QStringLiteral("E = mc^2"));
+    m_controller->setProperty("selectedBlockCorrected", QStringLiteral("E = mc^2 + 1"));
+    m_controller->setProperty("selectedBlockUsesCorrected", false);
+    m_controller->setProperty("selectedBlockCheckStatus", 1);
+    m_controller->setProperty("selectedBlockCorrectedCheckStatus", 4);
+    m_controller->setProperty("selectedBlockDocumentDiverged", false);
+    QTest::qWait(20);
+}
+
+// The double keeps its own state between the tests, whatever a test did
+// before it failed.
+void TestBlockPanelQml::cleanup()
+{
+    restoreControllerDefaults();
+}
+
 // The panel names the block in the language of the interface: the label of the
 // model («equation») is not what the operator reads.
 void TestBlockPanelQml::theNameOfTheBlockIsInTheInterfaceLanguage()
@@ -323,8 +352,7 @@ void TestBlockPanelQml::theSwitchIsGoneWhenOnlyTheMarkupIsThere()
     QVERIFY2(switchControl, "the panel must keep the switch in the tree");
     const bool switchVisible = isVisible(switchControl);
 
-    m_controller->setProperty("selectedBlockText", "E = mc^2");
-    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
+    restoreControllerDefaults();
 
     QVERIFY2(!switchVisible, "the switch must be gone where there is nothing to switch between");
 }
@@ -342,9 +370,18 @@ void TestBlockPanelQml::theSwitchIsGoneWithoutBothLayers()
     QVERIFY(switchControl);
     QVERIFY2(!isVisible(switchControl), "the switch must be gone where there is nothing to switch between");
 
-    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
-    QTest::qWait(20);
+    restoreControllerDefaults();
     QVERIFY2(isVisible(theSwitch(panel.get())), "the switch must stand where both layers are there");
+}
+
+// The layers name themselves: the recognized text and the VLM's word.
+void TestBlockPanelQml::theLayersAreNamed()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QVERIFY2(thePanelWithTitle(panel.get(), QStringLiteral("OCR")), "the panel must show the recognized text as OCR");
+    QVERIFY2(thePanelWithTitle(panel.get(), QStringLiteral("VLM")), "the panel must show the correction as VLM");
 }
 
 // The fixer's answer speaks about the recognized text, so it stands with it:
@@ -357,14 +394,12 @@ void TestBlockPanelQml::theNoteStandsWithItsLayer()
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
 
-    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("Recognized text (OCR)"));
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
     QVERIFY2(original, "the panel must show the recognized text");
     QCOMPARE(original->property("noteText").toString(), QStringLiteral("No correction required"));
 
     m_controller->setProperty("selectedBlockFixStatus", 0);
-    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
-    m_controller->setProperty("selectedBlockCheckStatus", 1);
-    m_controller->setProperty("selectedBlockConfidence", 0.9);
+    restoreControllerDefaults();
 }
 
 // The switch moves the document: the layer the operator reads is the layer
@@ -399,9 +434,9 @@ void TestBlockPanelQml::thePanelSwitchesToACorrectionThatLandsOnTheBlock()
 
     QObject *switchControl = theSwitch(panel.get());
     QVERIFY(switchControl);
-    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("Recognized text (OCR)"));
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
     QVERIFY2(original, "the panel must carry the panel of the recognized text");
-    QObject *correction = thePanelWithTitle(panel.get(), QStringLiteral("Correction (AI)"));
+    QObject *correction = thePanelWithTitle(panel.get(), QStringLiteral("VLM"));
     QVERIFY2(correction, "the panel must carry the panel of the correction");
     QVERIFY(isVisible(original));
     QVERIFY(!isVisible(correction));
@@ -435,11 +470,11 @@ void TestBlockPanelQml::theComparisonShowsBothLayers()
 
     clickSegment(switchControl, 2);
 
-    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("Recognized text (OCR)"));
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
     QVERIFY2(original, "the comparison must show the recognized text");
     QVERIFY(isVisible(original));
 
-    QObject *correction = thePanelWithTitle(panel.get(), QStringLiteral("Correction (AI)"));
+    QObject *correction = thePanelWithTitle(panel.get(), QStringLiteral("VLM"));
     QVERIFY2(correction, "the comparison must show the correction");
     QVERIFY(isVisible(correction));
 
@@ -461,7 +496,7 @@ void TestBlockPanelQml::theComparisonTintsTheDiff()
     QObject *switchControl = theSwitch(panel.get());
     QVERIFY(switchControl);
 
-    QObject *correction = thePanelWithTitle(panel.get(), QStringLiteral("Correction (AI)"));
+    QObject *correction = thePanelWithTitle(panel.get(), QStringLiteral("VLM"));
     QVERIFY(correction);
     QVERIFY2(!correction->property("html").toString().contains("background-color"), "a single layer must be read clean");
 
@@ -571,11 +606,7 @@ void TestBlockPanelQml::theStatusWordsTheBlock()
     QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("Edited"));
     QCOMPARE(panel->property("userEdited").toBool(), true);
 
-    m_controller->setProperty("selectedBlockDocumentDiverged", false);
-    m_controller->setProperty("selectedBlockCheckStatus", 1);
-    m_controller->setProperty("selectedBlockText", "E = mc^2");
-    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
-    QTest::qWait(20);
+    restoreControllerDefaults();
 }
 
 // A block the user drew and nothing has been recognized in yet carries no
@@ -600,10 +631,7 @@ void TestBlockPanelQml::theBlockWithoutTextHasNoDot()
 
     // The state of the double is restored before the assertions: a failed
     // assertion must not leak into the next test.
-    m_controller->setProperty("selectedBlockText", "");
-    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
-    m_controller->setProperty("selectedBlockCheckStatus", 1);
-    QTest::qWait(20);
+    restoreControllerDefaults();
 
     QVERIFY2(dot, "the panel must carry the dot of the state");
     QVERIFY2(hiddenWithoutText, "a block without a text must not show the dot of the state");
@@ -635,9 +663,65 @@ void TestBlockPanelQml::theStatusFollowsTheVerdict()
     QTest::qWait(20);
     QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("warning").value<QColor>());
 
-    m_controller->setProperty("selectedBlockDocumentDiverged", false);
+    restoreControllerDefaults();
+}
+
+// The header speaks about the layer that is in view: the block points at the
+// correction, but there is no correction to show — the header speaks about
+// the recognized text, and the card of the OCR layer agrees with it.
+void TestBlockPanelQml::theStatusFollowsTheLayerInView()
+{
+    m_controller->setProperty("selectedBlockText", "E = mc^2");
+    m_controller->setProperty("selectedBlockCorrected", "E = mc^2");
+    m_controller->setProperty("selectedBlockUsesCorrected", true);
     m_controller->setProperty("selectedBlockCheckStatus", 1);
+    m_controller->setProperty("selectedBlockCorrectedCheckStatus", 4);
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *theme = m_engine->singletonInstance<QObject *>(QStringLiteral("LLocr"), QStringLiteral("Theme"));
+    QVERIFY(theme);
+
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(original);
+    QVERIFY(isVisible(original));
+    QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("success").value<QColor>());
+    QCOMPARE(original->property("scoreColor").value<QColor>(), theme->property("success").value<QColor>());
+
+    // The correction is there and the block points at it: the header speaks
+    // about the correction.
+    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
     QTest::qWait(20);
+    QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("error").value<QColor>());
+
+    restoreControllerDefaults();
+}
+
+// The name of the block keeps its place when the dot of the state goes away.
+void TestBlockPanelQml::theNameDoesNotMoveWhenTheDotIsGone()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *name = childWithText(panel.get(), QLatin1String("LLOLabel"), QStringLiteral("Equation"));
+    QVERIFY2(name, "the panel must name the block");
+    auto *nameItem = qobject_cast<QQuickItem *>(name);
+    QVERIFY(nameItem);
+    const qreal xWithDot = nameItem->x();
+
+    // A block the user drew and nothing has been recognized in yet carries no
+    // dot of the state.
+    m_controller->setProperty("selectedBlockText", "");
+    m_controller->setProperty("selectedBlockCorrected", "");
+    m_controller->setProperty("selectedBlockCheckStatus", 0);
+    m_controller->setProperty("selectedBlockUsesCorrected", false);
+    QTest::qWait(20);
+    const qreal xWithoutDot = nameItem->x();
+
+    restoreControllerDefaults();
+
+    QCOMPARE(xWithoutDot, xWithDot);
 }
 
 // The action that takes the user's text back stands in the header of the
@@ -663,7 +747,7 @@ void TestBlockPanelQml::theRestoreActionStandsInTheHeader()
     // Both stand in the header row of the module.
     QCOMPARE(restoreItem->parentItem(), closeItem->parentItem());
 
-    m_controller->setProperty("selectedBlockDocumentDiverged", false);
+    restoreControllerDefaults();
 }
 
 // The row under the text is gone: the status and the action of the header
@@ -712,7 +796,91 @@ void TestBlockPanelQml::thePanelCoversTheSpaceUnderIt()
     QTest::qWait(20);
     QCOMPARE(m_controller->property("restoreCalls").toInt(), 1);
 
-    m_controller->setProperty("selectedBlockDocumentDiverged", false);
+    restoreControllerDefaults();
+}
+
+// The score of the layer stands with the layer: the prefix is ordinary text,
+// the number wears the color of the verdict.
+void TestBlockPanelQml::theScoreStandsWithItsLayer()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(original);
+    QCOMPARE(original->property("scoreText").toString(), QStringLiteral("90%"));
+
+    QObject *theme = m_engine->singletonInstance<QObject *>(QStringLiteral("LLocr"), QStringLiteral("Theme"));
+    QVERIFY(theme);
+    QCOMPARE(original->property("scoreColor").value<QColor>(), theme->property("success").value<QColor>());
+
+    // A rejected text: the number turns red.
+    m_controller->setProperty("selectedBlockCheckStatus", 4);
+    QTest::qWait(20);
+    QCOMPARE(original->property("scoreColor").value<QColor>(), theme->property("error").value<QColor>());
+
+    restoreControllerDefaults();
+}
+
+// The approve action acts on the layer it stands in: it is in the header of
+// the layer, not in the header of the module.
+void TestBlockPanelQml::theApproveActionStandsWithItsLayer()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(original);
+    QVERIFY2(original->property("approveVisible").toBool(), "the layer in view must offer to approve the block");
+
+    // The action is gone where the block is the user's.
+    m_controller->setProperty("selectedBlockDocumentDiverged", true);
+    QTest::qWait(20);
+    QVERIFY2(!original->property("approveVisible").toBool(), "the approve action must be gone while the block is yellow");
+
+    restoreControllerDefaults();
+}
+
+// The chip marks the layer the document carries — in the comparison alone.
+void TestBlockPanelQml::theChipStandsInTheComparison()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QObject *vlm = thePanelWithTitle(panel.get(), QStringLiteral("VLM"));
+    QVERIFY(original);
+    QVERIFY(vlm);
+
+    // The OCR layer is the one the document carries (the double says so).
+    QVERIFY2(!original->property("inDocument").toBool(), "the chip belongs to the comparison alone");
+    QVERIFY2(!vlm->property("inDocument").toBool(), "the chip belongs to the comparison alone");
+
+    clickSegment(theSwitch(panel.get()), 2);
+    QVERIFY2(original->property("inDocument").toBool(), "the comparison must mark the layer the document carries");
+    QVERIFY2(!vlm->property("inDocument").toBool(), "the comparison must mark one layer only");
+}
+
+// A block with a correction but without the recognized text carries one layer:
+// the card of the VLM's word, and no switch.
+void TestBlockPanelQml::theVlmLayerStandsWithoutTheOcrText()
+{
+    m_controller->setProperty("selectedBlockText", "");
+    m_controller->setProperty("selectedBlockCorrected", "E = mc^2 + 1");
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *vlm = thePanelWithTitle(panel.get(), QStringLiteral("VLM"));
+    QVERIFY(vlm);
+    QVERIFY2(isVisible(vlm), "the card of the VLM's word must stand");
+
+    QObject *original = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(original);
+    QVERIFY2(!isVisible(original), "the card of the recognized text must be gone");
+    QVERIFY2(!isVisible(theSwitch(panel.get())), "the switch must be gone where there is nothing to switch between");
+
+    restoreControllerDefaults();
 }
 
 QTEST_MAIN(TestBlockPanelQml)

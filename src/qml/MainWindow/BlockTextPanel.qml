@@ -8,29 +8,31 @@ import LLocr
 
 import "../Common"
 
-// One layer of a block: the recognized text or the correction. The panel
-// names its layer, carries the verdict of the checking model and the text
-// itself. The chip at the right says whether the layer is the one the
-// document shows.
+// One layer of a block: the recognized text or the correction. The card
+// names its layer, carries the note of the pipeline, the score the layer
+// earned and the approve action of the layer. The chip at the right says
+// whether the document carries this layer (ADR 339).
 Rectangle {
     id: root
 
     property string title: ""
     property string noteText: ""
-    property string verdictText: ""
-    property string confidenceText: ""
-    property color verdictColor: Theme.textMuted
+    property string scoreText: ""
+    property color scoreColor: Theme.nothing
     property bool inDocument: false
     property string html: ""
     property bool mono: false
-    property bool empty: false
-    property string emptyText: ""
+    // The approve action belongs to the layer it acts on (ADR 339).
+    property bool approveVisible: false
+    property string approveText: qsTr("Approve")
+
+    signal approveRequested()
 
     // The room the words of the header take to the right of the name of the
     // layer: only the words that are there take it.
-    readonly property real rightRoom: (verdictPrefix.visible ? verdictPrefix.implicitWidth : 0)
-                                  + (verdictLabel.visible ? verdictLabel.implicitWidth : 0)
-                                  + (confidenceLabel.visible ? confidenceLabel.implicitWidth : 0)
+    readonly property real rightRoom: (scorePrefix.visible ? scorePrefix.implicitWidth : 0)
+                                  + (scoreLabel.visible ? scoreLabel.implicitWidth : 0)
+                                  + (approveButton.visible ? approveButton.implicitWidth : 0)
                                   + (documentChipBox.visible ? documentChipBox.implicitWidth : 0)
                                   + Theme.spacingSmall * 4
     readonly property real noteRoom: noteLabel.visible
@@ -72,7 +74,7 @@ Rectangle {
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
                     // The name of the layer keeps its room: the note and the
-                    // verdict give way to it, not the other way round.
+                    // score give way to it, not the other way round.
                     Layout.maximumWidth: Math.max(0, root.width - root.rightRoom - root.noteRoom)
                 }
 
@@ -80,7 +82,7 @@ Rectangle {
                     // What the pipeline did with this layer: the note stands
                     // next to the layer it speaks about.
                     id: noteLabel
-                    visible: !root.empty && root.noteText.length > 0
+                    visible: root.noteText.length > 0
                     text: "· " + root.noteText
                     color: Theme.textMuted
                     elide: Text.ElideRight
@@ -89,25 +91,29 @@ Rectangle {
                 }
 
                 LLOLabel {
-                    id: verdictPrefix
-                    visible: !root.empty && root.verdictText.length > 0
-                    text: qsTr("· Check:")
+                    id: scorePrefix
+                    visible: root.scoreText.length > 0
+                    text: qsTr("· Score:")
                     color: Theme.textMuted
                 }
 
                 LLOLabel {
-                    id: verdictLabel
-                    visible: !root.empty && root.verdictText.length > 0
-                    text: root.verdictText
-                    color: root.verdictColor
+                    id: scoreLabel
+                    visible: root.scoreText.length > 0
+                    text: root.scoreText
+                    color: root.scoreColor
                     font.bold: true
                 }
 
-                LLOLabel {
-                    id: confidenceLabel
-                    visible: !root.empty && root.confidenceText.length > 0
-                    text: root.confidenceText
-                    color: root.verdictColor
+                LLOButton {
+                    id: approveButton
+                    visible: root.approveVisible
+                    text: root.approveText
+                    topPadding: 0
+                    bottomPadding: 0
+                    onClicked: root.approveRequested()
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Ignore the check result")
                 }
 
                 Item {
@@ -141,24 +147,11 @@ Rectangle {
             color: Theme.divider
         }
 
-        LLOLabel {
-            visible: root.empty
-            Layout.fillWidth: true
-            Layout.leftMargin: Theme.spacingSmall
-            Layout.rightMargin: Theme.spacingSmall
-            Layout.topMargin: Theme.spacingSmall
-            Layout.bottomMargin: Theme.spacingSmall
-            text: root.emptyText
-            color: Theme.textMuted
-            wrapMode: Text.WordWrap
-        }
-
         // The text as it is: the tinted fragments of the diff, or the plain
         // text of the layer. The field stays selectable — the operator copies
         // a formula from here.
         ScrollView {
             id: textScroll
-            visible: !root.empty
             Layout.fillWidth: true
             Layout.leftMargin: Theme.spacingSmall
             Layout.rightMargin: Theme.spacingSmall
