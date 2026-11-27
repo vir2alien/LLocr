@@ -69,14 +69,14 @@ Rectangle {
 
             LLOLabel {
                 visible: Controller.currentPageEditable
-                text: Controller.currentPageEdited ? qsTr("Edited")
-                                                   : PageStatus.statusText(Controller.currentPageRecognitionMode,
-                                                                           Controller.currentPageVerification,
-                                                                           Controller.currentPageOrientationProblem)
-                color: Controller.currentPageEdited ? Theme.textPrimary
-                           : Controller.currentPageOrientationProblem !== 0 ? Theme.error
-                           : Theme.textMuted
-                font.bold: Controller.currentPageEdited
+                text: PageStatus.statusText(Controller.currentPageRecognitionMode,
+                                            Controller.currentPageVerification,
+                                            Controller.currentPageEdited,
+                                            Controller.currentPageOrientationProblem)
+                color: PageStatus.statusColor(Controller.currentPageRecognitionMode,
+                                              Controller.currentPageVerification,
+                                              Controller.currentPageEdited,
+                                              Controller.currentPageOrientationProblem)
             }
 
             // The turn the layout tokens advise for a sideways page (ADR 245):
