@@ -342,7 +342,7 @@ In `src/qml/MainWindow/BlockEditPanel.qml`, add the new state next to the proper
 
 `readDamaged`, `readConfirmed` and `readApplied` already exist further down the file — move them above this block (the functions above read them).
 
-The old functions `statusWord(status)` and `dotColor(status)` stay in place: the cards of the layers still read them, and Task 4 replaces them with `scoreColor()`.
+The old function `statusWord(status)` was renamed to `layerStatusWord(status)` — a QML property and a function cannot share one name, and the property `statusWord` is the one the brief asks for. The two layer cards read it (`verdictText:`). `dotColor(status)` keeps its name — the card call sites are replaced in Task 4.
 
 - [ ] **Step 4: The header of the module**
 
@@ -919,7 +919,7 @@ In `src/qml/MainWindow/BlockEditPanel.qml`, replace the two `BlockTextPanel` blo
 
 - [ ] **Step 5: The properties the layers read**
 
-In the same file, replace the properties `showOriginal` and `showCorrection` with the ones below, add the notes and the color of the score, and remove the old functions `statusWord(status)` and `dotColor(status)` — the cards read the new ones now:
+In the same file, replace the properties `showOriginal` and `showCorrection` with the ones below, add the notes and the color of the score, remove the old functions `layerStatusWord(status)` and `dotColor(status)` — the cards read the new ones now — and remove `correctionInView` (nothing reads it any more; the layers in view are `showOriginal` and `showVlm` now):
 
 ```qml
     // The layer in view: the OCR text or the VLM's word. The card of a layer
@@ -937,12 +937,21 @@ In the same file, replace the properties `showOriginal` and `showCorrection` wit
     readonly property bool documentCarriesOcr: !root.documentCarriesVlm
 
     // What the pipeline did to the recognized text: the fixer's answer and
-    // the reader's (ADR 260).
-    readonly property string originalNote: root.readDamaged ? qsTr("Could not read the block")
-                                              : root.readConfirmed ? qsTr("Read: the text matches the image")
-                                              : root.fixNotNeeded ? qsTr("No correction required")
-                                              : ""
-    readonly property string vlmNote: root.readApplied ? qsTr("Read from the image") : ""
+    // the reader's (ADR 260). The kind of the broken LaTeX belongs to the
+    // layer that carries it (ADR 194).
+    readonly property string originalNote: root.layerNote(Controller.selectedBlockCheckStatus,
+                                               root.readDamaged ? qsTr("Could not read the block")
+                                               : root.readConfirmed ? qsTr("Read: the text matches the image")
+                                               : root.fixNotNeeded ? qsTr("No correction required")
+                                               : "")
+    readonly property string vlmNote: root.layerNote(Controller.selectedBlockCorrectedCheckStatus,
+                                          root.readApplied ? qsTr("Read from the image") : "")
+
+    function layerNote(status, readNote) {
+        if (status === 7)
+            return root.syntaxProblem
+        return readNote
+    }
 
     // The score wears the color of the verdict it belongs to.
     function scoreColor(status) {
