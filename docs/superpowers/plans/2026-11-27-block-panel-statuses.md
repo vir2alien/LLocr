@@ -4,7 +4,7 @@
 
 **Goal:** The block panel gets one closed vocabulary of states (block and page speak the same words), the two headers read as the design says, and the panel no longer lets a click through to the preview under it.
 
-**Architecture:** Everything happens in QML — the status of a block is derived from the layer in view plus the user layer, and the status of a page is derived from the recognition mode, the verification aggregate and the edited flag. The C++ side keeps its aggregation (`PageStatus::verificationAggregate`, `PageStatus::recognitionModeAfterBlockText`) and does not change. `PageStatus.qml` grows a `statusColor()` beside `statusText()`; `BlockEditPanel.qml` owns the status of the block and passes it down to the layer cards.
+**Architecture:** Everything happens in QML — the status of a block is derived from the effective layer plus the user layer, and the status of a page is derived from the recognition mode, the verification aggregate and the edited flag. The C++ side keeps its aggregation (`PageStatus::verificationAggregate`, `PageStatus::recognitionModeAfterBlockText`) and does not change. `PageStatus.qml` grows a `statusColor()` beside `statusText()`; `BlockEditPanel.qml` owns the status of the block and passes it down to the layer cards.
 
 **Tech Stack:** Qt 6.10.3 (QtQuick, QtQuick.Controls, QtQuick.Layouts), QML singletons, C++/QtTest for the unit and the QML tests, CMake (`build/` tree, Unix Makefiles).
 
@@ -160,7 +160,7 @@ In `tests/test_block_panel_qml.cpp`, delete the slot `theApproveActionIsNamed` a
 and the bodies:
 
 ```cpp
-// The block speaks one vocabulary of states (ADR 338): the layer in view
+// The block speaks one vocabulary of states (ADR 338): the effective layer
 // gives the verdict, the user's own text gives the yellow, and a block
 // without a text has no status at all.
 void TestBlockPanelQml::theStatusWordsTheBlock()

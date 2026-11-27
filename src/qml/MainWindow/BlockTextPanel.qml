@@ -24,6 +24,7 @@ Rectangle {
     property bool mono: false
     // The approve action belongs to the layer it acts on (ADR 339).
     property bool approveVisible: false
+    property bool approveEnabled: true
     property string approveText: qsTr("Approve")
     property string approveTip: qsTr("Ignore the check result")
 
@@ -109,6 +110,7 @@ Rectangle {
                 LLOButton {
                     id: approveButton
                     visible: root.approveVisible
+                    enabled: root.approveEnabled
                     text: root.approveText
                     topPadding: 0
                     bottomPadding: 0

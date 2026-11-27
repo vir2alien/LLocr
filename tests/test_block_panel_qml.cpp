@@ -31,6 +31,14 @@ QList<QQuickItem *> descendantsOf(QQuickItem *item)
     return all;
 }
 
+// The place of an element in the window: the elements of a header stand in
+// different parents, and only the scene tells where each of them is.
+double sceneX(QObject *item)
+{
+    auto *quickItem = qobject_cast<QQuickItem *>(item);
+    return quickItem ? quickItem->mapToScene(QPointF(0, 0)).x() : 0.0;
+}
+
 }  // namespace
 
 class TestBlockPanelQml : public QObject
@@ -55,7 +63,7 @@ private slots:
     void theStatusWordsTheBlock();
     void theBlockWithoutTextHasNoDot();
     void theStatusFollowsTheVerdict();
-    void theStatusFollowsTheLayerInView();
+    void theStatusFollowsTheEffectiveLayer();
     void theReviewAnswerDamagesTheBlock();
     void theNameDoesNotMoveWhenTheDotIsGone();
     void theRestoreActionStandsInTheHeader();
@@ -68,6 +76,10 @@ private slots:
     void theApproveActionStandsOnTheVisibleCard();
     void theApproveTipFollowsTheAction();
     void theHeaderKnowsItsWidth();
+    void theHeaderKeepsItsOrder();
+    void theLayerHeaderKeepsItsOrder();
+    void theChipSaysInTheDocument();
+    void theApproveActionWaitsForTheIdleApp();
 
 private:
     std::unique_ptr<QObject> loadPanel();
@@ -307,6 +319,8 @@ void TestBlockPanelQml::restoreControllerDefaults()
     m_controller->setProperty("selectedBlockConfidence", 0.9);
     m_controller->setProperty("selectedBlockCorrectedConfidence", 0.38);
     m_controller->setProperty("selectedBlockSyntaxProblem", 0);
+    m_controller->setProperty("busy", false);
+    m_controller->setProperty("checkBusy", false);
     QTest::qWait(20);
 }
 
@@ -569,7 +583,7 @@ void TestBlockPanelQml::theSwitchGoesToTheNextLineWhenTheHeaderDoesNotFit()
     QCOMPARE(qobject_cast<QQuickItem *>(back)->parentItem(), headerRow);
 }
 
-// The block speaks one vocabulary of states (ADR 338): the layer in view
+// The block speaks one vocabulary of states (ADR 338): the effective layer
 // gives the verdict, the user's own text gives the yellow, and a block
 // without a text has no status at all.
 void TestBlockPanelQml::theStatusWordsTheBlock()
@@ -677,7 +691,7 @@ void TestBlockPanelQml::theStatusFollowsTheVerdict()
 // The header speaks about the layer the block carries, as the engine counts
 // it (BoxTransitions::effectiveCheckStatus): the correction's verdict where
 // the block points at a correction that exists, else the recognized text's.
-void TestBlockPanelQml::theStatusFollowsTheLayerInView()
+void TestBlockPanelQml::theStatusFollowsTheEffectiveLayer()
 {
     m_controller->setProperty("selectedBlockText", "E = mc^2");
     m_controller->setProperty("selectedBlockCorrected", "E = mc^2");
@@ -989,6 +1003,146 @@ void TestBlockPanelQml::theHeaderKnowsItsWidth()
     const qreal estimate = panel->property("headerNeed").toReal();
     QVERIFY2(estimate >= natural, "the estimate of the header must not be short of the row");
     QVERIFY2(estimate <= natural + slack * 2, "the estimate of the header must not waste the room of the row");
+}
+
+// The header of the module reads in one order: the dot of the state, the
+// name of the block, the state itself, the action that takes the text back,
+// the switch and the close (ADR 339).
+void TestBlockPanelQml::theHeaderKeepsItsOrder()
+{
+    // The document diverges from the block: the action that takes the text
+    // back stands in the header.
+    m_controller->setProperty("selectedBlockDocumentDiverged", true);
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QQuickItem *dot = panel->findChild<QQuickItem *>(QStringLiteral("statusDot"));
+    QVERIFY2(dot, "the panel must carry the dot of the state");
+
+    QObject *name = childWithText(panel.get(), QLatin1String("LLOLabel"), QStringLiteral("Equation"));
+    QVERIFY2(name, "the panel must name the block");
+    QObject *state = childWithText(panel.get(), QLatin1String("LLOLabel"), QStringLiteral("Edited"));
+    QVERIFY2(state, "the header must carry the word of the state");
+    QObject *restore = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("Restore the block text"));
+    QVERIFY2(restore, "the panel must offer to restore the block's text");
+    QObject *close = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("✕"));
+    QVERIFY(close);
+
+    QVERIFY2(sceneX(dot) < sceneX(name), "the dot of the state comes first");
+    QVERIFY2(sceneX(name) < sceneX(state), "the name of the block comes before the state");
+    QVERIFY2(sceneX(state) < sceneX(restore), "the state comes before the action that takes the text back");
+    QVERIFY2(sceneX(restore) < sceneX(close), "the action comes before the close");
+
+    // The switch stands in the header while the row holds it; when the row
+    // cannot hold it, it goes to the line below (ADR 323).
+    if (panel->property("switchInHeader").toBool()) {
+        QObject *switchControl = theSwitch(panel.get());
+        QVERIFY(switchControl);
+        QVERIFY2(sceneX(restore) < sceneX(switchControl), "the switch comes after the action");
+        QVERIFY2(sceneX(switchControl) < sceneX(close), "the switch comes before the close");
+    }
+
+    restoreControllerDefaults();
+}
+
+// The header of a layer reads: the name of the layer, the note of what the
+// pipeline did with it, the score and the approve action (ADR 339).
+void TestBlockPanelQml::theLayerHeaderKeepsItsOrder()
+{
+    // The pipeline left the recognized text alone: the note says so, and
+    // the correction is gone — the card of the OCR's word stands alone.
+    m_controller->setProperty("selectedBlockCorrected", "");
+    m_controller->setProperty("selectedBlockCorrectedCheckStatus", 0);
+    m_controller->setProperty("selectedBlockFixStatus", 1);
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *ocr = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(ocr);
+
+    QObject *title = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("OCR"));
+    QVERIFY2(title, "the card must name its layer");
+    QObject *note = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("· No correction required"));
+    QVERIFY2(note, "the card must say what the pipeline did with the layer");
+    QObject *prefix = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("· Score:"));
+    QVERIFY2(prefix, "the card must carry the prefix of the score");
+    QObject *score = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("90%"));
+    QVERIFY2(score, "the card must carry the score");
+    QObject *approve = childWithText(ocr, QLatin1String("LLOButton"), QStringLiteral("Approve"));
+    QVERIFY2(approve, "the card must offer to approve the layer");
+
+    QVERIFY2(sceneX(title) < sceneX(note), "the name of the layer comes first");
+    QVERIFY2(sceneX(note) < sceneX(prefix), "the note comes before the score");
+    QVERIFY2(sceneX(prefix) < sceneX(score), "the prefix comes before the number");
+    QVERIFY2(sceneX(score) < sceneX(approve), "the score comes before the approve action");
+
+    restoreControllerDefaults();
+}
+
+// The chip of the document stands in the comparison alone, on the layer the
+// document carries, and it says where it stands (ADR 339).
+void TestBlockPanelQml::theChipSaysInTheDocument()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *ocr = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(ocr);
+
+    // The chip belongs to the comparison: it is not there while the layer
+    // stands alone.
+    QObject *chip = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("In the document"));
+    QVERIFY2(chip, "the card must carry the chip of the document");
+    auto *chipItem = qobject_cast<QQuickItem *>(chip);
+    QVERIFY(chipItem);
+    QVERIFY2(!chipItem->isVisible(), "the chip belongs to the comparison alone");
+
+    clickSegment(theSwitch(panel.get()), 2);
+    QVERIFY2(chipItem->isVisible(), "the comparison must mark the layer the document carries");
+
+    // The chip stands at the right of the header, after the score.
+    QObject *score = childWithText(ocr, QLatin1String("LLOLabel"), QStringLiteral("90%"));
+    QVERIFY(score);
+    QVERIFY2(sceneX(score) < sceneX(chip), "the chip stands after the score");
+
+    // The block the user wrote: the chip goes away.
+    m_controller->setProperty("selectedBlockDocumentDiverged", true);
+    QTest::qWait(20);
+    QVERIFY2(!chipItem->isVisible(), "a yellow block carries no chip");
+
+    restoreControllerDefaults();
+}
+
+// The approve action waits for the idle app: while the check runs or the app
+// is busy, the action cannot write an approval over the model's answer.
+void TestBlockPanelQml::theApproveActionWaitsForTheIdleApp()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *ocr = thePanelWithTitle(panel.get(), QStringLiteral("OCR"));
+    QVERIFY(ocr);
+    QObject *approve = childWithText(ocr, QLatin1String("LLOButton"), QStringLiteral("Approve"));
+    QVERIFY2(approve, "the layer in view must offer to approve the block");
+    QVERIFY2(approve->property("enabled").toBool(), "the idle app lets the action stand");
+
+    // The check runs: the action waits.
+    m_controller->setProperty("checkBusy", true);
+    QTest::qWait(20);
+    const bool waitsForTheCheck = !approve->property("enabled").toBool();
+
+    // The app is busy with something else: the action waits as well.
+    m_controller->setProperty("checkBusy", false);
+    m_controller->setProperty("busy", true);
+    QTest::qWait(20);
+    const bool waitsForTheApp = !approve->property("enabled").toBool();
+
+    restoreControllerDefaults();
+
+    QVERIFY2(waitsForTheCheck, "the action must wait while the check runs");
+    QVERIFY2(waitsForTheApp, "the action must wait while the app is busy");
 }
 
 QTEST_MAIN(TestBlockPanelQml)

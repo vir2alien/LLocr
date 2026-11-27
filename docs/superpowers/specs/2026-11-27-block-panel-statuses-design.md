@@ -37,8 +37,8 @@ area and keep their events.
 
 ### 2. One status vocabulary for a block
 
-The block's status is the state of the layer in view (the one the switch
-selects), with one exception: a block the user has written is the user's, and
+The block's status is the state of the effective layer — the one the
+document carries — with one exception: a block the user has written is the user's, and
 the model's verdict about the previous text does not speak for it.
 
 | State | Word | Dot |
@@ -52,7 +52,7 @@ the model's verdict about the previous text does not speak for it.
 | Nobody judged the block, but it carries a text | Распознан | gray |
 
 The word stands in the header of the module as ordinary text; the dot carries
-the color. The status of the block is derived, not stored: the layer in view
+the color. The status of the block is derived, not stored: the effective layer
 gives the verdict, the user layer (`BoundingBox::userText`, ADR 296) or a
 hand-written layer (`BoxCheckStatus::Edited`) gives the yellow, and a block
 without a text gives nothing at all.

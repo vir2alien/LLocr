@@ -81,7 +81,7 @@ Item {
                     Layout.preferredWidth: 9
                     Layout.preferredHeight: 9
                     radius: 5
-                    color: hasDuplicates ? "#d32f2f" : delegateRoot.statusColor
+                    color: hasDuplicates ? Theme.error : delegateRoot.statusColor
                     border.width: delegateRoot.statusKind === "none" ? 1 : 0
                     border.color: Theme.textMuted
 
@@ -94,7 +94,7 @@ Item {
                 LLOLabel {
                     text: qsTr("Page %1").arg(pageIndex + 1)
                     font.pixelSize: Theme.captionSize
-                    color: hasDuplicates ? "#d32f2f"
+                    color: hasDuplicates ? Theme.error
                             : (recognized ? Theme.textSecondary
                             : Theme.textMuted)
                     elide: Text.ElideRight

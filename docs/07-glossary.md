@@ -1681,6 +1681,7 @@ appendix at the end of this file.
   never a strikethrough, the «Различия» switch), monospace for code-like
   blocks, «Утвердить»/«Сбросить исправление» actions with Ctrl/⌘+Return
   jumping to the next problem block, and a per-card «Изм.» hand edit.
+  (Amended by ADR 339: the switch reads **Разница**.)
 - **187.** The approval can be revoked: the confirm button reads «Отозвать
   утверждение» (ADR 323: the button of the panel reads «Утвердить» and
   «Отозвать») and restores the verdict the approval replaced
@@ -1697,7 +1698,8 @@ appendix at the end of this file.
   badge counts the blocks still waiting for the fixer
   (`BoxTransitions::needsFix` is one set with the fix queue; a rejected
   correction re-enters the count). `scopedProblemBlockCount` was renamed
-  `scopedPendingFixCount`.
+  `scopedPendingFixCount`. (Amended by ADR 339: the switch reads
+  **Разница**.)
 - **189.** A click on a block selects it and a drag pans the page; the block
   moves only in the edit mode (the mini toolbar's move button; the checkmark,
   a click outside, another selection or a page change leaves it; resize
@@ -2308,7 +2310,10 @@ appendix at the end of this file.
   (Amended by ADR 339: the switch reads **OCR | VLM | Разница**, and it
   stands only where the block carries both an OCR result and a correction — a
   block without a second variant carries no switch at all, not a row with a
-  switched-off segment.)
+  switched-off segment. The row under the text — the divergence notice and the
+  action that settles it — is gone as well: the yellow status of the block and
+  the button in the header say the same thing where the state of the block
+  belongs.)
 
 
 - **324.** The zoom of the page panel stands in the toolbar, not behind a
@@ -2421,7 +2426,8 @@ appendix at the end of this file.
   screen (`thePushThatAnswersAPullLeavesTheCaretWhereItIs`,
   `anUnmappablePageTextLeavesTheCanonicalDocumentAtLoad`).
 - **338.** One vocabulary of states for the block and the page. The block's
-  status is the state of the layer in view, and the user layer outranks it: a
+  status is the state of the effective layer — the layer the document
+  carries — and the user layer outranks it: a
   block the user wrote is the user's, and the model's verdict about the
   previous text does not speak for it. The words are **Распознан** (gray —
   nobody judged the block, but it carries a text), **Есть ошибки** (red — the
@@ -2431,9 +2437,12 @@ appendix at the end of this file.
   approved it) and **Отредактирован** (yellow — the user wrote the text). A
   block that carries no text at all (the markup alone) has no status: no dot
   and no word — the status appears with the recognition. The status is
-  derived, not stored: the layer in view gives the verdict, the user layer
+  derived, not stored: the effective layer gives the verdict, the user layer
   (`BoundingBox::userText`, ADR 296) gives the yellow, the dot carries the
-  color and the word stands in the header as ordinary text. The page speaks
+  color and the word stands in the header as ordinary text. The frame of the
+  preview speaks in its own colors: it carries the errors of the block
+  (ADR 238), not the words — a hand-written text is yellow in the header and
+  green in the frame. The page speaks
   with the same words: no markup block — no status at all; markup with an
   unrecognized block — **Размечено** (gray); every block recognized but one
   of them unjudged — **Распознано** (gray); every block judged and one of
@@ -2455,7 +2464,7 @@ appendix at the end of this file.
   layer — **OCR** or **VLM** (the correction and the text the reader wrote
   are both the VLM's word) — the note of what the pipeline did to this layer
   («Не требует исправления», «Прочитано с изображения», the kind of the
-  broken LaTeX), **«Оценка:»** as ordinary text, the number of the score
+  broken LaTeX), **«· Оценка:»** as ordinary text, the number of the score
   (green when the check confirmed the text, red when it rejected it), the
   approve action («Утвердить», tooltip «Игнорировать результат проверки»,
   «Отозвать» while the approval stands) and the chip **«В документе»**. The

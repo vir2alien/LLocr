@@ -63,7 +63,7 @@ Rectangle {
     // layer, ADR 296) or into the layer of the block itself. The block is the
     // user's now, and the model's verdict about the previous text does not
     // speak for it (ADR 338).
-    readonly property bool userEdited: Controller.selectedBlockDocumentDiverged
+    readonly property bool userEdited: (root.isTextBlock && Controller.selectedBlockDocumentDiverged)
                                       || effectiveStatus === 6
     readonly property bool showsStatus: !root.markupOnly || root.userEdited
     // The state of the block in the header: the word and the color of the
@@ -467,6 +467,7 @@ Rectangle {
             scoreText: root.layerScore(Controller.selectedBlockConfidence, Controller.selectedBlockCheckStatus)
             scoreColor: root.scoreColor(Controller.selectedBlockCheckStatus)
             approveVisible: root.showOriginal && !root.compareMode && !root.userEdited
+            approveEnabled: !Controller.checkBusy && !Controller.busy
             approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
             approveTip: root.approved ? qsTr("Revoke the approval") : qsTr("Ignore the check result")
             onApproveRequested: root.approve()
@@ -487,6 +488,7 @@ Rectangle {
                                         Controller.selectedBlockCorrectedCheckStatus)
             scoreColor: root.scoreColor(Controller.selectedBlockCorrectedCheckStatus)
             approveVisible: root.showVlm && !root.compareMode && !root.userEdited
+            approveEnabled: !Controller.checkBusy && !Controller.busy
             approveText: root.approved ? qsTr("Revoke") : qsTr("Approve")
             approveTip: root.approved ? qsTr("Revoke the approval") : qsTr("Ignore the check result")
             onApproveRequested: root.approve()

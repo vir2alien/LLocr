@@ -242,9 +242,12 @@ approved it) and **Отредактирован** (yellow — the user wrote the
 block that carries no text at all (the markup alone) has no status: no dot
 and no word. The word stands in the header of the panel beside the name of
 the block type, the dot of that header carries the color (ADR 339), and the
-frame on the preview carries the same state as a color (ADR 238): no frame =
-markup only, gray = recognized, red = verified with a problem (Mismatch,
-Review, invalid syntax), green = verified clean (Ok, approved, hand-written).
+frame on the preview carries the state of the block as a color (ADR 238): no
+frame = markup only, gray = recognized, red = a problem (Mismatch, Review,
+invalid syntax), green = no problem (Ok, approved, hand-written). The frame
+speaks about the errors of the block, the six words about its state: a
+hand-written text is yellow in the header and green in the frame — it carries
+no error.
 The frame follows the **effective** layer; the confidence number (option
 `check/showConfidence`) is printed in the frame's color. The fixer's states
 never speak in the frame — it is not a verifier (ADR 240). Reader states do:
