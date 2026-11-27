@@ -4,8 +4,9 @@ import QtQuick
 
 // The controller double of the block panel test: the panel reads the selected
 // block's state from the controller singleton, and the test needs a recognized
-// block with a correction, an idle app and a document that diverges from the
-// block (ADR 307).
+// block with a correction and an idle app. The double starts from a block
+// nobody wrote into — the tests that need the divergence turn it on
+// themselves.
 // The double answers what the panel asks and nothing else — the real
 // controller belongs to the app, and a test must not drive it.
 QtObject {
@@ -26,8 +27,8 @@ QtObject {
     property real selectedBlockCorrectedConfidence: 0.38
     property var selectedBlockRemovedRanges: []
     property var selectedBlockAddedRanges: [ { "start": 8, "length": 4 } ]
-    property bool currentPageEdited: true
-    property bool selectedBlockDocumentDiverged: true
+    property bool currentPageEdited: false
+    property bool selectedBlockDocumentDiverged: false
 
     // How often the panel asked to restore the block's text.
     property int restoreCalls: 0

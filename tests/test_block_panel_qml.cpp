@@ -1,11 +1,11 @@
 // The block panel's header: the name of the block in the interface language,
-// the state of the block, the switch of the layers and the actions. The
-// divergence notice and the action that settles it stand under the header
-// row — the row has no room for them (ADR 323).
+// the state of the block, the switch of the layers and the actions. The action
+// that takes the user's text back stands in the header next to the yellow
+// status (ADR 339).
 //
 // The panel reads the block's state from the controller singleton; the test
-// registers a double (tests/fake_block_controller.qml) with a recognized block,
-// a correction and a document that diverges from it.
+// registers a double (tests/fake_block_controller.qml) with a recognized block
+// and a correction.
 
 #include <QDir>
 #include <QQmlComponent>
@@ -49,10 +49,11 @@ private slots:
     void theComparisonShowsBothLayers();
     void theComparisonTintsTheDiff();
     void theResetActionIsGone();
-    void theNoticeStandsUnderTheText();
     void theSwitchGoesToTheNextLineWhenTheHeaderDoesNotFit();
-    void theApproveActionIsNamed();
-    void theStateFollowsTheVerdict();
+    void theStatusWordsTheBlock();
+    void theStatusFollowsTheVerdict();
+    void theRestoreActionStandsInTheHeader();
+    void theNoticeRowIsGone();
     void thePanelCoversTheSpaceUnderIt();
 
 private:
@@ -485,50 +486,6 @@ void TestBlockPanelQml::theResetActionIsGone()
     QVERIFY2(!childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("Reset correction")), "the panel must not offer to reset the correction");
 }
 
-// The notice and the action that settle it stand under the text: the text
-// comes first, the divergence of the document and the way to settle it are
-// read after it.
-void TestBlockPanelQml::theNoticeStandsUnderTheText()
-{
-    const std::unique_ptr<QObject> panel = loadPanel();
-    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
-
-    QObject *notice = childWithText(panel.get(), QLatin1String("LLOLabel"), QStringLiteral("The document text differs from the block"));
-    QVERIFY2(notice, "the panel must tell that the document differs from the block");
-
-    QObject *restore = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("Restore the block text"));
-    QVERIFY2(restore, "the panel must offer to restore the block's text");
-
-    QObject *close = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("✕"));
-    QVERIFY(close);
-
-    auto *noticeItem = qobject_cast<QQuickItem *>(notice);
-    auto *restoreItem = qobject_cast<QQuickItem *>(restore);
-    auto *closeItem = qobject_cast<QQuickItem *>(close);
-    QVERIFY(noticeItem);
-    QVERIFY(restoreItem);
-    QVERIFY(closeItem);
-
-    // The notice stands in a row of its own — in the same column of the
-    // panel as the header row and the text.
-    QQuickItem *headerRow = closeItem->parentItem();
-    QVERIFY(headerRow);
-    QVERIFY2(noticeItem->parentItem() != headerRow, "the notice must not crowd the header row");
-    QCOMPARE(noticeItem->parentItem()->parentItem(), headerRow->parentItem());
-    QCOMPARE(restoreItem->parentItem(), noticeItem->parentItem());
-
-    // The notice stands below the text of the block, not above it.
-    QObject *textPanel = thePanelWithTitle(panel.get(), QStringLiteral("Recognized text (OCR)"));
-    QVERIFY(textPanel);
-    auto *textItem = qobject_cast<QQuickItem *>(textPanel);
-    QVERIFY(textItem);
-    // The notice and the text live in different parents, so their places are
-    // compared in the scene.
-    const double noticeY = noticeItem->mapToScene(QPointF(0, 0)).y();
-    const double textBottom = textItem->mapToScene(QPointF(0, textItem->height())).y();
-    QVERIFY2(noticeY > textBottom, qPrintable(QStringLiteral("notice y=%1, text bottom=%2, text height=%3").arg(noticeY).arg(textBottom).arg(textItem->height())));
-}
-
 // The header row that cannot hold the switch sends it to the line below: the
 // name and the actions stay in the row, the switch gets its own line.
 void TestBlockPanelQml::theSwitchGoesToTheNextLineWhenTheHeaderDoesNotFit()
@@ -576,37 +533,60 @@ void TestBlockPanelQml::theSwitchGoesToTheNextLineWhenTheHeaderDoesNotFit()
     QCOMPARE(qobject_cast<QQuickItem *>(back)->parentItem(), headerRow);
 }
 
-// The approve action says what it does — and it undoes what it did: while
-// the approval stands, the button offers the revoke.
-void TestBlockPanelQml::theApproveActionIsNamed()
+// The block speaks one vocabulary of states (ADR 338): the layer in view
+// gives the verdict, the user's own text gives the yellow, and a block
+// without a text has no status at all.
+void TestBlockPanelQml::theStatusWordsTheBlock()
 {
+    m_controller->setProperty("selectedBlockText", "");
+    m_controller->setProperty("selectedBlockCorrected", "");
+    m_controller->setProperty("selectedBlockCheckStatus", 0);
+
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+    QCOMPARE(panel->property("statusWord").toString(), QString());
 
-    const bool approves = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("Approve")) != nullptr;
-
-    // The layer in view does not change the name of the action: the panel
-    // approves the block, whichever layer it shows.
-    m_controller->setProperty("selectedBlockUsesCorrected", true);
+    m_controller->setProperty("selectedBlockText", "E = mc^2");
     QTest::qWait(20);
-    const bool approvesTheCorrection = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("Approve")) != nullptr;
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("Recognized"));
 
-    // An approved block offers the undo.
-    m_controller->setProperty("selectedBlockCorrectedCheckStatus", 5);
+    m_controller->setProperty("selectedBlockCheckStatus", 1);
     QTest::qWait(20);
-    const bool revokes = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("Revoke")) != nullptr;
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("No errors"));
 
-    m_controller->setProperty("selectedBlockCorrectedCheckStatus", 4);
-    m_controller->setProperty("selectedBlockUsesCorrected", false);
+    m_controller->setProperty("selectedBlockCheckStatus", 5);
+    QTest::qWait(20);
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("No errors"));
 
-    QVERIFY2(approves, "the panel must approve the block");
-    QVERIFY2(approvesTheCorrection, "the action must keep its name while the correction is in view");
-    QVERIFY2(revokes, "an approved block must offer to revoke the approval");
+    m_controller->setProperty("selectedBlockCheckStatus", 4);
+    QTest::qWait(20);
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("Errors"));
+
+    m_controller->setProperty("selectedBlockCheckStatus", 3);
+    QTest::qWait(20);
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("Damaged"));
+
+    m_controller->setProperty("selectedBlockCheckStatus", 7);
+    QTest::qWait(20);
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("Invalid syntax"));
+
+    // The user wrote the text: the block is the user's, whatever the model
+    // said about the previous text.
+    m_controller->setProperty("selectedBlockCheckStatus", 1);
+    m_controller->setProperty("selectedBlockDocumentDiverged", true);
+    QTest::qWait(20);
+    QCOMPARE(panel->property("statusWord").toString(), QStringLiteral("Edited"));
+    QCOMPARE(panel->property("userEdited").toBool(), true);
+
+    m_controller->setProperty("selectedBlockDocumentDiverged", false);
+    m_controller->setProperty("selectedBlockCheckStatus", 1);
+    QTest::qWait(20);
 }
 
-// The state of the block wears the color of its verdict: gray — nobody judged
-// it, green — it is right, red — it is wrong (ADR 238).
-void TestBlockPanelQml::theStateFollowsTheVerdict()
+// The state of the block wears the color of its verdict: gray — nobody
+// judged it, green — it is right, red — it is wrong, yellow — the user
+// wrote it (ADR 338).
+void TestBlockPanelQml::theStatusFollowsTheVerdict()
 {
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
@@ -624,8 +604,51 @@ void TestBlockPanelQml::theStateFollowsTheVerdict()
     QTest::qWait(20);
     QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("nothing").value<QColor>());
 
+    m_controller->setProperty("selectedBlockDocumentDiverged", true);
+    QTest::qWait(20);
+    QCOMPARE(panel->property("stateColor").value<QColor>(), theme->property("warning").value<QColor>());
+
+    m_controller->setProperty("selectedBlockDocumentDiverged", false);
     m_controller->setProperty("selectedBlockCheckStatus", 1);
     QTest::qWait(20);
+}
+
+// The action that takes the user's text back stands in the header of the
+// module: the yellow status and the action stand together (ADR 339).
+void TestBlockPanelQml::theRestoreActionStandsInTheHeader()
+{
+    m_controller->setProperty("selectedBlockDocumentDiverged", true);
+
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QObject *restore = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("Restore the block text"));
+    QVERIFY2(restore, "the panel must offer to restore the block's text");
+
+    QObject *close = childWithText(panel.get(), QLatin1String("LLOButton"), QStringLiteral("✕"));
+    QVERIFY(close);
+
+    auto *restoreItem = qobject_cast<QQuickItem *>(restore);
+    auto *closeItem = qobject_cast<QQuickItem *>(close);
+    QVERIFY(restoreItem);
+    QVERIFY(closeItem);
+
+    // Both stand in the header row of the module.
+    QCOMPARE(restoreItem->parentItem(), closeItem->parentItem());
+
+    m_controller->setProperty("selectedBlockDocumentDiverged", false);
+}
+
+// The row under the text is gone: the status and the action of the header
+// say the same thing (ADR 339).
+void TestBlockPanelQml::theNoticeRowIsGone()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    QVERIFY2(!childWithText(panel.get(), QLatin1String("LLOLabel"),
+                            QStringLiteral("The document text differs from the block")),
+             "the panel must not keep the notice under the text");
 }
 
 // The panel takes the clicks over its own background: a press that missed a
@@ -637,6 +660,9 @@ void TestBlockPanelQml::thePanelCoversTheSpaceUnderIt()
     QVERIFY2(underlay, qPrintable(m_warnings.join(QStringLiteral("; "))));
 
     m_controller->setProperty("restoreCalls", 0);
+    // The action that restores the block's text stands in the header only
+    // where the document diverges from the block.
+    m_controller->setProperty("selectedBlockDocumentDiverged", true);
 
     const std::unique_ptr<QObject> panel = loadPanel();
     QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
@@ -660,6 +686,8 @@ void TestBlockPanelQml::thePanelCoversTheSpaceUnderIt()
     QTest::mouseClick(m_window.get(), Qt::LeftButton, Qt::NoModifier, restoreItem->mapToScene(QPointF(restoreItem->width() / 2.0, restoreItem->height() / 2.0)).toPoint());
     QTest::qWait(20);
     QCOMPARE(m_controller->property("restoreCalls").toInt(), 1);
+
+    m_controller->setProperty("selectedBlockDocumentDiverged", false);
 }
 
 QTEST_MAIN(TestBlockPanelQml)

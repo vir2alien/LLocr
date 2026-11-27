@@ -13,9 +13,10 @@ import "../Common"
 // the operator has (ADR 185, ADR 186).
 //
 // The header names the block in the interface language and carries its state
-// as a dot; the switch chooses what the panel shows — the recognized text,
-// the correction or both (ADR 323). Every verdict has one place: the header
-// of the text panel (ADR 239).
+// — the word and the dot — next to the action that takes the user's text back
+// (ADR 338, ADR 339); the switch chooses what the panel shows — the
+// recognized text, the correction or both (ADR 323). Every verdict has one
+// place: the header of the text panel (ADR 239).
 Rectangle {
     id: root
 
@@ -48,10 +49,55 @@ Rectangle {
                                        && Controller.selectedBlockText.length === 0
                                        && Controller.selectedBlockCorrected.length === 0
 
-    // The document keeps the user's own wording for this block (ADR 296): the
-    // panel says so and offers to restore the block's text.
+    // The reader's outcomes (ADR 260): the block was written from the image,
+    // so the panel says what the reader read — not what the fixer corrected.
+    readonly property bool readConfirmed: Controller.selectedBlockFixStatus === 4 && !correctionStored
+    readonly property bool readApplied: Controller.selectedBlockFixStatus === 5
+    readonly property bool readDamaged: Controller.selectedBlockFixStatus === 6
+
+    // The user wrote the block's text: in the WYSIWYG editor (the document
+    // layer, ADR 296) or into the layer of the block itself. The block is the
+    // user's now, and the model's verdict about the previous text does not
+    // speak for it (ADR 338).
+    readonly property bool userEdited: Controller.selectedBlockDocumentDiverged
+                                      || effectiveStatus === 6
+    readonly property bool showsStatus: !root.markupOnly || root.userEdited
+    // The state of the block in the header: the word and the color of the
+    // dot (ADR 338).
+    readonly property string statusWord: root.showsStatus
+                                        ? root.blockStatusWord(root.effectiveStatus) : ""
+    readonly property color stateColor: root.blockStatusColor(root.effectiveStatus)
+
+    function blockStatusWord(status) {
+        if (root.userEdited)
+            return qsTr("Edited")
+        if (root.readDamaged)
+            return qsTr("Damaged")
+        if (root.readConfirmed)
+            return qsTr("No errors")
+        if (status === 7)
+            return qsTr("Invalid syntax")
+        if (status === 3)
+            return qsTr("Damaged")
+        if (status === 4)
+            return qsTr("Errors")
+        if (status === 1 || status === 5)
+            return qsTr("No errors")
+        return qsTr("Recognized")
+    }
+    function blockStatusColor(status) {
+        if (root.userEdited)
+            return Theme.warning
+        if (root.readDamaged || status === 3 || status === 4 || status === 7)
+            return Theme.error
+        if (root.readConfirmed || status === 1 || status === 5)
+            return Theme.success
+        return Theme.nothing
+    }
+
+    // The document keeps the user's own wording for this block (ADR 296):
+    // the panel says so in the header and offers to restore the block's text.
     readonly property bool documentDiverged: root.isTextBlock
-                                             && Controller.currentPageEdited
                                              && Controller.selectedBlockDocumentDiverged
 
     // A formula, a table or a snippet is read in a monospace face: the
@@ -107,7 +153,7 @@ Rectangle {
     readonly property real rowWidth: root.width - 2 * Theme.spacingSmall
     readonly property real actionReserve:
           (root.switchInHeader && switchControl.visible ? switchControl.implicitWidth : 0)
-        + (approveButton.visible ? approveButton.implicitWidth : 0)
+        + (restoreButton.visible ? restoreButton.implicitWidth : 0)
         + closeButton.implicitWidth
         + Theme.spacingSmall * 6
 
@@ -127,7 +173,7 @@ Rectangle {
         + blockNameLabel.implicitWidth
         + root.stateRoom
         + (root.hasLayers ? switchControl.implicitWidth : 0)
-        + (approveButton.visible ? approveButton.implicitWidth : 0)
+        + (restoreButton.visible ? restoreButton.implicitWidth : 0)
         + closeButton.implicitWidth
         + Theme.spacingSmall * 5
 
@@ -137,21 +183,15 @@ Rectangle {
     readonly property bool switchInHeader: !root.hasLayers
                                           || root.headerNeed <= root.rowWidth
 
-    // The room the words of the state take: the name gives way to them.
+    // The room the word of the state takes: the name gives way to it.
     readonly property real stateRoom:
-          (overallWord.visible ? overallWord.implicitWidth : 0)
-        + (syntaxWord.visible ? syntaxWord.implicitWidth : 0)
-        + (readWord.visible ? readWord.implicitWidth : 0)
+          (statusLabel.visible ? statusLabel.implicitWidth : 0)
         + Theme.spacingSmall * 3
 
-    // The state of the block in the header: the color of the dot and the word
-    // beside it.
-    readonly property color stateColor: root.dotColor(root.effectiveStatus)
-    readonly property bool showOverallStatus: !root.showOriginal && !root.showCorrection
-
-    // The word next to each dot: what the layer's pipeline state is. A layer
-    // nobody judged yet carries no word — its title says what it is.
-    function statusWord(status) {
+    // The word on the card of a layer: what the pipeline state of that layer
+    // is. A layer nobody judged yet carries no word — its title says what it
+    // is.
+    function layerStatusWord(status) {
         if (status === 1)
             return qsTr("Verified")
         if (status === 5)
@@ -208,28 +248,10 @@ Rectangle {
         return scoreText(confidence)
     }
 
-    readonly property string overallStatus: root.readDamaged ? qsTr("Could not read the block")
-                                          : effectiveStatus === 5 ? qsTr("Approved")
-                                          : effectiveStatus === 6 ? qsTr("Manually modified")
-                                          : effectiveStatus === 1 ? qsTr("Verified")
-                                          : effectiveStatus === 3 ? qsTr("Damaged")
-                                          : effectiveStatus === 4 ? qsTr("Mismatch")
-                                          : effectiveStatus === 7 ? qsTr("Invalid syntax")
-                                          : root.readApplied ? qsTr("Read")
-                                          : root.readConfirmed ? qsTr("Read")
-                                          : correctionInView ? qsTr("Corrected")
-                                          : root.markupOnly ? qsTr("Markup")
-                                          : qsTr("Recognized")
-
     // The outcome of the last fix run (ADR 185). A fix that confirmed the
     // text stores nothing: there is no correction to show, and the header
     // says so.
     readonly property bool fixNotNeeded: Controller.selectedBlockFixStatus === 1 && !correctionStored
-    // The reader's outcomes (ADR 260): the block was written from the image,
-    // so the panel says what the reader read — not what the fixer corrected.
-    readonly property bool readConfirmed: Controller.selectedBlockFixStatus === 4 && !correctionStored
-    readonly property bool readApplied: Controller.selectedBlockFixStatus === 5
-    readonly property bool readDamaged: Controller.selectedBlockFixStatus === 6
 
     // The text of a layer as HTML: the fragments the correction changed are
     // tinted, the rest is the plain text (ADR 186). The tinting belongs to
@@ -324,25 +346,23 @@ Rectangle {
                 Layout.maximumWidth: Math.max(0, root.rowWidth - root.actionReserve - root.stateRoom)
             }
 
-            // The state of the block: the verdict of the layer in view, and
-            // what the pipeline did with the block.
             LLOLabel {
-                id: overallWord
-                visible: root.showOverallStatus
-                text: root.overallStatus
+                id: statusLabel
+                visible: root.showsStatus
+                text: root.statusWord
                 color: Theme.textSecondary
             }
-            LLOLabel {
-                id: syntaxWord
-                visible: root.effectiveStatus === 7 && root.syntaxProblem.length > 0
-                text: root.syntaxProblem
-                color: Theme.textMuted
-            }
-            LLOLabel {
-                id: readWord
-                visible: root.readConfirmed
-                text: qsTr("Read: the text matches the image")
-                color: Theme.textMuted
+
+            LLOButton {
+                // The action that takes the user's text back (ADR 296): it
+                // stands with the yellow status, in the header.
+                id: restoreButton
+                visible: root.documentDiverged
+                text: qsTr("Restore the block text")
+                implicitHeight: switchControl.implicitHeight
+                topPadding: 0
+                bottomPadding: 0
+                onClicked: Controller.releaseSelectedBlockUserText()
             }
 
             Item {
@@ -359,22 +379,6 @@ Rectangle {
                 onActivated: (index) => root.selectView(index)
             }
 
-            LLOButton {
-                // The one button of the block: it confirms it, and while the
-                // confirmation stands it undoes it (ADR 187). No colour of its
-                // own: the panel carries no green (ADR 188). Its height is the
-                // height of the switch — the actions of the header stand on
-                // one line.
-                id: approveButton
-                visible: root.isTextBlock && Controller.selectedBlockText.length > 0
-                text: root.approved ? qsTr("Revoke") : qsTr("Approve")
-                implicitHeight: switchControl.implicitHeight
-                topPadding: 0
-                bottomPadding: 0
-                enabled: !Controller.checkBusy && !Controller.busy
-                onClicked: root.approved ? Controller.revertBlockApproval()
-                                         : Controller.approveSelectedBlock()
-            }
             LLOButton {
                 id: closeButton
                 text: "✕"
@@ -413,7 +417,7 @@ Rectangle {
             visible: root.showOriginal
             title: qsTr("Recognized text (OCR)")
             noteText: root.fixNotNeeded ? qsTr("No correction required") : ""
-            verdictText: root.statusWord(Controller.selectedBlockCheckStatus)
+            verdictText: root.layerStatusWord(Controller.selectedBlockCheckStatus)
             confidenceText: root.layerScore(Controller.selectedBlockConfidence, Controller.selectedBlockCheckStatus)
             verdictColor: root.dotColor(Controller.selectedBlockCheckStatus)
             // The document carries the correction only when there is one and
@@ -432,7 +436,7 @@ Rectangle {
             Layout.fillWidth: true
             visible: root.showCorrection
             title: root.readApplied ? qsTr("Read text (AI)") : qsTr("Correction (AI)")
-            verdictText: root.statusWord(Controller.selectedBlockCorrectedCheckStatus)
+            verdictText: root.layerStatusWord(Controller.selectedBlockCorrectedCheckStatus)
             confidenceText: root.layerScore(Controller.selectedBlockCorrectedConfidence, Controller.selectedBlockCorrectedCheckStatus)
             verdictColor: root.dotColor(Controller.selectedBlockCorrectedCheckStatus)
             inDocument: Controller.selectedBlockUsesCorrected && root.correctionStored
@@ -440,33 +444,6 @@ Rectangle {
             mono: root.monoBlock
             empty: !root.correctionStored
             emptyText: qsTr("No correction yet")
-        }
-
-        // The document keeps the user's own wording for this block (ADR 296):
-        // the notice stands under the text, next to the action that resolves
-        // it (ADR 323).
-        RowLayout {
-            id: noticeRow
-            Layout.fillWidth: true
-            visible: root.documentDiverged
-            spacing: Theme.spacingSmall
-
-            LLOLabel {
-                text: qsTr("The document text differs from the block")
-                color: Theme.textMuted
-                elide: Text.ElideRight
-                wrapMode: Text.NoWrap
-            }
-            LLOButton {
-                // Restoring the block's text drops the user's layer (ADR 296):
-                // the document follows the recognition again.
-                id: restoreButton
-                text: qsTr("Restore the block text")
-                onClicked: Controller.releaseSelectedBlockUserText()
-            }
-            Item {
-                Layout.fillWidth: true
-            }
         }
     }
 }
