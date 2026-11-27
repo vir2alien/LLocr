@@ -1128,21 +1128,31 @@ void TestBlockPanelQml::theApproveActionWaitsForTheIdleApp()
     QVERIFY2(approve, "the layer in view must offer to approve the block");
     QVERIFY2(approve->property("enabled").toBool(), "the idle app lets the action stand");
 
+    // The shortcut of the rhythm waits with the button.
+    const QList<QObject *> shortcuts = findAllByClassName(panel.get(), QLatin1String("QQuickShortcut"));
+    QVERIFY2(!shortcuts.isEmpty(), "the panel must carry the shortcut of the rhythm");
+    QObject *shortcut = shortcuts.first();
+    QVERIFY2(shortcut->property("enabled").toBool(), "the idle app lets the shortcut stand");
+
     // The check runs: the action waits.
     m_controller->setProperty("checkBusy", true);
     QTest::qWait(20);
     const bool waitsForTheCheck = !approve->property("enabled").toBool();
+    const bool shortcutWaitsForTheCheck = !shortcut->property("enabled").toBool();
 
     // The app is busy with something else: the action waits as well.
     m_controller->setProperty("checkBusy", false);
     m_controller->setProperty("busy", true);
     QTest::qWait(20);
     const bool waitsForTheApp = !approve->property("enabled").toBool();
+    const bool shortcutWaitsForTheApp = !shortcut->property("enabled").toBool();
 
     restoreControllerDefaults();
 
     QVERIFY2(waitsForTheCheck, "the action must wait while the check runs");
     QVERIFY2(waitsForTheApp, "the action must wait while the app is busy");
+    QVERIFY2(shortcutWaitsForTheCheck, "the shortcut must wait while the check runs");
+    QVERIFY2(shortcutWaitsForTheApp, "the shortcut must wait while the app is busy");
 }
 
 QTEST_MAIN(TestBlockPanelQml)

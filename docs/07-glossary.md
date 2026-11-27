@@ -2440,9 +2440,9 @@ appendix at the end of this file.
   derived, not stored: the effective layer gives the verdict, the user layer
   (`BoundingBox::userText`, ADR 296) gives the yellow, the dot carries the
   color and the word stands in the header as ordinary text. The frame of the
-  preview speaks in its own colors: it carries the errors of the block
-  (ADR 238), not the words — a hand-written text is yellow in the header and
-  green in the frame. The page speaks
+  preview speaks in its own colors: it carries the verdict the model left on
+  the block (ADR 238), not the words — a block the user wrote is yellow in the
+  header, and the frame keeps the color of that verdict. The page speaks
   with the same words: no markup block — no status at all; markup with an
   unrecognized block — **Размечено** (gray); every block recognized but one
   of them unjudged — **Распознано** (gray); every block judged and one of

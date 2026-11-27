@@ -330,11 +330,14 @@ Rectangle {
 
     // Approve and move on: the operator's rhythm. The page text editor keeps
     // the Return — a shortcut that fires while a text is being typed in would
-    // approve a block by accident.
+    // approve a block by accident. The busy app keeps it too: the approval
+    // waits for the answer of the model, as the button of the layer does.
     Shortcut {
         sequences: ["Ctrl+Return", "Meta+Return"]
         enabled: Controller.selectedBoxIndex >= 0
                  && !Controller.pageTextEditorFocused
+                 && !Controller.checkBusy
+                 && !Controller.busy
         onActivated: Controller.approveSelectedBlockAndSelectNext()
     }
 

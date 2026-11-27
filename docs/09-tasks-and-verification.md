@@ -245,9 +245,9 @@ the block type, the dot of that header carries the color (ADR 339), and the
 frame on the preview carries the state of the block as a color (ADR 238): no
 frame = markup only, gray = recognized, red = a problem (Mismatch, Review,
 invalid syntax), green = no problem (Ok, approved, hand-written). The frame
-speaks about the errors of the block, the six words about its state: a
-hand-written text is yellow in the header and green in the frame — it carries
-no error.
+speaks about the verdict the model left on the block, the six words about its
+state: a hand-written text is yellow in the header, and the frame keeps the
+color of the verdict the block had.
 The frame follows the **effective** layer; the confidence number (option
 `check/showConfidence`) is printed in the frame's color. The fixer's states
 never speak in the frame — it is not a verifier (ADR 240). Reader states do:
