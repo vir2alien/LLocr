@@ -28,7 +28,7 @@ Windows: дерево пресета `dev-win` (`build/win-msvc2022`, Ninja), с
 `--disable-gpu --no-sandbox --single-process`; на некоторых машинах его
 GPU-инициализация прерывается (особенность среды, не регрессия).
 
-### 79 целей, по доменам
+### 84 целей, по доменам
 
 | Домен | Цели |
 | --- | --- |
@@ -47,6 +47,7 @@ GPU-инициализация прерывается (особенность с
 | QML (три меню панелей) | `test_panel_menus_qml` |
 | QML (баннер диагностики в футере) | `test_footer_banner_qml` |
 | QML (шапка панели блока) | `test_block_panel_qml` |
+| QML (рамка блока, статус страницы) | `test_block_frame_qml`, `test_page_status_qml` |
 | UI (набор иконок) | `test_ui_icons` |
 | UI (кнопка с иконкой и подписью) | `test_icon_tool_button_qml` |
 | Установщик рантайма, жизненный цикл, журнал | `test_runtime_installer`, `test_runtime_lifetime`, `test_runtime_log` |
@@ -57,7 +58,7 @@ GPU-инициализация прерывается (особенность с
 | Core (клиент, переходы, diff, latex) | `test_llama_client`, `test_box_transitions`, `test_text_diff`, `test_latex_text`, `test_log_document_sync` |
 
 \* `test_djvu_document` (и DjVu-часть `test_app_import`) собирается только
-тогда, когда DjVuLibre найден на этапе конфигурации — среди 79 его нет.
+тогда, когда DjVuLibre найден на этапе конфигурации — среди 84 его нет.
 
 Per-task рантайм (ADR 318) покрыт тремя новыми целями —
 `test_runtime_log` (два источника лога), `test_server_log_window_qml`

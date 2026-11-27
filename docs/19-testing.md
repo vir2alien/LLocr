@@ -26,7 +26,7 @@ inside an MSVC x64 prompt; Qt DLLs must be on `PATH` before `ctest`.
 `--disable-gpu --no-sandbox --single-process`; on some machines its GPU
 initialization aborts (environmental, not a regression).
 
-### The 79 targets, by domain
+### The 84 targets, by domain
 
 | Domain | Targets |
 | --- | --- |
@@ -45,6 +45,7 @@ initialization aborts (environmental, not a regression).
 | QML (the three panel menus) | `test_panel_menus_qml` |
 | QML (the footer's diagnostic banner) | `test_footer_banner_qml` |
 | QML (the block panel's header) | `test_block_panel_qml` |
+| QML (the block's frame, the page's status) | `test_block_frame_qml`, `test_page_status_qml` |
 | UI (the icon set) | `test_ui_icons` |
 | UI (the icon-and-caption button) | `test_icon_tool_button_qml` |
 | Runtime installer, lifetime, log | `test_runtime_installer`, `test_runtime_lifetime`, `test_runtime_log` |
@@ -55,7 +56,7 @@ initialization aborts (environmental, not a regression).
 | Core (client, transitions, diff, latex) | `test_llama_client`, `test_box_transitions`, `test_text_diff`, `test_latex_text`, `test_log_document_sync` |
 
 \* `test_djvu_document` (and the DjVu part of `test_app_import`) is built
-only when DjVuLibre was found at configure time — it is not among the 79.
+only when DjVuLibre was found at configure time — it is not among the 84.
 
 The per-task runtime (ADR 318) is covered by three new targets —
 `test_runtime_log` (the two sources of the log), `test_server_log_window_qml`
