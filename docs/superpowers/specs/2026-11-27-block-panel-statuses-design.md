@@ -53,8 +53,9 @@ the model's verdict about the previous text does not speak for it.
 
 The word stands in the header of the module as ordinary text; the dot carries
 the color. The status of the block is derived, not stored: the layer in view
-gives the verdict, the user layer (`BoundingBox::userText`, ADR 296) gives
-the yellow, and a block without a text gives nothing at all.
+gives the verdict, the user layer (`BoundingBox::userText`, ADR 296) or a
+hand-written layer (`BoxCheckStatus::Edited`) gives the yellow, and a block
+without a text gives nothing at all.
 
 ### 3. The header of the module
 
@@ -79,7 +80,9 @@ from this row: it belongs to the layer it acts on.
   judged) shows neither the prefix nor the number.
 - «Утвердить» (tooltip: «Игнорировать результат проверки») stands when the
   layer in view is OCR or VLM and the block is not yellow. While the
-  approval stands the button reads «Отозвать».
+  approval stands the button reads «Отозвать». The action acts on the layer
+  in view — the switch moves the document, so the layer the operator reads is
+  the layer the block carries.
 - The chip «В документе» stands in the comparison alone, on the layer the
   document carries, and not while the block is yellow.
 
