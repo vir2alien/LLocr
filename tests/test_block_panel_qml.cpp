@@ -37,6 +37,7 @@ private slots:
     void theSwitchGoesToTheNextLineWhenTheHeaderDoesNotFit();
     void theApproveActionIsNamed();
     void theStateFollowsTheVerdict();
+    void thePanelCoversTheSpaceUnderIt();
 
 private:
     std::unique_ptr<QObject> loadPanel();
@@ -536,6 +537,28 @@ void TestBlockPanelQml::theStateFollowsTheVerdict()
 
     m_controller->setProperty("selectedBlockCheckStatus", 1);
     QTest::qWait(20);
+}
+
+// The panel takes the clicks over its own background: a click that missed a
+// button must not reach the preview under it (ADR 340).
+void TestBlockPanelQml::thePanelCoversTheSpaceUnderIt()
+{
+    const std::unique_ptr<QObject> panel = loadPanel();
+    QVERIFY2(panel, qPrintable(m_warnings.join(QStringLiteral("; "))));
+
+    auto *panelItem = qobject_cast<QQuickItem *>(panel.get());
+    QVERIFY(panelItem);
+
+    QQuickItem *shield = nullptr;
+    for (QObject *child : panel->children()) {
+        if (QString::fromLatin1(child->metaObject()->className()) != QStringLiteral("QQuickMouseArea"))
+            continue;
+        shield = qobject_cast<QQuickItem *>(child);
+    }
+    QVERIFY2(shield, "the panel must take the clicks over its own background");
+    QCOMPARE(shield->parentItem(), panelItem);
+    QCOMPARE(shield->width(), panelItem->width());
+    QCOMPARE(shield->height(), panelItem->height());
 }
 
 QTEST_MAIN(TestBlockPanelQml)

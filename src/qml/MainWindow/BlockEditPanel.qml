@@ -267,6 +267,14 @@ Rectangle {
     implicitHeight: checkColumn.implicitHeight + 2 * Theme.spacingSmall
     visible: Controller.selectedBoxIndex >= 0 && Controller.hasResult
 
+    // The panel takes the clicks over its own background: a click that missed
+    // a button stays inside the panel and does not reach the preview under it
+    // (ADR 340). The area stands under the content, so the buttons and the
+    // text fields keep their clicks.
+    MouseArea {
+        anchors.fill: parent
+    }
+
     // Approve and move on: the operator's rhythm. The page text editor keeps
     // the Return — a shortcut that fires while a text is being typed in would
     // approve a block by accident.
