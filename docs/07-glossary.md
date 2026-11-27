@@ -2442,8 +2442,8 @@ appendix at the end of this file.
   color and the word stands in the header as ordinary text. The frame of the
   preview speaks in its own colors: it carries the verdict the model left on
   the block (ADR 238), not the words — a block the user wrote is yellow in the
-  header, and the frame keeps the color of that verdict. (Amended by ADR 341:
-  the frame of the block the user wrote is yellow too.) The page speaks with
+  header, and its frame is yellow too. (Amended by ADR 341: the frame follows
+  the block, not the verdict of the text before it.) The page speaks with
   the same words: no markup block — no status at all; markup with an
   unrecognized block — **Размечено** (gray); every block recognized but one
   of them unjudged — **Распознано** (gray); every block judged and one of
@@ -2464,16 +2464,17 @@ appendix at the end of this file.
   header of the layer. The header of a text layer reads: the name of the
   layer — **OCR** or **VLM** (the correction and the text the reader wrote
   are both the VLM's word) — the note of what the pipeline did to this layer
-  («Не требует исправления», «Прочитано с изображения», the kind of the
-  broken LaTeX), **«· Оценка:»** as ordinary text, the number of the score
-  (green when the check confirmed the text, red when it rejected it), the
-  approve action («Утвердить», tooltip «Игнорировать результат проверки»,
-  «Отозвать» while the approval stands) and the chip **«В документе»**. The
-  approve action stands when the layer in view is OCR or VLM and the block is
-  not yellow; the chip stands in the comparison alone, on the layer the
-  document carries, and not while the block is yellow. (Amended by ADR 341:
-  the note of the layer does not name the read anymore, and the chip is the
-  ordinary word **«В документе»** — no badge.) The switch reads
+  («Не требует исправления», the kind of the broken LaTeX; the read and the
+  fix are the same amendment of the block, and the layer does not name the
+  protocol that wrote it), **«· Оценка:»** as ordinary text, the number of
+  the score (green when the check confirmed the text, red when it rejected
+  it), the approve action («Утвердить», tooltip «Игнорировать результат
+  проверки», «Отозвать» while the approval stands) and the ordinary word
+  **«В документе»**. The approve action stands when the layer in view is OCR
+  or VLM and the block is not yellow; the word stands in the comparison
+  alone, on the layer the document carries, and not while the block is
+  yellow. (Amended by ADR 341: the note does not name the read, and the word
+  of the document is no badge.) The switch reads
   **OCR | VLM | Разница** and stands only where the block carries both an
   OCR result and a correction. The row under the text — «Текст в документе
   отличается от блока» with the action that settles it — is gone: the yellow
@@ -2495,9 +2496,9 @@ appendix at the end of this file.
   about it. The read and the fix are the same amendment of the block: the
   layer of the correction does not name the protocol that wrote it, and the
   word «Прочитано с изображения» is gone (ADR 339); the reader's own
-  verdicts still speak in their own words (ADR 261). The chip «В документе»
-  is the ordinary word «В документе»: a badge of its own color was a mark
-  of a layer, and the color belongs to the data.
+  verdicts still speak in their own words (ADR 261). The badge «В документе»
+  is now the ordinary word — no badge of its own: a mark of a layer was a
+  color, and the color belongs to the data.
 
 
 ### Security & secrets

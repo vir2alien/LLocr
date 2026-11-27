@@ -2415,6 +2415,9 @@ void AppController::migrateLegacyProjectText()
     }
     for (int pageIndex : unmapped)
         refreshPageDocument(pageIndex);
+    // The migration gave the blocks the user's own wording (ADR 296): the
+    // preview frames such a block in yellow, so the model must learn about it.
+    updateBoxesForCurrent();
 }
 
 // The segments the page pushes must live in the same serialization as the
